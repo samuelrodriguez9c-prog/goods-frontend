@@ -1,0 +1,84 @@
+<div class="flex items-start gap-3 border-b border-gray-100 py-3 last:border-0">
+  @if (selectable()) {
+    <div class="pt-3.5">
+      <app-selection-checkbox
+        [checked]="selected()"
+        [ariaLabel]="'Select ' + title()"
+        (checkedChange)="onSelectedChange($event)"
+      />
+    </div>
+  }
+
+  <img
+    [src]="imageUrl()"
+    alt=""
+    class="h-14 w-14 shrink-0 rounded border border-gray-200 bg-canvas-bg object-cover"
+  />
+
+  <div class="min-w-0 flex-1">
+    <p class="font-medium text-gray-900" [class.line-through]="struck()">{{ title() }}</p>
+    <div class="mt-1 flex items-center gap-2 text-sm text-gray-500">
+      @if (variant()) {
+        <span class="rounded bg-canvas-bg px-2 py-0.5">{{ variant() }}</span>
+      }
+      @if (sku()) {
+        <span>{{ sku() }}</span>
+      }
+    </div>
+  </div>
+
+  <div class="flex shrink-0 items-center gap-4 text-sm">
+    <span [class]="mode() === 'editable' ? 'font-medium text-primary-button' : 'text-gray-700'">
+      {{ formattedUnitPrice() }}
+    </span>
+
+    @if (mode() === 'editable') {
+      @if (isPartial()) {
+        <span class="flex items-center gap-1.5 text-gray-700">
+          <input
+            type="number"
+            class="w-14 rounded border border-gray-300 px-2 py-1 text-center focus:border-gray-400 focus:outline-none"
+            [value]="quantity()"
+            min="0"
+            [max]="maxQuantity()"
+            (input)="onQuantityInput($any($event.target).value)"
+          />
+          <span>{{ partialSeparator() }} {{ maxQuantity() }}</span>
+        </span>
+      } @else {
+        <input
+          type="number"
+          class="w-16 rounded border border-gray-300 px-2 py-1.5 focus:border-gray-400 focus:outline-none"
+          [value]="quantity()"
+          min="0"
+          (input)="onQuantityInput($any($event.target).value)"
+        />
+      }
+    } @else {
+      <span class="flex items-center gap-1.5 text-gray-700">
+        ×
+        <span class="rounded-full bg-canvas-bg px-2.5 py-0.5">{{ quantity() }}</span>
+      </span>
+    }
+
+    <span
+      class="w-20 text-right font-medium text-gray-900"
+      [class.line-through]="struck()"
+    >
+      {{ formattedTotal() }}
+    </span>
+
+    @if (removable()) {
+      <button
+        type="button"
+        class="text-gray-400 transition-colors hover:text-gray-600"
+        (click)="removed.emit()"
+        aria-label="Remove item"
+      >
+        <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round" />
+        </svg>
+      </button>
+    }
+  </div>
+</div>

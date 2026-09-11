@@ -1,0 +1,12 @@
+<nav class="flex h-full w-56 shrink-0 flex-col gap-1 bg-sidebar-bg p-3">
+  @for (item of navItems; track item.path) {
+    <a
+      [routerLink]="item.path"
+      routerLinkActive="bg-nav-active font-medium text-gray-900"
+      [routerLinkActiveOptions]="{ exact: item.exact }"
+      class="rounded px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-nav-active"
+    >
+      {{ item.label }}
+    </a>
+  }
+</nav>

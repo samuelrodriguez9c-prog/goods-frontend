@@ -1,0 +1,223 @@
+<main class="min-h-screen space-y-8 bg-canvas-bg p-10">
+  <div class="mx-auto max-w-2xl rounded-lg bg-card-bg p-8 shadow-sm">
+    <h1 class="mb-1 text-lg font-semibold text-gray-900">Badge de estado — preview</h1>
+    <p class="mb-6 text-sm text-gray-500">
+      Comparar contra las capturas 106 (Paid / Unfulfilled) y 336 (Active).
+    </p>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <app-status-badge label="Paid" tone="neutral" dot="filled" />
+      <app-status-badge label="Unfulfilled" tone="warning" dot="ring" />
+      <app-status-badge label="Active" tone="success" />
+      <app-status-badge label="Payment pending" tone="warning" dot="filled" />
+      <app-status-badge label="Cancelled" tone="critical" />
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-4xl rounded-lg bg-card-bg p-8 shadow-sm">
+    <h1 class="mb-1 text-lg font-semibold text-gray-900">
+      DataTable con selección múltiple — preview
+    </h1>
+    <p class="mb-6 text-sm text-gray-500">
+      Datos calcados de la captura 61 (listado de Orders). Marcá alguna fila para ver la barra
+      de "N selected" + acciones en lote.
+    </p>
+
+    <app-data-table [selectedCount]="selectedCount()">
+      <button
+        bulkActions
+        type="button"
+        class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-canvas-bg"
+      >
+        Export
+      </button>
+      <button
+        bulkActions
+        type="button"
+        class="rounded bg-primary-button px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+      >
+        Cancel orders
+      </button>
+
+      <p-table [value]="orders()" dataKey="id" [pt]="tablePt">
+        <ng-template pTemplate="header">
+          <tr>
+            <th class="w-10">
+              <app-selection-checkbox
+                [checked]="allSelected()"
+                [indeterminate]="someSelected()"
+                ariaLabel="Select all orders"
+                (checkedChange)="toggleAll($event)"
+              />
+            </th>
+            <th>Order</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Payment status</th>
+            <th>Fulfillment status</th>
+            <th>Items</th>
+            <th class="text-right">Total</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-order>
+          <tr>
+            <td>
+              <app-selection-checkbox
+                [checked]="isOrderSelected(order)"
+                [ariaLabel]="'Select order ' + order.order"
+                (checkedChange)="toggleOrder(order, $event)"
+              />
+            </td>
+            <td [class.line-through]="order.struck" class="font-medium text-gray-900">
+              {{ order.order }}
+            </td>
+            <td [class.line-through]="order.struck" class="text-gray-500">{{ order.date }}</td>
+            <td [class.line-through]="order.struck">{{ order.customer }}</td>
+            <td>
+              <app-status-badge
+                [label]="order.paymentLabel"
+                [tone]="order.paymentTone"
+                dot="filled"
+              />
+            </td>
+            <td>
+              <app-status-badge [label]="order.fulfillmentLabel" tone="warning" dot="ring" />
+            </td>
+            <td [class.line-through]="order.struck" class="text-gray-500">{{ order.items }}</td>
+            <td [class.line-through]="order.struck" class="text-right font-medium text-gray-900">
+              {{ order.total }}
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </app-data-table>
+  </div>
+
+  <div class="mx-auto max-w-4xl rounded-lg bg-card-bg p-8 shadow-sm">
+    <h1 class="mb-1 text-lg font-semibold text-gray-900">
+      Fila de ítem de pedido — preview
+    </h1>
+    <p class="mb-6 text-sm text-gray-500">
+      Calcado de las capturas 106/130 (detalle de orden, solo-lectura) y 133 (Edit order,
+      cantidad-editable). El formato "X of Y" es el modo usado en hold/refund.
+    </p>
+
+    <div class="space-y-8">
+      <div>
+        <h2 class="mb-2 text-sm font-semibold text-gray-700">Modo solo-lectura (detalle de orden)</h2>
+        <div class="rounded-lg border border-gray-200 px-4">
+          @for (item of readonlyLineItems(); track item.id) {
+            <app-order-line-item
+              [imageUrl]="productImagePlaceholder"
+              [title]="item.title"
+              [variant]="item.variant"
+              [sku]="item.sku"
+              [unitPrice]="item.unitPrice"
+              [quantity]="item.quantity"
+              mode="readonly"
+            />
+          }
+        </div>
+      </div>
+
+      <div>
+        <h2 class="mb-2 text-sm font-semibold text-gray-700">
+          Modo cantidad-editable (Edit order)
+        </h2>
+        <div class="rounded-lg border border-gray-200 px-4">
+          @for (item of editableLineItems(); track item.id) {
+            <app-order-line-item
+              [imageUrl]="productImagePlaceholder"
+              [title]="item.title"
+              [variant]="item.variant"
+              [sku]="item.sku"
+              [unitPrice]="item.unitPrice"
+              [quantity]="item.quantity"
+              mode="editable"
+              [removable]="true"
+              (quantityChange)="onEditableQuantityChange(item.id, $event)"
+              (removed)="onEditableRemove(item.id)"
+            />
+          }
+          @if (editableLineItems().length === 0) {
+            <p class="py-4 text-sm text-gray-500">No items — se sacaron todas las líneas.</p>
+          }
+        </div>
+      </div>
+
+      <div>
+        <h2 class="mb-2 text-sm font-semibold text-gray-700">
+          Modo "X of Y" (hold / refund parcial)
+        </h2>
+        <div class="rounded-lg border border-gray-200 px-4">
+          @for (item of partialLineItems(); track item.id) {
+            <app-order-line-item
+              [imageUrl]="productImagePlaceholder"
+              [title]="item.title"
+              [variant]="item.variant"
+              [sku]="item.sku"
+              [unitPrice]="item.unitPrice"
+              [quantity]="item.quantity"
+              [maxQuantity]="item.maxQuantity"
+              mode="editable"
+              [selectable]="true"
+              [selected]="item.selected"
+              (quantityChange)="onPartialQuantityChange(item.id, $event)"
+              (selectedChange)="onPartialSelectedChange(item.id, $event)"
+            />
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-2xl rounded-lg bg-card-bg p-8 shadow-sm">
+    <h1 class="mb-1 text-lg font-semibold text-gray-900">
+      Popover de ajuste rápido — preview
+    </h1>
+    <p class="mb-6 text-sm text-gray-500">
+      Calcado de la captura 304 (ficha de producto &gt; Inventory). Abrí el popover con "Adjust"
+      y confirmá para ver cómo cambia "Available".
+    </p>
+
+    <div class="overflow-hidden rounded-lg border border-gray-200">
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr
+            class="border-b border-gray-200 bg-canvas-bg text-left text-xs font-medium uppercase tracking-wide text-gray-500"
+          >
+            <th class="px-4 py-2.5">Locations</th>
+            <th class="px-4 py-2.5">Unavailable</th>
+            <th class="px-4 py-2.5">Committed</th>
+            <th class="px-4 py-2.5">Available</th>
+            <th class="px-4 py-2.5">On hand</th>
+            <th class="px-4 py-2.5"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="px-4 py-3">{{ inventory().location }}</td>
+            <td class="px-4 py-3">{{ inventory().unavailable }}</td>
+            <td class="px-4 py-3">{{ inventory().committed }}</td>
+            <td class="px-4 py-3 font-medium text-gray-900">{{ inventory().available }}</td>
+            <td class="px-4 py-3">{{ inventory().onHand }}</td>
+            <td class="px-4 py-3 text-right">
+              <app-quick-adjust-popover
+                [currentValue]="inventory().available"
+                [reasons]="['Damaged', 'Restock', 'Theft or loss', 'Other']"
+                (confirmed)="applyInventoryAdjustment($event)"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    @if (lastAdjustment(); as last) {
+      <p class="mt-4 text-sm text-gray-500">
+        Último ajuste confirmado: <strong>{{ last.mode }}</strong> {{ last.quantity }} — motivo
+        "{{ last.reason }}".
+      </p>
+    }
+  </div>
+</main>

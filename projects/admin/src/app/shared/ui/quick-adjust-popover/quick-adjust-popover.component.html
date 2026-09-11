@@ -1,0 +1,65 @@
+<button
+  type="button"
+  class="inline-flex items-center gap-1.5 rounded border border-transparent px-2 py-1 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-canvas-bg"
+  (click)="toggle($event)"
+>
+  <ng-content select="[trigger]">
+    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path
+        d="M13.5 3.5l3 3L7 16H4v-3L13.5 3.5z"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+    Adjust
+  </ng-content>
+</button>
+
+<p-popover [pt]="pt()">
+  <div class="flex w-[26rem] items-center gap-2 p-3">
+    <div class="flex overflow-hidden rounded border border-gray-300">
+      <select
+        class="border-r border-gray-300 bg-canvas-bg px-2 py-1.5 text-sm text-gray-700 focus:outline-none"
+        [value]="mode()"
+        (change)="onModeChange($any($event.target).value)"
+      >
+        <option value="set">Set to</option>
+        <option value="add">Add</option>
+        <option value="subtract">Subtract</option>
+      </select>
+      <input
+        type="number"
+        class="w-20 px-2 py-1.5 text-sm focus:outline-none"
+        [value]="quantity()"
+        (input)="onQuantityChange($any($event.target).value)"
+      />
+    </div>
+
+    <select
+      class="flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm text-gray-700 focus:outline-none"
+      [value]="reason()"
+      (change)="onReasonChange($any($event.target).value)"
+    >
+      @for (r of reasons(); track r) {
+        <option [value]="r">{{ r }}</option>
+      }
+    </select>
+
+    <button
+      type="button"
+      class="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-gray-300 bg-white text-gray-700 transition-colors hover:bg-canvas-bg"
+      (click)="confirm()"
+      aria-label="Confirm adjustment"
+    >
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none">
+        <path
+          d="M3 8.5L6.5 12L13 4.5"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+  </div>
+</p-popover>

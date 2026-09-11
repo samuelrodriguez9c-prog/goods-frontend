@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* You can add global styles to this file, and also import other style files */
+
+/*
+ * Design tokens — extraídos con pipeta de las capturas reales del admin
+ * de Shopify (referencia aprobada por el cliente). Ver ADMIN_DISENO.md,
+ * sección "Lenguaje visual general > Tokens de color", para la
+ * metodología de extracción y la captura fuente de cada valor.
+ *
+ * Definidos como @theme de Tailwind v4: cada variable queda disponible
+ * como utilidad de Tailwind (ej. --color-topbar genera bg-topbar,
+ * text-topbar, border-topbar, etc.) además de como custom property CSS
+ * plana (var(--color-topbar)) para usarla en objetos `pt` (pass-through)
+ * de PrimeNG.
+ */
+@theme {
+  --color-topbar: #0a0a0a;
+  --color-sidebar-bg: #ebebeb;
+  --color-canvas-bg: #f1f1f1;
+  --color-card-bg: #ffffff;
+  --color-nav-active: #fafafa;
+
+  --color-primary-button: #303030;
+
+  --color-badge-neutral-bg: #e3e3e3;
+  --color-badge-warning-bg: #ffeb79;
+  --color-badge-warning-solid: #ffb904;
+  --color-badge-success-bg: #a4ffb6;
+  --color-success-solid: #087b5d;
+
+  /* Placeholder razonable (rojo estándar de Polaris) hasta encontrar un
+   * badge/alerta de error real en las capturas — ver nota en
+   * ADMIN_DISENO.md. */
+  --color-badge-error-solid: #d82c0d;
+}

@@ -1,0 +1,11 @@
+<div class="overflow-hidden rounded-lg border border-gray-200 bg-card-bg">
+  @if (selectedCount() > 0) {
+    <div class="flex items-center gap-4 border-b border-gray-200 bg-canvas-bg px-4 py-2.5">
+      <span class="text-sm font-medium text-gray-900">{{ selectedCount() }} selected</span>
+      <div class="flex items-center gap-2">
+        <ng-content select="[bulkActions]" />
+      </div>
+    </div>
+  }
+  <ng-content select="p-table" />
+</div>
