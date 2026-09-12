@@ -476,10 +476,364 @@ Lo que **no existe hoy** en Goods y aparece en Shopify:
   Goods — vale la pena resolverlo con el cliente/negocio antes de
   construir nada de esto.
 
+## Topbar
+
+Fuente: captura 106. Se construye por partes (izquierda → centro →
+derecha), calcando la esquina superior izquierda/derecha y el buscador
+central de Shopify.
+
+### Izquierda: logo + badge de versión (hecho)
+
+- Shopify usa ícono (bolsa de compras) + wordmark "shopify" en negrita
+  itálica, y junto a eso un badge tipo píldora con el texto "Spring '26"
+  (la versión de su plataforma): fondo casi idéntico al de la barra
+  (transparente en la práctica), borde sutil gris claro, texto itálico
+  gris muy claro (casi blanco).
+- Goods todavía no tiene un archivo de logo — por ahora es un wordmark de
+  texto ("Goods", `font-bold italic`), reemplazable después por un ícono
+  real sin tocar el resto del layout.
+- El badge se reutiliza para la versión del admin en vez de la versión de
+  la plataforma: por ahora texto fijo `v0.1`, sin lectura automática de
+  `package.json` (hoy está en `0.0.0`, no tiene sentido mostrarlo hasta
+  que se decida versionar el proyecto de verdad).
+- Tokens nuevos (pipeta sobre la captura 106): `--color-topbar-badge-border`
+  (`#2a2a2a`), `--color-topbar-badge-text` (`#f0f0f0`).
+
+### Centro: buscador global (hecho)
+
+- Barra de búsqueda ancha, fondo `#282828` (levemente más claro que
+  `--color-topbar`, token `--color-topbar-search-bg`), esquinas
+  redondeadas (`rounded-lg`, no píldora completa — distinto del badge de
+  versión), ícono de lupa + placeholder "Search", y al final de la barra
+  un hint de atajo de teclado (`⌘` `K`) en dos badges pequeños
+  (`--color-topbar-kbd-bg`, `#2f2f2f`, apenas más claro que el fondo de
+  la barra — diferencia de ~7 puntos de gris verificada con pipeta).
+- Es un `<input>` real (enfocable, con anillo de foco), pero sin lógica
+  de búsqueda ni el atajo de teclado ⌘K conectados todavía — eso
+  requiere definir qué busca (¿pedidos? ¿productos? ¿clientes? ¿todo a
+  la vez, como Shopify?) y es trabajo aparte.
+
+### Tipografía e íconos (decisión de gerencia)
+
+Gerencia pidió definir de una vez fuente e íconos para todo el admin, no
+solo para el topbar — estas decisiones aplican a todo `shared/ui` hacia
+adelante:
+
+- **Tipografía: Inter, self-hosted** vía `@fontsource/inter`. Las letras
+  de las capturas de Shopify se ven como un grotesco geométrico — no se
+  pudo confirmar con certeza que sea exactamente Inter (no hay forma de
+  extraer metadata de fuente de un PNG), pero es la opción más parecida
+  y es un estándar de facto para este estilo de UI. Se eligió
+  self-hosted (paquete npm, sin request a Google Fonts en cada carga)
+  para no depender de un servicio externo. Solo se importan los pesos
+  que el admin ya usa (`400`, `500`, `600`, `700`, más `400-italic` y
+  `700-italic` para el wordmark del logo y el badge de versión) — no los
+  9 pesos completos que ofrece Inter, para no cargar peso de más.
+  Token: `--font-sans` en el `@theme`, con fallback a la fuente nativa
+  del sistema si algo falla al cargar.
+- **Íconos: `@tabler/icons-angular`** (reemplaza a `@lucide/angular`,
+  usado primero — ver "Sidebar > Íconos" para el porqué del cambio).
+  Línea limpia y minimalista, cercana al lenguaje visual de
+  Shopify/Polaris, sin ser el set exacto de Shopify
+  (`@shopify/polaris-icons`, que se descartó por no tener integración
+  oficial para Angular — requeriría traer los SVG sueltos a mano). Es
+  el paquete **oficial** de Tabler (`@tabler/icons-angular`, no un
+  wrapper de comunidad) y trae outline **y relleno** de cada ícono
+  desde la misma familia visual — a diferencia de Lucide, que es
+  puramente de trazo y no tiene versión rellena.
+- Dos formas de usar el componente `<tabler-icon>`, según el caso:
+  por referencia de objeto (`[icon]="iconSearch"`, con
+  `iconSearch = IconSearch` importado en el componente — así lo usa el
+  topbar) cuando los íconos de un componente son fijos, o por nombre
+  registrado con `provideTablerIcons(...)` (`[icon]="item.icon"` con
+  un string como `"home-filled"`) cuando el ícono depende de un dato
+  que cambia por ítem (así lo usa el sidebar — ver "Sidebar >
+  Implementación técnica"). `provideTablerIcons` devuelve
+  `EnvironmentProviders`, que solo puede registrarse a nivel de app
+  (`app.config.ts`) o de ruta, nunca en el `providers` de un
+  componente.
+- Implicación técnica: `npm install` hay que correrlo de nuevo en cada
+  máquina de desarrollo después de este cambio (se agregó
+  `@tabler/icons-angular` a `package.json`, se quitó `@lucide/angular`;
+  `@fontsource/inter` sigue igual).
+
+### Derecha: íconos (hecho)
+
+- De izquierda a derecha: ícono del asistente IA, campana de
+  notificaciones, y avatar + nombre de usuario.
+- En Shopify el ícono de asistente es "Sidekick", un ícono propio de
+  carita/máscara — no existe en Tabler (ni existía en Lucide). Se usó
+  `IconRobot` como el equivalente semántico más cercano dentro del set
+  ya elegido; en Goods representaría el mismo patrón de asistente
+  contextual ya visto en la ficha de producto (ver "Asistente de IA
+  contextual por registro"). Si más adelante hace falta más fidelidad
+  visual con Sidekick, es la única pieza del topbar que valdría la pena
+  traer como SVG propio en vez de un ícono de la librería.
+- La campana de notificaciones sí tiene equivalente exacto (`IconBell`).
+- Avatar: cuadrado redondeado con iniciales — en Shopify el color es
+  aleatorio por cuenta (no es un token de marca real), pero por
+  indicación de gerencia se pipeteó el color exacto de la captura 106
+  para que la referencia y el admin se vean iguales: fondo
+  `--color-topbar-avatar-bg` (`#2be0d5`, turquesa/cian brillante — se ve
+  "azulado" a simple vista), texto `--color-topbar-avatar-text`
+  (`#004442`, teal oscuro, también pipeteado) en vez de blanco para
+  mantener contraste sobre un fondo tan claro.
+- Sin lógica real detrás de ninguno de los tres todavía: no hay panel de
+  asistente, no hay lista de notificaciones, y el nombre/iniciales
+  ("Admin" / "AD") son un placeholder fijo porque `core/auth` todavía no
+  existe (ver estructura de carpetas — hoy es solo un `.gitkeep`). Wirear
+  esto a un usuario real es trabajo aparte, depende de que exista login.
+
+### Esquinas redondeadas del contenido (bajo el topbar)
+
+- Detalle que se había pasado por alto: el borde inferior del topbar
+  **no es una línea recta** — el sidebar y el canvas, justo debajo,
+  tienen la esquina superior (izquierda y derecha respectivamente)
+  redondeada, "mordiendo" el negro del topbar en las dos esquinas
+  exteriores. La costura interna entre sidebar y canvas sí es recta, sin
+  redondeo — el efecto solo se ve en las dos esquinas exteriores de la
+  pantalla.
+- Radio medido con precisión sobre la captura 106 (no a ojo): se buscó
+  en qué fila deja de haber negro lejos de la esquina (y=112 en la
+  captura) y en qué fila empieza el gris justo en el borde (x=0, y=130)
+  — la diferencia (18px de captura ÷ el factor de escala 1.512 de la
+  captura ≈ 12px CSS) coincide casi exacto con `rounded-xl` (12px) de
+  Tailwind — se usó ese valor en vez de un `rounded-2xl` a ojo.
+  Implementación: el contenedor que envuelve sidebar+canvas tiene fondo
+  negro (`bg-topbar`) de base, y sidebar/canvas cada uno con su propia
+  esquina superior redondeada (`rounded-tl-xl` / `rounded-tr-xl`) —
+  así el negro de fondo se asoma exactamente en las dos esquinas, sin
+  necesidad de ningún margen/gap explícito.
+
+## Sidebar
+
+Fuente: captura 106 (sidebar completo, de arriba a abajo). La versión
+anterior era texto plano sin íconos, sin estado activo real, sin
+Settings — esta sección documenta el rediseño.
+
+### Catálogo completo de la captura (para referencia futura)
+
+De arriba a abajo, la captura 106 tiene: Home, **Orders** (activo, pill
++ badge de conteo "3") con submenú Drafts/Shipping labels/Abandoned
+checkouts, Products, Customers, Growth, Discounts, Content, Markets,
+Finance, Analytics — sección "Sales channels ›" (Online Store, Agentic,
+Point of Sale) — sección "Apps ›" — Messaging (con punto de no-leído) —
+sección "Sidekick conversations ›" (historial de chats con el
+asistente) — Settings fijo abajo.
+
+### Decisión de alcance (gerencia)
+
+Se replicó el **estilo** exacto (ícono + texto, pill de item activo,
+Settings fijo abajo) pero **no el contenido completo** — Goods no tiene
+Growth/Discounts/Content/Markets/Finance/Analytics/Online
+Store/Agentic/Point of Sale/Apps/Messaging/Sidekick conversations, y
+agregar esos ítems como enlaces muertos iba en contra del criterio ya
+usado en todo este documento (alcance real de Goods, lenguaje visual de
+Shopify). El sidebar de Goods hoy es: **Dashboard, Orders, Products,
+Customers, Settings** — los mismos 4 módulos ya documentados en el
+resto de este archivo, más Settings.
+
+- Tampoco se replicaron los submenús (Drafts/Shipping labels/Abandoned
+  checkouts bajo Orders; Collections/Inventory bajo Products) porque no
+  existen como rutas reales en `orders.routes.ts` / `products.routes.ts`
+  — Shipping labels/Abandoned checkouts ni siquiera tienen equivalente
+  claro en el modelo `pedido` de Goods. Si en algún momento se agrega
+  una ruta real (ej. inventario como página propia en vez de sección de
+  la ficha de producto), ahí sí tendría sentido agregar el submenú.
+- Tampoco se replicó el badge de conteo ("Orders 3") — mostrar un número
+  falso hubiera sido peor que no mostrar nada; se agrega el día que haya
+  un servicio real de pedidos conectado (`OrdersApiService`, pendiente).
+- **Settings** sí se agregó como ítem + ruta (`features/settings`,
+  placeholder igual que el resto de páginas) aunque todavía no se
+  definió qué configuración necesita Goods — existe porque su posición
+  fija abajo es parte del patrón de layout de Shopify, no porque el
+  contenido ya esté decidido.
+
+### Íconos
+
+**Relleno vs. línea (revisado contra la captura 106, zoom a la columna
+de íconos):** Shopify no usa el mismo estilo para todos los ítems del
+sidebar — Home, Products y Customers usan íconos **sólidos/rellenos**,
+mientras que Orders, Settings y el resto de secciones fuera de alcance
+(Growth, Discounts, Content, Markets) usan **de línea/outline**.
+
+Primer intento: `@lucide/angular` (misma decisión que el topbar en su
+momento) para todo. Al llegar a este detalle se descubrió que Lucide es
+una librería puramente de trazo (stroke) — no tiene variante rellena de
+sus íconos, y sus paths no son regiones cerradas rellenables (probarlo
+con `fill` en vez de `stroke` da un resultado roto). Como parche
+temporal se instaló el paquete oficial `heroicons` solo para copiar a
+mano el `path` verificado de sus íconos sólidos de Home/Tag/User, sin
+quedar como dependencia. Funcionaba, pero dejaba dos familias de
+íconos mezcladas en el proyecto (Lucide de trazo + heroicons rellenos
+copiados a mano) — al preguntarle a gerencia si convenía mantener el
+híbrido o resolverlo de raíz, se decidió **migrar todo el proyecto de
+`@lucide/angular` a `@tabler/icons-angular`** (paquete oficial de
+Tabler, no un wrapper de comunidad): mismo lenguaje visual que Lucide
+(trazo 2px, esquinas redondeadas, muy cercano a Feather/Lucide en
+espíritu), pero con **outline y relleno de cada ícono en la misma
+librería** — sin mezclar dos sets ni copiar paths a mano. `heroicons`
+ya no es necesario y se desinstaló.
+
+Mapeo final (todos de `@tabler/icons-angular`):
+
+- **Dashboard** → `IconHome2Filled`, **Products** → `IconTagFilled`,
+  **Customers** → `IconUserFilled` (rellenos).
+- **Orders** → `IconInbox`, **Settings** → `IconSettings2` (de línea).
+- Topbar (sin cambios de estilo, solo de librería): `IconSearch`,
+  `IconRobot` (antes `LucideBot`), `IconBell` — los tres de línea.
+
+**Ajuste "más curvo" (pedido de gerencia, después de explorar Streamline
+Flex Remix — ver más abajo por qué se descartó):** Tabler es una
+librería de un solo estilo geométrico consistente — no tiene una
+familia alternativa "curva" completa como Streamline. Sí tiene, para
+algunos conceptos, un segundo ícono con silueta más suave sin cambiar
+el significado:
+
+- **Settings**: `IconSettings` (engranaje clásico de 8 dientes,
+  anguloso) → **`IconSettings2`** (insignia hexagonal de esquinas
+  suaves) — el cambio más notorio de los dos.
+- **Dashboard**: `IconHomeFilled` (ventana rectangular recta) →
+  **`IconHome2Filled`** (ventana con esquinas redondeadas) — cambio
+  sutil.
+
+Se revisaron alternativas para Products, Customers, Orders, Search,
+Bell y el asistente (Robot) y ninguna es notablemente más curva sin
+cambiar el ícono a otro concepto — se dejaron como estaban.
+
+**Por qué no se usó Streamline (Flex "Remix" / "Plump"):** gerencia
+vio en la propia página de Tabler una promoción de Streamline
+(250,000+ íconos) y le gustó el estilo curvo/fluido de su set "Flex",
+variante "Remix" (también existe "Plump", más bulboso — familia
+aparte). Investigado: son gratis pero bajo licencia **CC BY 4.0**, que
+exige atribución visible a Streamline en el producto (a diferencia de
+Tabler/Lucide, que son MIT y no la exigen). Existe soporte técnico real
+para usarlo (`iconify-icon`, MIT, + `@iconify-json/streamline-flex` o
+`@iconify-json/streamline-plump`, datos offline sin depender de un CDN
+en producción) — no era una limitación técnica. La decisión fue de
+licenciamiento: gerencia prefirió no mostrar atribución de terceros en
+el admin, y la única forma de usar Streamline sin atribución es pagar
+su suscripción (desde $19-29/mes) — se descartó por el costo recurrente
+frente a un ajuste puramente estético, y se optó por quedarse en
+Tabler (MIT, sin atribución, sin costo) con los dos swaps de arriba.
+
+### Implementación técnica
+
+El item activo se resuelve con `routerLinkActive` (ya existía). A
+diferencia de Lucide (cada ícono era su propio componente standalone,
+sin forma de pasarlo como dato — obligaba a un `@switch` sobre
+`icon: 'house' | 'inbox' | 'tag' | 'user'`), `@tabler/icons-angular`
+expone un único componente genérico `<tabler-icon>` que acepta el
+nombre del ícono **por string** (`icon="home-2-filled"`) cuando ese
+nombre se registra antes con `provideTablerIcons({ IconHome2Filled, ... })`.
+Eso permitió simplificar el sidebar: `NavItem.icon` ahora es
+simplemente el string del ícono de Tabler (`'home-2-filled'`, `'inbox'`,
+`'tag-filled'`, `'user-filled'`, y `'settings-2'` para el link fijo de
+Settings), usado directo como `<tabler-icon [icon]="item.icon" />`
+dentro del `@for` — ya no hace falta el `@switch`. Los íconos se
+registran con `provideTablerIcons` en `app.config.ts` (no en el propio
+componente: esa función devuelve `EnvironmentProviders`, que Angular no
+permite en el `providers` de un componente, solo a nivel de app o de
+ruta).
+
+### Medidas (corregidas contra la captura, no a ojo)
+
+Primer intento (ancho `w-56`/224px, `gap-1` entre items, `py-2.5`) se
+veía más angosto y con más aire entre items que la referencia. Se
+volvió a medir con precisión sobre la captura 106:
+
+- **Ancho del sidebar**: se buscó en qué columna termina el gris del
+  sidebar (`#ebebeb`) y empieza el del canvas (`#f1f1f1`) — el borde
+  cae en x≈478px de la captura. Dividido por el factor de escala de la
+  captura (1.512) da ≈316px CSS → se usó `w-80` (320px) de Tailwind en
+  vez de `w-56` (224px).
+- **Separación entre items**: se aprovechó que el pill activo de
+  "Orders" tiene un color distinguible (`#fafafa` vs `#ebebeb` del
+  sidebar) para medir su alto exacto con precisión de píxel: 56px de
+  captura, de borde a borde, **sin ningún hueco** antes de que empiece
+  la fila siguiente — el pill ocupa toda la fila, no hay `gap` entre
+  items. 56px ÷ 1.512 ≈ 37px CSS por fila. Se quitó el `gap-1` entre
+  items y se bajó el padding vertical de cada item de `py-2.5` a `py-2`
+  (con el ícono de 20px, `py-2` dos veces + ícono ≈ 36px, calza con la
+  medición).
+
+### Ajuste post-medición: micro-gap entre items (`gap-0.5`)
+
+El cero-gap de arriba se verificó contra una captura **estática** de
+Shopify, que nunca muestra dos pills superpuestas (activo + hover al
+mismo tiempo) — solo una activa a la vez. En uso real sí pasa: al pasar
+el mouse de un módulo activo al siguiente, las dos pills (la de
+`routerLinkActive` y la de `:hover`) quedan exactamente pegadas, y como
+ambas tienen las 4 esquinas redondeadas, la unión sin espacio se ve
+como un "pellizco" — un recorte raro justo donde se tocan, en vez de
+dos pills separadas. Se agregó `gap-0.5` (2px) al contenedor `<nav>`
+para separar visualmente las pills sin perder la sensación "apretada"
+de la referencia — 2px es imperceptible comparado con la fila de 37px,
+pero alcanza para que las esquinas redondeadas no se toquen. Es una
+excepción deliberada a la medición de arriba, documentada acá porque
+contradice el "sin gap" — se prioriza que la interacción se vea bien
+sobre el calco exacto de un estado que la captura de referencia nunca
+mostró.
+
+De paso se alargó la transición de color al pasar el mouse
+(`transition-colors` → `duration-200 ease-out`, antes sin duración
+explícita — usaba el default de Tailwind de 150ms) para que el cambio
+de fondo entre módulos se sienta más suave, a pedido de gerencia.
+
+### Indicador deslizante (reemplaza el fondo por item)
+
+El ajuste de arriba (micro-gap + transición de color más lenta) no
+resolvía el pedido real de gerencia: quería que la selección se sienta
+como que **se desplaza** de un módulo a otro, no que cada item
+prenda/apague su propio color (que sigue siendo un aparecer/desaparecer,
+por más lento que sea). La causa de fondo: cada `<a>` tenía su propio
+fondo independiente (`routerLinkActive="bg-nav-active"` +
+`hover:bg-nav-active`), así que nunca había *una* forma moviéndose,
+había dos formas alternándose.
+
+Se reemplazó por un **indicador único**: una sola `<div>` absolutamente
+posicionada (el `<nav>` pasó a `relative`) que se desliza entre items
+animando `top`/`height` con `transition-all duration-200 ease-out`, en
+vez de que cada item controle su propio fondo:
+
+- Cada `<a>` del `@for` tiene una referencia de plantilla `#link`
+  (`ElementRef`), leída desde el componente con `viewChildren<ElementRef>('link')`
+  (API de queries por signal de Angular 21).
+- `hoveredIndex` (signal) guarda qué item está bajo el mouse — se
+  actualiza con `(mouseenter)` por item y se limpia con `(mouseleave)`
+  en el propio `<nav>`.
+- `activeIndex` (signal) guarda el item de la ruta activa — se
+  actualiza desde `(isActiveChange)` de cada `routerLinkActive` (no se
+  reimplementa el matching de ruta a mano, se deja que el propio
+  directive decida y solo se escucha su evento).
+- Un `computed` elige el elemento objetivo (`hoveredIndex` si hay
+  hover, si no `activeIndex`), y de ahí salen `indicatorTop` /
+  `indicatorHeight` (`offsetTop` / `offsetHeight` del elemento) y
+  `indicatorVisible`, todos leídos directo del DOM real — no hay
+  alturas ni posiciones hardcodeadas, así que si el padding cambia en
+  el futuro el indicador se sigue ajustando solo.
+- Cada `<a>` dejó de tener su propio `bg-nav-active`/`hover:bg-nav-active`
+  — ahora solo cambia el color de texto/ícono
+  (`[class.text-gray-900]="rla.isActive"`, vía `#rla="routerLinkActive"`
+  sin lista de clases propia) y queda por encima del indicador
+  (`relative z-10`, indicador en `z-0` y `pointer-events-none`).
+- **Settings queda afuera de este sistema** — está separado del grupo
+  (empujado al fondo con `mt-auto`, sin vecino inmediato debajo), así
+  que no había problema de "pellizco" ni necesidad real de que el
+  indicador viaje hasta ahí; se dejó con el fondo propio + fade simple
+  de antes.
+
+Con esto, el "pellizco" del micro-gap (arriba) ya no puede pasar —
+nunca hay dos pills visibles al mismo tiempo, solo una que se mueve —
+pero se dejó el `gap-0.5` igual, no molesta en nada.
+
 ## Pendiente de revisar
 
 (Todos los módulos priorizados ya fueron revisados: Dashboard/Analítica,
-Pedidos/Órdenes, Productos/Inventario, Clientes/Usuarios.)
+Pedidos/Órdenes, Productos/Inventario, Clientes/Usuarios. El Topbar ya
+está completo en sus tres partes — izquierda, centro y derecha — todas
+sin lógica real conectada todavía, solo estructura y estilo calcados de
+Shopify.)
 
 ## Decisión: stack de UI para el admin
 

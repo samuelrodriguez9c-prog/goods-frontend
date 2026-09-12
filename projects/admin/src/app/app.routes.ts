@@ -26,6 +26,21 @@ export const routes: Routes = [
           import('./features/customers/customers.routes').then((m) => m.CUSTOMERS_ROUTES),
       },
       {
+        path: 'discounts',
+        loadChildren: () =>
+          import('./features/discounts/discounts.routes').then((m) => m.DISCOUNTS_ROUTES),
+      },
+      {
+        path: 'messages',
+        loadChildren: () =>
+          import('./features/messages/messages.routes').then((m) => m.MESSAGES_ROUTES),
+      },
+      {
+        path: 'settings',
+        loadChildren: () =>
+          import('./features/settings/settings.routes').then((m) => m.SETTINGS_ROUTES),
+      },
+      {
         // Página de validación visual de shared/ui/ — no es una pantalla de
         // negocio, ver features/dev-showcase.
         path: 'dev',

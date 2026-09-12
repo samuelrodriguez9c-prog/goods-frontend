@@ -1,8 +1,16 @@
 <div class="flex h-screen flex-col">
   <app-topbar />
-  <div class="flex flex-1 overflow-hidden">
+  <!--
+    El fondo negro (bg-topbar) de este contenedor es lo que se asoma en
+    las esquinas superiores del sidebar/canvas de abajo — ver captura
+    106: el borde inferior del topbar no es recto, el sidebar y el
+    canvas tienen esquina superior redondeada (radio ~12px, medido en
+    la captura) que "muerde" el fondo negro. Ver ADMIN_DISENO.md >
+    "Topbar > Esquinas redondeadas del contenido".
+  -->
+  <div class="flex flex-1 overflow-hidden bg-topbar">
     <app-sidebar />
-    <main class="flex-1 overflow-y-auto bg-canvas-bg">
+    <main class="flex-1 overflow-y-auto rounded-tr-xl bg-canvas-bg">
       <router-outlet />
     </main>
   </div>
