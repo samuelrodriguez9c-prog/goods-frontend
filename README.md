@@ -82,9 +82,17 @@ ng test admin
 Repo privado, GitHub Flow:
 
 - `main` siempre queda en un estado andante (`ng build admin` sin errores).
-- Todo cambio va en una rama nueva desde `main`: `feature/<algo>` para
-  funcionalidad nueva, `fix/<algo>` para corrección de bugs (ej.
-  `feature/order-detail-page`, `fix/badge-color-contraste`).
+- Todo cambio va en una rama nueva desde `main`, nombrada `Gds.<número>`
+  (ej. `Gds.001`, `Gds.002`) — un correlativo propio y **compartido
+  entre este repo y `goods-backend`** (un solo contador para los dos,
+  no uno por repo). Reemplaza al esquema anterior (`feature/<algo>`/
+  `fix/<algo>`): no hay Issues de GitHub en uso todavía como para
+  numerar contra eso, así que el número es simplemente el siguiente
+  disponible del contador compartido. El nombre de la rama **ya no dice
+  de qué se trata ni si es feature o fix** — esa información vive
+  entera en el commit/PR (ver el punto siguiente), nunca en el nombre
+  de la rama. Ramas creadas antes de este cambio (`feature/algo`) no se
+  renombran retroactivamente.
 - Commits con prefijo de tipo — `feat:`, `fix:`, `docs:`, `refactor:`,
   `test:`, `chore:` — ayuda a que el historial de `main` se lea como una
   lista de cambios, aunque no haya changelog automático todavía.

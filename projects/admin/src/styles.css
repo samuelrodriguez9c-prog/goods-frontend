@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/*
+ * Tipografía — Inter, self-hosted vía @fontsource (sin depender de
+ * Google Fonts en cada carga). Elegida por parecido visual con la
+ * tipografía de las capturas de Shopify (grotesco geométrico — ver
+ * ADMIN_DISENO.md > "Topbar > Tipografía e íconos"). Solo se importan
+ * los pesos que el admin realmente usa hoy (400/500/600/700 + itálicas
+ * para el wordmark del logo y el badge de versión) para no cargar peso
+ * de más.
+ */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/400-italic.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/700-italic.css";
+
 /* You can add global styles to this file, and also import other style files */
 
 /*
@@ -15,6 +31,10 @@
  * de PrimeNG.
  */
 @theme {
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
+
   --color-topbar: #0a0a0a;
   --color-sidebar-bg: #ebebeb;
   --color-canvas-bg: #f1f1f1;
@@ -28,6 +48,21 @@
   --color-badge-warning-solid: #ffb904;
   --color-badge-success-bg: #a4ffb6;
   --color-success-solid: #087b5d;
+
+  /* Topbar > badge de versión (pill junto al logo, calcado del badge
+   * "Spring '26" de Shopify) y buscador global — ver ADMIN_DISENO.md >
+   * "Topbar". */
+  --color-topbar-badge-border: #2a2a2a;
+  --color-topbar-badge-text: #f0f0f0;
+  --color-topbar-search-bg: #282828;
+  --color-topbar-kbd-bg: #2f2f2f;
+
+  /* Topbar > avatar de usuario (derecha). En Shopify el color real es
+   * aleatorio por cuenta (no es un token de marca), pero se pipeteó el
+   * de la captura 106 para calcar el look exacto de la referencia — ver
+   * ADMIN_DISENO.md > "Topbar > Derecha". */
+  --color-topbar-avatar-bg: #2be0d5;
+  --color-topbar-avatar-text: #004442;
 
   /* Placeholder razonable (rojo estándar de Polaris) hasta encontrar un
    * badge/alerta de error real en las capturas — ver nota en
