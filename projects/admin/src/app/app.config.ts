@@ -1,7 +1,9 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
+import { authInterceptor } from './core/http/auth.interceptor';
 import {
   IconChevronDown,
   IconDiscount2,
@@ -22,6 +24,9 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
+    // authInterceptor adjunta el Bearer token y reintenta una vez con
+    // refresh ante un 401 — ver core/http/auth.interceptor.ts.
+    provideHttpClient(withInterceptors([authInterceptor])),
     // PrimeNG usa @angular/animations (vía provideAnimationsAsync) para las
     // transiciones de overlays (dropdowns, dialogs, popovers). Angular marca
     // @angular/animations como deprecado a favor de animate.enter/leave, pero

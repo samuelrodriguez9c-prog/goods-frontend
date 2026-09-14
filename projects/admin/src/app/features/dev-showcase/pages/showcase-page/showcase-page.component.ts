@@ -1,13 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { TableModule } from 'primeng/table';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
-import { DataTableComponent, dataTablePt } from '../../../../shared/ui/data-table/data-table.component';
-import { SelectionCheckboxComponent } from '../../../../shared/ui/data-table/selection-checkbox.component';
 import {
+  StatusBadgeComponent,
+  DataTableComponent,
+  dataTablePt,
+  SelectionCheckboxComponent,
   QuickAdjustPopoverComponent,
   QuickAdjustResult,
-} from '../../../../shared/ui/quick-adjust-popover/quick-adjust-popover.component';
-import { OrderLineItemComponent } from '../../../../shared/ui/order-line-item/order-line-item.component';
+  OrderLineItemComponent,
+} from 'shared-ui';
 
 interface DemoOrder {
   id: string;

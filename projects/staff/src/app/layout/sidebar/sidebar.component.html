@@ -1,0 +1,31 @@
+<nav
+  class="relative flex h-full w-64 shrink-0 flex-col gap-0.5 rounded-tl-xl bg-sidebar-bg p-3"
+  (mouseleave)="hoveredIndex.set(null)"
+>
+  <!-- Indicador deslizante — ver comentario del componente y
+       ADMIN_DISENO.md > "Sidebar > Animación" (mismo mecanismo que
+       `admin`, sin la parte de submenús que acá no aplica). -->
+  <div
+    class="pointer-events-none absolute inset-x-3 z-0 rounded-lg bg-nav-active transition-all duration-200 ease-out"
+    [style.top.px]="indicatorTop()"
+    [style.height.px]="indicatorHeight()"
+    [style.opacity]="indicatorVisible() ? 1 : 0"
+  ></div>
+
+  @for (item of navItems; track item.path; let i = $index) {
+    <a
+      #link
+      [routerLink]="item.path"
+      routerLinkActive
+      #rla="routerLinkActive"
+      [routerLinkActiveOptions]="{ exact: item.exact }"
+      (isActiveChange)="onActiveChange(i, $event)"
+      (mouseenter)="hoveredIndex.set(i)"
+      [class.text-gray-900]="rla.isActive"
+      class="relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 ease-out"
+    >
+      <tabler-icon [icon]="item.icon" [size]="20" [stroke]="1.75" svgClass="shrink-0" />
+      <span class="truncate">{{ item.label }}</span>
+    </a>
+  }
+</nav>

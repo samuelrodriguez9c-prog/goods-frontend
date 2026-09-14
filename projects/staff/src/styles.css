@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/*
+ * Mismos tokens de tipografía/color que `projects/admin/src/styles.css`
+ * — la identidad visual de Goods es una sola (calcada de Shopify, ver
+ * ADMIN_DISENO.md), y `shared-ui` depende de estas clases (ej.
+ * `bg-badge-success-bg` en StatusBadgeComponent) para verse igual acá
+ * que en `admin`. Duplicado a propósito por ahora — extraer esto a un
+ * preset de Tailwind compartido por los dos proyectos queda como mejora
+ * futura, no bloqueante para este scaffold inicial (ver
+ * PIVOTE_SAAS_MULTITENANT.md §8 punto 3).
+ */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/400-italic.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/700-italic.css";
+
+@theme {
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
+
+  --color-topbar: #0a0a0a;
+  --color-sidebar-bg: #ebebeb;
+  --color-canvas-bg: #f1f1f1;
+  --color-card-bg: #ffffff;
+  --color-nav-active: #fafafa;
+
+  --color-primary-button: #303030;
+
+  --color-badge-neutral-bg: #e3e3e3;
+  --color-badge-warning-bg: #ffeb79;
+  --color-badge-warning-solid: #ffb904;
+  --color-badge-success-bg: #a4ffb6;
+  --color-success-solid: #087b5d;
+
+  --color-topbar-badge-border: #2a2a2a;
+  --color-topbar-badge-text: #f0f0f0;
+  --color-topbar-search-bg: #282828;
+  --color-topbar-kbd-bg: #2f2f2f;
+
+  --color-topbar-avatar-bg: #2be0d5;
+  --color-topbar-avatar-text: #004442;
+
+  --color-badge-error-solid: #d82c0d;
+
+  /* Login del panel de staff — mismos tokens que `admin/src/styles.css`
+   * (ver ADMIN_DISENO.md > "Login"), reutilizados acá porque es la misma
+   * identidad visual. Sin las variantes de captura de Shopify (passkeys,
+   * redes sociales, 2FA): esa pantalla era para el login del cliente
+   * final de un emprendimiento — acá es un login interno simple, ver
+   * `core/auth/pages/login/`. */
+  --color-login-bg: #0a0a0a;
+  --color-field-error-bg: #ffe6e5;
+}

@@ -1,0 +1,251 @@
+<main class="flex min-h-screen flex-col items-center justify-center bg-login-bg p-6">
+  <!-- Ícono grande centrado sobre la tarjeta — calcado del layout de
+       Shopify (capturas 1050-1056): el logo va SOLO acá, no repetido
+       adentro de la tarjeta. Logo real de Goods (Gds_images), no un
+       placeholder de texto. Tamaño subido de h-20 → h-28 → h-32
+       (2026-09-14): en las capturas el logo realza bastante más que un
+       ícono chico de topbar. -->
+  <img src="/logo-goods-icon.png" alt="Goods" class="mb-8 h-32 w-auto" />
+
+  <div class="w-full max-w-md rounded-2xl bg-card-bg p-8 shadow-xl">
+    <h1 class="text-3xl font-bold text-gray-900">Iniciar sesión</h1>
+    <p class="mb-6 text-sm text-gray-600">Continuar a Goods</p>
+
+    @if (paso() === 'correo') {
+      <form
+        class="animate-[fade-in-up_0.25s_ease-out] space-y-4"
+        (submit)="$event.preventDefault(); continuarConCorreo()"
+      >
+        <div>
+          <label for="correo" class="mb-1 block text-sm font-medium text-gray-700">Correo</label>
+          <input
+            id="correo"
+            type="email"
+            autocomplete="email"
+            autofocus
+            [value]="correo()"
+            (input)="onCorreoChange($any($event.target).value)"
+            [class.bg-field-error-bg]="correoInvalido()"
+            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+          />
+          <!-- Aparece con un fundido + desplazamiento suave en vez de de
+               golpe (pedido 2026-09-14) — misma animación que el resto de
+               los mensajes de error de la página, ver @keyframes
+               fade-in-up en styles.css. -->
+          @if (correoInvalido()) {
+            <p
+              class="mt-1.5 flex animate-[fade-in-up_0.2s_ease-out] items-center gap-1 text-sm text-badge-error-solid"
+            >
+              <tabler-icon [icon]="iconError" [size]="16" svgClass="shrink-0" />
+              Ingresa un correo válido
+            </p>
+          }
+        </div>
+
+        <!-- Flecha que aparece/desaparece suave al pasar el mouse (pedido
+             2026-09-14): la flecha vive siempre en el DOM, con ancho 0 y
+             opacidad 0 — al hacer hover del botón (`group`) se expande y
+             se hace visible con una transición; al sacar el mouse vuelve
+             a colapsar con la misma transición. -->
+        <button
+          type="submit"
+          class="group flex w-full items-center justify-center rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+        >
+          Continuar con correo
+          <span
+            class="ml-0 max-w-0 overflow-hidden opacity-0 transition-all duration-200 ease-out group-hover:ml-2 group-hover:max-w-[20px] group-hover:opacity-100"
+          >
+            <tabler-icon [icon]="iconArrowRight" [size]="16" [stroke]="1.75" svgClass="shrink-0" />
+          </span>
+        </button>
+
+        <!-- Passkey + redes sociales (captura 1050) — integrados a nivel
+             visual, sin lógica real (WebAuthn / OAuth de cada proveedor
+             quedan pendientes, ver comentario de la clase). Sin (click):
+             mismo criterio que otros placeholders inertes del admin
+             (botones de asistente IA / notificaciones del topbar). Con
+             transición suave en hover (pedido 2026-09-14), igual que el
+             resto de los controles de la página. -->
+        <div class="flex items-center gap-3 py-1 text-xs text-gray-400">
+          <span class="h-px flex-1 bg-gray-200"></span>
+          O
+          <span class="h-px flex-1 bg-gray-200"></span>
+        </div>
+
+        <button
+          type="button"
+          class="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-50"
+        >
+          <tabler-icon [icon]="iconFingerprint" [size]="18" [stroke]="1.75" />
+          Iniciar sesión con una passkey
+        </button>
+
+        <div class="flex items-center justify-center gap-3">
+          <button
+            type="button"
+            aria-label="Continuar con Google"
+            class="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition-all duration-200 hover:scale-105 hover:bg-gray-50"
+          >
+            <tabler-icon [icon]="iconGoogle" [size]="18" [stroke]="1.75" />
+          </button>
+          <button
+            type="button"
+            aria-label="Continuar con Apple"
+            class="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition-all duration-200 hover:scale-105 hover:bg-gray-50"
+          >
+            <tabler-icon [icon]="iconApple" [size]="18" [stroke]="1.75" />
+          </button>
+          <button
+            type="button"
+            aria-label="Continuar con Facebook"
+            class="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition-all duration-200 hover:scale-105 hover:bg-gray-50"
+          >
+            <tabler-icon [icon]="iconFacebook" [size]="18" [stroke]="1.75" />
+          </button>
+          <button
+            type="button"
+            aria-label="Continuar con WhatsApp"
+            class="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition-all duration-200 hover:scale-105 hover:bg-gray-50"
+          >
+            <tabler-icon [icon]="iconWhatsapp" [size]="18" [stroke]="1.75" />
+          </button>
+        </div>
+      </form>
+    } @else if (paso() === 'password') {
+      <form
+        class="animate-[fade-in-up_0.25s_ease-out] space-y-4"
+        (submit)="$event.preventDefault(); submit()"
+      >
+        <!-- Pill de correo ya elegido + "Cambiar correo" — capturas
+             1052-1056: en el paso 2 el correo queda fijo, no editable
+             en el mismo campo. -->
+        <div class="flex items-center justify-between rounded-lg bg-canvas-bg px-3 py-2.5 text-sm">
+          <span class="truncate text-gray-900">{{ correo() }}</span>
+          <button
+            type="button"
+            (click)="cambiarCorreo()"
+            class="shrink-0 font-medium text-blue-600 transition-colors duration-200 hover:underline"
+          >
+            Cambiar correo
+          </button>
+        </div>
+
+        <div>
+          <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
+          <div class="relative">
+            <input
+              id="password"
+              [type]="mostrarPassword() ? 'text' : 'password'"
+              autocomplete="current-password"
+              autofocus
+              [value]="password()"
+              (input)="onPasswordChange($any($event.target).value)"
+              [class.bg-field-error-bg]="error()"
+              class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 pr-10 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+            />
+            <button
+              type="button"
+              (click)="togglePassword()"
+              [attr.aria-label]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 transition-colors duration-200 hover:text-gray-700"
+            >
+              <tabler-icon [icon]="mostrarPassword() ? iconEyeOff : iconEye" [size]="18" [stroke]="1.75" />
+            </button>
+          </div>
+          @if (error(); as mensaje) {
+            <p
+              class="mt-1.5 flex animate-[fade-in-up_0.2s_ease-out] items-center gap-1 text-sm text-badge-error-solid"
+            >
+              <tabler-icon [icon]="iconError" [size]="16" svgClass="shrink-0" />
+              {{ mensaje }}
+            </p>
+          }
+          <!-- Sin lógica real todavía (necesitaría una pantalla propia
+               para pedir el correo y llamar POST /auth/forgot-password,
+               que el backend ya expone) — mismo criterio que otros
+               placeholders del admin (topbar, notificaciones). -->
+          <a
+            href="#"
+            class="mt-2 inline-block text-sm font-medium text-blue-600 transition-colors duration-200 hover:underline"
+          >
+            ¿Olvidaste tu contraseña?
+          </a>
+        </div>
+
+        <button
+          type="submit"
+          [disabled]="cargando()"
+          class="w-full rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:bg-gray-300 disabled:text-gray-500"
+        >
+          {{ cargando() ? 'Entrando…' : 'Iniciar sesión' }}
+        </button>
+      </form>
+    } @else {
+      <!-- Paso "dosFactores" (capturas 1057-1058) — hoy inalcanzable
+           desde el flujo real, ver comentario de la clase. Se revisa
+           entrando a /login?paso=2fa. -->
+      <form
+        class="animate-[fade-in-up_0.25s_ease-out] space-y-4"
+        (submit)="$event.preventDefault()"
+      >
+        <p class="text-sm text-gray-600">
+          Abre tu app de autenticación e ingresa el código de 6 dígitos que te
+          muestra para
+          <span class="font-medium text-gray-900">{{ correo() || 'tu cuenta' }}</span>.
+        </p>
+
+        <div>
+          <label for="codigo-2fa" class="mb-1 block text-sm font-medium text-gray-700">
+            Código de verificación
+          </label>
+          <input
+            id="codigo-2fa"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            autofocus
+            maxlength="6"
+            placeholder="000000"
+            [value]="codigoDosFactores()"
+            (input)="onCodigoDosFactoresChange($any($event.target).value)"
+            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-center text-lg tracking-[0.5em] text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+          />
+        </div>
+
+        <button
+          type="submit"
+          [disabled]="codigoDosFactores().length < 6"
+          class="w-full rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:bg-gray-300 disabled:text-gray-500"
+        >
+          Continuar
+        </button>
+
+        <button
+          type="button"
+          (click)="volverAPassword()"
+          class="w-full text-center text-sm font-medium text-blue-600 transition-colors duration-200 hover:underline"
+        >
+          Usar otro método de verificación
+        </button>
+      </form>
+    }
+  </div>
+
+  <!-- Pie de página (captura debajo de 1056) — "¿Necesitas ayuda?" +
+       texto legal. Sin páginas propias de Términos/Privacidad todavía,
+       así que quedan como enlaces placeholder (href="#"); se omite la
+       cláusula de "recibir emails de marketing" del texto de Shopify
+       porque acá no aplica (no hay ese consentimiento en el formulario).
+       Ver ADMIN_DISENO.md > "Login". -->
+  <footer class="mt-8 w-full max-w-md text-center">
+    <a href="#" class="text-sm font-medium text-gray-300 transition-colors duration-200 hover:underline">
+      ¿Necesitas ayuda?
+    </a>
+    <p class="mt-3 text-xs text-gray-500">
+      Al continuar, aceptas los
+      <a href="#" class="underline transition-colors duration-200 hover:text-gray-300">Términos de servicio</a>
+      de Goods y confirmas que leíste nuestra
+      <a href="#" class="underline transition-colors duration-200 hover:text-gray-300">Política de privacidad</a>.
+    </p>
+  </footer>
+</main>

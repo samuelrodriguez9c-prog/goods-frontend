@@ -1,0 +1,60 @@
+<main class="flex min-h-screen flex-col items-center justify-center bg-login-bg p-6">
+  <img src="/logo-goods-icon.png" alt="Goods" class="mb-8 h-20 w-auto" />
+
+  <div class="w-full max-w-md rounded-2xl bg-card-bg p-8 shadow-xl">
+    <h1 class="text-3xl font-bold text-gray-900">Staff de Goods</h1>
+    <p class="mb-6 text-sm text-gray-600">Panel interno — solo personal de Goods</p>
+
+    <form class="space-y-4" (submit)="$event.preventDefault(); submit()">
+      <div>
+        <label for="correo" class="mb-1 block text-sm font-medium text-gray-700">Correo</label>
+        <input
+          id="correo"
+          type="email"
+          autocomplete="email"
+          autofocus
+          [value]="correo()"
+          (input)="onCorreoChange($any($event.target).value)"
+          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent focus:ring-2 focus:ring-gray-400"
+        />
+      </div>
+
+      <div>
+        <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
+        <div class="relative">
+          <input
+            id="password"
+            [type]="mostrarPassword() ? 'text' : 'password'"
+            autocomplete="current-password"
+            [value]="password()"
+            (input)="onPasswordChange($any($event.target).value)"
+            [class.bg-field-error-bg]="error()"
+            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 pr-10 text-sm text-gray-900 outline-none ring-1 ring-transparent focus:ring-2 focus:ring-gray-400"
+          />
+          <button
+            type="button"
+            (click)="togglePassword()"
+            [attr.aria-label]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
+          >
+            <tabler-icon [icon]="mostrarPassword() ? iconEyeOff : iconEye" [size]="18" [stroke]="1.75" />
+          </button>
+        </div>
+        @if (error(); as mensaje) {
+          <p class="mt-1.5 flex items-center gap-1 text-sm text-badge-error-solid">
+            <tabler-icon [icon]="iconError" [size]="16" svgClass="shrink-0" />
+            {{ mensaje }}
+          </p>
+        }
+      </div>
+
+      <button
+        type="submit"
+        [disabled]="cargando()"
+        class="w-full rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:bg-gray-300 disabled:text-gray-500"
+      >
+        {{ cargando() ? 'Entrando…' : 'Iniciar sesión' }}
+      </button>
+    </form>
+  </div>
+</main>

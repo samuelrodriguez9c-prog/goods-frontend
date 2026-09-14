@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { SelectionCheckboxComponent } from '../data-table/selection-checkbox.component';
-import { formatMoney } from '../../utils/format-money';
+import { formatMoney } from '../utils/format-money';
 
 export type OrderLineItemMode = 'readonly' | 'editable';
 export type OrderLineItemPartialSeparator = 'of' | '/';

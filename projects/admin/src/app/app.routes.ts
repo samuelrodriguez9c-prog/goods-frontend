@@ -1,10 +1,20 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
 import { ShellComponent } from './layout/shell/shell.component';
 
 export const routes: Routes = [
   {
+    // Pantalla sin sidebar/topbar — vive en su propia rama de rutas, tal
+    // como anticipaba el comentario en shell.component.ts. Sin guard: es
+    // justo la ruta a la que `authGuard` redirige cuando falta sesión.
+    path: 'login',
+    loadComponent: () =>
+      import('./core/auth/pages/login/login.component').then((m) => m.LoginComponent),
+  },
+  {
     path: '',
     component: ShellComponent,
+    canActivate: [authGuard],
     children: [
       {
         path: '',
