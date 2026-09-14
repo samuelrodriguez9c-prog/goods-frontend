@@ -1,0 +1,66 @@
+<div class="p-8">
+  <h1 class="text-lg font-semibold text-gray-900">Altas pendientes</h1>
+  <p class="mt-1 text-sm text-gray-500">
+    Negocios que se registraron y esperan revisión para activarse.
+  </p>
+
+  @if (error(); as mensaje) {
+    <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
+  } @else if (cargando()) {
+    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
+  } @else {
+    <div class="mt-6">
+      <app-data-table>
+        <p-table [value]="filas()" dataKey="id" [pt]="tablePt">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Empresa</th>
+              <th>Rubro</th>
+              <th>Dueño</th>
+              <th>Plan solicitado</th>
+              <th>Fecha de solicitud</th>
+              <th></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-empresa>
+            <tr>
+              <td class="font-medium text-gray-900">{{ empresa.nombre }}</td>
+              <td class="text-gray-500">{{ empresa.rubro ?? '—' }}</td>
+              <td class="text-gray-500">
+                {{ empresa.duenoNombres }} {{ empresa.duenoApellidos }}
+                <br />
+                <span class="text-xs">{{ empresa.duenoCorreo }}</span>
+              </td>
+              <td>{{ empresa.planNombre ?? '—' }}</td>
+              <td class="text-gray-500">{{ empresa.creadoEn | date: 'd MMM y' }}</td>
+              <td>
+                <div class="flex flex-col items-end gap-1">
+                  <button
+                    type="button"
+                    class="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors duration-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    [disabled]="empresa.activando"
+                    (click)="activar(empresa)"
+                  >
+                    {{ empresa.activando ? 'Activando…' : 'Activar' }}
+                  </button>
+                  @if (empresa.errorActivar; as mensajeFila) {
+                    <span class="animate-[fade-in-up_0.2s_ease-out] text-xs text-badge-error-solid">
+                      {{ mensajeFila }}
+                    </span>
+                  }
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="6" class="py-6 text-center text-sm text-gray-500">
+                No hay altas pendientes por revisar.
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </app-data-table>
+    </div>
+  }
+</div>

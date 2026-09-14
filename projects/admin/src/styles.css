@@ -64,8 +64,40 @@
   --color-topbar-avatar-bg: #2be0d5;
   --color-topbar-avatar-text: #004442;
 
-  /* Placeholder razonable (rojo estándar de Polaris) hasta encontrar un
-   * badge/alerta de error real en las capturas — ver nota en
-   * ADMIN_DISENO.md. */
+  /* Confirmado (2026-09-14) con pipeta sobre un error real: capturas
+   * 1055/1056 (login, "Incorrect password") — el rojo que ya estaba acá
+   * como placeholder razonable resultó ser prácticamente el mismo que el
+   * real, así que se queda tal cual. Ver ADMIN_DISENO.md > "Login". */
   --color-badge-error-solid: #d82c0d;
+
+  /* Login (capturas 1050-1056) — ver ADMIN_DISENO.md > "Login". Fondo de
+   * página oscuro: mismo negro casi puro que el topbar (--color-topbar),
+   * pero como token aparte porque es una zona distinta (si el topbar
+   * cambia de color más adelante, el fondo del login no tiene por qué
+   * seguirlo). El campo normal reutiliza --color-canvas-bg (mismo gris
+   * #f1f1f1, pipeteado igual en la captura) en vez de un token nuevo.
+   * El rojo de error reutiliza --color-badge-error-solid de arriba. */
+  --color-login-bg: #0a0a0a;
+  --color-field-error-bg: #ffe6e5;
+}
+
+/*
+ * Animación de entrada — login (pedido explícito 2026-09-14: "cada
+ * acción debe tener un golpe suave"). Se usa vía la utilidad arbitraria
+ * de Tailwind `animate-[fade-in-up_...]` en vez de Angular Animations:
+ * son elementos que Angular agrega/saca del DOM con @if (el mensaje de
+ * error, el paso de contraseña, etc.), y una animación CSS @keyframes
+ * arranca sola apenas el elemento se inserta — no hace falta el módulo
+ * de animaciones solo para esto. Sin animación de salida a propósito:
+ * el pedido es sobre cómo aparecen las cosas, no cómo desaparecen.
+ */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
