@@ -1,0 +1,182 @@
+<div class="p-8">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-lg font-semibold text-gray-900">Planes</h1>
+      <p class="mt-1 text-sm text-gray-500">Catálogo de planes que Goods vende a sus clientes.</p>
+    </div>
+    <button
+      type="button"
+      (click)="abrirCrear()"
+      class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+    >
+      <tabler-icon [icon]="iconPlus" [size]="16" [stroke]="2" />
+      Nuevo plan
+    </button>
+  </div>
+
+  @if (error(); as mensaje) {
+    <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
+  } @else if (cargando()) {
+    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
+  } @else {
+    <div class="mt-6">
+      <app-data-table>
+        <p-table [value]="planes()" dataKey="id" [pt]="tablePt">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Plan</th>
+              <th>Precio</th>
+              <th>Características</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-plan>
+            <tr>
+              <td>
+                <div class="font-medium text-gray-900">{{ plan.nombre }}</div>
+                @if (plan.descripcion) {
+                  <div class="mt-0.5 text-xs text-gray-500">{{ plan.descripcion }}</div>
+                }
+              </td>
+              <td class="text-gray-700">
+                {{ plan.precioMensual === null ? 'Sin definir' : formatCop(plan.precioMensual) + ' COP' }}
+              </td>
+              <td class="text-gray-500">
+                {{ plan.caracteristicas && plan.caracteristicas.length > 0 ? plan.caracteristicas.length + ' ítems' : '—' }}
+              </td>
+              <td>
+                <app-status-badge
+                  [label]="plan.activo ? 'Activo' : 'Desactivado'"
+                  [tone]="tonoActivo(plan.activo)"
+                  dot="filled"
+                />
+              </td>
+              <td>
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    (click)="abrirEditar(plan)"
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+                    aria-label="Editar"
+                  >
+                    <tabler-icon [icon]="iconEdit" [size]="16" [stroke]="2" />
+                  </button>
+                  @if (plan.activo) {
+                    <button
+                      type="button"
+                      [disabled]="accionandoId() === plan.id"
+                      (click)="desactivar(plan)"
+                      class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-field-error-bg hover:text-badge-error-solid disabled:opacity-50"
+                      aria-label="Desactivar"
+                    >
+                      <tabler-icon [icon]="iconDesactivar" [size]="16" [stroke]="2" />
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      [disabled]="accionandoId() === plan.id"
+                      (click)="reactivar(plan)"
+                      class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600 disabled:opacity-50"
+                      aria-label="Reactivar"
+                    >
+                      <tabler-icon [icon]="iconReactivar" [size]="16" [stroke]="2" />
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5" class="py-6 text-center text-sm text-gray-500">
+                Todavía no hay planes en el catálogo.
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </app-data-table>
+    </div>
+  }
+</div>
+
+@if (modalAbierto()) {
+  <app-modal [titulo]="planEditando() ? 'Editar plan' : 'Nuevo plan'" (cerrar)="cerrarModal()">
+    <form class="space-y-4" (submit)="$event.preventDefault(); guardar()">
+      <div>
+        <label for="nombre" class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
+        <input
+          id="nombre"
+          type="text"
+          autofocus
+          [value]="formulario().nombre"
+          (input)="actualizarCampo('nombre', $any($event.target).value)"
+          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+        />
+      </div>
+
+      <div>
+        <label for="descripcion" class="mb-1 block text-sm font-medium text-gray-700">
+          Descripción <span class="font-normal text-gray-400">(opcional)</span>
+        </label>
+        <textarea
+          id="descripcion"
+          rows="2"
+          [value]="formulario().descripcion"
+          (input)="actualizarCampo('descripcion', $any($event.target).value)"
+          class="w-full resize-none rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+        ></textarea>
+      </div>
+
+      <div>
+        <label for="precio" class="mb-1 block text-sm font-medium text-gray-700">
+          Precio mensual (COP) <span class="font-normal text-gray-400">(opcional)</span>
+        </label>
+        <input
+          id="precio"
+          type="number"
+          min="0"
+          [value]="formulario().precioMensual"
+          (input)="actualizarCampo('precioMensual', $any($event.target).value)"
+          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+        />
+      </div>
+
+      <div>
+        <label for="caracteristicas" class="mb-1 block text-sm font-medium text-gray-700">
+          Características <span class="font-normal text-gray-400">(una por línea)</span>
+        </label>
+        <textarea
+          id="caracteristicas"
+          rows="5"
+          [value]="formulario().caracteristicas"
+          (input)="actualizarCampo('caracteristicas', $any($event.target).value)"
+          class="w-full resize-none rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+        ></textarea>
+      </div>
+
+      @if (errorGuardar(); as mensaje) {
+        <p class="rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid">
+          {{ mensaje }}
+        </p>
+      }
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          (click)="cerrarModal()"
+          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="guardando()"
+          class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+        >
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+}

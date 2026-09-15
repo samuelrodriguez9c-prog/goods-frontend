@@ -1,0 +1,207 @@
+<div class="p-8">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-lg font-semibold text-gray-900">Usuarios</h1>
+      <p class="mt-1 text-sm text-gray-500">Personal de Goods — no el equipo interno de tus clientes.</p>
+    </div>
+    <button
+      type="button"
+      (click)="abrirCrear()"
+      class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+    >
+      <tabler-icon [icon]="iconPlus" [size]="16" [stroke]="2" />
+      Nuevo usuario
+    </button>
+  </div>
+
+  @if (error(); as mensaje) {
+    <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
+  } @else if (cargando()) {
+    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
+  } @else {
+    <div class="mt-6">
+      <app-data-table>
+        <p-table [value]="usuarios()" dataKey="id" [pt]="tablePt">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Alta</th>
+              <th></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-usuario>
+            <tr>
+              <td class="font-medium text-gray-900">{{ usuario.nombres }} {{ usuario.apellidos }}</td>
+              <td class="text-gray-500">{{ usuario.correo }}</td>
+              <td class="text-gray-700">{{ usuario.rol.nombre }}</td>
+              <td class="text-gray-500">{{ usuario.creadoEn | date: 'd MMM y' }}</td>
+              <td>
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    (click)="abrirEditar(usuario)"
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+                    aria-label="Editar"
+                  >
+                    <tabler-icon [icon]="iconEdit" [size]="16" [stroke]="2" />
+                  </button>
+                  <button
+                    type="button"
+                    (click)="abrirEliminar(usuario)"
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-field-error-bg hover:text-badge-error-solid"
+                    aria-label="Eliminar"
+                  >
+                    <tabler-icon [icon]="iconDelete" [size]="16" [stroke]="2" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5" class="py-6 text-center text-sm text-gray-500">
+                Todavía no hay personal de Goods dado de alta.
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </app-data-table>
+    </div>
+  }
+</div>
+
+@if (modalAbierto()) {
+  <app-modal [titulo]="usuarioEditando() ? 'Editar usuario' : 'Nuevo usuario'" (cerrar)="cerrarModal()">
+    <form class="space-y-4" (submit)="$event.preventDefault(); guardar()">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label for="nombres" class="mb-1 block text-sm font-medium text-gray-700">Nombres</label>
+          <input
+            id="nombres"
+            type="text"
+            autofocus
+            [value]="formulario().nombres"
+            (input)="actualizarCampo('nombres', $any($event.target).value)"
+            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+          />
+        </div>
+        <div>
+          <label for="apellidos" class="mb-1 block text-sm font-medium text-gray-700">Apellidos</label>
+          <input
+            id="apellidos"
+            type="text"
+            [value]="formulario().apellidos"
+            (input)="actualizarCampo('apellidos', $any($event.target).value)"
+            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label for="correo" class="mb-1 block text-sm font-medium text-gray-700">Correo</label>
+        <input
+          id="correo"
+          type="email"
+          [value]="formulario().correo"
+          [disabled]="!!usuarioEditando()"
+          (input)="actualizarCampo('correo', $any($event.target).value)"
+          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400 disabled:opacity-60"
+        />
+        @if (usuarioEditando()) {
+          <p class="mt-1 text-xs text-gray-400">El correo no se puede cambiar desde acá.</p>
+        }
+      </div>
+
+      <div>
+        <label for="telefono" class="mb-1 block text-sm font-medium text-gray-700">
+          Teléfono <span class="font-normal text-gray-400">(opcional)</span>
+        </label>
+        <input
+          id="telefono"
+          type="tel"
+          [value]="formulario().telefono"
+          (input)="actualizarCampo('telefono', $any($event.target).value)"
+          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+        />
+      </div>
+
+      @if (!usuarioEditando()) {
+        <div>
+          <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
+          <input
+            id="password"
+            type="password"
+            [value]="formulario().password"
+            (input)="actualizarCampo('password', $any($event.target).value)"
+            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+          />
+        </div>
+      }
+
+      <div>
+        <label for="rol" class="mb-1 block text-sm font-medium text-gray-700">Rol</label>
+        <select
+          id="rol"
+          [value]="formulario().rolId"
+          (change)="actualizarRol($any($event.target).value)"
+          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+        >
+          @for (rol of roles(); track rol.id) {
+            <option [value]="rol.id">{{ rol.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      @if (errorGuardar(); as mensaje) {
+        <p class="rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid">
+          {{ mensaje }}
+        </p>
+      }
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          (click)="cerrarModal()"
+          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="guardando()"
+          class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+        >
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+@if (usuarioEliminando(); as usuario) {
+  <app-modal titulo="Eliminar usuario" (cerrar)="cerrarEliminar()">
+    <p class="text-sm text-gray-600">
+      ¿Eliminar a <span class="font-medium text-gray-900">{{ usuario.nombres }} {{ usuario.apellidos }}</span>?
+      Esta acción borra la cuenta por completo y no se puede deshacer.
+    </p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button
+        type="button"
+        (click)="cerrarEliminar()"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        [disabled]="eliminando()"
+        (click)="confirmarEliminar()"
+        class="rounded-lg bg-badge-error-solid px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+      >
+        {{ eliminando() ? 'Eliminando…' : 'Eliminar' }}
+      </button>
+    </div>
+  </app-modal>
+}

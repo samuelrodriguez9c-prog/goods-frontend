@@ -1,0 +1,118 @@
+<div class="p-8">
+  <h1 class="text-lg font-semibold text-gray-900">Suscripciones</h1>
+  <p class="mt-1 text-sm text-gray-500">
+    Historial completo de planes contratados por cada Empresa — incluye canceladas y vencidas.
+  </p>
+
+  @if (error(); as mensaje) {
+    <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
+  } @else if (cargando()) {
+    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
+  } @else {
+    <div class="mt-6">
+      <app-data-table>
+        <p-table [value]="filas()" dataKey="id" [pt]="tablePt">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Empresa</th>
+              <th>Plan</th>
+              <th>Estado</th>
+              <th>Inicio</th>
+              <th>Fin</th>
+              <th></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-fila>
+            <tr>
+              <td class="font-medium text-gray-900">{{ fila.empresaNombre }}</td>
+              <td class="text-gray-700">{{ fila.planNombre }}</td>
+              <td>
+                <app-status-badge [label]="fila.estado" [tone]="tonoDe(fila.estado)" dot="filled" />
+              </td>
+              <td class="text-gray-500">{{ fila.fechaInicio ? (fila.fechaInicio | date: 'd MMM y') : '—' }}</td>
+              <td class="text-gray-500">{{ fila.fechaFin ? (fila.fechaFin | date: 'd MMM y') : '—' }}</td>
+              <td>
+                @if (fila.estado === 'activa' || fila.estado === 'pendiente') {
+                  <button
+                    type="button"
+                    (click)="abrirGestionar(fila)"
+                    class="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+                  >
+                    <tabler-icon [icon]="iconGestionar" [size]="14" [stroke]="2" />
+                    Gestionar
+                  </button>
+                }
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="6" class="py-6 text-center text-sm text-gray-500">
+                Todavía no hay Suscripciones registradas.
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </app-data-table>
+    </div>
+  }
+</div>
+
+@if (filaGestionando(); as fila) {
+  <app-modal [titulo]="'Gestionar suscripción — ' + fila.empresaNombre" (cerrar)="cerrarGestionar()">
+    <div class="space-y-6">
+      <div>
+        <p class="mb-2 text-sm font-medium text-gray-700">Cambiar de plan</p>
+        <div class="flex items-center gap-2">
+          <select
+            [value]="nuevoPlanId()"
+            (change)="nuevoPlanId.set(+$any($event.target).value)"
+            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+          >
+            @for (plan of planesActivos(); track plan.id) {
+              <option [value]="plan.id">{{ plan.nombre }}</option>
+            }
+          </select>
+          <button
+            type="button"
+            [disabled]="guardando() || nuevoPlanId() === fila.planId"
+            (click)="confirmarCambioPlan()"
+            class="shrink-0 rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+          >
+            Aplicar
+          </button>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-100 pt-4">
+        <p class="mb-2 text-sm font-medium text-gray-700">Cambiar estado</p>
+        <div class="flex items-center gap-2">
+          <select
+            [value]="nuevoEstado()"
+            (change)="nuevoEstado.set($any($event.target).value)"
+            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+          >
+            <option [value]="null" disabled selected>Elegir estado nuevo…</option>
+            @for (estado of estadosAsignables; track estado) {
+              <option [value]="estado">{{ estado }}</option>
+            }
+          </select>
+          <button
+            type="button"
+            [disabled]="guardando() || !nuevoEstado()"
+            (click)="confirmarCambioEstado()"
+            class="shrink-0 rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+          >
+            Aplicar
+          </button>
+        </div>
+      </div>
+
+      @if (errorGestionar(); as mensaje) {
+        <p class="rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid">
+          {{ mensaje }}
+        </p>
+      }
+    </div>
+  </app-modal>
+}

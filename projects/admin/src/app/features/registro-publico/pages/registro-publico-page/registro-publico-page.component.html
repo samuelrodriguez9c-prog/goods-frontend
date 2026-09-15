@@ -1,0 +1,344 @@
+<main class="relative flex min-h-screen flex-col items-center bg-login-bg p-6 py-12">
+  <!-- Wordmark (ícono + nombre) fijo arriba a la izquierda, no centrado
+       arriba de la tarjeta — pedido 2026-09-15, calcado de la captura
+       "Shopify Web 11" (logo+wordmark en la esquina superior izquierda,
+       fuera del flujo del contenido central). Wordmark en vez del ícono
+       solo del login: una página pública de cara a un visitante que
+       todavía no conoce la marca necesita el nombre a la vista, a
+       diferencia de /login donde quien llega ya sabe a qué app está
+       entrando. -->
+  <img
+    src="/logo-goods-wordmark.png"
+    alt="Goods"
+    class="absolute left-6 top-6 h-6 w-auto sm:left-8 sm:top-8 sm:h-7"
+  />
+
+  @if (paso() === 'plan') {
+    <!-- Sin tarjeta blanca envolvente (pedido 2026-09-15) — calcado de
+         "Shopify Web 11": ahí el título y las tarjetas de plan viven
+         directo sobre el fondo oscuro de la página, no adentro de un
+         contenedor blanco más grande. Las tarjetas individuales de cada
+         plan sí siguen siendo blancas (`bg-card-bg` explícito más abajo,
+         antes lo heredaban del contenedor que ahora ya no está) — mismo
+         efecto visual que la referencia: tarjetas blancas flotando sobre
+         fondo oscuro. -->
+    <div class="w-full max-w-4xl animate-[fade-in-up_0.25s_ease-out]">
+      <h1 class="text-3xl font-bold text-white">Elige tu plan</h1>
+      <p class="mb-6 text-sm text-gray-400">
+        Así empieza tu negocio en Goods — el plan lo puedes cambiar más adelante.
+      </p>
+
+      @if (cargandoPlanes()) {
+        <p class="py-6 text-center text-sm text-gray-400">Cargando planes…</p>
+      } @else if (errorPlanes(); as mensaje) {
+        <p
+          class="flex items-center gap-1.5 rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid"
+        >
+          <tabler-icon [icon]="iconError" [size]="16" svgClass="shrink-0" />
+          {{ mensaje }}
+        </p>
+      } @else if (planes().length === 0) {
+        <p class="py-6 text-center text-sm text-gray-400">
+          No hay planes disponibles por el momento.
+        </p>
+      } @else {
+        <!-- Estructura calcada de la página de precios de Claude
+             (captura aportada 2026-09-14): ícono propio arriba del
+             nombre, precio grande, caja informativa, botón de acción,
+             separador y lista de características debajo — la tarjeta
+             entera no es un solo botón, solo el CTA de abajo navega.
+
+             Hover sutil (pedido 2026-09-15): el borde pasa de
+             `border-gray-200` a `border-gray-400` con una transición
+             suave — mismo `transition-colors duration-200` que ya usa el
+             resto del admin (inputs, QuickAdjustPopoverComponent), no
+             una animación nueva de otro tipo. -->
+        <div class="grid gap-4 sm:grid-cols-2">
+          @for (plan of planes(); track plan.id) {
+            <div
+              class="flex flex-col rounded-xl border border-gray-200 bg-card-bg p-6 text-left transition-colors duration-200 hover:border-gray-400"
+            >
+              @if (iconoDelPlan(plan); as icono) {
+                <!-- Ícono más grande (pedido 2026-09-15: "muy pequeños")
+                     — de h-16 a h-24. Sin caja detrás: los PNG en
+                     plan-icons/ ya vienen procesados para esto (versión
+                     OSCURA del logo de Samuel, Gds_images/, invertido a
+                     negro para contrastar solo sobre la tarjeta blanca).
+                     Ancho automático a propósito: son verticales
+                     (~0.7:1), no cuadrados. `self-start`, si no: la
+                     tarjeta es `flex flex-col` (stretch por defecto en
+                     el eje cruzado) y sin esto `w-auto` no alcanza — la
+                     imagen se estira a lo ancho de la tarjeta entera y
+                     se deforma. Misma altura fija en las dos tarjetas,
+                     así "Base"/"Plus" arrancan alineados aunque un ícono
+                     sea más angosto que el otro — "sin que se corra el
+                     contenido" de abajo. -->
+                <!-- <img [src]="icono" alt="" class="h-40 w-auto self-start" /> -->
+              }
+
+              <span class="mt-4 text-2xl font-bold text-gray-900">{{ plan.nombre }}</span>
+              @if (plan.descripcion) {
+                <p class="mt-1 text-sm text-gray-500">{{ plan.descripcion }}</p>
+              }
+
+              <div class="mt-6">
+                @if (plan.precioMensual !== null) {
+                  <span class="text-4xl font-extrabold text-gray-900">
+                    {{ formatCop(plan.precioMensual) }}
+                  </span>
+                  <p class="mt-1 text-xs text-gray-500">COP / mes</p>
+                } @else {
+                  <span class="text-lg font-medium text-gray-500">Precio a confirmar</span>
+                }
+              </div>
+
+              <!-- Los descuentos de Goods son promociones que el staff
+                   asigna manualmente por cliente, no cupones que el
+                   visitante ingresa acá (PIVOTE_SAAS_MULTITENANT.md,
+                   pregunta 5) — esta caja lo deja claro en vez de
+                   insinuar un cupón de autoservicio que no existe. -->
+              <div class="mt-4 flex items-start gap-2 rounded-lg bg-canvas-bg p-3 text-xs text-gray-600">
+                <tabler-icon [icon]="iconInfo" [size]="16" svgClass="mt-0.5 shrink-0 text-gray-400" />
+                Los descuentos para tu plan los asigna nuestro equipo caso por caso, después de
+                revisar tu registro — no hay cupones que ingresar acá.
+              </div>
+
+              <button
+                type="button"
+                (click)="elegirPlan(plan)"
+                class="mt-4 w-full rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+              >
+                Elegir plan {{ plan.nombre }}
+              </button>
+
+              @if (plan.caracteristicas && plan.caracteristicas.length > 0) {
+                <div class="mt-6 border-t border-gray-100 pt-4">
+                  <p class="text-sm font-medium text-gray-700">
+                    {{ encabezadoCaracteristicas(plan) }}
+                  </p>
+                  <ul class="mt-3 space-y-1.5">
+                    @for (caracteristica of plan.caracteristicas; track caracteristica) {
+                      <li class="flex items-start gap-1.5 text-sm text-gray-700">
+                        <tabler-icon
+                          [icon]="iconCheck"
+                          [size]="16"
+                          [stroke]="2"
+                          svgClass="mt-0.5 shrink-0 text-gray-400"
+                        />
+                        {{ caracteristica }}
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Pie fuera de la tarjeta blanca — directo sobre el fondo oscuro de
+         la página, igual que el pie de "Se aplican límites de uso..." en
+         la página de precios de Claude, que tampoco vive dentro de la
+         tarjeta. Reemplaza esa frase (acá no hay límites de uso) por la
+         aclaración de descuentos manuales, que sí es real (ver la caja
+         de cada plan arriba). -->
+    @if (planes().length > 0) {
+      <p class="mt-6 max-w-4xl text-center text-xs text-gray-500">
+        *Los descuentos se asignan de forma manual, caso por caso. Los precios y planes están
+        sujetos a cambios a discreción de Goods.
+      </p>
+    }
+  } @else {
+    <div class="w-full max-w-2xl rounded-2xl bg-card-bg p-8 shadow-xl">
+      @if (paso() === 'formulario') {
+        <div class="animate-[fade-in-up_0.25s_ease-out]">
+          <button
+            type="button"
+            (click)="volverAPlanes()"
+            class="mb-4 flex items-center gap-1 text-sm font-medium text-gray-500 transition-colors duration-200 hover:text-gray-700"
+          >
+            <tabler-icon [icon]="iconBack" [size]="16" [stroke]="2" />
+            Cambiar plan
+          </button>
+
+          <h1 class="text-3xl font-bold text-gray-900">Cuéntanos de tu negocio</h1>
+          <p class="mb-6 text-sm text-gray-600">
+            Plan elegido:
+            <span class="font-medium text-gray-900">{{ planSeleccionado()?.nombre }}</span>
+          </p>
+
+          <form class="space-y-4" (submit)="$event.preventDefault(); enviar()">
+            <div>
+              <label for="nombre" class="mb-1 block text-sm font-medium text-gray-700">
+                Nombre del negocio
+              </label>
+              <input
+                id="nombre"
+                type="text"
+                autocomplete="organization"
+                autofocus
+                [value]="campos().nombre"
+                (input)="actualizarCampo('nombre', $any($event.target).value)"
+                [class.bg-field-error-bg]="camposInvalidos().nombre"
+                class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+              />
+              @if (camposInvalidos().nombre) {
+                <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa el nombre de tu negocio</p>
+              }
+            </div>
+
+            <div>
+              <label for="rubro" class="mb-1 block text-sm font-medium text-gray-700">
+                Rubro <span class="font-normal text-gray-400">(opcional)</span>
+              </label>
+              <input
+                id="rubro"
+                type="text"
+                [value]="campos().rubro"
+                (input)="actualizarCampo('rubro', $any($event.target).value)"
+                class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+              />
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label for="correoContacto" class="mb-1 block text-sm font-medium text-gray-700">
+                  Correo de contacto
+                </label>
+                <input
+                  id="correoContacto"
+                  type="email"
+                  autocomplete="email"
+                  [value]="campos().correoContacto"
+                  (input)="actualizarCampo('correoContacto', $any($event.target).value)"
+                  [class.bg-field-error-bg]="camposInvalidos().correoContacto"
+                  class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                />
+                @if (camposInvalidos().correoContacto) {
+                  <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa un correo válido</p>
+                }
+              </div>
+
+              <div>
+                <label for="telefonoContacto" class="mb-1 block text-sm font-medium text-gray-700">
+                  Teléfono <span class="font-normal text-gray-400">(opcional)</span>
+                </label>
+                <input
+                  id="telefonoContacto"
+                  type="tel"
+                  autocomplete="tel"
+                  [value]="campos().telefonoContacto"
+                  (input)="actualizarCampo('telefonoContacto', $any($event.target).value)"
+                  class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                />
+              </div>
+            </div>
+
+            <!-- Datos de quien va a terminar logueándose como dueño una
+                 vez activada la Empresa — pueden ser la misma persona de
+                 arriba o no (ver el comentario en
+                 RegistroPublicoEmpresaDto del backend: ej. quien llena
+                 el formulario de ventas vs. quien va a operar la cuenta
+                 día a día). -->
+            <div class="border-t border-gray-100 pt-4">
+              <p class="mb-3 text-sm font-medium text-gray-700">Datos de la persona dueña</p>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label for="duenoNombres" class="mb-1 block text-sm font-medium text-gray-700">
+                    Nombres
+                  </label>
+                  <input
+                    id="duenoNombres"
+                    type="text"
+                    autocomplete="given-name"
+                    [value]="campos().duenoNombres"
+                    (input)="actualizarCampo('duenoNombres', $any($event.target).value)"
+                    [class.bg-field-error-bg]="camposInvalidos().duenoNombres"
+                    class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                  />
+                  @if (camposInvalidos().duenoNombres) {
+                    <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa los nombres</p>
+                  }
+                </div>
+
+                <div>
+                  <label for="duenoApellidos" class="mb-1 block text-sm font-medium text-gray-700">
+                    Apellidos
+                  </label>
+                  <input
+                    id="duenoApellidos"
+                    type="text"
+                    autocomplete="family-name"
+                    [value]="campos().duenoApellidos"
+                    (input)="actualizarCampo('duenoApellidos', $any($event.target).value)"
+                    [class.bg-field-error-bg]="camposInvalidos().duenoApellidos"
+                    class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                  />
+                  @if (camposInvalidos().duenoApellidos) {
+                    <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa los apellidos</p>
+                  }
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <label for="duenoCorreo" class="mb-1 block text-sm font-medium text-gray-700">
+                  Correo de la persona dueño/a
+                </label>
+                <input
+                  id="duenoCorreo"
+                  type="email"
+                  autocomplete="email"
+                  [value]="campos().duenoCorreo"
+                  (input)="actualizarCampo('duenoCorreo', $any($event.target).value)"
+                  [class.bg-field-error-bg]="camposInvalidos().duenoCorreo"
+                  class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                />
+                @if (camposInvalidos().duenoCorreo) {
+                  <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa un correo válido</p>
+                }
+                <p class="mt-1.5 text-xs text-gray-500">
+                  Con este correo va a iniciar sesión una vez que activemos tu cuenta.
+                </p>
+              </div>
+            </div>
+
+            @if (errorEnvio(); as mensaje) {
+              <p
+                class="flex animate-[fade-in-up_0.2s_ease-out] items-center gap-1.5 rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid"
+              >
+                <tabler-icon [icon]="iconError" [size]="16" svgClass="shrink-0" />
+                {{ mensaje }}
+              </p>
+            }
+
+            <button
+              type="submit"
+              [disabled]="enviando()"
+              class="w-full rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:bg-gray-300 disabled:text-gray-500"
+            >
+              {{ enviando() ? 'Enviando…' : 'Enviar registro' }}
+            </button>
+          </form>
+        </div>
+      } @else {
+        <div class="animate-[fade-in-up_0.25s_ease-out] flex flex-col items-center py-6 text-center">
+          <tabler-icon [icon]="iconConfirmado" [size]="56" svgClass="text-emerald-500" />
+          <h1 class="mt-4 text-2xl font-bold text-gray-900">¡Registro recibido!</h1>
+          <p class="mt-2 max-w-sm text-sm text-gray-600">
+            Ya anotamos <span class="font-medium text-gray-900">{{ nombreEmpresaRegistrada() }}</span>
+            — nuestro equipo va a revisar tu solicitud y te vamos a contactar apenas quede activa
+            tu cuenta.
+          </p>
+          <button
+            type="button"
+            (click)="irALogin()"
+            class="mt-6 rounded-lg bg-primary-button px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+          >
+            Ir a iniciar sesión
+          </button>
+        </div>
+      }
+    </div>
+  }
+</main>
