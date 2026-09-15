@@ -34,6 +34,17 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'planes',
+        loadChildren: () => import('./features/planes/planes.routes').then((m) => m.PLANES_ROUTES),
+      },
+      {
+        path: 'suscripciones',
+        loadChildren: () =>
+          import('./features/suscripciones/suscripciones.routes').then(
+            (m) => m.SUSCRIPCIONES_ROUTES,
+          ),
+      },
+      {
         path: 'facturacion',
         loadChildren: () =>
           import('./features/facturacion/facturacion.routes').then((m) => m.FACTURACION_ROUTES),
@@ -46,6 +57,20 @@ export const routes: Routes = [
       {
         path: 'soporte',
         loadChildren: () => import('./features/soporte/soporte.routes').then((m) => m.SOPORTE_ROUTES),
+      },
+      {
+        path: 'auditoria',
+        loadChildren: () =>
+          import('./features/auditoria/auditoria.routes').then((m) => m.AUDITORIA_ROUTES),
+      },
+      {
+        path: 'usuarios',
+        loadChildren: () =>
+          import('./features/usuarios/usuarios.routes').then((m) => m.USUARIOS_ROUTES),
+      },
+      {
+        path: 'roles',
+        loadChildren: () => import('./features/roles/roles.routes').then((m) => m.ROLES_ROUTES),
       },
     ],
   },

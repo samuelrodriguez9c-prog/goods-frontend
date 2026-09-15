@@ -12,6 +12,19 @@ export const routes: Routes = [
       import('./core/auth/pages/login/login.component').then((m) => m.LoginComponent),
   },
   {
+    // Página pública de registro/checkout (PIVOTE_SAAS_MULTITENANT.md
+    // §5) — mismo criterio que /login: sin sidebar/topbar, sin guard (un
+    // visitante anónimo todavía no tiene cuenta). Vive acá adentro de
+    // `admin` en vez de un proyecto Angular aparte porque no hay ningún
+    // motivo de seguridad para separarla (a diferencia de `staff`, ver
+    // §4) — es solo una ruta pública más.
+    path: 'registro',
+    loadComponent: () =>
+      import(
+        './features/registro-publico/pages/registro-publico-page/registro-publico-page.component'
+      ).then((m) => m.RegistroPublicoPageComponent),
+  },
+  {
     path: '',
     component: ShellComponent,
     canActivate: [authGuard],

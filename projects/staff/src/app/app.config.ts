@@ -6,9 +6,14 @@ import { providePrimeNG } from 'primeng/config';
 import {
   IconBuilding,
   IconHeadset,
+  IconHistory,
   IconReceipt2,
+  IconRepeat,
   IconReportMoney,
+  IconShieldLock,
+  IconStack2,
   IconUserPlus,
+  IconUsers,
   provideTablerIcons,
 } from '@tabler/icons-angular';
 
@@ -31,17 +36,27 @@ export const appConfig: ApplicationConfig = {
     // proyecto que consuma la librería necesita configurarlo igual.
     provideAnimationsAsync(),
     providePrimeNG({ theme: 'none' }),
-    // Íconos del sidebar propio de staff (5 secciones planas, sin árbol de
+    // Íconos del sidebar propio de staff (10 items planos, sin árbol de
     // submenús como el de `admin` — ver layout/sidebar/sidebar.component.ts
-    // y PIVOTE_SAAS_MULTITENANT.md §7.2). Mismo mecanismo que `admin` (ver
-    // ese app.config.ts): `provideTablerIcons` devuelve
-    // `EnvironmentProviders`, solo puede vivir a nivel de app/ruta.
+    // y PIVOTE_SAAS_MULTITENANT.md §7.2/§8). Mismo mecanismo que `admin`
+    // (ver ese app.config.ts): `provideTablerIcons` devuelve
+    // `EnvironmentProviders`, solo puede vivir a nivel de app/ruta. Los
+    // íconos que usan las páginas nuevas (botones de crear/editar/
+    // eliminar, etc.) NO necesitan registrarse acá — se pasan como objeto
+    // directo (`[icon]="iconPlus"`), no por nombre de string; esto solo
+    // hace falta para los del sidebar, que sí se pasan por nombre
+    // (`item.icon`, ver sidebar.component.html).
     provideTablerIcons({
       IconBuilding,
       IconUserPlus,
+      IconStack2,
+      IconRepeat,
       IconReceipt2,
       IconReportMoney,
       IconHeadset,
+      IconHistory,
+      IconUsers,
+      IconShieldLock,
     }),
   ],
 };
