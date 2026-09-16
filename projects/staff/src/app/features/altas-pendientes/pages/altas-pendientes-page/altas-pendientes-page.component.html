@@ -34,21 +34,19 @@
               <td>{{ empresa.planNombre ?? '—' }}</td>
               <td class="text-gray-500">{{ empresa.creadoEn | date: 'd MMM y' }}</td>
               <td>
-                <div class="flex flex-col items-end gap-1">
+                @if (empresa.estado === 'informacion_corroborada') {
+                  <button type="button" (click)="abrirWizard(empresa)" class="rounded-full">
+                    <app-status-badge label="Esperando confirmación del cliente" tone="warning" dot="filled" />
+                  </button>
+                } @else {
                   <button
                     type="button"
-                    class="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors duration-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    [disabled]="empresa.activando"
-                    (click)="activar(empresa)"
+                    class="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors duration-200 hover:bg-gray-700"
+                    (click)="abrirWizard(empresa)"
                   >
-                    {{ empresa.activando ? 'Activando…' : 'Activar' }}
+                    Activar
                   </button>
-                  @if (empresa.errorActivar; as mensajeFila) {
-                    <span class="animate-[fade-in-up_0.2s_ease-out] text-xs text-badge-error-solid">
-                      {{ mensajeFila }}
-                    </span>
-                  }
-                </div>
+                }
               </td>
             </tr>
           </ng-template>
@@ -62,5 +60,13 @@
         </p-table>
       </app-data-table>
     </div>
+  }
+
+  @if (empresaSeleccionadaWizard(); as id) {
+    <app-activar-empresa-wizard
+      [empresaId]="id"
+      (cerrar)="cerrarWizard()"
+      (actualizada)="onWizardActualizada()"
+    />
   }
 </div>

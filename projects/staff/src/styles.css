@@ -55,3 +55,41 @@
   --color-login-bg: #0a0a0a;
   --color-field-error-bg: #ffe6e5;
 }
+
+/*
+ * `fade-in-up` — usada por `ModalComponent` y varios mensajes de error
+ * por fila (ej. `AltasPendientesPageComponent`) vía la utilidad
+ * arbitraria de Tailwind `animate-[fade-in-up_...]`, pero la keyframe en
+ * sí solo existía en `projects/admin/src/styles.css` (copiada acá recién
+ * ahora, al notar el hueco mientras se sumaba `slide-in-right` para
+ * `SidePanelComponent`) — sin ella, esos `animate-[...]` no hacían nada
+ * (el elemento aparecía de golpe, sin el golpe suave pedido). Mismo
+ * criterio que la keyframe original: animación CSS en vez de Angular
+ * Animations, porque son elementos que Angular agrega/saca del DOM con
+ * @if y no hace falta el módulo solo para esto.
+ */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* `slide-in-right` — entrada de `SidePanelComponent` (§11 Paso 2,
+ * PROPUESTA_FLUJO_ALTA_ASISTIDA.md): mismo criterio que `fade-in-up`
+ * arriba, pero deslizando desde la derecha en vez de un fade, acorde al
+ * panel que se ancla al borde derecho de la pantalla. */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

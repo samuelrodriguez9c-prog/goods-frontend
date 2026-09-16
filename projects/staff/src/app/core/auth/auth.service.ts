@@ -28,13 +28,17 @@ interface RespuestaTokens {
  * a qué app pertenece, para cuando alguien mire el localStorage del
  * navegador durante un debug.
  *
- * `POST /auth/login` es EL MISMO endpoint que usa `admin` — el backend no
- * distingue "login de staff" de "login de un emprendimiento", ambos son
- * `Usuario` con roles distintos (ver `Usuario.empresaId` nullable). Lo que
- * sí es exclusivo de acá es `authGuard`: además de exigir un token,
- * exige que el rol devuelto por `GET /auth/me` sea `staff_goods` — así
- * alguien con credenciales de un emprendimiento no puede loguearse en el
- * panel de staff aunque conozca esta URL.
+ * `POST /auth/login-staff` (Fase 7 de PROPUESTA_ROLES_Y_ACCESOS.md, §5.5)
+ * — YA NO es el mismo endpoint que usa `admin` (ese sigue en
+ * `/auth/login`). Este es el único que sabe emitir, además de la sesión
+ * normal de un usuario que YA es de staff, una sesión "prestando"
+ * identidad de staff para la única cuenta con acceso especial de
+ * superadmin (`Usuario.accesoStaffGoods`) — sin tocar su rol/Empresa
+ * reales (ver `AuthService.loginParaStaff` del backend). El backend
+ * rechaza con 403 a cualquier cuenta que no sea de staff y no tenga ese
+ * acceso especial, así que `LoginComponent.submit()` ya no depende
+ * únicamente de la verificación del lado del cliente que tenía antes
+ * (queda como defensa en profundidad, no como el único control).
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -55,7 +59,7 @@ export class AuthService {
 
   login(correo: string, password: string): Observable<CurrentUser> {
     return this.http
-      .post<RespuestaTokens>(`${environment.apiUrl}/auth/login`, { correo, password })
+      .post<RespuestaTokens>(`${environment.apiUrl}/auth/login-staff`, { correo, password })
       .pipe(
         tap((tokens) => this.guardarTokens(tokens)),
         switchMap(() => this.cargarPerfil()),

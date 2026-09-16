@@ -12,7 +12,7 @@
     [style.opacity]="indicatorVisible() ? 1 : 0"
   ></div>
 
-  @for (item of navItems; track item.path; let i = $index) {
+  @for (item of navItems(); track item.path; let i = $index) {
     <a
       #link
       [routerLink]="item.path"

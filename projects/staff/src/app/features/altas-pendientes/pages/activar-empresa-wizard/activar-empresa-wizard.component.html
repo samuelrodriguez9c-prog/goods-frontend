@@ -1,0 +1,245 @@
+<app-side-panel [titulo]="titulo()" (cerrar)="cerrarYSeguirTrabajando()">
+  @if (error(); as mensaje) {
+    <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
+  } @else if (cargando()) {
+    <p class="text-sm text-gray-500">Cargando…</p>
+  } @else if (empresa(); as e) {
+    @if (exito()) {
+      <div class="space-y-4 py-6 text-center">
+        <p class="text-base font-medium text-gray-900">¡Listo! La Empresa quedó activa.</p>
+        <button
+          type="button"
+          (click)="cerrarConExito()"
+          class="rounded-lg bg-primary-button px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+        >
+          Cerrar
+        </button>
+      </div>
+    } @else if (paso() === 1) {
+      <div class="space-y-5">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-gray-700">Datos a confirmar</p>
+          <button
+            type="button"
+            (click)="abrirDetalle()"
+            class="text-gray-400 transition-colors duration-200 hover:text-gray-600"
+            aria-label="Ver todos los datos de la Empresa"
+          >
+            <tabler-icon [icon]="iconInfo" [size]="18" [stroke]="1.75" />
+          </button>
+        </div>
+
+        <app-campo-detalle
+          etiqueta="Nombre del negocio"
+          [valor]="nombre()"
+          [editable]="true"
+          (valorCambiado)="nombre.set($event)"
+        />
+
+        <div>
+          <p class="text-sm font-medium text-gray-700">Plan</p>
+          <select
+            [value]="planId() ?? ''"
+            (change)="planId.set($any($event.target).value ? +$any($event.target).value : null)"
+            class="mt-1 w-full rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+          >
+            <option value="">Sin plan</option>
+            @for (plan of planes(); track plan.id) {
+              <option [value]="plan.id">{{ plan.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <app-campo-detalle
+          etiqueta="Teléfono de contacto"
+          [valor]="telefono()"
+          [editable]="true"
+          placeholder="Opcional"
+          (valorCambiado)="telefono.set($event)"
+        />
+
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            [disabled]="!hayCambiosDatos() || guardandoDatos()"
+            (click)="guardarDatos()"
+            class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {{ guardandoDatos() ? 'Guardando…' : 'Guardar cambios' }}
+          </button>
+          @if (errorGuardarDatos(); as mensajeGuardar) {
+            <span class="text-xs text-badge-error-solid">{{ mensajeGuardar }}</span>
+          }
+        </div>
+
+        <div class="border-t border-gray-200 pt-5">
+          @if (!llamadaIniciada()) {
+            <div class="flex flex-wrap gap-3">
+              <button
+                type="button"
+                (click)="llamarAhora()"
+                class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+              >
+                Llamar ahora
+              </button>
+              <button
+                type="button"
+                (click)="abrirProgramarLlamada()"
+                class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+              >
+                Programar llamada
+              </button>
+            </div>
+            @if (mostrarFormularioProgramar()) {
+              <div class="mt-3 flex flex-wrap items-end gap-3 animate-[fade-in-up_0.15s_ease-out]">
+                <div>
+                  <label for="fechaHora" class="mb-1 block text-xs font-medium text-gray-500">Fecha y hora</label>
+                  <input
+                    id="fechaHora"
+                    type="datetime-local"
+                    [value]="fechaHoraProgramada()"
+                    (input)="fechaHoraProgramada.set($any($event.target).value)"
+                    class="rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                  />
+                </div>
+                <button
+                  type="button"
+                  [disabled]="!fechaHoraProgramada() || programando()"
+                  (click)="confirmarProgramarLlamada()"
+                  class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {{ programando() ? 'Guardando…' : 'Confirmar' }}
+                </button>
+              </div>
+              @if (errorProgramar(); as mensajeProgramar) {
+                <p class="mt-1 text-xs text-badge-error-solid">{{ mensajeProgramar }}</p>
+              }
+            }
+          } @else {
+            <button
+              type="button"
+              (click)="abrirConfirmarLlamadaFinalizada()"
+              class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+            >
+              Llamada finalizada
+            </button>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="space-y-4 py-6 text-center">
+        <div
+          class="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700"
+          aria-hidden="true"
+        ></div>
+        <p class="text-sm text-gray-700">
+          Le enviamos un enlace de confirmación a <strong>{{ e.duenoCorreo }}</strong>. Esperando a que el
+          cliente confirme…
+        </p>
+        <button
+          type="button"
+          [disabled]="reenviando()"
+          (click)="reenviarEnlace()"
+          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {{ reenviando() ? 'Reenviando…' : 'Reenviar enlace' }}
+        </button>
+        @if (enlaceReenviado()) {
+          <p class="text-xs text-success-solid">Enlace reenviado.</p>
+        }
+        @if (errorReenviar(); as mensajeReenviar) {
+          <p class="text-xs text-badge-error-solid">{{ mensajeReenviar }}</p>
+        }
+      </div>
+    }
+
+    @if (!exito()) {
+      <div class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+        <button
+          type="button"
+          (click)="abrirRechazar()"
+          class="text-sm font-medium text-badge-error-solid hover:underline"
+        >
+          Rechazar
+        </button>
+        <button
+          type="button"
+          (click)="cerrarYSeguirTrabajando()"
+          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+        >
+          Cerrar y seguir trabajando
+        </button>
+      </div>
+    }
+  }
+</app-side-panel>
+
+@if (mostrarConfirmacionLlamada()) {
+  <app-modal titulo="Confirmar llamada realizada" (cerrar)="cancelarConfirmacionLlamada()">
+    <p class="text-sm text-gray-700">
+      Antes de continuar, confirmá que la llamada ya se realizó y que los datos fueron corroborados con el
+      cliente.
+    </p>
+    @if (errorConfirmarLlamada(); as mensaje) {
+      <p class="mt-2 text-xs text-badge-error-solid">{{ mensaje }}</p>
+    }
+    <div class="mt-5 flex justify-end gap-3">
+      <button
+        type="button"
+        (click)="cancelarConfirmacionLlamada()"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        [disabled]="confirmandoLlamada()"
+        (click)="confirmarLlamadaFinalizada()"
+        class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {{ confirmandoLlamada() ? 'Confirmando…' : 'Confirmar' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (mostrarRechazar()) {
+  <app-modal titulo="Rechazar solicitud" (cerrar)="cancelarRechazar()">
+    <label for="motivoRechazo" class="mb-1 block text-xs font-medium text-gray-500">Motivo</label>
+    <textarea
+      id="motivoRechazo"
+      rows="3"
+      [value]="motivoRechazo()"
+      (input)="motivoRechazo.set($any($event.target).value)"
+      class="w-full rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+    ></textarea>
+    @if (errorRechazar(); as mensaje) {
+      <p class="mt-2 text-xs text-badge-error-solid">{{ mensaje }}</p>
+    }
+    <div class="mt-5 flex justify-end gap-3">
+      <button
+        type="button"
+        (click)="cancelarRechazar()"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        [disabled]="!motivoRechazo().trim() || rechazando()"
+        (click)="confirmarRechazar()"
+        class="rounded-lg bg-badge-error-solid px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {{ rechazando() ? 'Rechazando…' : 'Rechazar' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (mostrarDetalle()) {
+  <app-empresa-detalle-panel
+    [empresaId]="empresaId()"
+    (cerrar)="cerrarDetalle()"
+    (actualizada)="onDetalleActualizado()"
+  />
+}

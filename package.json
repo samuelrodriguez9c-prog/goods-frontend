@@ -24,6 +24,7 @@
     "@tabler/icons-angular": "^3.46.0",
     "primeng": "^21.1.10",
     "rxjs": "~7.8.0",
+    "socket.io-client": "^4.8.3",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

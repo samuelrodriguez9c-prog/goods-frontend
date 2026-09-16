@@ -14,12 +14,19 @@ import { AuthService } from '../../auth.service';
  * hay una referencia de Shopify que calcar acá ni tiene sentido ofrecer
  * "iniciar sesión con Google" para un puñado de cuentas internas.
  *
- * Chequeo de rol: `POST /auth/login` es el mismo endpoint que usa
- * `admin` — no valida acá si quien se loguea es personal de Goods. Por
- * eso, tras un login exitoso, se mira `currentUser().rol.nombre`: si no
- * es `staff_goods`, se trata como si el login hubiera fallado (se limpia
- * la sesión y se muestra un error) en vez de dejar pasar al shell. Ver
- * `auth.guard.ts` sobre por qué este chequeo vive acá y no en el guard.
+ * Chequeo de rol: desde la Fase 7 (`PROPUESTA_ROLES_Y_ACCESOS.md` §5.5),
+ * `AuthService.login()` pega contra `POST /auth/login-staff` — el backend
+ * YA rechaza con 403 a cualquier cuenta que no sea de staff y no tenga el
+ * acceso especial de superadmin (`AuthService.loginParaStaff`). El chequeo
+ * de acá (`currentUser().rol.esRolStaff`) queda como defensa en
+ * profundidad, no como el único control — se mantiene por si algún día
+ * ese endpoint deja pasar una respuesta 200 con datos inesperados, no
+ * porque haga falta para bloquear el caso normal. Antes esto comparaba
+ * `rol.nombre !== 'staff_goods'` — con `Rol.esRolStaff`
+ * (`PROPUESTA_ROLES_Y_ACCESOS.md` §5.1) cualquier rol de staff nuevo
+ * (`admin_goods`, `auditoria_goods`, `empleado_goods`) entra sin tener que
+ * volver a tocar este archivo. Ver `auth.guard.ts` sobre por qué este
+ * chequeo vive acá y no en el guard.
  */
 @Component({
   selector: 'app-login',
@@ -66,7 +73,7 @@ export class LoginComponent {
     this.authService.login(this.correo().trim(), this.password()).subscribe({
       next: (usuario) => {
         this.cargando.set(false);
-        if (usuario.rol.nombre !== 'staff_goods') {
+        if (!usuario.rol.esRolStaff) {
           this.authService.limpiarSesion();
           this.error.set('Esta cuenta no tiene acceso al panel de staff.');
           return;

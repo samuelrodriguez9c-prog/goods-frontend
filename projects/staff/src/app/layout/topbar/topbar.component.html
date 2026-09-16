@@ -10,6 +10,15 @@
 
   <div class="flex-1"></div>
 
+  @if (esCrossPanelStaff()) {
+    <span
+      class="rounded-full border border-amber-400/60 bg-amber-400/10 px-3 py-1 text-xs font-medium leading-none text-amber-300"
+      title="Estás viendo el panel de staff con tu acceso especial de superadmin — tu cuenta real y tu Empresa no cambiaron, y esta sesión queda auditada."
+    >
+      Acceso especial de superadmin
+    </span>
+  }
+
   <div class="flex shrink-0 items-center gap-1">
     <span class="flex items-center gap-2 rounded-md p-1">
       <span

@@ -1,0 +1,229 @@
+<div class="p-8">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-lg font-semibold text-gray-900">Roles y permisos</h1>
+      <p class="mt-2 text-sm text-gray-500">
+        Los roles marcados con un candado son plantillas compartidas por todo Goods — podés usarlos
+        pero no editarlos. Los tuyos propios los podés crear, editar y borrar.
+      </p>
+    </div>
+    <button
+      type="button"
+      (click)="abrirCrear()"
+      class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700"
+    >
+      <tabler-icon [icon]="iconPlus" [size]="16" [stroke]="2" />
+      Nuevo rol
+    </button>
+  </div>
+
+  @if (cargando()) {
+    <p class="mt-6 text-sm text-gray-400">Cargando…</p>
+  } @else if (error()) {
+    <p class="mt-6 text-sm text-red-600">{{ error() }}</p>
+  } @else {
+    <div class="mt-6 flex flex-col gap-6">
+      @for (rol of roles(); track rol.id) {
+        <div class="rounded-2xl bg-card-bg p-6 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <h2 class="text-base font-semibold text-gray-900">{{ rol.nombre }}</h2>
+                @if (!esPropio(rol)) {
+                  <tabler-icon
+                    [icon]="iconTemplate"
+                    [size]="14"
+                    [stroke]="2"
+                    class="text-gray-400"
+                    title="Plantilla compartida, no editable"
+                  />
+                }
+              </div>
+              @if (rol.descripcion) {
+                <p class="mt-1 text-sm text-gray-500">{{ rol.descripcion }}</p>
+              }
+            </div>
+
+            @if (esPropio(rol)) {
+              <div class="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  (click)="abrirPermisos(rol)"
+                  class="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+                >
+                  <tabler-icon [icon]="iconPermisos" [size]="14" [stroke]="2" />
+                  Permisos
+                </button>
+                <button
+                  type="button"
+                  (click)="abrirEditar(rol)"
+                  class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+                  aria-label="Editar"
+                >
+                  <tabler-icon [icon]="iconEdit" [size]="16" [stroke]="2" />
+                </button>
+                <button
+                  type="button"
+                  (click)="abrirEliminar(rol)"
+                  class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-red-600"
+                  aria-label="Eliminar"
+                >
+                  <tabler-icon [icon]="iconDelete" [size]="16" [stroke]="2" />
+                </button>
+              </div>
+            }
+          </div>
+
+          <div class="mt-4 flex flex-col gap-3">
+            @for (grupo of agruparPorModulo(rol.permisos); track grupo.modulo) {
+              <div>
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  {{ grupo.modulo }}
+                </h3>
+                <div class="mt-1 flex flex-wrap gap-1.5">
+                  @for (permiso of grupo.permisos; track permiso.id) {
+                    <span
+                      class="rounded-full bg-canvas-bg px-2.5 py-1 text-xs text-gray-600"
+                      [title]="permiso.descripcion ?? ''"
+                    >
+                      {{ permiso.codigo }}
+                    </span>
+                  }
+                </div>
+              </div>
+            } @empty {
+              <p class="text-xs text-gray-400">Todavía no tiene permisos asignados.</p>
+            }
+          </div>
+        </div>
+      } @empty {
+        <p class="text-sm text-gray-400">Todavía no hay roles.</p>
+      }
+    </div>
+  }
+</div>
+
+@if (modalAbierto()) {
+  <app-modal [titulo]="rolEditando() ? 'Editar rol' : 'Nuevo rol'" (cerrar)="cerrarModal()">
+    <form class="flex flex-col gap-4" (submit)="$event.preventDefault(); guardar()">
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium text-gray-700">Nombre</span>
+        <input
+          type="text"
+          autofocus
+          class="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          [value]="formulario().nombre"
+          (input)="actualizarCampo('nombre', $any($event.target).value)"
+        />
+      </label>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium text-gray-700">Descripción <span class="font-normal text-gray-400">(opcional)</span></span>
+        <textarea
+          rows="2"
+          class="resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          [value]="formulario().descripcion"
+          (input)="actualizarCampo('descripcion', $any($event.target).value)"
+        ></textarea>
+      </label>
+
+      @if (errorGuardar()) {
+        <p class="text-sm text-red-600">{{ errorGuardar() }}</p>
+      }
+
+      <div class="mt-2 flex justify-end gap-2">
+        <button
+          type="button"
+          (click)="cerrarModal()"
+          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-canvas-bg"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="guardando()"
+          class="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+        >
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+@if (rolAsignando(); as rol) {
+  <app-modal [titulo]="'Permisos — ' + rol.nombre" (cerrar)="cerrarPermisos()">
+    <div class="max-h-96 space-y-5 overflow-y-auto pr-1">
+      @for (grupo of permisosPorModulo(); track grupo[0]) {
+        <div>
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ grupo[0] }}</p>
+          <div class="space-y-1.5">
+            @for (permiso of grupo[1]; track permiso.id) {
+              <label class="flex items-start gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  [checked]="estaSeleccionado(permiso.id)"
+                  (change)="alternarPermiso(permiso.id, $any($event.target).checked)"
+                  class="mt-0.5 rounded border-gray-300"
+                />
+                <span>
+                  <span class="font-mono text-xs text-gray-500">{{ permiso.codigo }}</span>
+                  @if (permiso.descripcion) {
+                    <span class="block text-xs text-gray-400">{{ permiso.descripcion }}</span>
+                  }
+                </span>
+              </label>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (errorPermisos()) {
+      <p class="mt-4 text-sm text-red-600">{{ errorPermisos() }}</p>
+    }
+
+    <div class="mt-6 flex justify-end gap-2 border-t border-gray-100 pt-4">
+      <button
+        type="button"
+        (click)="cerrarPermisos()"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-canvas-bg"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        [disabled]="guardandoPermisos()"
+        (click)="guardarPermisos()"
+        class="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+      >
+        {{ guardandoPermisos() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+@if (rolEliminando(); as rol) {
+  <app-modal titulo="Eliminar rol" (cerrar)="cerrarEliminar()">
+    <p class="text-sm text-gray-600">
+      ¿Seguro que querés eliminar el rol <strong>{{ rol.nombre }}</strong>? Esta acción no se puede
+      deshacer.
+    </p>
+    <div class="mt-4 flex justify-end gap-2">
+      <button
+        type="button"
+        (click)="cerrarEliminar()"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-canvas-bg"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        [disabled]="eliminando()"
+        (click)="confirmarEliminar()"
+        class="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+      >
+        {{ eliminando() ? 'Eliminando…' : 'Eliminar' }}
+      </button>
+    </div>
+  </app-modal>
+}

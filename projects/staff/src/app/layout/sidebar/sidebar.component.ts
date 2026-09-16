@@ -3,11 +3,13 @@ import {
   Component,
   ElementRef,
   computed,
+  inject,
   signal,
   viewChildren,
 } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { TablerIconComponent } from '@tabler/icons-angular';
+import { AuthService } from '../../core/auth/auth.service';
 
 interface NavItem {
   label: string;
@@ -17,6 +19,16 @@ interface NavItem {
    *  criterio que `admin/layout/sidebar/sidebar.component.ts`. */
   icon: string;
   exact: boolean;
+  /** Permiso que hace falta tener para que el item tenga sentido
+   *  mostrarlo — `undefined` para los 3 placeholders (Facturación/
+   *  Ingresos/Soporte) que no pegan contra ningún endpoint protegido
+   *  todavía. Antes de Fase 3 de `PROPUESTA_ROLES_Y_ACCESOS.md`, TODO
+   *  rol de staff (solo existía `staff_goods`) tenía automáticamente el
+   *  permiso de cada item — con roles de staff más chicos
+   *  (`auditoria_goods`, `empleado_goods`) eso deja de ser cierto, así
+   *  que el sidebar ahora oculta lo que la cuenta logueada no puede usar
+   *  en vez de dejarla clickear a un 403. */
+  permiso?: string;
 }
 
 /**
@@ -68,18 +80,30 @@ interface NavItem {
   templateUrl: './sidebar.component.html',
 })
 export class SidebarComponent {
-  protected readonly navItems: NavItem[] = [
-    { label: 'Empresas', path: '/empresas', icon: 'building', exact: false },
-    { label: 'Altas pendientes', path: '/altas-pendientes', icon: 'user-plus', exact: false },
-    { label: 'Planes', path: '/planes', icon: 'stack-2', exact: false },
-    { label: 'Suscripciones', path: '/suscripciones', icon: 'repeat', exact: false },
+  private readonly authService = inject(AuthService);
+
+  private readonly todosLosNavItems: NavItem[] = [
+    { label: 'Empresas', path: '/empresas', icon: 'building', exact: false, permiso: 'empresas.ver' },
+    { label: 'Altas pendientes', path: '/altas-pendientes', icon: 'user-plus', exact: false, permiso: 'empresas.ver' },
+    { label: 'Planes', path: '/planes', icon: 'stack-2', exact: false, permiso: 'planes.ver' },
+    { label: 'Suscripciones', path: '/suscripciones', icon: 'repeat', exact: false, permiso: 'suscripciones.ver' },
     { label: 'Facturación', path: '/facturacion', icon: 'receipt-2', exact: false },
     { label: 'Ingresos', path: '/ingresos', icon: 'report-money', exact: false },
     { label: 'Soporte', path: '/soporte', icon: 'headset', exact: false },
-    { label: 'Auditoría', path: '/auditoria', icon: 'history', exact: false },
-    { label: 'Usuarios', path: '/usuarios', icon: 'users', exact: false },
-    { label: 'Roles y permisos', path: '/roles', icon: 'shield-lock', exact: false },
+    { label: 'Auditoría', path: '/auditoria', icon: 'history', exact: false, permiso: 'auditoria.ver' },
+    { label: 'Usuarios', path: '/usuarios', icon: 'users', exact: false, permiso: 'usuarios.ver' },
+    { label: 'Roles y permisos', path: '/roles', icon: 'shield-lock', exact: false, permiso: 'roles.ver' },
   ];
+
+  /** Fase 3 de `PROPUESTA_ROLES_Y_ACCESOS.md` §5.3 — ver el comentario de
+   *  `NavItem.permiso`. Los 3 placeholders (sin `permiso`) siempre se
+   *  muestran, igual que antes. */
+  protected readonly navItems = computed(() => {
+    const permisos = this.authService.currentUser()?.permisos ?? [];
+    return this.todosLosNavItems.filter(
+      (item) => !item.permiso || permisos.includes(item.permiso),
+    );
+  });
 
   /** Mismo mecanismo que `admin`: una única pill que se desliza entre
    *  items (hover, o si no hay hover, la ruta activa) — ver

@@ -1,3 +1,22 @@
+/** Los 7 valores reales de `Empresa.estado` — ver `ESTADOS_EMPRESA` en
+ * `ListarEmpresasQueryDto` del backend, es la fuente de verdad (es
+ * `varchar`, no un enum de Postgres, así que ampliarla no pide
+ * migración). Los tres primeros son el flujo de alta asistida nuevo
+ * (PROPUESTA_FLUJO_ALTA_ASISTIDA.md §1/§5.1/§10): `solicitud_recibida`
+ * (recién llegó el registro público) → `pendiente` (el staff la mandó a
+ * la cola) → `informacion_corroborada` (llamada hecha, esperando que el
+ * cliente confirme desde el enlace) → `activa`. `rechazada` es aparte
+ * (§5.3). `suspendida`/`cancelada` son del ciclo de vida posterior a
+ * `activa`, sin relación con el alta. */
+export type EstadoEmpresa =
+  | 'solicitud_recibida'
+  | 'pendiente'
+  | 'informacion_corroborada'
+  | 'activa'
+  | 'rechazada'
+  | 'suspendida'
+  | 'cancelada';
+
 /** Espejo de la entidad `Empresa` del backend (`empresa.entity.ts`) — solo
  * los campos que el panel de staff necesita mostrar, no re-declara toda la
  * fila si algún día suma columnas que acá no hacen falta. */
@@ -7,14 +26,44 @@ export interface Empresa {
   rubro: string | null;
   correoContacto: string;
   telefonoContacto: string | null;
-  /** 'pendiente' | 'activa' | 'suspendida' | 'cancelada' — ver
-   * `Empresa.estado` en el backend. */
-  estado: string;
+  estado: EstadoEmpresa;
+  /** Motivo de texto libre cargado por el staff al rechazar (`PATCH
+   * /empresas/:id/rechazar`, `estado === 'rechazada'`) — `null` en
+   * cualquier otro estado. */
+  motivoRechazo: string | null;
+  /** Texto que el propio visitante tipeó en el registro público
+   * (`POST /empresas/registro-publico`) — NO es la cuenta real todavía,
+   * es solo lo que declaró en el formulario. La cuenta real (`Usuario`
+   * con login) recién existe cuando el staff termina la llamada
+   * (`PATCH /empresas/:id/llamada-finalizada`) — ver `duenoUsuario` en
+   * `EmpresaConDueno`, que es ese Usuario ya creado, no este texto. */
   duenoNombres: string | null;
   duenoApellidos: string | null;
   duenoCorreo: string | null;
   creadoEn: string;
   actualizadoEn: string;
+}
+
+/** Resumen del `Usuario` dueño real (rol `admin`) de una Empresa — lo que
+ * devuelve `UsuarioService.buscarResumenDuenoDeEmpresa` del backend, sin
+ * el hash de contraseña. `tieneContrasena` es justo el dato que hace
+ * falta para saber si el cliente ya confirmó y definió su contraseña
+ * (`/reset-password`) o todavía está esperando el enlace. */
+export interface ResumenDuenoEmpresa {
+  id: number;
+  nombres: string;
+  apellidos: string;
+  correo: string;
+  correoVerificado: boolean;
+  tieneContrasena: boolean;
+}
+
+/** Lo que devuelve `GET /empresas/:id` — la Empresa más el resumen de su
+ * dueño real (`null` si todavía no se creó, ver `ResumenDuenoEmpresa`).
+ * `GET /empresas` (el listado) NO trae este campo — solo `findOne` del
+ * backend lo resuelve, ver el comentario ahí. */
+export interface EmpresaConDueno extends Empresa {
+  duenoUsuario: ResumenDuenoEmpresa | null;
 }
 
 /** Misma forma que `RespuestaPaginada<T>` del backend

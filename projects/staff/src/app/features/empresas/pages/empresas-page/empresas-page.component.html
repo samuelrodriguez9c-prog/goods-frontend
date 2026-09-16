@@ -4,6 +4,95 @@
     Clientes suscritos a Goods — {{ totalEmpresas() }} en total.
   </p>
 
+  <div class="mt-4 flex flex-wrap gap-2">
+    <button
+      type="button"
+      (click)="seleccionarEstado(null)"
+      class="rounded-full transition-shadow duration-200"
+      [class.ring-2]="filtroEstado() === null"
+      [class.ring-gray-400]="filtroEstado() === null"
+    >
+      <app-status-badge label="Todos" tone="neutral" [dot]="filtroEstado() === null ? 'filled' : 'none'" />
+    </button>
+    @for (estado of estadosFiltro; track estado) {
+      <button
+        type="button"
+        (click)="seleccionarEstado(estado)"
+        class="rounded-full transition-shadow duration-200"
+        [class.ring-2]="filtroEstado() === estado"
+        [class.ring-gray-400]="filtroEstado() === estado"
+      >
+        <app-status-badge
+          [label]="etiquetaDe(estado)"
+          [tone]="tonoDe(estado)"
+          [dot]="filtroEstado() === estado ? 'filled' : 'none'"
+        />
+      </button>
+    }
+  </div>
+
+  <div class="mt-4 flex flex-wrap items-end gap-3">
+    <div>
+      <label for="buscar" class="mb-1 block text-xs font-medium text-gray-500">Buscar</label>
+      <input
+        id="buscar"
+        type="text"
+        placeholder="Nombre, correo o dueño"
+        [value]="filtroBuscar()"
+        (input)="filtroBuscar.set($any($event.target).value)"
+        class="rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+      />
+    </div>
+    <div>
+      <label for="desde" class="mb-1 block text-xs font-medium text-gray-500">Desde</label>
+      <input
+        id="desde"
+        type="date"
+        [value]="filtroDesde()"
+        (input)="filtroDesde.set($any($event.target).value)"
+        class="rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+      />
+    </div>
+    <div>
+      <label for="hasta" class="mb-1 block text-xs font-medium text-gray-500">Hasta</label>
+      <input
+        id="hasta"
+        type="date"
+        [value]="filtroHasta()"
+        (input)="filtroHasta.set($any($event.target).value)"
+        class="rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+      />
+    </div>
+    <div>
+      <label for="plan" class="mb-1 block text-xs font-medium text-gray-500">Plan</label>
+      <select
+        id="plan"
+        [value]="filtroPlan() ?? ''"
+        (change)="filtroPlan.set($any($event.target).value || null)"
+        class="rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+      >
+        <option value="">Todos los planes</option>
+        @for (plan of planesDisponibles(); track plan) {
+          <option [value]="plan">{{ plan }}</option>
+        }
+      </select>
+    </div>
+    <button
+      type="button"
+      (click)="cargar()"
+      class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+    >
+      Filtrar
+    </button>
+    <button
+      type="button"
+      (click)="limpiarFiltros()"
+      class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+    >
+      Limpiar
+    </button>
+  </div>
+
   @if (error(); as mensaje) {
     <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
   } @else if (cargando()) {
@@ -11,7 +100,7 @@
   } @else {
     <div class="mt-6">
       <app-data-table>
-        <p-table [value]="filas()" dataKey="id" [pt]="tablePt">
+        <p-table [value]="filasFiltradas()" dataKey="id" [pt]="tablePt">
           <ng-template pTemplate="header">
             <tr>
               <th>Empresa</th>
@@ -23,13 +112,13 @@
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-empresa>
-            <tr>
+            <tr class="cursor-pointer" (click)="abrirDetalle(empresa)">
               <td class="font-medium text-gray-900">{{ empresa.nombre }}</td>
               <td class="text-gray-500">{{ empresa.rubro ?? '—' }}</td>
               <td class="text-gray-500">{{ empresa.correoContacto }}</td>
               <td>{{ empresa.planNombre ?? '—' }}</td>
               <td>
-                <app-status-badge [label]="empresa.estado" [tone]="tonoDe(empresa.estado)" dot="filled" />
+                <app-status-badge [label]="etiquetaDe(empresa.estado)" [tone]="tonoDe(empresa.estado)" dot="filled" />
               </td>
               <td class="text-gray-500">{{ empresa.creadoEn | date: 'd MMM y' }}</td>
             </tr>
@@ -37,12 +126,20 @@
           <ng-template pTemplate="emptymessage">
             <tr>
               <td colspan="6" class="py-6 text-center text-sm text-gray-500">
-                Todavía no hay Empresas dadas de alta.
+                No hay Empresas que coincidan con estos filtros.
               </td>
             </tr>
           </ng-template>
         </p-table>
       </app-data-table>
     </div>
+  }
+
+  @if (empresaSeleccionadaId(); as id) {
+    <app-empresa-detalle-panel
+      [empresaId]="id"
+      (cerrar)="cerrarDetalle()"
+      (actualizada)="onEmpresaActualizada($event)"
+    />
   }
 </div>

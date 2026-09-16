@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
  * Protege el árbol de rutas del shell — mismo criterio "optimista" que
  * `admin/core/auth/auth.guard.ts`: solo mira si HAY un accessToken
  * guardado, no si sigue vigente ni de quién es (ver comentario de
- * `AuthService` sobre por qué el chequeo de rol `staff_goods` vive en
+ * `AuthService` sobre por qué el chequeo de `rol.esRolStaff` vive en
  * `LoginComponent.submit()` y no acá — un guard corre síncrono, antes de
  * que `GET /auth/me` pueda resolver, así que acá no hay forma confiable
  * de mirar el rol en el primer render tras un F5).

@@ -11,6 +11,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { TablerIconComponent } from '@tabler/icons-angular';
 import { filter, map } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
 
 interface SubNavItem {
   label: string;
@@ -50,6 +51,16 @@ interface SectionChild {
   label: string;
   path: string;
   icon: string;
+  /** Permiso necesario para que tenga sentido mostrar este item — Fase 5
+   *  de `PROPUESTA_ROLES_Y_ACCESOS.md` (§6 paso 5): antes de sembrar
+   *  `empleado_empresa`, todo el que entraba a `admin` (siempre `admin`
+   *  viejo, o después `dueno_empresa`) tenía los mismos permisos, así que
+   *  no hacía falta filtrar nada acá — con un empleado de permisos
+   *  acotados de verdad en la mezcla, dejar los links siempre visibles
+   *  llevaría a un 403 al primer click (`empleado_empresa` no tiene
+   *  `usuarios.ver` ni `usuarios.cambiar_rol`). Mismo criterio que ya se
+   *  usó en `staff/layout/sidebar/sidebar.component.ts`. */
+  permiso: string;
 }
 
 /** Un grupo de sidebar tipo "Sales channels"/"Apps" de la captura de
@@ -126,6 +137,7 @@ interface SidebarSection {
 })
 export class SidebarComponent {
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
 
   protected readonly navItems: NavItem[] = [
     { label: 'Dashboard', path: '/', icon: 'home-2-filled', exact: true },
@@ -177,10 +189,33 @@ export class SidebarComponent {
     key: 'administracion',
     label: 'Administración',
     children: [
-      { label: 'Usuarios', path: '/settings/usuarios', icon: 'users' },
-      { label: 'Roles y permisos', path: '/settings/roles', icon: 'shield-lock' },
+      { label: 'Usuarios', path: '/settings/usuarios', icon: 'users', permiso: 'usuarios.ver' },
+      {
+        label: 'Roles y permisos',
+        path: '/settings/roles',
+        icon: 'shield-lock',
+        // Fase 6 de PROPUESTA_ROLES_Y_ACCESOS.md (§5.4): ahora que los
+        // roles son tenant-scoped, `SettingsRolesPageComponent` pega
+        // contra `GET /roles` de verdad (antes, en la Fase 5, esta
+        // pantalla era de solo lectura y usaba `GET /roles/asignables`,
+        // por eso se gateaba con `usuarios.cambiar_rol` en vez de
+        // `roles.ver` — `dueno_empresa` no tenía ese permiso todavía). La
+        // migración `OtorgarPermisosDeRolesADuenoEmpresa` ya le dio
+        // `roles.ver` a `dueno_empresa`, así que gatear por acá con ese
+        // mismo permiso es lo consistente con lo que el backend exige.
+        permiso: 'roles.ver',
+      },
     ],
   };
+
+  /** Hijos visibles de `administracionSection` para quien esté logueado
+   *  ahora — ver el comentario de `SectionChild.permiso`. */
+  protected readonly administracionChildrenVisibles = computed(() => {
+    const permisos = this.authService.currentUser()?.permisos ?? [];
+    return this.administracionSection.children.filter((child) =>
+      permisos.includes(child.permiso),
+    );
+  });
 
   /** Índice bajo el mouse ahora mismo, o `null` si no está hovereando el
    *  grupo de nav (`nav (mouseleave)` lo limpia). */
