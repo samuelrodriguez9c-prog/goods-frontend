@@ -1,0 +1,68 @@
+<!--
+  Estructura de 3 filas, todas opcionales salvo la del buscador (ver
+  captura 61 de Orders para el orden real: pestañas arriba, buscador +
+  acciones del popover de Filtros en el medio, tags de filtros aplicados
+  abajo cuando hay alguno puesto). La fila del medio siempre lleva borde
+  inferior — separa del header de la tabla cuando no hay tags, y de la
+  fila de tags cuando sí los hay.
+-->
+@if (tabs().length) {
+  <div class="flex items-center gap-1 overflow-x-auto border-b border-gray-100 px-3 pt-2.5 pb-1.5">
+    @for (tab of tabs(); track tab.value) {
+      <button
+        type="button"
+        (click)="selectTab(tab.value)"
+        class="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors duration-200"
+        [class]="
+          activeTab() === tab.value
+            ? 'bg-badge-neutral-bg text-gray-900'
+            : 'text-gray-500 hover:bg-canvas-bg hover:text-gray-700'
+        "
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+}
+
+<div class="flex items-center gap-2 border-b border-gray-100 px-3 py-2.5">
+  <tabler-icon [icon]="iconSearch" [size]="16" [stroke]="1.75" class="shrink-0 text-gray-400" />
+  <input
+    type="text"
+    [placeholder]="placeholder()"
+    [value]="searchValue()"
+    (input)="onSearchInput($any($event.target).value)"
+    (keydown.enter)="submitted.emit()"
+    class="w-full border-0 bg-transparent p-0 text-sm text-gray-900 outline-none placeholder:text-gray-500"
+  />
+  <div class="flex shrink-0 items-center gap-1.5">
+    <ng-content select="[toolbarActions]" />
+  </div>
+</div>
+
+@if (appliedFilters().length) {
+  <div class="flex flex-wrap items-center gap-2 border-b border-gray-100 px-3 pb-2.5 pt-2.5 animate-[fade-in-up_0.2s_ease-out]">
+    @for (chip of appliedFilters(); track chip.key) {
+      <span
+        class="inline-flex items-center gap-1.5 rounded-full bg-badge-neutral-bg py-1 pl-3 pr-1.5 text-xs font-medium text-gray-700"
+      >
+        {{ chip.label }}
+        <button
+          type="button"
+          (click)="removeFilter(chip.key)"
+          [attr.aria-label]="'Quitar filtro ' + chip.label"
+          class="flex h-4 w-4 items-center justify-center rounded-full text-gray-500 transition-colors duration-150 hover:bg-gray-300 hover:text-gray-900"
+        >
+          <tabler-icon [icon]="iconX" [size]="12" [stroke]="2.25" />
+        </button>
+      </span>
+    }
+    <button
+      type="button"
+      (click)="filtersCleared.emit()"
+      class="text-xs font-medium text-gray-500 underline decoration-gray-300 underline-offset-2 transition-colors duration-150 hover:text-gray-900"
+    >
+      Limpiar todo
+    </button>
+  </div>
+}

@@ -36,13 +36,20 @@ export function dataTablePt() {
  * "Shell" de tabla con selección múltiple — envuelve cualquier `p-table`
  * (proyectado tal cual, con su API nativa completa) en la tarjeta
  * redondeada del admin, y agrega la barra de "N selected" + acciones en
- * lote que reemplaza cualquier barra de búsqueda/filtro mientras haya
- * filas marcadas (ver ADMIN_DISENO.md > "Lenguaje visual general" y
- * "Qué construir como librería propia", ítem 6).
+ * lote que reemplaza la barra de búsqueda/filtro mientras haya filas
+ * marcadas (ver ADMIN_DISENO.md > "Lenguaje visual general" y "Qué
+ * construir como librería propia", ítem 6).
+ *
+ * Slot `[toolbar]` (opcional, ver `SearchToolbarComponent`): se
+ * proyecta ANTES de la barra de selección, así que cuando hay filas
+ * marcadas la barra de "N selected" tapa el buscador en vez de convivir
+ * con él — mismo comportamiento que Shopify (capturas 61/446, ver
+ * ADMIN_DISENO.md > "Barra de búsqueda y filtros").
  *
  * Uso:
  * ```html
  * <app-data-table [selectedCount]="selectedRows().length">
+ *   <app-search-toolbar toolbar ... />
  *   <button bulkActions>Export</button>
  *   <p-table [value]="rows" [(selection)]="selectedRows" dataKey="id"
  *            selectionMode="multiple" [pt]="dataTablePt()">
