@@ -1071,6 +1071,57 @@ reutilización (de más a menos usada):
   tiene sentido en "Edit order", por eso es opt-in y no parte del modo
   `editable` en sí.
 
+- **`SearchToolbarComponent`** (`shared-ui`'s `lib/search-toolbar/`) — la
+  barra de búsqueda + pestañas de estado + filtros aplicados que va
+  arriba de cualquier `p-table` (slot `[toolbar]` de `DataTableComponent`,
+  ver nota de ese composite más arriba). Reemplaza, desde 2026-09-16, el
+  patrón anterior de `<input>`/`<select>`/`<input type="date">` nativos
+  sueltos con labels al costado — no se parecían en nada a Shopify y fue
+  pedido explícito del cliente ajustarlo, revisando capturas reales en
+  vez de ir de memoria.
+
+  Calcada de las capturas 61 (Orders) y 446 (Customers): una sola fila
+  con ícono de lupa + placeholder + acciones a la derecha (acá,
+  "Filtros"), sin caja ni borde visible — search "flotante" dentro de la
+  tarjeta, no un input con recuadro propio. Fila de pestañas arriba
+  (opcional, `[tabs]`/`[activeTab]`) solo cuando la pantalla tiene
+  estados con nombre (p. ej. Empresas: Todos/Solicitud recibida/
+  Pendiente/.../Cancelada) — reemplaza los botones con anillo alrededor
+  del `StatusBadgeComponent` que había antes ("los botones que rodean a
+  los tags", como lo describió el cliente) por pestañas de texto plano
+  con fondo gris cuando están activas, mismo lenguaje que las vistas
+  guardadas de Shopify. Fila de chips de filtros aplicados (opcional,
+  `[appliedFilters]`) debajo, con botón "Limpiar todo".
+
+  Los filtros que antes eran `<select>`/`<input type="date">` nativos
+  ahora vagan dentro de un `p-popover` (mismo patrón "solo comportamiento"
+  que `QuickAdjustPopoverComponent`) disparado por el botón "Filtros",
+  usando `p-select`/`p-date-picker` de PrimeNG con los presets `pt` de
+  `filterSelectPt()`/`filterDatePickerPt()` (`shared-ui`'s
+  `lib/utils/filter-controls-pt.ts`) — se llega a esto y no a inputs
+  nativos porque un `<select>`/`<input type="date">` del sistema
+  operativo no se puede re-estilizar para que su menú/calendario
+  desplegable se vea como el de Shopify; sigue la misma regla ya
+  documentada en "Decisión: stack de UI" de usar PrimeNG solo donde
+  hace falta overlay real. `shared-ui`'s `lib/utils/format-date.ts`
+  (`parseDateInput`/`formatDateInput`) traduce entre el string
+  `'YYYY-MM-DD'` que ya usan las señales existentes (y que espera el
+  backend en los query params) y el `Date` que pide `p-date-picker`,
+  construyendo la fecha en hora local para no correr un día por offset
+  de UTC.
+
+  Todo el composite anima suave (pedido explícito del cliente): el
+  overlay de `p-select`/`p-date-picker` y la fila de chips usan
+  `fade-in-up` (la misma animación ya establecida para "golpe suave" en
+  el resto del admin), y los estados de hover/focus de pestañas, campos
+  y botones llevan `transition-colors`/`transition-all duration-200`.
+
+  Primeros dos consumidores (verificados con build real, sin errores de
+  compilación — falta verificación visual en vivo contra las capturas):
+  `empresas-page` (staff) usa pestañas de estado + `p-select` de plan +
+  dos `p-date-picker`; `auditoria-page` (staff) usa solo los dos
+  `p-date-picker`, sin pestañas ni select.
+
 ### Estructura de carpetas de `admin/src/app/`
 
 A partir de acá `admin` deja de ser un único `app.html` con todo

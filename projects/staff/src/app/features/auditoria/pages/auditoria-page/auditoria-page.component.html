@@ -4,54 +4,6 @@
     Quién hizo qué y cuándo — {{ total() }} acciones registradas (mostrando las últimas 50).
   </p>
 
-  <div class="mt-4 flex flex-wrap items-end gap-3">
-    <div>
-      <label for="entidad" class="mb-1 block text-xs font-medium text-gray-500">Entidad</label>
-      <input
-        id="entidad"
-        type="text"
-        placeholder="ej. producto, empresa"
-        [value]="filtroEntidad()"
-        (input)="filtroEntidad.set($any($event.target).value)"
-        class="rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-      />
-    </div>
-    <div>
-      <label for="desde" class="mb-1 block text-xs font-medium text-gray-500">Desde</label>
-      <input
-        id="desde"
-        type="date"
-        [value]="filtroDesde()"
-        (input)="filtroDesde.set($any($event.target).value)"
-        class="rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-      />
-    </div>
-    <div>
-      <label for="hasta" class="mb-1 block text-xs font-medium text-gray-500">Hasta</label>
-      <input
-        id="hasta"
-        type="date"
-        [value]="filtroHasta()"
-        (input)="filtroHasta.set($any($event.target).value)"
-        class="rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-      />
-    </div>
-    <button
-      type="button"
-      (click)="cargar()"
-      class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-    >
-      Filtrar
-    </button>
-    <button
-      type="button"
-      (click)="limpiarFiltros()"
-      class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-    >
-      Limpiar
-    </button>
-  </div>
-
   @if (error(); as mensaje) {
     <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
   } @else if (cargando()) {
@@ -59,6 +11,79 @@
   } @else {
     <div class="mt-6">
       <app-data-table>
+        <app-search-toolbar
+          toolbar
+          placeholder="Buscar por entidad, ej. producto, empresa"
+          [searchValue]="filtroEntidad()"
+          (searchValueChange)="onBuscarChange($event)"
+          (submitted)="cargar()"
+          [appliedFilters]="filtrosAplicados()"
+          (filterRemoved)="quitarFiltro($event)"
+          (filtersCleared)="limpiarFiltros()"
+        >
+          <button
+            toolbarActions
+            type="button"
+            (click)="abrirFiltros($event)"
+            class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg"
+          >
+            <tabler-icon [icon]="iconFiltros" [size]="16" [stroke]="1.75" />
+            Filtros
+            @if (cantidadFiltrosActivos() > 0) {
+              <span
+                class="flex h-4 w-4 items-center justify-center rounded-full bg-primary-button text-[10px] font-semibold text-white"
+              >
+                {{ cantidadFiltrosActivos() }}
+              </span>
+            }
+          </button>
+        </app-search-toolbar>
+
+        <p-popover [pt]="popoverPt">
+          <div class="w-72 space-y-3 p-4">
+            <div>
+              <label class="mb-1 block text-xs font-medium text-gray-500">Desde</label>
+              <p-date-picker
+                [ngModel]="filtroDesdeFecha()"
+                (ngModelChange)="onDesdeChange($event)"
+                dateFormat="d M yy"
+                [showIcon]="true"
+                iconDisplay="input"
+                [pt]="datePickerPt"
+                styleClass="w-full"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-xs font-medium text-gray-500">Hasta</label>
+              <p-date-picker
+                [ngModel]="filtroHastaFecha()"
+                (ngModelChange)="onHastaChange($event)"
+                dateFormat="d M yy"
+                [showIcon]="true"
+                iconDisplay="input"
+                [pt]="datePickerPt"
+                styleClass="w-full"
+              />
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                (click)="limpiarFiltros()"
+                class="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+              >
+                Limpiar
+              </button>
+              <button
+                type="button"
+                (click)="aplicarFiltros()"
+                class="rounded-lg bg-primary-button px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </p-popover>
+
         <p-table [value]="acciones()" dataKey="id" [pt]="tablePt">
           <ng-template pTemplate="header">
             <tr>

@@ -16,3 +16,6 @@ export * from './lib/data-table/selection-checkbox.component';
 export * from './lib/order-line-item/order-line-item.component';
 export * from './lib/quick-adjust-popover/quick-adjust-popover.component';
 export * from './lib/utils/format-money';
+export * from './lib/search-toolbar/search-toolbar.component';
+export * from './lib/utils/filter-controls-pt';
+export * from './lib/utils/format-date';
