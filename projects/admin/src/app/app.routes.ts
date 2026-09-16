@@ -25,6 +25,19 @@ export const routes: Routes = [
       ).then((m) => m.RegistroPublicoPageComponent),
   },
   {
+    // Pantalla a la que apunta el enlace del correo de "restablecer
+    // contraseña" / confirmación de alta asistida (§8 punto 6 de
+    // PROPUESTA_FLUJO_ALTA_ASISTIDA.md — antes no existía esta ruta, el
+    // link del correo no tenía dónde caer). Mismo criterio que /login y
+    // /registro: sin sidebar/topbar, sin guard (todavía no hay sesión —
+    // el token viene en la query string, no en el Authorization header).
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./core/auth/pages/reset-password/reset-password.component').then(
+        (m) => m.ResetPasswordComponent,
+      ),
+  },
+  {
     path: '',
     component: ShellComponent,
     canActivate: [authGuard],

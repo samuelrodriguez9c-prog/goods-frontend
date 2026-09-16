@@ -130,52 +130,54 @@
          separados. Sin conector "árbol": cada hijo lleva su propio ícono
          y se resuelve solo con `routerLinkActive` + hover, igual que
          cualquier link simple del sidebar. -->
-    <div>
-      <button
-        type="button"
-        class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors duration-200 ease-out hover:text-gray-700"
-        [attr.aria-label]="
-          (isSectionOpen(administracionSection) ? 'Contraer ' : 'Expandir ') +
-          administracionSection.label
-        "
-        (click)="toggleGroup(administracionSection.key)"
-      >
-        <span class="truncate">{{ administracionSection.label }}</span>
-        <span
-          class="flex shrink-0 transition-transform duration-150 ease-out"
-          [style.transform]="isSectionOpen(administracionSection) ? 'rotate(0deg)' : 'rotate(-90deg)'"
+    @if (administracionChildrenVisibles().length > 0) {
+      <div>
+        <button
+          type="button"
+          class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors duration-200 ease-out hover:text-gray-700"
+          [attr.aria-label]="
+            (isSectionOpen(administracionSection) ? 'Contraer ' : 'Expandir ') +
+            administracionSection.label
+          "
+          (click)="toggleGroup(administracionSection.key)"
         >
-          <tabler-icon icon="chevron-down" [size]="16" [stroke]="1.75" />
-        </span>
-      </button>
+          <span class="truncate">{{ administracionSection.label }}</span>
+          <span
+            class="flex shrink-0 transition-transform duration-150 ease-out"
+            [style.transform]="isSectionOpen(administracionSection) ? 'rotate(0deg)' : 'rotate(-90deg)'"
+          >
+            <tabler-icon icon="chevron-down" [size]="16" [stroke]="1.75" />
+          </span>
+        </button>
 
-      <!-- Misma animación de altura que el submenú árbol de Products
-           (grid-template-rows 0fr → 1fr + fade), sin el wrapper
-           `position: relative` ni el conector — acá no hace falta medir
-           nada por JS. -->
-      <div
-        class="grid transition-[grid-template-rows] duration-200 ease-out"
-        [style.gridTemplateRows]="isSectionOpen(administracionSection) ? '1fr' : '0fr'"
-      >
+        <!-- Misma animación de altura que el submenú árbol de Products
+             (grid-template-rows 0fr → 1fr + fade), sin el wrapper
+             `position: relative` ni el conector — acá no hace falta medir
+             nada por JS. -->
         <div
-          class="overflow-hidden transition-opacity duration-200 ease-out"
-          [style.opacity]="isSectionOpen(administracionSection) ? 1 : 0"
+          class="grid transition-[grid-template-rows] duration-200 ease-out"
+          [style.gridTemplateRows]="isSectionOpen(administracionSection) ? '1fr' : '0fr'"
         >
-          <div class="mt-0.5 flex flex-col gap-0.5">
-            @for (child of administracionSection.children; track child.path) {
-              <a
-                [routerLink]="child.path"
-                routerLinkActive="bg-nav-active text-gray-900"
-                class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
-              >
-                <tabler-icon [icon]="child.icon" [size]="20" [stroke]="1.75" svgClass="shrink-0" />
-                <span class="truncate">{{ child.label }}</span>
-              </a>
-            }
+          <div
+            class="overflow-hidden transition-opacity duration-200 ease-out"
+            [style.opacity]="isSectionOpen(administracionSection) ? 1 : 0"
+          >
+            <div class="mt-0.5 flex flex-col gap-0.5">
+              @for (child of administracionChildrenVisibles(); track child.path) {
+                <a
+                  [routerLink]="child.path"
+                  routerLinkActive="bg-nav-active text-gray-900"
+                  class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
+                >
+                  <tabler-icon [icon]="child.icon" [size]="20" [stroke]="1.75" svgClass="shrink-0" />
+                  <span class="truncate">{{ child.label }}</span>
+                </a>
+              }
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    }
 
     <!-- Settings: link simple, sin submenú propio (ver comentario de
          `settingsItem` en el componente). -->

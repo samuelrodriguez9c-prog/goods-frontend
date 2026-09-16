@@ -11,8 +11,15 @@ import { AuthService } from '../auth/auth.service';
 // (login todavía no tiene token; refresh manda el refreshToken en el
 // body, no en el header), y meterlos en el flujo de reintento crearía un
 // loop infinito si el refresh también devuelve 401 (refresh token
-// vencido/revocado).
-const RUTAS_SIN_INTERCEPTAR = ['/auth/login', '/auth/refresh'];
+// vencido/revocado). /reset-password es el mismo caso: se llama sin
+// sesión (el token viaja en el body, no en el header, ver
+// ResetPasswordComponent), así que un 401 de acá es "Token inválido o
+// expirado" del propio endpoint, no un access token vencido — sin este
+// excluido, el interceptor intentaba `refrescarToken()` con un
+// refreshToken inexistente (nadie logueado todavía) y el 400 de ESE
+// intento ("refreshToken must be a string") tapaba el mensaje real del
+// backend (encontrado probando la pantalla end-to-end, 2026-09-15).
+const RUTAS_SIN_INTERCEPTAR = ['/auth/login', '/auth/refresh', '/auth/reset-password'];
 
 /**
  * Adjunta `Authorization: Bearer <accessToken>` a cada request saliente

@@ -1,0 +1,22 @@
+<div
+  class="fixed inset-0 z-50 flex justify-end bg-black/50 animate-[fade-in-up_0.15s_ease-out]"
+  (click)="onBackdropClick($event)"
+>
+  <div
+    class="flex h-full w-full max-w-xl flex-col overflow-y-auto bg-card-bg p-6 shadow-xl animate-[slide-in-right_0.2s_ease-out]"
+  >
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-gray-900">{{ titulo }}</h2>
+      <button
+        type="button"
+        (click)="cerrar.emit()"
+        class="rounded-lg p-1 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+        aria-label="Cerrar"
+      >
+        <tabler-icon [icon]="iconClose" [size]="18" [stroke]="2" />
+      </button>
+    </div>
+
+    <ng-content />
+  </div>
+</div>

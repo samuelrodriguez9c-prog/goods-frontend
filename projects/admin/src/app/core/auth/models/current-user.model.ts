@@ -17,6 +17,11 @@ export interface CurrentUser {
   rol: {
     id: number;
     nombre: string;
+    /** Ver `Rol.esRolStaff` en el backend / `PROPUESTA_ROLES_Y_ACCESOS.md`
+     * §5.1 — acá siempre va a ser `false` (nadie con un rol de staff entra
+     * al panel `admin`), se refleja igual para que el modelo sea un
+     * espejo exacto de la respuesta real. */
+    esRolStaff: boolean;
   };
   permisos: string[];
 }

@@ -78,6 +78,19 @@ export class AuthService {
       .pipe(tap((tokens) => this.guardarTokens(tokens)));
   }
 
+  /** POST /auth/reset-password — pantalla `/reset-password`
+   * (ResetPasswordComponent). A diferencia de `login()`, esto NO guarda
+   * tokens: el backend revoca todas las sesiones activas al cambiar la
+   * contraseña (ver `AuthService.resetPassword` del backend), así que
+   * quien restablece su contraseña siempre vuelve a `/login` a entrar de
+   * nuevo, nunca queda logueado automáticamente. */
+  resetPassword(token: string, password: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reset-password`, {
+      token,
+      password,
+    });
+  }
+
   /** Best-effort: revoca la sesión en el backend, pero limpia el estado
    * local aunque la llamada falle (ej. sin conexión) — no tiene sentido
    * dejar a alguien "atrapado" logueado localmente porque el logout de

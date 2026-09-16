@@ -1,0 +1,163 @@
+<div class="p-8">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-lg font-semibold text-gray-900">Usuarios</h1>
+      <p class="mt-2 text-sm text-gray-500">Tu equipo dentro de esta Empresa.</p>
+    </div>
+    <button
+      type="button"
+      (click)="abrirCrear()"
+      class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700"
+    >
+      <tabler-icon [icon]="iconPlus" [size]="16" [stroke]="2" />
+      Dar de alta empleado
+    </button>
+  </div>
+
+  @if (cargando()) {
+    <p class="mt-6 text-sm text-gray-400">Cargando…</p>
+  } @else if (error()) {
+    <p class="mt-6 text-sm text-red-600">{{ error() }}</p>
+  } @else {
+    <div class="mt-6 overflow-hidden rounded-2xl bg-card-bg shadow-sm">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+            <th class="px-6 py-3 font-medium">Nombre</th>
+            <th class="px-6 py-3 font-medium">Correo</th>
+            <th class="px-6 py-3 font-medium">Rol</th>
+            <th class="px-6 py-3 font-medium"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (usuario of usuarios(); track usuario.id) {
+            <tr class="border-b border-gray-50 last:border-0">
+              <td class="px-6 py-3 text-gray-900">{{ usuario.nombres }} {{ usuario.apellidos }}</td>
+              <td class="px-6 py-3 text-gray-500">{{ usuario.correo }}</td>
+              <td class="px-6 py-3">
+                <select
+                  class="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 disabled:opacity-50"
+                  [disabled]="cambiandoRolDe() === usuario.id"
+                  (change)="cambiarRol(usuario, $any($event.target).value)"
+                >
+                  @for (rol of rolesAsignables(); track rol.id) {
+                    <option [value]="rol.id" [selected]="rol.id === usuario.rolId">
+                      {{ rol.nombre }}
+                    </option>
+                  }
+                </select>
+              </td>
+              <td class="px-6 py-3 text-right">
+                <button
+                  type="button"
+                  (click)="abrirEliminar(usuario)"
+                  class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-red-600"
+                  aria-label="Eliminar"
+                >
+                  <tabler-icon [icon]="iconDelete" [size]="16" [stroke]="1.75" />
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="px-6 py-8 text-center text-sm text-gray-400">
+                Todavía no diste de alta a nadie de tu equipo.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (modalAbierto()) {
+  <app-modal titulo="Dar de alta empleado" (cerrar)="cerrarModal()">
+    <form class="flex flex-col gap-4" (submit)="$event.preventDefault(); guardar()">
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium text-gray-700">Nombres</span>
+        <input
+          type="text"
+          class="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          [value]="formulario().nombres"
+          (input)="actualizarCampo('nombres', $any($event.target).value)"
+        />
+      </label>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium text-gray-700">Apellidos</span>
+        <input
+          type="text"
+          class="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          [value]="formulario().apellidos"
+          (input)="actualizarCampo('apellidos', $any($event.target).value)"
+        />
+      </label>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium text-gray-700">Correo</span>
+        <input
+          type="email"
+          class="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          [value]="formulario().correo"
+          (input)="actualizarCampo('correo', $any($event.target).value)"
+        />
+      </label>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium text-gray-700">Contraseña inicial</span>
+        <input
+          type="password"
+          class="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          [value]="formulario().password"
+          (input)="actualizarCampo('password', $any($event.target).value)"
+        />
+        <span class="text-xs text-gray-400">Mínimo 8 caracteres. Tu empleado puede cambiarla después.</span>
+      </label>
+
+      @if (errorGuardar()) {
+        <p class="text-sm text-red-600">{{ errorGuardar() }}</p>
+      }
+
+      <div class="mt-2 flex justify-end gap-2">
+        <button
+          type="button"
+          (click)="cerrarModal()"
+          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-canvas-bg"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="guardando()"
+          class="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+        >
+          {{ guardando() ? 'Guardando…' : 'Dar de alta' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+@if (usuarioEliminando(); as usuario) {
+  <app-modal titulo="Eliminar usuario" (cerrar)="cerrarEliminar()">
+    <p class="text-sm text-gray-600">
+      ¿Seguro que querés eliminar a <strong>{{ usuario.nombres }} {{ usuario.apellidos }}</strong>?
+      Esta acción no se puede deshacer.
+    </p>
+    <div class="mt-4 flex justify-end gap-2">
+      <button
+        type="button"
+        (click)="cerrarEliminar()"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-canvas-bg"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        [disabled]="eliminando()"
+        (click)="confirmarEliminar()"
+        class="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+      >
+        {{ eliminando() ? 'Eliminando…' : 'Eliminar' }}
+      </button>
+    </div>
+  </app-modal>
+}

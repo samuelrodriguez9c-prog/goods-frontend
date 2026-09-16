@@ -37,6 +37,16 @@ export class TopbarComponent {
     return usuario ? usuario.nombres : '…';
   });
 
+  // Fase 7 de PROPUESTA_ROLES_Y_ACCESOS.md (§5.5) — "lo que más impacto
+  // tiene en seguridad" según la propia propuesta: quien esté usando el
+  // acceso especial de superadmin tiene que verlo escrito en pantalla en
+  // TODO momento dentro del panel de staff, no solo enterarse por lo que
+  // pueda o no hacer. `esSesionCrossPanelStaff` viaja en la sesión (JWT +
+  // GET /auth/me), nunca hace falta volver a pedirlo.
+  protected readonly esCrossPanelStaff = computed(
+    () => this.currentUser()?.esSesionCrossPanelStaff ?? false,
+  );
+
   protected logout(): void {
     this.authService.logout();
     this.router.navigateByUrl('/login');

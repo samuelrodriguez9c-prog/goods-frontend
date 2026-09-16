@@ -1,0 +1,102 @@
+<app-side-panel [titulo]="empresa()?.nombre ?? 'Detalle de la Empresa'" (cerrar)="cerrar.emit()">
+  @if (error(); as mensaje) {
+    <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
+  } @else if (cargando()) {
+    <p class="text-sm text-gray-500">Cargando…</p>
+  } @else if (empresa(); as e) {
+    <div class="space-y-5">
+      <div>
+        <p class="text-sm font-medium text-gray-700">Estado</p>
+        <div class="mt-1.5">
+          <app-status-badge [label]="e.estado" [tone]="tonoEstado(e.estado)" dot="filled" />
+        </div>
+      </div>
+
+      <app-campo-detalle
+        etiqueta="Nombre del negocio"
+        [valor]="e.nombre"
+        ayuda="Tal como el cliente lo escribió en el registro público — es el que ve en su propio panel. Solo se corrige desde el paso 1 del asistente de activación."
+      />
+
+      @if (e.estado === 'rechazada' && e.motivoRechazo) {
+        <app-campo-detalle etiqueta="Motivo de rechazo" [valor]="e.motivoRechazo" />
+      }
+
+      <app-campo-detalle
+        etiqueta="Rubro"
+        [valor]="rubro()"
+        [editable]="true"
+        placeholder="ej. Restaurante, Ropa, Servicios"
+        (valorCambiado)="rubro.set($event)"
+      />
+
+      <app-campo-detalle
+        etiqueta="Correo de contacto"
+        [valor]="correoContacto()"
+        [editable]="true"
+        (valorCambiado)="correoContacto.set($event)"
+      />
+
+      <app-campo-detalle
+        etiqueta="Teléfono de contacto"
+        [valor]="telefonoContacto()"
+        [editable]="true"
+        placeholder="Opcional"
+        (valorCambiado)="telefonoContacto.set($event)"
+      />
+
+      <div>
+        <p class="text-sm font-medium text-gray-700">Declarado en el registro</p>
+        <p class="mt-0.5 text-sm text-gray-900">
+          {{ e.duenoNombres }} {{ e.duenoApellidos }}
+        </p>
+        @if (e.duenoCorreo) {
+          <p class="text-xs text-gray-500">{{ e.duenoCorreo }}</p>
+        }
+        <p class="mt-1 text-xs text-gray-400">
+          Lo que el visitante tipeó en el formulario público — todavía no es la cuenta real, ver "Cuenta del
+          dueño" abajo.
+        </p>
+      </div>
+
+      <div>
+        <p class="text-sm font-medium text-gray-700">Cuenta del dueño</p>
+        @if (e.duenoUsuario; as dueno) {
+          <p class="mt-0.5 text-sm text-gray-900">{{ dueno.nombres }} {{ dueno.apellidos }}</p>
+          <p class="text-xs text-gray-500">{{ dueno.correo }}</p>
+          <p class="mt-1 text-xs text-gray-400">
+            {{ dueno.correoVerificado ? 'Correo verificado' : 'Correo sin verificar' }} ·
+            {{ dueno.tieneContrasena ? 'Ya definió su contraseña' : 'Todavía no definió su contraseña' }}
+          </p>
+        } @else {
+          <p class="mt-0.5 text-sm text-gray-400">
+            Todavía no se creó — se crea automáticamente al terminar la llamada (paso 2 del asistente de
+            activación).
+          </p>
+        }
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <app-campo-detalle etiqueta="Fecha de alta" [valor]="(e.creadoEn | date: 'd MMM y') ?? ''" />
+        <app-campo-detalle
+          etiqueta="Última actualización"
+          [valor]="(e.actualizadoEn | date: 'd MMM y, HH:mm') ?? ''"
+        />
+      </div>
+    </div>
+
+    <div class="mt-6 flex items-center gap-3 border-t border-gray-200 pt-4">
+      <button
+        type="button"
+        [disabled]="!hayCambios() || guardando()"
+        (click)="guardar()"
+        class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+      </button>
+      @if (errorGuardar(); as mensajeGuardar) {
+        <span class="animate-[fade-in-up_0.2s_ease-out] text-xs text-badge-error-solid">{{ mensajeGuardar }}</span>
+      }
+    </div>
+  }
+</app-side-panel>

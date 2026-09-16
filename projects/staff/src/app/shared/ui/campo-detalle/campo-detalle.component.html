@@ -1,0 +1,19 @@
+<div>
+  <p class="text-sm font-medium text-gray-700">{{ etiqueta() }}</p>
+
+  @if (editable()) {
+    <input
+      type="text"
+      [value]="valor()"
+      [placeholder]="placeholder()"
+      (input)="valorCambiado.emit($any($event.target).value)"
+      class="mt-1 w-full rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+    />
+  } @else {
+    <p class="mt-0.5 text-sm text-gray-900">{{ valor() || '—' }}</p>
+  }
+
+  @if (ayuda()) {
+    <p class="mt-1 text-xs text-gray-400">{{ ayuda() }}</p>
+  }
+</div>
