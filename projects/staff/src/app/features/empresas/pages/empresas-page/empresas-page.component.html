@@ -1,144 +1,259 @@
 <div class="p-8">
-  <h1 class="text-lg font-semibold text-gray-900">Empresas</h1>
-  <p class="mt-1 text-sm text-gray-500">
-    Clientes suscritos a Goods — {{ totalEmpresas() }} en total.
-  </p>
+  <!-- Cabecera -->
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="min-w-[420px] flex-1">
+      <div class="flex items-center gap-4">
+        <h1 class="font-display shrink-0 text-[28px] font-semibold leading-9 tracking-[-0.01em] text-gray-900">
+          Empresas
+        </h1>
+        <span class="h-px flex-1 bg-gray-200"></span>
+        <span class="mr-8 shrink-0 text-[13px] text-gray-500">{{ hoy | date: "EEEE d 'de' MMMM" }}</span>
+      </div>
+
+      <div class="mt-3.5 flex flex-wrap items-center gap-2.5">
+        <app-status-badge [label]="conteoEnAlta() + ' esperando revisión'" tone="warning" dot="filled" />
+        <app-status-badge [label]="conteoActivas() + ' vigentes'" tone="success" dot="filled" />
+        <app-status-badge [label]="conteoInactivas() + ' inactivas'" tone="neutral" dot="filled" />
+        <span class="text-[13px] text-gray-500">de {{ totalEmpresas() }} clientes de Goods</span>
+      </div>
+
+      @if (esperaMaximaDias() > 0) {
+        <p class="mt-3 max-w-[640px] text-[13px] leading-[21px] text-gray-400 text-pretty">
+          La más vieja lleva <strong class="font-semibold text-amber-700">{{ esperaMaximaTexto() }}</strong> sin
+          moverse del embudo. Las altas se activan por llamada, así que conviene revisar primero las que más
+          esperaron.
+        </p>
+      }
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        (click)="exportar()"
+        class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-card-bg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg"
+      >
+        <tabler-icon [icon]="iconDescargar" [size]="16" [stroke]="1.75" />
+        Exportar
+      </button>
+      <button
+        type="button"
+        (click)="abrirNuevaEmpresa()"
+        class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-opacity duration-200 hover:opacity-90"
+      >
+        <tabler-icon [icon]="iconAgregar" [size]="16" [stroke]="1.75" />
+        Nueva Empresa
+      </button>
+    </div>
+  </div>
 
   @if (error(); as mensaje) {
     <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
-  } @else if (cargando()) {
-    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
   } @else {
-    <div class="mt-6">
-      <app-data-table>
-        <app-search-toolbar
-          toolbar
-          placeholder="Nombre, correo o dueño"
-          [searchValue]="filtroBuscar()"
-          (searchValueChange)="onBuscarChange($event)"
-          (submitted)="cargar()"
-          [tabs]="tabsEstado()"
-          [activeTab]="filtroEstado()"
-          (activeTabChange)="seleccionarEstado($event)"
-          [appliedFilters]="filtrosAplicados()"
-          (filterRemoved)="quitarFiltro($event)"
-          (filtersCleared)="limpiarFiltros()"
-        >
-          <button
-            toolbarActions
-            type="button"
-            (click)="abrirFiltros($event)"
-            class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg"
-          >
-            <tabler-icon [icon]="iconFiltros" [size]="16" [stroke]="1.75" />
-            Filtros
-            @if (cantidadFiltrosActivos() > 0) {
-              <span
-                class="flex h-4 w-4 items-center justify-center rounded-full bg-primary-button text-[10px] font-semibold text-white"
-              >
-                {{ cantidadFiltrosActivos() }}
-              </span>
-            }
-          </button>
-        </app-search-toolbar>
+    <!-- Embudo de alta -->
+    <div class="mt-6 rounded-lg border border-gray-200 bg-card-bg px-5 py-4">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <span class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Embudo de alta</span>
+        <span class="text-xs text-gray-500">{{ notaEmbudo() }}</span>
+      </div>
 
-        <p-popover [pt]="popoverPt">
-          <div class="w-72 space-y-3 p-4">
-            <div>
-              <label class="mb-1 block text-xs font-medium text-gray-500">Plan</label>
-              <p-select
-                [options]="planesDisponibles()"
-                [ngModel]="filtroPlan()"
-                (ngModelChange)="onPlanChange($event)"
-                placeholder="Todos los planes"
-                [showClear]="true"
-                [pt]="selectPt"
-                styleClass="w-full"
-              />
+      <div class="mt-3 flex flex-wrap gap-[3px]">
+        @for (etapa of etapas(); track etapa.estado) {
+          <button
+            type="button"
+            [title]="etapa.titulo"
+            (click)="alternarEtapa(etapa)"
+            [style.flex]="etapa.flex"
+            class="flex min-w-[130px] cursor-pointer flex-col gap-2 border-0 bg-transparent p-0 text-left"
+          >
+            <span
+              class="block h-2 rounded-full transition-opacity duration-200"
+              [class]="etapa.barra"
+              [class.opacity-30]="etapa.atenuada"
+            ></span>
+            <span class="flex items-baseline gap-1.5">
+              <span class="font-display text-[20px] font-semibold leading-none tabular-nums text-gray-900">
+                {{ etapa.valor }}
+              </span>
+              <span class="whitespace-nowrap text-xs text-gray-500">{{ etapa.corto }}</span>
+            </span>
+          </button>
+        }
+
+        <div class="mx-2 w-px shrink-0 bg-gray-200"></div>
+
+        <button
+          type="button"
+          (click)="alternarInactivas()"
+          class="flex shrink-0 cursor-pointer flex-col gap-2 border-0 bg-transparent p-0 text-left"
+        >
+          <span
+            class="block h-2 w-full min-w-10 rounded-full bg-badge-neutral-bg transition-opacity duration-200"
+            [class.opacity-30]="inactivasAtenuadas()"
+          ></span>
+          <span class="flex items-baseline gap-1.5">
+            <span class="font-display text-[20px] font-semibold leading-none tabular-nums text-gray-500">
+              {{ conteoInactivas() }}
+            </span>
+            <span class="whitespace-nowrap text-xs text-gray-500">Fuera del embudo</span>
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Listado -->
+    <div class="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-card-bg">
+      <app-search-toolbar
+        placeholder="Nombre, correo o dueño"
+        [searchValue]="filtroBuscar()"
+        (searchValueChange)="onBuscarChange($event)"
+        [resultsSummary]="resumenResultados()"
+        [appliedFilters]="filtrosAplicados()"
+        (filterRemoved)="quitarFiltro($event)"
+        (filtersCleared)="limpiarFiltros()"
+      >
+        <p-select
+          toolbarActions
+          [options]="opcionesEstado"
+          [ngModel]="estadoSeleccionadoUnico()"
+          (ngModelChange)="onEstadoChange($event)"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Estado: todos"
+          [pt]="selectPt"
+        />
+        <p-select
+          toolbarActions
+          [options]="planesDisponibles()"
+          [ngModel]="filtroPlan()"
+          (ngModelChange)="onPlanChange($event)"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Plan: todos"
+          [showClear]="true"
+          [pt]="selectPt"
+        />
+        <button
+          toolbarActions
+          type="button"
+          (click)="alternarOrden()"
+          class="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg"
+        >
+          <tabler-icon [icon]="iconoOrden()" [size]="16" [stroke]="1.75" />
+          {{ etiquetaOrden() }}
+        </button>
+      </app-search-toolbar>
+
+      <!-- Filas -->
+      <div class="flex flex-col">
+        @if (cargando()) {
+          @for (s of skeletons; track s) {
+            <div class="flex animate-pulse items-center gap-4 border-b border-gray-100 px-4 py-3">
+              <span class="size-9 shrink-0 rounded-lg bg-gray-200"></span>
+              <div class="flex flex-1 flex-col gap-2">
+                <span class="h-3 w-48 rounded-full bg-gray-200"></span>
+                <span class="h-3 w-64 rounded-full bg-gray-100"></span>
+              </div>
+              <span class="h-5 w-24 shrink-0 rounded-full bg-gray-100"></span>
             </div>
-            <div>
-              <label class="mb-1 block text-xs font-medium text-gray-500">Desde</label>
-              <p-date-picker
-                [ngModel]="filtroDesdeFecha()"
-                (ngModelChange)="onDesdeChange($event)"
-                dateFormat="d M yy"
-                [showIcon]="true"
-                iconDisplay="input"
-                [pt]="datePickerPt"
-                styleClass="w-full"
-              />
+          }
+        } @else {
+          @for (empresa of filasPaginadas(); track empresa.id) {
+            <div
+              tabindex="0"
+              role="button"
+              (click)="abrirDetalle(empresa)"
+              (keydown.enter)="abrirDetalle(empresa)"
+              (keydown.space)="abrirDetalle(empresa); $event.preventDefault()"
+              class="flex cursor-pointer items-center gap-4 border-b border-gray-100 px-4 py-3 outline-none transition-colors duration-150 hover:bg-canvas-bg/60 focus-visible:bg-canvas-bg/60"
+            >
+              <span
+                class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-badge-neutral-bg text-[13px] font-semibold text-gray-700"
+              >
+                {{ iniciales(empresa.nombre) }}
+              </span>
+
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-sm font-medium leading-5 text-gray-900">{{ empresa.nombre }}</span>
+                  <app-status-badge [label]="etiquetaDe(empresa.estado)" [tone]="tonoDe(empresa.estado)" dot="filled" />
+                </div>
+                <div class="truncate text-xs leading-4 text-gray-500">
+                  {{ empresa.rubro ?? 'Sin rubro' }} · {{ empresa.correoContacto }}
+                </div>
+              </div>
+
+              <div class="flex w-[150px] shrink-0 flex-col items-end gap-0.5">
+                <span
+                  class="flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium"
+                  [class]="esUrgente(empresa) ? 'text-amber-700' : 'text-gray-500'"
+                >
+                  @if (esUrgente(empresa)) {
+                    <span class="size-[5px] shrink-0 rounded-full bg-current"></span>
+                  }
+                  {{ textoEspera(empresa) }}
+                </span>
+                <span class="whitespace-nowrap text-xs text-gray-400">{{ empresa.planNombre ?? 'Sin plan' }}</span>
+              </div>
+
+              <div class="w-[172px] shrink-0 text-right">
+                @if (proximoPaso(empresa); as paso) {
+                  <button
+                    type="button"
+                    [disabled]="enviandoAAltas() === empresa.id"
+                    (click)="ejecutarPaso(empresa); $event.stopPropagation()"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-gray-700 transition-all duration-200 hover:border-gray-200 hover:bg-canvas-bg disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {{ enviandoAAltas() === empresa.id ? 'Enviando…' : paso }}
+                    <tabler-icon [icon]="iconProximoPaso" [size]="13" [stroke]="1.75" class="text-gray-400" />
+                  </button>
+                } @else if (esEsperandoCliente(empresa)) {
+                  <span class="text-xs whitespace-nowrap text-gray-400">Esperando confirmación del cliente</span>
+                }
+              </div>
+
+              <tabler-icon [icon]="iconChevron" [size]="16" [stroke]="1.75" class="shrink-0 text-gray-300" />
             </div>
-            <div>
-              <label class="mb-1 block text-xs font-medium text-gray-500">Hasta</label>
-              <p-date-picker
-                [ngModel]="filtroHastaFecha()"
-                (ngModelChange)="onHastaChange($event)"
-                dateFormat="d M yy"
-                [showIcon]="true"
-                iconDisplay="input"
-                [pt]="datePickerPt"
-                styleClass="w-full"
-              />
-            </div>
-            <div class="flex items-center justify-end gap-2 pt-1">
+          } @empty {
+            <div class="px-4 py-10 text-center">
+              <p class="text-sm text-gray-500">No hay Empresas que coincidan con estos filtros.</p>
               <button
                 type="button"
                 (click)="limpiarFiltros()"
-                class="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+                class="mt-3 rounded-lg border border-gray-200 bg-card-bg px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg"
               >
-                Limpiar
-              </button>
-              <button
-                type="button"
-                (click)="aplicarFiltros()"
-                class="rounded-lg bg-primary-button px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-              >
-                Aplicar
+                Limpiar filtros
               </button>
             </div>
-          </div>
-        </p-popover>
+          }
+        }
+      </div>
 
-        <p-table [value]="filasFiltradas()" dataKey="id" [pt]="tablePt">
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Empresa</th>
-              <th>Rubro</th>
-              <th>Contacto</th>
-              <th>Plan</th>
-              <th>Estado</th>
-              <th>Alta</th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-empresa>
-            <tr class="cursor-pointer" (click)="abrirDetalle(empresa)">
-              <td class="font-medium text-gray-900">{{ empresa.nombre }}</td>
-              <td class="text-gray-500">{{ empresa.rubro ?? '—' }}</td>
-              <td class="text-gray-500">{{ empresa.correoContacto }}</td>
-              <td>{{ empresa.planNombre ?? '—' }}</td>
-              <td>
-                <app-status-badge [label]="etiquetaDe(empresa.estado)" [tone]="tonoDe(empresa.estado)" dot="filled" />
-              </td>
-              <td class="text-gray-500">{{ empresa.creadoEn | date: 'd MMM y' }}</td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="6" class="py-6 text-center text-sm text-gray-500">
-                No hay Empresas que coincidan con estos filtros.
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </app-data-table>
+      <!-- Paginación -->
+      @if (totalFiltradas() > filasPorPagina) {
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+          <span class="text-xs text-gray-500">{{ rangoVisible() }}</span>
+          <p-paginator
+            [first]="primeraFila()"
+            [rows]="filasPorPagina"
+            [totalRecords]="totalFiltradas()"
+            [showFirstLastIcon]="false"
+            (onPageChange)="onPagina($event)"
+            [pt]="paginatorPt"
+          />
+        </div>
+      }
     </div>
   }
 
   @if (empresaSeleccionadaId(); as id) {
-    <app-empresa-detalle-panel
-      [empresaId]="id"
-      (cerrar)="cerrarDetalle()"
-      (actualizada)="onEmpresaActualizada($event)"
+    <app-empresa-detalle-panel [empresaId]="id" (cerrar)="cerrarDetalle()" (actualizada)="onEmpresaActualizada($event)" />
+  }
+
+  @if (empresaSeleccionadaWizard(); as idWizard) {
+    <app-activar-empresa-wizard
+      [empresaId]="idWizard"
+      (cerrar)="cerrarWizard()"
+      (actualizada)="onWizardActualizada()"
     />
   }
 </div>

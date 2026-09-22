@@ -63,4 +63,17 @@ export class RealtimeService {
       return () => socket.off(evento, handler);
     });
   }
+
+  /** Abre el socket para toda la sesión sin necesitar escuchar ningún
+   * evento puntual — la llama `ShellComponent` (el layout raíz, se monta
+   * apenas hay sesión activa) para que la presencia (`RealtimeGateway`
+   * del backend, sala `staff:presencia`) quede activa desde que alguien
+   * entra al panel, no recién cuando visita una pantalla que además
+   * necesite escuchar algo (hoy, Usuarios o el asistente de activación).
+   * Sin esto, alguien navegando por Empresas/Planes/etc. nunca contaría
+   * como "conectado" aunque esté usando la app en ese momento — ver
+   * ADMIN_DISENO.md. */
+  mantenerConectado(): void {
+    this.conectar();
+  }
 }

@@ -66,11 +66,22 @@ interface NavItem {
  * aislamiento por tenant en `UsuarioService` del backend (ver ese
  * archivo para el detalle del hallazgo de seguridad).
  *
- * Sin ítem "Settings" separado (a diferencia de `admin`, que agrupa
- * Usuarios/Roles bajo una sección "Administración" con submenú): acá el
- * sidebar es plano a propósito (sin árbol de submenús, ver el resto de
- * este comentario), así que Usuarios y Roles y permisos son dos items de
- * primer nivel más, no una sección aparte.
+ * Sin sección "Administración" (a diferencia de `admin`, que agrupa
+ * Usuarios/Roles bajo esa sección con submenú): acá el sidebar sigue
+ * siendo plano a propósito (sin árbol de submenús), así que Usuarios y
+ * Roles y permisos son dos items de primer nivel más, no una sección
+ * aparte.
+ *
+ * **Settings sí se suma** (pedido explícito 2026-09-22: "agregar la
+ * opcion de settings en el sidebar como en el panel de admin"), calcado
+ * en posición y estilo del `settingsItem` de `admin` — link simple, sin
+ * submenú propio, empujado al fondo con `mt-auto`, fuera del `@for`/del
+ * indicador deslizante de primer nivel (ver `sidebar.component.html`).
+ * A diferencia de admin, acá no hay una sección "Administración" arriba
+ * de él (no aplica, ver el párrafo anterior), así que en staff Settings
+ * queda solo en ese bloque de abajo. Su contenido (perfil propio, no
+ * gestión de personal ni de roles — eso ya vive arriba) está en
+ * `features/settings/`.
  */
 @Component({
   selector: 'app-sidebar',
@@ -104,6 +115,20 @@ export class SidebarComponent {
       (item) => !item.permiso || permisos.includes(item.permiso),
     );
   });
+
+  /** Settings queda fuera de `navItems`/del indicador deslizante de primer
+   *  nivel — mismo criterio que `admin/layout/sidebar/sidebar.component.ts`
+   *  (ver el comentario de esa clase): es un link simple, empujado abajo
+   *  con `mt-auto`. Sin `permiso`: es el perfil de la propia cuenta, algo
+   *  que cualquier rol de staff puede ver/editar (el backend tampoco lo
+   *  gatea — `GET/PATCH /usuarios/:id` permiten el propio id sin permiso
+   *  especial). */
+  protected readonly settingsItem: NavItem = {
+    label: 'Settings',
+    path: '/settings',
+    icon: 'settings-2',
+    exact: true,
+  };
 
   /** Mismo mecanismo que `admin`: una única pill que se desliza entre
    *  items (hover, o si no hay hover, la ruta activa) — ver

@@ -72,6 +72,15 @@ export const routes: Routes = [
         path: 'roles',
         loadChildren: () => import('./features/roles/roles.routes').then((m) => m.ROLES_ROUTES),
       },
+      {
+        // Perfil de la propia cuenta — pedido 2026-09-22 (ver
+        // `SettingsPageComponent` y `SidebarComponent.settingsItem`). Sin
+        // `permiso` acá tampoco: cualquier cuenta de staff entra a su
+        // propio Settings.
+        path: 'settings',
+        loadChildren: () =>
+          import('./features/settings/settings.routes').then((m) => m.SETTINGS_ROUTES),
+      },
     ],
   },
 ];

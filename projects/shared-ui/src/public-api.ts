@@ -19,3 +19,4 @@ export * from './lib/utils/format-money';
 export * from './lib/search-toolbar/search-toolbar.component';
 export * from './lib/utils/filter-controls-pt';
 export * from './lib/utils/format-date';
+export * from './lib/utils/pagination-pt';

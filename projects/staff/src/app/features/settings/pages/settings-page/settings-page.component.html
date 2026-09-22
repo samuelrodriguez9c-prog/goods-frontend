@@ -1,0 +1,363 @@
+<div class="p-8 pb-[90px]">
+  <div class="mx-auto max-w-[720px]">
+    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-3">
+      <h1 class="shrink-0 font-display text-[34px] font-semibold leading-10 tracking-[-0.02em] text-gray-900">
+        Settings
+      </h1>
+      <span class="h-px min-w-[40px] flex-1 bg-gray-300"></span>
+    </div>
+    <p class="mt-3.5 max-w-[500px] text-sm leading-[22px] text-gray-500 text-pretty">
+      Tu perfil como cuenta de staff — solo vos lo ves y solo vos lo editás.
+    </p>
+
+    @if (error(); as mensaje) {
+      <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
+    }
+
+    @if (cargando()) {
+      <div class="mt-[22px] flex animate-pulse flex-col gap-4">
+        <span class="h-[104px] w-full rounded-xl bg-gray-100"></span>
+        <span class="h-[220px] w-full rounded-xl bg-gray-100"></span>
+        <span class="h-28 w-full rounded-xl bg-gray-100"></span>
+      </div>
+    } @else if (perfil(); as p) {
+      <div class="mt-[22px] flex flex-col gap-4">
+        <!-- Identidad: foto + nombre + rol -->
+        <div class="flex items-center gap-4 rounded-xl border border-gray-200 bg-card-bg px-6 py-5">
+          <label
+            class="group relative flex size-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-[#e6f4ef] text-lg font-semibold text-badge-success-solid"
+          >
+            @if (p.imagenPerfil) {
+              <img [src]="p.imagenPerfil" alt="" class="size-full object-cover" />
+            } @else {
+              {{ iniciales() }}
+            }
+            <span
+              class="absolute inset-0 flex items-center justify-center bg-gray-900/0 text-white opacity-0 transition-all duration-150 group-hover:bg-gray-900/45 group-hover:opacity-100"
+            >
+              <tabler-icon [icon]="iconCamara" [size]="18" [stroke]="1.75" />
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              class="sr-only"
+              [disabled]="subiendoFoto()"
+              (change)="onFotoSeleccionada($event)"
+            />
+          </label>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-base font-semibold tracking-[-0.012em] text-gray-900">
+              {{ p.nombres }} {{ p.apellidos }}
+            </p>
+            <p class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+              <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
+                {{ rolTexto() }}
+              </span>
+              <span class="text-gray-300">·</span>
+              <span>Miembro desde {{ miembroDesdeTexto() }}</span>
+            </p>
+          </div>
+          @if (subiendoFoto()) {
+            <span class="shrink-0 text-xs font-medium text-gray-400">Subiendo…</span>
+          }
+        </div>
+
+        <!-- Datos personales -->
+        <div class="rounded-xl border border-gray-200 bg-card-bg px-6 py-5">
+          <h2 class="text-[13px] font-semibold uppercase tracking-[0.06em] text-gray-400">Datos personales</h2>
+
+          <div class="mt-3.5 flex flex-col gap-2.5">
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Nombres
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="datos().nombres"
+                  (ngModelChange)="actualizarDato('nombres', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Apellidos
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="datos().apellidos"
+                  (ngModelChange)="actualizarDato('apellidos', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Tipo de documento <span class="normal-case tracking-normal text-gray-300">opcional</span>
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="datos().tipoDocumento"
+                  (ngModelChange)="actualizarDato('tipoDocumento', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Número de documento <span class="normal-case tracking-normal text-gray-300">opcional</span>
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="datos().numeroDocumento"
+                  (ngModelChange)="actualizarDato('numeroDocumento', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Fecha de nacimiento <span class="normal-case tracking-normal text-gray-300">opcional</span>
+                </label>
+                <input
+                  type="date"
+                  [ngModel]="datos().fechaNacimiento"
+                  (ngModelChange)="actualizarDato('fechaNacimiento', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Género <span class="normal-case tracking-normal text-gray-300">opcional</span>
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="datos().genero"
+                  (ngModelChange)="actualizarDato('genero', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                Teléfono <span class="normal-case tracking-normal text-gray-300">opcional</span>
+              </label>
+              <div class="flex items-center gap-2 rounded-[9px] border border-gray-200 bg-card-bg px-[11px] focus-within:border-gray-300">
+                <input
+                  type="tel"
+                  [ngModel]="datos().telefono"
+                  (ngModelChange)="actualizarDato('telefono', $event)"
+                  class="w-full py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+                @if (datos().telefono) {
+                  <span
+                    class="flex shrink-0 items-center gap-1 text-[11px] font-medium"
+                    [class]="p.telefonoVerificado ? 'text-badge-success-solid' : 'text-gray-400'"
+                  >
+                    {{ p.telefonoVerificado ? 'Verificado' : 'Sin verificar' }}
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Dirección <span class="normal-case tracking-normal text-gray-300">opcional</span>
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="datos().direccionPrincipal"
+                  (ngModelChange)="actualizarDato('direccionPrincipal', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Referencia <span class="normal-case tracking-normal text-gray-300">opcional</span>
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="datos().referenciaDireccion"
+                  (ngModelChange)="actualizarDato('referenciaDireccion', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                Correo
+              </label>
+              <div class="flex items-center gap-2 rounded-[9px] border border-gray-200 bg-gray-50 px-[11px] py-[9px]">
+                <span class="min-w-0 flex-1 truncate text-[13px] text-gray-500">{{ p.correo }}</span>
+                @if (p.correoVerificado) {
+                  <span class="flex shrink-0 items-center gap-1 text-[11px] font-medium text-badge-success-solid">
+                    <tabler-icon [icon]="iconCorreoOk" [size]="14" [stroke]="2" />
+                    Verificado
+                  </span>
+                }
+              </div>
+              <p class="mt-[5px] text-[11.5px] leading-4 text-gray-400">
+                El correo no se cambia desde acá: es la identidad de la cuenta.
+              </p>
+            </div>
+
+            <label class="flex items-center gap-2 text-[13px] text-gray-700">
+              <input
+                type="checkbox"
+                [ngModel]="datos().aceptaMarketing"
+                (ngModelChange)="actualizarDato('aceptaMarketing', $event)"
+                class="size-4 rounded border-gray-300"
+              />
+              Acepto recibir comunicaciones de Goods
+            </label>
+
+            @if (!p.correoVerificado) {
+              <div class="rounded-[10px] border border-[#f0e6c8] bg-[#fffdf2] px-3.5 py-3">
+                <p class="flex items-center gap-1.5 text-[12.5px] font-medium text-[#78350f]">
+                  <tabler-icon [icon]="iconAviso" [size]="15" [stroke]="2" />
+                  Tu correo todavía no está verificado
+                </p>
+                @if (!mostrarCodigoVerificacion()) {
+                  <button
+                    type="button"
+                    (click)="reenviarVerificacion()"
+                    [disabled]="enviandoVerificacion()"
+                    class="mt-2 rounded-lg bg-[#78350f] px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-45"
+                  >
+                    {{ enviandoVerificacion() ? 'Enviando…' : 'Enviar código de verificación' }}
+                  </button>
+                } @else {
+                  <div class="mt-2.5 flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="6"
+                      placeholder="Código de 6 dígitos"
+                      [ngModel]="codigoVerificacion()"
+                      (ngModelChange)="codigoVerificacion.set($event)"
+                      class="w-40 rounded-[9px] border border-[#f0e6c8] bg-card-bg px-[11px] py-[7px] text-[13px] tracking-[0.1em] text-gray-900 outline-none"
+                    />
+                    <button
+                      type="button"
+                      (click)="verificarCodigo()"
+                      [disabled]="verificandoCodigo() || codigoVerificacion().trim().length !== 6"
+                      class="rounded-lg bg-[#78350f] px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-45"
+                    >
+                      {{ verificandoCodigo() ? 'Verificando…' : 'Verificar' }}
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+
+            <button
+              type="button"
+              (click)="guardarDatos()"
+              [disabled]="guardandoDatos()"
+              class="mt-1 self-start rounded-lg bg-gray-800 px-3.5 py-2 text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-45"
+            >
+              {{ guardandoDatos() ? 'Guardando…' : 'Guardar datos' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Cuenta -->
+        <div class="rounded-xl border border-gray-200 bg-card-bg px-6 py-5">
+          <h2 class="text-[13px] font-semibold uppercase tracking-[0.06em] text-gray-400">Cuenta</h2>
+
+          <div class="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3">
+            @if (p.accesoStaffGoods) {
+              <div class="col-span-2 flex items-center gap-1.5 rounded-[10px] border border-[#cfe9df] bg-[#e6f4ef] px-3.5 py-2.5">
+                <tabler-icon [icon]="iconCandado" [size]="14" [stroke]="2" class="shrink-0 text-badge-success-solid" />
+                <p class="text-[12.5px] font-medium text-badge-success-solid">
+                  Esta cuenta tiene acceso especial de superadmin al panel de staff
+                </p>
+              </div>
+            }
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Estado</p>
+              <p class="mt-0.5 text-[13px] text-gray-700">{{ p.activo ? 'Activa' : 'Desactivada' }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Miembro desde</p>
+              <p class="mt-0.5 text-[13px] text-gray-700">{{ miembroDesdeTexto() }}</p>
+            </div>
+            @if (terminosAceptadosTexto(); as terminos) {
+              <div>
+                <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Términos aceptados</p>
+                <p class="mt-0.5 text-[13px] text-gray-700">{{ terminos }}</p>
+              </div>
+            }
+            @if (p.origenRegistro) {
+              <div>
+                <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Origen de registro</p>
+                <p class="mt-0.5 text-[13px] text-gray-700">{{ p.origenRegistro }}</p>
+              </div>
+            }
+            @if (p.codigoReferido) {
+              <div>
+                <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Código de referido</p>
+                <p class="mt-0.5 text-[13px] text-gray-700">{{ p.codigoReferido }}</p>
+              </div>
+            }
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Puntos de fidelidad</p>
+              <p class="mt-0.5 text-[13px] tabular-nums text-gray-700">{{ p.puntosFidelidad }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Última actualización</p>
+              <p class="mt-0.5 text-[13px] text-gray-700">{{ actualizadoTexto() }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seguridad -->
+        <div class="rounded-xl border border-gray-200 bg-card-bg px-6 py-5">
+          <h2 class="text-[13px] font-semibold uppercase tracking-[0.06em] text-gray-400">Seguridad</h2>
+
+          <div class="mt-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-[13px] font-medium text-gray-700">Último acceso</p>
+              <p class="mt-0.5 text-xs text-gray-500">{{ ultimoAccesoTexto() }}</p>
+            </div>
+          </div>
+
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+            <div>
+              <p class="flex items-center gap-1.5 text-[13px] font-medium text-gray-700">
+                <tabler-icon [icon]="iconCandado" [size]="15" [stroke]="1.75" class="text-gray-400" />
+                Contraseña
+              </p>
+              <p class="mt-0.5 max-w-[380px] text-xs leading-[18px] text-gray-500 text-pretty">
+                Te mandamos un correo con instrucciones para elegir una nueva.
+              </p>
+            </div>
+            <button
+              type="button"
+              (click)="solicitarCambioPassword()"
+              [disabled]="solicitandoPassword()"
+              class="shrink-0 rounded-lg border border-gray-200 bg-card-bg px-3.5 py-2 text-[12.5px] font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-45"
+            >
+              {{ solicitandoPassword() ? 'Enviando…' : 'Cambiar contraseña' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+@if (aviso(); as texto) {
+  <div
+    class="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 animate-[fade-in-up_0.2s_ease-out] items-center gap-2 rounded-full bg-badge-success-solid px-[18px] py-2.5 text-[13px] font-medium text-white shadow-[0_10px_26px_rgba(8,123,93,0.3)]"
+  >
+    <tabler-icon [icon]="iconCheck" [size]="15" [stroke]="2" />
+    {{ texto }}
+  </div>
+}

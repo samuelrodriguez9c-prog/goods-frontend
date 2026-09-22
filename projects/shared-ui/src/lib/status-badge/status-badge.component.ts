@@ -4,10 +4,13 @@ import { TagModule } from 'primeng/tag';
 /**
  * Tonos de color disponibles, uno por cada estado documentado en
  * ADMIN_DISENO.md > "Lenguaje visual general > Tokens de color":
- * verde (éxito), ámbar (pendiente/en espera), gris (neutro) y rojo
- * (crítico/error — todavía sin muestra real, usa el placeholder).
+ * verde (éxito), ámbar (pendiente/en espera), gris (neutro), rojo
+ * (crítico/error — todavía sin muestra real, usa el placeholder) y azul
+ * (informativo — sumado 2026-09-17 para "Información corroborada" en
+ * Empresas: ni ámbar, porque ya no hay nada pendiente del lado del
+ * staff, ni verde, porque todavía no es cliente activo).
  */
-export type StatusBadgeTone = 'success' | 'warning' | 'neutral' | 'critical';
+export type StatusBadgeTone = 'success' | 'warning' | 'neutral' | 'critical' | 'info';
 
 /**
  * Estilo del indicador circular que antecede al texto. En las capturas
@@ -33,6 +36,7 @@ const TONE_CLASSES: Record<StatusBadgeTone, string> = {
   // ADMIN_DISENO.md) — se deriva del placeholder sólido con opacidad
   // baja para simular el mismo patrón "fondo claro + texto del tono".
   critical: 'bg-badge-error-solid/15 text-badge-error-solid',
+  info: 'bg-badge-info-bg text-sky-900',
 };
 
 /**

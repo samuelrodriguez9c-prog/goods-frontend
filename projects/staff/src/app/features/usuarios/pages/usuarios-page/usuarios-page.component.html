@@ -1,207 +1,245 @@
-<div class="p-8">
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-lg font-semibold text-gray-900">Usuarios</h1>
-      <p class="mt-1 text-sm text-gray-500">Personal de Goods — no el equipo interno de tus clientes.</p>
+<div class="p-8 pb-[90px]">
+  <div class="mx-auto max-w-[1080px]">
+    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-3">
+      <h1 class="shrink-0 font-display text-[34px] font-semibold leading-10 tracking-[-0.02em] text-gray-900">
+        Usuarios
+      </h1>
+      <span class="h-px min-w-[40px] flex-1 bg-gray-300"></span>
+      <span class="shrink-0 text-[13px] text-gray-500">
+        {{ usuarios().length }} cuentas · {{ conAcceso() }} con acceso esta semana
+      </span>
+      <button
+        type="button"
+        (click)="abrirAlta()"
+        class="flex shrink-0 items-center gap-[7px] rounded-[9px] bg-gray-800 px-3.5 py-[9px] text-[13px] font-medium text-white transition-opacity hover:opacity-90"
+      >
+        <tabler-icon [icon]="iconAgregar" [size]="16" [stroke]="2" />
+        Agregar usuario
+      </button>
     </div>
-    <button
-      type="button"
-      (click)="abrirCrear()"
-      class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-    >
-      <tabler-icon [icon]="iconPlus" [size]="16" [stroke]="2" />
-      Nuevo usuario
-    </button>
-  </div>
 
-  @if (error(); as mensaje) {
-    <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
-  } @else if (cargando()) {
-    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
-  } @else {
-    <div class="mt-6">
-      <app-data-table>
-        <p-table [value]="usuarios()" dataKey="id" [pt]="tablePt">
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Nombre</th>
-              <th>Correo</th>
-              <th>Rol</th>
-              <th>Alta</th>
-              <th></th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-usuario>
-            <tr>
-              <td class="font-medium text-gray-900">{{ usuario.nombres }} {{ usuario.apellidos }}</td>
-              <td class="text-gray-500">{{ usuario.correo }}</td>
-              <td class="text-gray-700">{{ usuario.rol.nombre }}</td>
-              <td class="text-gray-500">{{ usuario.creadoEn | date: 'd MMM y' }}</td>
-              <td>
-                <div class="flex items-center justify-end gap-1">
-                  <button
-                    type="button"
-                    (click)="abrirEditar(usuario)"
-                    class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
-                    aria-label="Editar"
-                  >
-                    <tabler-icon [icon]="iconEdit" [size]="16" [stroke]="2" />
-                  </button>
-                  <button
-                    type="button"
-                    (click)="abrirEliminar(usuario)"
-                    class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-field-error-bg hover:text-badge-error-solid"
-                    aria-label="Eliminar"
-                  >
-                    <tabler-icon [icon]="iconDelete" [size]="16" [stroke]="2" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="5" class="py-6 text-center text-sm text-gray-500">
-                Todavía no hay personal de Goods dado de alta.
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </app-data-table>
-    </div>
-  }
-</div>
-
-@if (modalAbierto()) {
-  <app-modal [titulo]="usuarioEditando() ? 'Editar usuario' : 'Nuevo usuario'" (cerrar)="cerrarModal()">
-    <form class="space-y-4" (submit)="$event.preventDefault(); guardar()">
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label for="nombres" class="mb-1 block text-sm font-medium text-gray-700">Nombres</label>
-          <input
-            id="nombres"
-            type="text"
-            autofocus
-            [value]="formulario().nombres"
-            (input)="actualizarCampo('nombres', $any($event.target).value)"
-            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-          />
-        </div>
-        <div>
-          <label for="apellidos" class="mb-1 block text-sm font-medium text-gray-700">Apellidos</label>
-          <input
-            id="apellidos"
-            type="text"
-            [value]="formulario().apellidos"
-            (input)="actualizarCampo('apellidos', $any($event.target).value)"
-            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-          />
-        </div>
+    <div class="mt-3.5 flex flex-wrap items-baseline gap-x-[22px] gap-y-2.5">
+      <p class="min-w-[280px] max-w-[500px] flex-1 text-sm leading-[22px] text-gray-500 text-pretty">
+        {{ lectura() }}
+      </p>
+      <div class="flex flex-wrap items-baseline gap-5">
+        @for (cifra of cifras(); track cifra.etiqueta) {
+          <div>
+            <p class="font-display text-[22px] font-semibold leading-none tabular-nums" [class]="cifra.tinta">
+              {{ cifra.valor }}
+            </p>
+            <p class="mt-[5px] whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.06em] text-gray-400">
+              {{ cifra.etiqueta }}
+            </p>
+          </div>
+        }
       </div>
+    </div>
 
-      <div>
-        <label for="correo" class="mb-1 block text-sm font-medium text-gray-700">Correo</label>
-        <input
-          id="correo"
-          type="email"
-          [value]="formulario().correo"
-          [disabled]="!!usuarioEditando()"
-          (input)="actualizarCampo('correo', $any($event.target).value)"
-          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400 disabled:opacity-60"
-        />
-        @if (usuarioEditando()) {
-          <p class="mt-1 text-xs text-gray-400">El correo no se puede cambiar desde acá.</p>
+    @if (error(); as mensaje) {
+      <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
+    }
+
+    @if (cargando()) {
+      <div class="mt-[22px] flex animate-pulse flex-col gap-3">
+        <span class="h-10 w-full rounded-[9px] bg-gray-200"></span>
+        <span class="h-[320px] w-full rounded-xl bg-gray-100"></span>
+      </div>
+    } @else {
+      <div class="mt-[22px] flex flex-wrap items-center gap-2">
+        <div class="relative min-w-[210px] max-w-[300px] flex-1">
+          <tabler-icon
+            [icon]="iconBuscar"
+            [size]="14"
+            [stroke]="1.75"
+            class="pointer-events-none absolute left-[11px] top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            [ngModel]="busqueda()"
+            (ngModelChange)="busqueda.set($event)"
+            placeholder="Buscar por nombre o correo"
+            class="w-full rounded-[9px] border border-gray-200 bg-card-bg py-2 pl-8 pr-[11px] text-[13px] text-gray-900 outline-none"
+          />
+        </div>
+        <span class="flex-1"></span>
+        @for (aviso of avisos(); track aviso.texto) {
+          <button
+            type="button"
+            (click)="verFichaPorId(aviso.id)"
+            class="flex shrink-0 items-center gap-[7px] rounded-full border py-[5px] pl-[9px] pr-3 text-xs font-medium transition-transform hover:-translate-y-px"
+            [class]="aviso.clase"
+          >
+            <span
+              class="inline-block size-1.5 rounded-full"
+              [style.background]="aviso.punto"
+              [class]="aviso.pulso ? 'animate-[latido_1.4s_ease-in-out_infinite]' : ''"
+            ></span>
+            {{ aviso.texto }}
+          </button>
         }
       </div>
 
-      <div>
-        <label for="telefono" class="mb-1 block text-sm font-medium text-gray-700">
-          Teléfono <span class="font-normal text-gray-400">(opcional)</span>
-        </label>
-        <input
-          id="telefono"
-          type="tel"
-          [value]="formulario().telefono"
-          (input)="actualizarCampo('telefono', $any($event.target).value)"
-          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-        />
+      <!-- Encabezado de la matriz. Las columnas del grid se repiten en cada
+           fila: si cambiás una, cambialas todas. -->
+      <div
+        class="mt-[18px] grid grid-cols-[minmax(186px,1.25fr)_122px_repeat(6,minmax(54px,1fr))_26px] items-end px-3.5 pb-2"
+      >
+        <span class="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Persona</span>
+        <span class="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Últimos 14 días</span>
+        @for (m of modulos; track m.id) {
+          <span
+            [title]="m.completo"
+            class="text-center text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-400"
+          >
+            {{ m.corto }}
+          </span>
+        }
+        <span></span>
       </div>
 
-      @if (!usuarioEditando()) {
-        <div>
-          <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
-          <input
-            id="password"
-            type="password"
-            [value]="formulario().password"
-            (input)="actualizarCampo('password', $any($event.target).value)"
-            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-          />
-        </div>
-      }
+      <div class="overflow-hidden rounded-xl border border-gray-200 bg-card-bg">
+        @for (grupo of grupos(); track grupo.rol.id) {
+          <div class="flex items-center gap-2.5 border-t border-gray-100 bg-gray-50 px-3.5 py-2">
+            <span class="inline-block size-[7px] shrink-0 rounded-full" [style.background]="grupo.punto"></span>
+            <span class="text-xs font-semibold tracking-[-0.005em] text-gray-900">{{ grupo.nombre }}</span>
+            <span class="font-mono text-[11px] text-gray-400">{{ grupo.conteo }}</span>
+            <span class="h-px flex-1 bg-gray-100"></span>
+            <span class="truncate text-[11px] text-gray-400">{{ grupo.resumen }}</span>
+          </div>
 
-      <div>
-        <label for="rol" class="mb-1 block text-sm font-medium text-gray-700">Rol</label>
-        <select
-          id="rol"
-          [value]="formulario().rolId"
-          (change)="actualizarRol($any($event.target).value)"
-          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-        >
-          @for (rol of roles(); track rol.id) {
-            <option [value]="rol.id">{{ rol.nombre }}</option>
+          @for (fila of grupo.filas; track fila.usuario.id) {
+            <div
+              (click)="verFicha(fila.usuario)"
+              class="grid cursor-pointer grid-cols-[minmax(186px,1.25fr)_122px_repeat(6,minmax(54px,1fr))_26px] items-center border-t border-gray-100 px-3.5 py-[9px] transition-colors hover:bg-gray-50"
+              [class.bg-gray-50]="seleccionadoId() === fila.usuario.id"
+            >
+              <div class="flex min-w-0 items-center gap-2.5 pr-2.5">
+                <span class="relative inline-block size-[7px] shrink-0">
+                  <span
+                    [title]="fila.estadoTexto"
+                    class="block size-[7px] rounded-full"
+                    [style.background]="fila.punto"
+                    [class]="fila.pulso ? 'animate-[latido_1.4s_ease-in-out_infinite]' : ''"
+                  ></span>
+                  @if (fila.enLinea) {
+                    <span
+                      title="En línea ahora"
+                      class="absolute -right-[3px] -top-[3px] size-[6px] rounded-full bg-badge-success-solid ring-2 ring-card-bg"
+                    ></span>
+                  }
+                </span>
+                <span class="min-w-0">
+                  <span
+                    class="block truncate text-[13px] font-semibold tracking-[-0.005em]"
+                    [class]="fila.estado === 'activo' ? 'text-gray-900' : 'text-gray-600'"
+                  >
+                    {{ fila.nombre }}
+                  </span>
+                  <span class="block truncate text-[11px] text-gray-400">{{ fila.correo }}</span>
+                </span>
+              </div>
+
+              <div class="pr-3.5">
+                <span class="flex h-[13px] items-end gap-[1.5px]">
+                  @for (dia of fila.dias; track $index) {
+                    <span
+                      [title]="dia.titulo"
+                      class="block w-[3px] rounded-[1px]"
+                      [style.height]="dia.alto"
+                      [style.background]="dia.color"
+                    ></span>
+                  }
+                </span>
+                <span class="mt-[3px] block text-[11px]" [class]="fila.tintaUltimo">{{ fila.ultimo }}</span>
+              </div>
+
+              @for (celda of fila.celdas; track $index) {
+                <span [title]="celda.titulo" class="flex h-3.5 items-end justify-center gap-0.5">
+                  <span class="block h-[5px] w-1 rounded-[1px] transition-colors duration-200" [style.background]="celda.s1"></span>
+                  <span class="block h-[9px] w-1 rounded-[1px] transition-colors duration-200" [style.background]="celda.s2"></span>
+                  <span class="block h-[13px] w-1 rounded-[1px] transition-colors duration-200" [style.background]="celda.s3"></span>
+                </span>
+              }
+
+              <tabler-icon [icon]="iconDerecha" [size]="16" [stroke]="2" class="justify-self-end text-gray-300" />
+            </div>
           }
-        </select>
+
+          @if (mostrarFilaAgregar()) {
+            <button
+              type="button"
+              (click)="abrirAlta(grupo.rol)"
+              class="flex w-full items-center gap-2 border-t border-gray-100 px-3.5 py-[9px] text-left text-xs text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700"
+            >
+              <tabler-icon [icon]="iconMas" [size]="14" [stroke]="2" />
+              <span>Agregar a alguien como {{ grupo.nombre }}</span>
+            </button>
+          }
+        }
+
+        @if (!filtradas().length) {
+          <div class="border-t border-gray-100 px-4 py-[26px] text-center">
+            <p class="text-[13px] text-gray-500">Nadie coincide con «{{ busqueda() }}».</p>
+          </div>
+        }
       </div>
 
-      @if (errorGuardar(); as mensaje) {
-        <p class="rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid">
-          {{ mensaje }}
-        </p>
-      }
-
-      <div class="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          (click)="cerrarModal()"
-          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-        >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          [disabled]="guardando()"
-          class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-        >
-          {{ guardando() ? 'Guardando…' : 'Guardar' }}
-        </button>
+      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-3.5">
+        @for (l of leyenda(); track l.texto) {
+          <span class="flex items-center gap-1.5">
+            <span class="flex h-[13px] items-end gap-0.5">
+              <span class="block h-[5px] w-1 rounded-[1px]" [style.background]="l.s1"></span>
+              <span class="block h-[9px] w-1 rounded-[1px]" [style.background]="l.s2"></span>
+              <span class="block h-[13px] w-1 rounded-[1px]" [style.background]="l.s3"></span>
+            </span>
+            <span class="text-[11px] text-gray-500">{{ l.texto }}</span>
+          </span>
+        }
+        <span class="h-[11px] w-px bg-gray-200"></span>
+        <span class="text-[11px] text-gray-400">Cada barra de los 14 días es una jornada con acceso.</span>
       </div>
-    </form>
-  </app-modal>
+    }
+  </div>
+</div>
+
+<!-- Detalle/alta: dos componentes aparte, mismo patrón que
+     `app-empresa-detalle-panel` / `app-activar-empresa-wizard` /
+     `app-gestionar-suscripcion-panel` / `app-accion-detalle-panel` -->
+@if (modo() === 'ficha' && seleccionado(); as usuario) {
+  <app-ficha-usuario-panel
+    [usuario]="usuario"
+    [roles]="roles()"
+    [acceso]="accesos().get(usuario.id)"
+    [enLinea]="usuario.activo && enLineaIds().has(usuario.id)"
+    [rolPreviewId]="rolPreview()"
+    [matrizPanel]="matrizPanel()"
+    [textoCambioRol]="textoCambioRol()"
+    (cerrar)="cerrarPanel()"
+    (rolPreviewSeleccionado)="rolPreview.set($event)"
+    (usuarioActualizado)="onUsuarioActualizado($event)"
+    (accesoQuitado)="onAccesoQuitado($event)"
+    (avisoTexto)="mostrarAviso($event)"
+    (errorTexto)="error.set($event)"
+  />
 }
 
-@if (usuarioEliminando(); as usuario) {
-  <app-modal titulo="Eliminar usuario" (cerrar)="cerrarEliminar()">
-    <p class="text-sm text-gray-600">
-      ¿Eliminar a <span class="font-medium text-gray-900">{{ usuario.nombres }} {{ usuario.apellidos }}</span>?
-      Esta acción borra la cuenta por completo y no se puede deshacer.
-    </p>
-    <div class="mt-6 flex justify-end gap-2">
-      <button
-        type="button"
-        (click)="cerrarEliminar()"
-        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-      >
-        Cancelar
-      </button>
-      <button
-        type="button"
-        [disabled]="eliminando()"
-        (click)="confirmarEliminar()"
-        class="rounded-lg bg-badge-error-solid px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-      >
-        {{ eliminando() ? 'Eliminando…' : 'Eliminar' }}
-      </button>
-    </div>
-  </app-modal>
+@if (modo() === 'crear') {
+  <app-crear-usuario-panel
+    [roles]="roles()"
+    [rolPreseleccionado]="rolParaAlta()"
+    (cerrar)="cerrarPanel()"
+    (creado)="onUsuarioCreado($event)"
+    (avisoTexto)="mostrarAviso($event)"
+    (errorTexto)="error.set($event)"
+  />
+}
+
+@if (aviso(); as texto) {
+  <div
+    class="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 animate-[fade-in-up_0.2s_ease-out] items-center gap-2 rounded-full bg-badge-success-solid px-[18px] py-2.5 text-[13px] font-medium text-white shadow-[0_10px_26px_rgba(8,123,93,0.3)]"
+  >
+    <tabler-icon [icon]="iconCheck" [size]="15" [stroke]="2" />
+    {{ texto }}
+  </div>
 }

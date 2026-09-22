@@ -10,6 +10,7 @@ import {
   IconReceipt2,
   IconRepeat,
   IconReportMoney,
+  IconSettings2,
   IconShieldLock,
   IconStack2,
   IconUserPlus,
@@ -36,16 +37,20 @@ export const appConfig: ApplicationConfig = {
     // proyecto que consuma la librería necesita configurarlo igual.
     provideAnimationsAsync(),
     providePrimeNG({ theme: 'none' }),
-    // Íconos del sidebar propio de staff (10 items planos, sin árbol de
-    // submenús como el de `admin` — ver layout/sidebar/sidebar.component.ts
-    // y PIVOTE_SAAS_MULTITENANT.md §7.2/§8). Mismo mecanismo que `admin`
+    // Íconos del sidebar propio de staff (10 items planos + Settings al
+    // fondo, sin árbol de submenús como el de `admin` — ver
+    // layout/sidebar/sidebar.component.ts y
+    // PIVOTE_SAAS_MULTITENANT.md §7.2/§8). Mismo mecanismo que `admin`
     // (ver ese app.config.ts): `provideTablerIcons` devuelve
     // `EnvironmentProviders`, solo puede vivir a nivel de app/ruta. Los
     // íconos que usan las páginas nuevas (botones de crear/editar/
     // eliminar, etc.) NO necesitan registrarse acá — se pasan como objeto
     // directo (`[icon]="iconPlus"`), no por nombre de string; esto solo
     // hace falta para los del sidebar, que sí se pasan por nombre
-    // (`item.icon`, ver sidebar.component.html).
+    // (`item.icon`, ver sidebar.component.html). `IconSettings2` (no
+    // `IconSettings`) sumado 2026-09-22 junto con `settingsItem` — misma
+    // variante que ya usa `admin` para el mismo ítem, ver el comentario
+    // de ese `app.config.ts`.
     provideTablerIcons({
       IconBuilding,
       IconUserPlus,
@@ -57,6 +62,7 @@ export const appConfig: ApplicationConfig = {
       IconHistory,
       IconUsers,
       IconShieldLock,
+      IconSettings2,
     }),
   ],
 };

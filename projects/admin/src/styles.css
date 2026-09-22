@@ -16,6 +16,17 @@
 @import "@fontsource/inter/700.css";
 @import "@fontsource/inter/700-italic.css";
 
+/*
+ * Archivo — tipografía "display" para títulos/números grandes, sumada
+ * en `staff` para el rediseño de `empresas-page` del 2026-09-17 (embudo
+ * de alta) y duplicada acá por el mismo criterio que el resto de este
+ * archivo (ver comentario de cabecera de `staff/src/styles.css`) —
+ * `admin` no la usa todavía, pero los tokens se mantienen en paridad.
+ */
+@import "@fontsource/archivo/500.css";
+@import "@fontsource/archivo/600.css";
+@import "@fontsource/archivo/700.css";
+
 /* You can add global styles to this file, and also import other style files */
 
 /*
@@ -34,6 +45,7 @@
   --font-sans:
     'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
     sans-serif;
+  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
 
   --color-topbar: #0a0a0a;
   --color-sidebar-bg: #ebebeb;
@@ -48,6 +60,11 @@
   --color-badge-warning-solid: #ffb904;
   --color-badge-success-bg: #a4ffb6;
   --color-success-solid: #087b5d;
+
+  /* Ver el mismo token en `staff/src/styles.css` — duplicado en
+   * paridad, `admin` no lo usa todavía. */
+  --color-badge-info-bg: #c8ecff;
+  --color-badge-info-solid: #0284c7;
 
   /* Topbar > badge de versión (pill junto al logo, calcado del badge
    * "Spring '26" de Shopify) y buscador global — ver ADMIN_DISENO.md >

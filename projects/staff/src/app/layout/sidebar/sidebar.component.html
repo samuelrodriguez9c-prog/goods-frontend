@@ -28,4 +28,20 @@
       <span class="truncate">{{ item.label }}</span>
     </a>
   }
+
+  <!-- Settings: link simple, sin submenú propio, empujado al fondo —
+       calcado de `admin/layout/sidebar/` (ver comentario de
+       `settingsItem` en el componente). Sin sección "Administración"
+       arriba de él (acá no aplica, ver comentario de la clase). -->
+  <div class="mt-auto">
+    <a
+      [routerLink]="settingsItem.path"
+      routerLinkActive="bg-nav-active text-gray-900"
+      [routerLinkActiveOptions]="{ exact: settingsItem.exact }"
+      class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
+    >
+      <tabler-icon [icon]="settingsItem.icon" [size]="20" [stroke]="1.75" svgClass="shrink-0" />
+      <span class="truncate">{{ settingsItem.label }}</span>
+    </a>
+  </div>
 </nav>

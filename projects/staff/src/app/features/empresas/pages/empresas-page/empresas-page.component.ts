@@ -1,23 +1,25 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TableModule } from 'primeng/table';
-import { Popover } from 'primeng/popover';
-import { DatePicker } from 'primeng/datepicker';
 import { Select } from 'primeng/select';
-import { IconAdjustmentsHorizontal, TablerIconComponent } from '@tabler/icons-angular';
+import { Paginator, PaginatorState } from 'primeng/paginator';
+import {
+  IconArrowRight,
+  IconBolt,
+  IconChevronRight,
+  IconDownload,
+  IconPlus,
+  IconSortAscending,
+  IconSortDescending,
+  TablerIconComponent,
+} from '@tabler/icons-angular';
 import {
   AppliedFilterChip,
-  DataTableComponent,
   SearchToolbarComponent,
-  SearchToolbarTab,
   StatusBadgeComponent,
   StatusBadgeTone,
-  dataTablePt,
-  filterDatePickerPt,
   filterSelectPt,
-  formatDateInput,
-  parseDateInput,
+  paginatorPt,
 } from 'shared-ui';
 import { forkJoin } from 'rxjs';
 import { EmpresaService } from '../../../../core/catalog/empresa.service';
@@ -26,11 +28,13 @@ import { SuscripcionService } from '../../../../core/catalog/suscripcion.service
 import { construirMapaPlanPorEmpresa } from '../../../../core/catalog/plan-lookup.util';
 import { Empresa, EstadoEmpresa } from '../../../../core/catalog/models/empresa.model';
 import { EmpresaDetallePanelComponent } from '../empresa-detalle-panel/empresa-detalle-panel.component';
+import { ActivarEmpresaWizardComponent } from '../../../altas-pendientes/pages/activar-empresa-wizard/activar-empresa-wizard.component';
 
 /** Los 7 estados reales (ver `EstadoEmpresa`), en el mismo orden en que
- * recorre el flujo de alta asistida (§1/§5.1) — es el orden en que se
- * muestran las pestañas de filtro de §3.1. */
-const ESTADOS_FILTRO: EstadoEmpresa[] = [
+ * recorre el flujo de alta asistida (§1/§5.1 de
+ * PROPUESTA_FLUJO_ALTA_ASISTIDA.md) — es el orden del `p-select` de
+ * estado de §3.1. */
+const TODOS_LOS_ESTADOS: EstadoEmpresa[] = [
   'solicitud_recibida',
   'pendiente',
   'informacion_corroborada',
@@ -40,20 +44,44 @@ const ESTADOS_FILTRO: EstadoEmpresa[] = [
   'cancelada',
 ];
 
+/** Los 3 estados del flujo de alta todavía sin terminar — base del
+ * embudo, de "N esperando revisión"/"la más vieja espera" del header, y
+ * de la urgencia/orden por defecto de la lista. */
+const EN_ALTA: EstadoEmpresa[] = ['solicitud_recibida', 'pendiente', 'informacion_corroborada'];
+const GRUPO_ACTIVA: EstadoEmpresa[] = ['activa'];
+const INACTIVAS: EstadoEmpresa[] = ['suspendida', 'rechazada', 'cancelada'];
+
+/** Días de espera a partir de los cuales una fila "en alta" se marca en
+ * ámbar — confirmado con el cliente al integrar el segundo handoff de
+ * diseño de esta pantalla (2026-09-17). */
+const UMBRAL_ESPERA_DIAS = 10;
+
+/** Las 4 etapas del embudo, en orden — `pendiente` sumada acá (el
+ * handoff original solo traía 3 etapas y se olvidaba de este estado,
+ * igual que el handoff anterior se había olvidado de incluirlo en sus
+ * tarjetas de métricas). Colores: gris para "todavía sin tocar", ámbar
+ * para "el staff tiene que llamar", el nuevo tono `info` para "ya se
+ * llamó, esperando al cliente", verde para activa. */
+const ETAPAS: { estado: EstadoEmpresa; corto: string; barra: string }[] = [
+  { estado: 'solicitud_recibida', corto: 'Solicitud', barra: 'bg-gray-300' },
+  { estado: 'pendiente', corto: 'Pendiente', barra: 'bg-badge-warning-solid' },
+  { estado: 'informacion_corroborada', corto: 'Corroborada', barra: 'bg-badge-info-solid' },
+  { estado: 'activa', corto: 'Activa', barra: 'bg-success-solid' },
+];
+
 const TONO_POR_ESTADO: Record<EstadoEmpresa, StatusBadgeTone> = {
   solicitud_recibida: 'neutral',
   pendiente: 'warning',
-  informacion_corroborada: 'warning',
+  // Antes 'warning' (no existía el tono 'info' todavía) — se corrige acá
+  // de paso porque ya no describe bien el estado: la llamada ya se hizo,
+  // no hay nada pendiente del lado del staff, solo se espera al cliente.
+  informacion_corroborada: 'info',
   activa: 'success',
   rechazada: 'critical',
   suspendida: 'critical',
   cancelada: 'neutral',
 };
 
-/** Etiqueta legible por estado — antes de §11 Paso 2 la columna Estado
- * mostraba el valor crudo (`empresa.estado`, ej. "informacion_corroborada"
- * tal cual); ahora que las pestañas de filtro también necesitan texto
- * legible, se corrige acá de una vez para las dos cosas. */
 const ETIQUETA_POR_ESTADO: Record<EstadoEmpresa, string> = {
   solicitud_recibida: 'Solicitud recibida',
   pendiente: 'Pendiente',
@@ -64,59 +92,80 @@ const ETIQUETA_POR_ESTADO: Record<EstadoEmpresa, string> = {
   cancelada: 'Cancelada',
 };
 
+/**
+ * Próximo paso por fila — el segundo handoff de diseño (2026-09-17)
+ * traía esto como una suposición propia del autor del handoff, no como
+ * un reflejo del flujo real ya aprobado por gerencia
+ * (PROPUESTA_FLUJO_ALTA_ASISTIDA.md §1): asumía que en
+ * `informacion_corroborada` todavía faltaba llamar al dueño, cuando en
+ * realidad esa llamada YA se hizo para llegar a ese estado — ahí se está
+ * esperando que el cliente confirme por el enlace que se le mandó.
+ * Decisiones confirmadas con el cliente al integrar este handoff:
+ * - `solicitud_recibida` → un solo clic que manda la Empresa a la cola
+ *   de Altas pendientes (`EmpresaService.enviarAAltasPendientes`), sin
+ *   abrir ningún asistente.
+ * - `pendiente` → abre `ActivarEmpresaWizardComponent` (§4/§11 Paso 3),
+ *   que YA estaba construido de una tarea anterior — esta pantalla solo
+ *   necesitaba engancharlo, no construirlo de nuevo.
+ * - `informacion_corroborada` → sin botón, es de solo lectura (ver
+ *   `esEsperandoCliente` más abajo) — retomar esa Empresa (reenviar el
+ *   enlace, rechazarla) se hace desde "Altas pendientes", que ya la
+ *   muestra con esta misma etiqueta.
+ * - `suspendida` → sin próximo paso — el handoff suponía "Revisar el
+ *   pago", pero no existe ninguna pantalla de facturación todavía.
+ */
+const PASO: Partial<Record<EstadoEmpresa, string>> = {
+  solicitud_recibida: 'Mandar a Altas pendientes',
+  pendiente: 'Llamar / verificar datos',
+};
+
 interface FilaEmpresa extends Empresa {
   /** `null` cuando no hay una Suscripción en estado 'activa' para esta
-   * Empresa (pendiente/suspendida/cancelada) — ver
-   * `construirMapaPlanPorEmpresa`. Se muestra como "—" en la tabla, no
-   * como error: es información real (no tiene plan activo ahora mismo),
-   * no un dato que falló al cargar. */
+   * Empresa — ver `construirMapaPlanPorEmpresa`. */
   planNombre: string | null;
 }
 
+const FILAS_POR_PAGINA = 10;
+
+type Orden = 'urgencia' | 'desc' | 'asc';
+
 /**
- * Listado de Empresas (clientes de Goods) — núcleo del panel de staff
- * aprobado en §7.2 (PIVOTE_SAAS_MULTITENANT.md), primera pantalla real
- * del paso 5 de §8. Incluye TODOS los estados (los 7 de `EstadoEmpresa`)
- * — a diferencia de "Altas pendientes" (`features/altas-pendientes/`),
- * acá no hay acción de activar, es solo la vista general + el panel de
- * detalle de §3.2/§11 Paso 2 (clic en una fila).
+ * Listado de Empresas (clientes de Goods) — núcleo del panel de staff.
+ * Incluye TODOS los estados (los 7 de `EstadoEmpresa`) — a diferencia de
+ * "Altas pendientes" (`features/altas-pendientes/`), acá no hay cola de
+ * trabajo, es la vista general + el panel de detalle de solo lectura
+ * (clic en una fila) + acceso directo al próximo paso de cada Empresa
+ * en alta (clic en el botón de la derecha de la fila).
  *
  * El plan de cada fila no viene de `GET /empresas` (esa tabla no lo
- * tiene — el plan vive en `Suscripcion`, historial aparte, ver
- * `Empresa.entity.ts` del backend): se resuelve cruzando
- * `GET /suscripciones?estado=activa` + `GET /planes/todos` en memoria —
- * ver `construirMapaPlanPorEmpresa` para el porqué de este enfoque en
- * vez de N llamadas (una por Empresa). El filtro de plan de §3.1 por eso
- * también se resuelve en memoria (`filasFiltradas`), no como query param
- * — el backend no tiene ahí ni el cruce para hacerlo en servidor (ver el
- * comentario en `ListarEmpresasQueryDto`).
+ * tiene — el plan vive en `Suscripcion`, historial aparte): se resuelve
+ * cruzando `GET /suscripciones?estado=activa` + `GET /planes/todos` en
+ * memoria — ver `construirMapaPlanPorEmpresa`.
  *
- * Filtros rehechos sobre `SearchToolbarComponent` (ver ese componente y
- * ADMIN_DISENO.md > "Barra de búsqueda y filtros"): las 8 pills con
- * anillo (Todos + 7 estados envolviendo `app-status-badge`) que había
- * arriba de la tabla no se parecían a nada de Shopify — pasaron a ser
- * las pestañas del propio buscador. "Buscar" (nombre/correo/dueño) es
- * ahora el campo de búsqueda principal; Plan/Desde/Hasta viven en el
- * popover "Filtros" como `p-select`/`p-date-picker` (antes `<select>`/
- * `<input type="date">` nativos — un `<select>` de sistema operativo y
- * un calendario nativo no se pueden vestir para que se vean como el
- * overlay real de Shopify).
+ * Segundo rediseño 2026-09-17, sobre un segundo handoff de diseño que
+ * reemplaza tarjetas de métricas clicables por un "embudo de alta"
+ * (barras proporcionales al conteo de cada etapa, ver ADMIN_DISENO.md >
+ * "Barra de búsqueda y filtros" para el detalle completo de qué cambió
+ * y por qué, incluidas las correcciones de flujo real y el próximo paso
+ * de cada fila).
+ *
+ * `EmpresaService.listar()` ya trae `pageSize=100` de una, así que
+ * alcanza para traer todo de una sola vez y resolver estado/plan/
+ * búsqueda/orden/paginación en memoria con `computed()`.
  */
 @Component({
   selector: 'app-empresas-page',
   standalone: true,
   imports: [
     FormsModule,
-    TableModule,
-    DataTableComponent,
+    DatePipe,
     StatusBadgeComponent,
     SearchToolbarComponent,
-    Popover,
-    DatePicker,
     Select,
+    Paginator,
     TablerIconComponent,
-    DatePipe,
     EmpresaDetallePanelComponent,
+    ActivarEmpresaWizardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './empresas-page.component.html',
@@ -126,50 +175,91 @@ export class EmpresasPageComponent {
   private readonly suscripcionService = inject(SuscripcionService);
   private readonly planService = inject(PlanService);
 
-  protected readonly tablePt = dataTablePt();
-  protected readonly datePickerPt = filterDatePickerPt();
   protected readonly selectPt = filterSelectPt();
-  protected readonly iconFiltros = IconAdjustmentsHorizontal;
+  protected readonly paginatorPt = paginatorPt();
   protected readonly tonoPorEstado = TONO_POR_ESTADO;
+  protected readonly hoy = new Date();
 
-  protected readonly tabsEstado = computed<SearchToolbarTab[]>(() => [
-    { value: null, label: 'Todos' },
-    ...ESTADOS_FILTRO.map((estado) => ({ value: estado, label: ETIQUETA_POR_ESTADO[estado] })),
-  ]);
+  protected readonly iconDescargar = IconDownload;
+  protected readonly iconAgregar = IconPlus;
+  protected readonly iconChevron = IconChevronRight;
+  protected readonly iconOrdenDesc = IconSortDescending;
+  protected readonly iconOrdenAsc = IconSortAscending;
+  protected readonly iconUrgencia = IconBolt;
+  protected readonly iconProximoPaso = IconArrowRight;
 
-  // Mismo estilo de superficie que `QuickAdjustPopoverComponent` — ver
-  // la nota equivalente en `AuditoriaPageComponent`.
-  protected readonly popoverPt = {
-    root: 'rounded-lg border border-gray-200 bg-card-bg shadow-lg',
-    content: 'p-0',
-  };
+  protected readonly opcionesEstado = [
+    { label: 'Estado: todos', value: null },
+    ...TODOS_LOS_ESTADOS.map((estado) => ({ label: ETIQUETA_POR_ESTADO[estado], value: estado })),
+  ];
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly filas = signal<FilaEmpresa[]>([]);
+  protected readonly skeletons = [1, 2, 3, 4, 5, 6];
 
-  // Filtros de servidor (§3.1) — se mandan a `EmpresaService.listar()`.
-  // La pestaña de estado filtra al tocarla (una sola acción); buscar/
-  // desde/hasta filtran al tocar "Filtrar" (Enter en el buscador o el
-  // botón del popover), mismo patrón que `AuditoriaPageComponent` (no en
-  // cada tecla, porque es una llamada al servidor).
-  protected readonly filtroEstado = signal<EstadoEmpresa | null>(null);
+  // --- Filtros (todos en memoria) -------------------------------------------
   protected readonly filtroBuscar = signal('');
-  protected readonly filtroDesde = signal('');
-  protected readonly filtroHasta = signal('');
-
-  // Filtro de plan — en memoria, ver el comentario de la clase. Se
-  // aplica al instante (no hace falta "Filtrar": no hay llamada al
-  // servidor de por medio), igual que la pestaña de estado.
+  protected readonly filtroEstados = signal<EstadoEmpresa[] | null>(null);
   protected readonly filtroPlan = signal<string | null>(null);
+  protected readonly orden = signal<Orden>('urgencia');
+  protected readonly primeraFila = signal(0);
 
-  // Panel de detalle (§3.2) — `null` significa cerrado.
+  // Panel de detalle de solo lectura (clic en la fila) — `null` = cerrado.
   protected readonly empresaSeleccionadaId = signal<number | null>(null);
+  // Asistente de activación (§4/§11 Paso 3) — `null` = cerrado. Mismo
+  // patrón que `AltasPendientesPageComponent.empresaSeleccionadaWizard`.
+  protected readonly empresaSeleccionadaWizard = signal<number | null>(null);
+  // Id de la fila con un "Mandar a Altas pendientes" en curso, para
+  // deshabilitar el botón y evitar doble clic mientras responde el server.
+  protected readonly enviandoAAltas = signal<number | null>(null);
 
-  private readonly popoverFiltros = viewChild.required(Popover);
+  protected readonly totalEmpresas = computed(() => this.filas().length);
+  protected readonly conteoEnAlta = computed(() => this.contar(EN_ALTA));
+  protected readonly conteoActivas = computed(() => this.contar(GRUPO_ACTIVA));
+  protected readonly conteoInactivas = computed(() => this.contar(INACTIVAS));
 
-  protected readonly filtroDesdeFecha = computed(() => parseDateInput(this.filtroDesde()));
-  protected readonly filtroHastaFecha = computed(() => parseDateInput(this.filtroHasta()));
+  protected readonly esperaMaximaDias = computed(() =>
+    Math.max(0, ...this.filas().filter((f) => EN_ALTA.includes(f.estado)).map((f) => this.dias(f.creadoEn))),
+  );
+
+  protected readonly esperaMaximaTexto = computed(() => {
+    const d = this.esperaMaximaDias();
+    return d === 1 ? '1 día' : `${d} días`;
+  });
+
+  protected readonly notaEmbudo = computed(() =>
+    this.esperaMaximaDias() > 0
+      ? `La solicitud más vieja espera hace ${this.esperaMaximaTexto()}`
+      : 'Nada esperando revisión',
+  );
+
+  protected readonly etapas = computed(() => {
+    const todas = this.filas();
+    const filtro = this.filtroEstados();
+    return ETAPAS.map((etapa) => {
+      const valor = todas.filter((f) => f.estado === etapa.estado).length;
+      return {
+        ...etapa,
+        valor,
+        titulo: `${ETIQUETA_POR_ESTADO[etapa.estado]} — ${valor}`,
+        flex: Math.max(valor, 1),
+        atenuada: filtro !== null && !mismoGrupo(filtro, [etapa.estado]),
+      };
+    });
+  });
+
+  protected readonly inactivasAtenuadas = computed(() => {
+    const filtro = this.filtroEstados();
+    return filtro !== null && !mismoGrupo(filtro, INACTIVAS);
+  });
+
+  /** El `p-select` de estado puntual solo muestra un valor seleccionado
+   * cuando `filtroEstados` es exactamente UN estado. */
+  protected readonly estadoSeleccionadoUnico = computed<EstadoEmpresa | null>(() => {
+    const estados = this.filtroEstados();
+    return estados && estados.length === 1 ? estados[0] : null;
+  });
 
   protected readonly planesDisponibles = computed(() => {
     const nombres = new Set<string>();
@@ -178,31 +268,90 @@ export class EmpresasPageComponent {
         nombres.add(fila.planNombre);
       }
     }
-    return [...nombres].sort();
+    return [...nombres].sort().map((nombre) => ({ label: nombre, value: nombre }));
   });
 
   protected readonly filasFiltradas = computed(() => {
+    const term = this.filtroBuscar().trim().toLowerCase();
+    const estados = this.filtroEstados();
     const plan = this.filtroPlan();
-    const todas = this.filas();
-    return plan ? todas.filter((fila) => fila.planNombre === plan) : todas;
+
+    const filtradas = this.filas().filter((e) => {
+      if (estados && !estados.includes(e.estado)) return false;
+      if (plan && e.planNombre !== plan) return false;
+      if (!term) return true;
+      return `${e.nombre} ${e.correoContacto} ${e.rubro ?? ''}`.toLowerCase().includes(term);
+    });
+
+    if (this.orden() === 'urgencia') {
+      // Lo que espera trabajo del staff primero (en alta), después lo
+      // suspendido (posible problema de pago), el resto al final — y
+      // dentro de cada grupo, lo más viejo arriba.
+      const peso = (e: FilaEmpresa) => (EN_ALTA.includes(e.estado) ? 0 : e.estado === 'suspendida' ? 1 : 2);
+      return [...filtradas].sort(
+        (a, b) => peso(a) - peso(b) || new Date(a.creadoEn).getTime() - new Date(b.creadoEn).getTime(),
+      );
+    }
+
+    const signo = this.orden() === 'asc' ? 1 : -1;
+    return [...filtradas].sort(
+      (a, b) => signo * (new Date(a.creadoEn).getTime() - new Date(b.creadoEn).getTime()),
+    );
   });
 
-  protected readonly totalEmpresas = computed(() => this.filasFiltradas().length);
+  protected readonly totalFiltradas = computed(() => this.filasFiltradas().length);
 
-  protected readonly cantidadFiltrosActivos = computed(
-    () => (this.filtroPlan() ? 1 : 0) + (this.filtroDesde() ? 1 : 0) + (this.filtroHasta() ? 1 : 0),
+  protected readonly filasPaginadas = computed(() =>
+    this.filasFiltradas().slice(this.primeraFila(), this.primeraFila() + FILAS_POR_PAGINA),
   );
+
+  protected readonly filasPorPagina = FILAS_POR_PAGINA;
+
+  protected readonly resumenResultados = computed(() => {
+    const n = this.totalFiltradas();
+    return `${n} ${n === 1 ? 'resultado' : 'resultados'}`;
+  });
+
+  protected readonly rangoVisible = computed(() => {
+    const total = this.totalFiltradas();
+    if (!total) return 'Sin resultados';
+    const desde = this.primeraFila() + 1;
+    const hasta = Math.min(this.primeraFila() + FILAS_POR_PAGINA, total);
+    return `${desde}–${hasta} de ${total}`;
+  });
+
+  protected readonly iconoOrden = computed(() => {
+    switch (this.orden()) {
+      case 'urgencia':
+        return this.iconUrgencia;
+      case 'desc':
+        return this.iconOrdenDesc;
+      default:
+        return this.iconOrdenAsc;
+    }
+  });
+
+  protected readonly etiquetaOrden = computed(() => {
+    switch (this.orden()) {
+      case 'urgencia':
+        return 'Por urgencia';
+      case 'desc':
+        return 'Más recientes';
+      default:
+        return 'Más antiguas';
+    }
+  });
 
   protected readonly filtrosAplicados = computed<AppliedFilterChip[]>(() => {
     const chips: AppliedFilterChip[] = [];
+    const estados = this.filtroEstados();
+    if (estados && estados.length === 1) {
+      chips.push({ key: 'estado', label: `Estado: ${ETIQUETA_POR_ESTADO[estados[0]]}` });
+    } else if (estados) {
+      chips.push({ key: 'estado', label: `Estado: ${estados.map((e) => ETIQUETA_POR_ESTADO[e]).join(', ')}` });
+    }
     if (this.filtroPlan()) {
       chips.push({ key: 'plan', label: `Plan: ${this.filtroPlan()}` });
-    }
-    if (this.filtroDesde()) {
-      chips.push({ key: 'desde', label: `Desde: ${this.formatearFecha(this.filtroDesde())}` });
-    }
-    if (this.filtroHasta()) {
-      chips.push({ key: 'hasta', label: `Hasta: ${this.formatearFecha(this.filtroHasta())}` });
     }
     return chips;
   });
@@ -216,12 +365,7 @@ export class EmpresasPageComponent {
     this.error.set(null);
 
     forkJoin({
-      empresas: this.empresaService.listar({
-        estado: this.filtroEstado() ?? undefined,
-        buscar: this.filtroBuscar().trim() || undefined,
-        desde: this.filtroDesde() || undefined,
-        hasta: this.filtroHasta() || undefined,
-      }),
+      empresas: this.empresaService.listar(),
       suscripcionesActivas: this.suscripcionService.listar('activa'),
       planes: this.planService.listarTodos(),
     }).subscribe({
@@ -242,59 +386,144 @@ export class EmpresasPageComponent {
     });
   }
 
-  protected onBuscarChange(valor: string): void {
-    this.filtroBuscar.set(valor);
+  private contar(estados: EstadoEmpresa[]): number {
+    return this.filas().filter((f) => estados.includes(f.estado)).length;
   }
 
-  protected seleccionarEstado(estado: string | null): void {
-    const valor = estado as EstadoEmpresa | null;
-    if (this.filtroEstado() === valor) {
-      return;
-    }
-    this.filtroEstado.set(valor);
-    this.cargar();
+  private dias(fecha: string): number {
+    return Math.round((Date.now() - new Date(fecha).getTime()) / 86_400_000);
+  }
+
+  private reset(): void {
+    this.primeraFila.set(0);
+  }
+
+  protected onBuscarChange(valor: string): void {
+    this.filtroBuscar.set(valor);
+    this.reset();
+  }
+
+  protected onEstadoChange(estado: EstadoEmpresa | null): void {
+    this.filtroEstados.set(estado ? [estado] : null);
+    this.reset();
   }
 
   protected onPlanChange(plan: string | null): void {
     this.filtroPlan.set(plan);
+    this.reset();
   }
 
-  protected onDesdeChange(fecha: Date | null): void {
-    this.filtroDesde.set(formatDateInput(fecha));
+  protected alternarEtapa(etapa: { estado: EstadoEmpresa }): void {
+    this.filtroEstados.update((actual) => (mismoGrupo(actual, [etapa.estado]) ? null : [etapa.estado]));
+    this.reset();
   }
 
-  protected onHastaChange(fecha: Date | null): void {
-    this.filtroHasta.set(formatDateInput(fecha));
-  }
-
-  protected abrirFiltros(event: Event): void {
-    this.popoverFiltros().toggle(event);
-  }
-
-  protected aplicarFiltros(): void {
-    this.popoverFiltros().hide();
-    this.cargar();
+  protected alternarInactivas(): void {
+    this.filtroEstados.update((actual) => (mismoGrupo(actual, INACTIVAS) ? null : INACTIVAS));
+    this.reset();
   }
 
   protected quitarFiltro(clave: string): void {
-    if (clave === 'plan') {
+    if (clave === 'estado') {
+      this.filtroEstados.set(null);
+    } else if (clave === 'plan') {
       this.filtroPlan.set(null);
-      return;
     }
-    if (clave === 'desde') {
-      this.filtroDesde.set('');
-    } else if (clave === 'hasta') {
-      this.filtroHasta.set('');
-    }
-    this.cargar();
+    this.reset();
   }
 
   protected limpiarFiltros(): void {
-    this.filtroEstado.set(null);
     this.filtroBuscar.set('');
-    this.filtroDesde.set('');
-    this.filtroHasta.set('');
+    this.filtroEstados.set(null);
     this.filtroPlan.set(null);
+    this.reset();
+  }
+
+  protected alternarOrden(): void {
+    this.orden.update((o) => (o === 'urgencia' ? 'desc' : o === 'desc' ? 'asc' : 'urgencia'));
+    this.reset();
+  }
+
+  protected onPagina(event: PaginatorState): void {
+    this.primeraFila.set(event.first ?? 0);
+  }
+
+  protected iniciales(nombre: string): string {
+    return nombre
+      .split(' ')
+      .filter((w) => w.length > 2)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase();
+  }
+
+  protected esUrgente(fila: FilaEmpresa): boolean {
+    return EN_ALTA.includes(fila.estado) && this.dias(fila.creadoEn) >= UMBRAL_ESPERA_DIAS;
+  }
+
+  protected textoEspera(fila: FilaEmpresa): string {
+    if (EN_ALTA.includes(fila.estado)) {
+      const d = this.dias(fila.creadoEn);
+      return d <= 0 ? 'Hoy' : d === 1 ? '1 día esperando' : `${d} días esperando`;
+    }
+    if (fila.estado === 'activa') {
+      return `Cliente desde ${new Date(fila.creadoEn).toLocaleDateString('es', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })}`;
+    }
+    return 'Sin actividad';
+  }
+
+  /** Texto + acción del botón de la derecha — `null` cuando ese estado no
+   * tiene un próximo paso accionable (ver el comentario de `PASO`). */
+  protected proximoPaso(fila: FilaEmpresa): string | null {
+    return PASO[fila.estado] ?? null;
+  }
+
+  /** `informacion_corroborada` sí tiene algo que mostrar en esa misma
+   * columna, pero de solo lectura — ver el comentario de `PASO`. */
+  protected esEsperandoCliente(fila: FilaEmpresa): boolean {
+    return fila.estado === 'informacion_corroborada';
+  }
+
+  protected ejecutarPaso(fila: FilaEmpresa): void {
+    if (fila.estado === 'solicitud_recibida') {
+      this.mandarAAltasPendientes(fila);
+    } else if (fila.estado === 'pendiente') {
+      this.abrirWizard(fila);
+    }
+  }
+
+  private mandarAAltasPendientes(fila: FilaEmpresa): void {
+    if (this.enviandoAAltas() === fila.id) return;
+    this.enviandoAAltas.set(fila.id);
+    this.empresaService.enviarAAltasPendientes(fila.id).subscribe({
+      next: () => {
+        this.enviandoAAltas.set(null);
+        this.cargar();
+      },
+      error: () => {
+        this.enviandoAAltas.set(null);
+        this.error.set('No se pudo mandar la Empresa a Altas pendientes. Intenta de nuevo.');
+      },
+    });
+  }
+
+  protected abrirWizard(fila: FilaEmpresa): void {
+    this.empresaSeleccionadaWizard.set(fila.id);
+  }
+
+  protected cerrarWizard(): void {
+    this.empresaSeleccionadaWizard.set(null);
+  }
+
+  /** Mismo criterio que `AltasPendientesPageComponent`: cualquier cambio
+   * del wizard recarga la lista entera en vez de tratar de reflejar cada
+   * transición a mano. */
+  protected onWizardActualizada(): void {
     this.cargar();
   }
 
@@ -323,8 +552,20 @@ export class EmpresasPageComponent {
     return ETIQUETA_POR_ESTADO[estado as EstadoEmpresa] ?? estado;
   }
 
-  private formatearFecha(valor: string): string {
-    const fecha = parseDateInput(valor);
-    return fecha ? fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }) : valor;
-  }
+  /** TODO: modal de creación manual de Empresa — no forma parte de este
+   * rediseño, queda pendiente de una tarea aparte (ver el mismo TODO en
+   * el handoff original). */
+  protected abrirNuevaEmpresa(): void {}
+
+  /** TODO: exportar `filasFiltradas()` a CSV — no forma parte de este
+   * rediseño, queda pendiente de una tarea aparte (ver el mismo TODO en
+   * el handoff original). */
+  protected exportar(): void {}
+}
+
+function mismoGrupo(a: EstadoEmpresa[] | null, b: EstadoEmpresa[]): boolean {
+  if (a === null) return false;
+  if (a.length !== b.length) return false;
+  const setB = new Set(b);
+  return a.every((estado) => setB.has(estado));
 }

@@ -1,7 +1,16 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { TableModule } from 'primeng/table';
-import { DataTableComponent, StatusBadgeComponent, dataTablePt } from 'shared-ui';
+import { RouterLink } from '@angular/router';
+import {
+  IconCalendarClock,
+  IconCheck,
+  IconChevronRight,
+  IconListDetails,
+  IconPhone,
+  IconPhoneOff,
+  IconSend,
+  TablerIconComponent,
+} from '@tabler/icons-angular';
 import { forkJoin } from 'rxjs';
 import { EmpresaService } from '../../../../core/catalog/empresa.service';
 import { PlanService } from '../../../../core/catalog/plan.service';
@@ -10,40 +19,83 @@ import { construirMapaPlanPorEmpresa } from '../../../../core/catalog/plan-looku
 import { Empresa } from '../../../../core/catalog/models/empresa.model';
 import { ActivarEmpresaWizardComponent } from '../activar-empresa-wizard/activar-empresa-wizard.component';
 
-interface FilaPendiente extends Empresa {
-  /** Suscripcion.estado === 'pendiente' recién se crea en
-   * `EmpresaService.registrarPublico` del backend, así que toda fila acá
-   * SIEMPRE debería tener un plan solicitado — a diferencia del listado
-   * general de Empresas, acá `null` sería un dato raro, no un caso normal
-   * (ver comentario de `EmpresasPageComponent.FilaEmpresa.planNombre`). */
+/** Días de espera desde los que una alta pasa a estar "pasada de rosca".
+ * Mismo umbral ya confirmado con el cliente para `EmpresasPageComponent`
+ * (embudo de alta, rediseño 2026-09-17) — es el mismo concepto de "días
+ * esperando en `pendiente`", así que se reutiliza el valor, no se
+ * vuelve a preguntar. */
+const UMBRAL_URGENTE = 10;
+
+/** Días desde la llamada tras los cuales conviene insistirle al cliente que
+ * todavía no confirmó (aparece "Reenviar el enlace" en la lista de espera).
+ * Suposición de diseño nueva de este handoff — ajustala al proceso real. */
+const DIAS_REINTENTO = 3;
+
+/** Cuántas de las vencidas se resaltan con el fondo cálido. Con cola
+ * acumulada, pintar TODAS las vencidas hace que el color deje de
+ * significar algo — ver la nota de diseño del rediseño 2026-09-17. */
+const MAX_DESTACADAS = 3;
+
+interface FilaLlamada extends Empresa {
   planNombre: string | null;
+  /** Posición en la hoja, ya formateada ("01", "02"…). */
+  orden: string;
+  diasEspera: number;
+  unidadEspera: string;
+  urgente: boolean;
+  destacada: boolean;
+  /** `true` en la primera fila que ya está en tiempo, para dibujar el corte
+   * tipográfico que separa lo vencido del resto. */
+  corte: boolean;
+  dueno: string;
+  /** Teléfono si lo dejó, correo si no — es lo que el staff necesita para
+   * contactarlo, no los dos datos siempre. */
+  contacto: string;
+  contexto: string;
+  /** Llamada agendada (solo en memoria por ahora, ver nota de la clase). */
+  agendadaEn: Date | null;
+}
+
+interface FilaEsperando extends Empresa {
+  planNombre: string | null;
+  contexto: string;
+  textoEspera: string;
+  insistir: boolean;
 }
 
 /**
- * Cola de altas pendientes (§7.2, PIVOTE_SAAS_MULTITENANT.md) — el paso 2
- * del flujo de alta asistida (§5): un negocio se registró desde la
- * página pública de checkout y quedó `pendiente` con una Suscripción
- * `pendiente` al plan que eligió.
+ * Cola de altas pendientes (§7.2, PIVOTE_SAAS_MULTITENANT.md; §11 Paso 3,
+ * PROPUESTA_FLUJO_ALTA_ASISTIDA.md) — rediseño del 2026-09-17 ("hoja del
+ * día"), tercer handoff integrado componente por componente.
  *
- * §11 Paso 3 (PROPUESTA_FLUJO_ALTA_ASISTIDA.md): el botón "Activar" ya no
- * llama a `EmpresaService.activar()` de un tirón — abre
- * `ActivarEmpresaWizardComponent`, el asistente de 2 pasos. Esta pantalla
- * ahora también pide `informacion_corroborada` además de `pendiente`
- * (antes solo pedía `pendiente`): una Empresa en ese estado ya pasó el
- * paso 1 del asistente (la llamada) y está esperando que el cliente
- * confirme desde el enlace — se queda visible acá con la etiqueta
- * "Esperando confirmación del cliente" en vez de desaparecer, para que
- * el staff pueda retomarla (reabrir el wizard directo en el paso 2, o
- * rechazarla) sin perder el hilo. La Suscripción de esas filas sigue
- * `pendiente` hasta que el cliente confirma (ver
- * `EmpresaService.activarPorConfirmacionCliente` del backend), así que
- * el mismo cruce de `suscripcionService.listar('pendiente')` de siempre
- * también resuelve el plan de estas filas nuevas.
+ * Deja de ser una tabla de seis columnas (`p-table`/`DataTableComponent`,
+ * que sigue en uso en el resto del panel) y pasa a ser una hoja de ruta
+ * de llamadas, partida en las dos únicas cosas que el staff distingue al
+ * trabajar: lo que depende de él (`pendiente` → hay que llamar) y lo que
+ * depende del cliente (`informacion_corroborada` → ya se llamó, falta que
+ * confirme desde el enlace). Antes las dos convivían en la misma tabla
+ * separadas solo por un badge ámbar.
+ *
+ * Decisiones que vale la pena no perder al tocar esto:
+ *
+ * 1. **Orden fijo por antigüedad.** No hay selector de orden: no existe otro
+ *    criterio razonable para una cola de trabajo.
+ * 2. **La espera es la cifra protagonista**, no la fecha de solicitud.
+ * 3. **Falta de teléfono = bloqueo**, no un guión: sin número no se puede
+ *    llamar, así que se marca en la fila y el asistente deshabilita
+ *    "Llamar ahora" (ver `ActivarEmpresaWizardComponent`).
+ * 4. **Rubro y plan bajan a un renglón de contexto**: nunca decidieron nada,
+ *    no merecían una columna cada uno.
+ *
+ * PENDIENTE DE BACKEND: `agendadaEn` (el "Programar llamada" del asistente)
+ * hoy vive solo en memoria de esta pantalla — se pierde al recargar. Para
+ * que sea real hace falta persistirlo (columna en `Empresa` o tabla de
+ * recordatorios) y devolverlo en `GET /empresas`.
  */
 @Component({
   selector: 'app-altas-pendientes-page',
   standalone: true,
-  imports: [TableModule, DataTableComponent, DatePipe, StatusBadgeComponent, ActivarEmpresaWizardComponent],
+  imports: [DatePipe, RouterLink, TablerIconComponent, ActivarEmpresaWizardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './altas-pendientes-page.component.html',
 })
@@ -52,18 +104,111 @@ export class AltasPendientesPageComponent {
   private readonly suscripcionService = inject(SuscripcionService);
   private readonly planService = inject(PlanService);
 
-  // Mismo `pt` (pass-through) que EmpresasPageComponent — sin esto la
-  // `<p-table>` queda sin el padding/bordes de celda de shared-ui (bug
-  // real encontrado al verificar esta pantalla: encabezados y filas se
-  // veían todos pegados, sin espacio entre columnas).
-  protected readonly tablePt = dataTablePt();
+  protected readonly hoy = new Date();
+  protected readonly umbralUrgente = UMBRAL_URGENTE;
+  protected readonly skeletons = [0, 1, 2, 3];
+
+  protected readonly iconLlamar = IconPhone;
+  protected readonly iconSinTelefono = IconPhoneOff;
+  protected readonly iconAgenda = IconCalendarClock;
+  protected readonly iconDatos = IconListDetails;
+  protected readonly iconReenviar = IconSend;
+  protected readonly iconRetomar = IconChevronRight;
+  protected readonly iconListo = IconCheck;
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly filas = signal<FilaPendiente[]>([]);
-
-  // Wizard de activación (§11 Paso 3) — `null` significa cerrado.
   protected readonly empresaSeleccionadaWizard = signal<number | null>(null);
+
+  private readonly pendientes = signal<(Empresa & { planNombre: string | null })[]>([]);
+  private readonly corroboradas = signal<(Empresa & { planNombre: string | null })[]>([]);
+  private readonly agenda = signal<Record<number, Date>>({});
+
+  protected readonly llamadas = computed<FilaLlamada[]>(() => {
+    const agenda = this.agenda();
+    // Lo más viejo arriba: la espera es el único criterio que importa acá.
+    const ordenadas = [...this.pendientes()].sort(
+      (a, b) => new Date(a.creadoEn).getTime() - new Date(b.creadoEn).getTime(),
+    );
+
+    return ordenadas.map((empresa, i) => {
+      const dias = this.diasDesde(empresa.creadoEn);
+      const urgente = dias >= UMBRAL_URGENTE;
+      // Van ordenadas de más vieja a más nueva, así que las primeras `i` son
+      // las peores: alcanza con el índice para saber si entra en el resalte.
+      const destacada = urgente && i < MAX_DESTACADAS;
+      const anteriorVencida = i > 0 ? this.diasDesde(ordenadas[i - 1].creadoEn) >= UMBRAL_URGENTE : false;
+
+      return {
+        ...empresa,
+        orden: String(i + 1).padStart(2, '0'),
+        diasEspera: dias,
+        unidadEspera: dias === 0 ? 'recién entró' : dias === 1 ? 'día esperando' : 'días esperando',
+        urgente,
+        destacada,
+        corte: i > 0 && anteriorVencida && !urgente,
+        dueno: this.nombreDueno(empresa),
+        contacto: empresa.telefonoContacto ?? empresa.correoContacto,
+        contexto: [empresa.rubro ?? 'Sin rubro declarado', empresa.planNombre ? 'Pidió el plan ' + empresa.planNombre : null]
+          .filter(Boolean)
+          .join(' · '),
+        agendadaEn: agenda[empresa.id] ?? null,
+      };
+    });
+  });
+
+  protected readonly esperando = computed<FilaEsperando[]>(() =>
+    this.corroboradas().map((empresa) => {
+      // `actualizadoEn` es lo más cercano a "cuándo se hizo la llamada" que
+      // hay hoy: la transición a `informacion_corroborada` lo actualiza.
+      const dias = this.diasDesde(empresa.actualizadoEn);
+      return {
+        ...empresa,
+        contexto: [this.nombreDueno(empresa), empresa.planNombre ? 'plan ' + empresa.planNombre : null]
+          .filter(Boolean)
+          .join(' · '),
+        textoEspera: dias === 0 ? 'Llamada hoy · sin confirmar' : `Llamada hace ${dias} ${dias === 1 ? 'día' : 'días'} · sin confirmar`,
+        insistir: dias >= DIAS_REINTENTO,
+      };
+    }),
+  );
+
+  protected readonly notaLlamar = computed(() =>
+    this.llamadas().length ? `${this.llamadas().length} · ordenadas por antigüedad` : 'Nada en esta lista',
+  );
+
+  protected readonly notaEsperando = computed(() =>
+    this.esperando().length ? 'Se les mandó el enlace para definir la contraseña' : 'Vacío',
+  );
+
+  protected readonly resumenDia = computed(() => {
+    const llamadas = this.llamadas();
+    const partes: string[] = [];
+
+    if (llamadas.length) {
+      partes.push(`${llamadas.length} ${llamadas.length === 1 ? 'llamada por hacer' : 'llamadas por hacer'}`);
+      const peor = Math.max(...llamadas.map((f) => f.diasEspera));
+      partes.push(`la más vieja espera hace ${peor} ${peor === 1 ? 'día' : 'días'}`);
+      const sinTelefono = llamadas.filter((f) => !f.telefonoContacto).length;
+      if (sinTelefono) {
+        partes.push(
+          `${sinTelefono} ${sinTelefono === 1 ? 'no dejó teléfono' : 'no dejaron teléfono'} — hay que escribirles`,
+        );
+      }
+    }
+    if (this.esperando().length) {
+      partes.push(`${this.esperando().length} esperando que el cliente confirme`);
+    }
+
+    return partes.length ? partes.join(' · ') + '.' : 'Ninguna alta esperando. La cola quedó vacía.';
+  });
+
+  protected readonly textoVacio = computed(() => {
+    const n = this.esperando().length;
+    return n
+      ? `Quedan ${n} ${n === 1 ? 'alta' : 'altas'} en manos del cliente, abajo. No dependen de vos.`
+      : 'No hay altas en ningún estado intermedio. Cuando entre un registro nuevo aparece acá.';
+  });
 
   constructor() {
     this.cargar();
@@ -81,13 +226,9 @@ export class AltasPendientesPageComponent {
     }).subscribe({
       next: ({ pendientes, esperandoConfirmacion, suscripcionesPendientes, planes }) => {
         const mapaPlan = construirMapaPlanPorEmpresa(suscripcionesPendientes.data, planes.data);
-        const todas = [...pendientes.data, ...esperandoConfirmacion.data];
-        this.filas.set(
-          todas.map((empresa) => ({
-            ...empresa,
-            planNombre: mapaPlan.get(empresa.id) ?? null,
-          })),
-        );
+        const conPlan = (empresa: Empresa) => ({ ...empresa, planNombre: mapaPlan.get(empresa.id) ?? null });
+        this.pendientes.set(pendientes.data.map(conPlan));
+        this.corroboradas.set(esperandoConfirmacion.data.map(conPlan));
         this.cargando.set(false);
       },
       error: () => {
@@ -97,18 +238,36 @@ export class AltasPendientesPageComponent {
     });
   }
 
-  protected abrirWizard(empresa: FilaPendiente): void {
-    this.empresaSeleccionadaWizard.set(empresa.id);
+  protected abrirWizard(fila: Empresa): void {
+    this.empresaSeleccionadaWizard.set(fila.id);
+  }
+
+  /** El ícono de la fila abre el mismo asistente — el detalle completo de la
+   * Empresa está a un clic de ahí (`EmpresaDetallePanelComponent`). */
+  protected verDatos(fila: Empresa): void {
+    this.empresaSeleccionadaWizard.set(fila.id);
+  }
+
+  /** Atajo de la lista de espera: abre el asistente, que arranca directo en
+   * el paso 2 porque la Empresa ya está `informacion_corroborada`. */
+  protected reenviarEnlace(fila: Empresa): void {
+    this.empresaSeleccionadaWizard.set(fila.id);
   }
 
   protected cerrarWizard(): void {
     this.empresaSeleccionadaWizard.set(null);
   }
 
-  /** Cualquier cambio del wizard (datos editados, llamada finalizada,
-   * activada, rechazada) recarga la cola entera — ver el comentario de
-   * `ActivarEmpresaWizardComponent.actualizada`. */
   protected onWizardActualizada(): void {
     this.cargar();
+  }
+
+  private diasDesde(fechaIso: string): number {
+    const ms = this.hoy.getTime() - new Date(fechaIso).getTime();
+    return Math.max(0, Math.round(ms / 86_400_000));
+  }
+
+  private nombreDueno(empresa: Empresa): string {
+    return [empresa.duenoNombres, empresa.duenoApellidos].filter(Boolean).join(' ').trim() || 'Sin datos del registro';
   }
 }

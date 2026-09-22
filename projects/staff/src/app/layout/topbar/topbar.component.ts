@@ -10,6 +10,14 @@ import { AuthService } from '../../core/auth/auth.service';
  * el panel de staff no tiene, todavía, un equivalente real que mostrar
  * ahí, y agregar placeholders sin ningún plan concreto detrás sería
  * inventar alcance que nadie pidió).
+ *
+ * El aviso de acceso especial ya no es una píldora ámbar suelta a la
+ * izquierda del avatar (rediseño del handoff, 2026-09-22): es una segunda
+ * línea dentro del propio bloque de usuario ("Superadmin | Acceso
+ * especial"), porque el dato es *sobre esa cuenta*, no un estado suelto
+ * de la aplicación. El `title` con la explicación completa se movió del
+ * badge viejo al bloque de usuario. En sesión normal el bloque queda
+ * exactamente como antes (avatar + nombre en una línea).
  */
 @Component({
   selector: 'app-topbar',
@@ -34,7 +42,7 @@ export class TopbarComponent {
 
   protected readonly displayName = computed(() => {
     const usuario = this.currentUser();
-    return usuario ? usuario.nombres : '…';
+    return usuario ? `${usuario.nombres + ` ` + usuario.apellidos}` : '…';
   });
 
   // Fase 7 de PROPUESTA_ROLES_Y_ACCESOS.md (§5.5) — "lo que más impacto

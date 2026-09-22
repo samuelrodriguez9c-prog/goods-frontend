@@ -1,33 +1,50 @@
 <header class="flex h-15 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
-  <div class="flex items-center gap-1">
-    <img src="/logo-goods-plus-wordmark.png" alt="Goods" class="h-15 w-auto" />
-    <span
-      class="rounded-full border border-topbar-badge-border px-3 py-1 text-xs italic leading-none text-topbar-badge-text"
-    >
-      Staff
-    </span>
+  <div class="flex items-center gap-3">
+    <img src="/logo-goods-plus-wordmark.png" alt="Goods" class="h-12 w-auto" />
+    <span class="h-[22px] w-px bg-topbar-badge-border"></span>
+    <span class="text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">Staff</span>
   </div>
 
   <div class="flex-1"></div>
 
-  @if (esCrossPanelStaff()) {
-    <span
-      class="rounded-full border border-amber-400/60 bg-amber-400/10 px-3 py-1 text-xs font-medium leading-none text-amber-300"
-      title="Estás viendo el panel de staff con tu acceso especial de superadmin — tu cuenta real y tu Empresa no cambiaron, y esta sesión queda auditada."
-    >
-      Acceso especial de superadmin
-    </span>
-  }
-
   <div class="flex shrink-0 items-center gap-1">
-    <span class="flex items-center gap-2 rounded-md p-1">
+    <span
+      class="flex items-center gap-2 rounded-md p-1"
+      [title]="
+        esCrossPanelStaff()
+          ? 'Estás viendo el panel de staff con tu acceso especial de superadmin — tu cuenta real y tu Empresa no cambiaron, y esta sesión queda auditada.'
+          : null
+      "
+    >
       <span
         class="flex h-7 w-7 items-center justify-center rounded-md bg-topbar-avatar-bg text-xs font-semibold text-topbar-avatar-text"
       >
         {{ initials() }}
       </span>
-      <span class="text-sm font-medium">{{ displayName() }}</span>
+
+      @if (esCrossPanelStaff()) {
+        <span class="flex flex-col items-start gap-0.5">
+          <span class="text-sm font-medium leading-4">{{ displayName() }}</span>
+          <span class="flex items-center gap-[7px]">
+            <span class="flex items-center gap-[5px]">
+              <span class="h-[5px] w-[5px] rounded-full bg-topbar-avatar-bg"></span>
+              <span
+                class="text-[10px] font-medium uppercase tracking-[0.06em] text-topbar-avatar-bg"
+              >
+                Superadmin
+              </span>
+            </span>
+            <span class="h-[10px] w-px bg-topbar-badge-border"></span>
+            <span class="text-[10px] font-medium tracking-[0.04em] text-neutral-400">
+              Acceso especial
+            </span>
+          </span>
+        </span>
+      } @else {
+        <span class="text-sm font-medium">{{ displayName() }}</span>
+      }
     </span>
+
     <button
       type="button"
       (click)="logout()"

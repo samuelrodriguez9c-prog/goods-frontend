@@ -1122,6 +1122,1366 @@ reutilización (de más a menos usada):
   dos `p-date-picker`; `auditoria-page` (staff) usa solo los dos
   `p-date-picker`, sin pestañas ni select.
 
+  **Actualización 2026-09-17 — segundo rediseño de `empresas-page`, sobre
+  un handoff de diseño del cliente:** se subió un componente de
+  referencia (`empresas-page.component.html`/`.ts`, marcado "solo las
+  partes nuevas o modificadas — integrar sobre el componente actual")
+  con un diseño nuevo para esta pantalla: tarjetas de métrica clicables
+  (En alta / Activas / Inactivas / Total) en vez de las pestañas de
+  estado, selects en línea de Estado y Plan, layout de fila custom
+  (avatar con iniciales + botón "Revisar alta" + chevron) en vez de
+  `p-table`/`DataTableComponent`, paginación y skeleton de carga. Se
+  integró reconciliando el handoff contra el código real, no tal cual
+  vino: usaba PrimeIcons en vez de los íconos Tabler del proyecto,
+  tokens de color genéricos (`bg-ink`, `neutral-200`) en vez de los
+  reales de `styles.css`, una API inventada de `StatusBadgeComponent`
+  (`ui-status-badge [estado] size="sm"` en vez de la real `app-status-badge
+  [label] [tone] [dot]`), un modelo de `Empresa` incompleto (sin el
+  estado `pendiente`, campos anidados que no existen) y rutas que no
+  existen (`/altas-pendientes/:id`) en vez del panel lateral ya
+  existente `<app-empresa-detalle-panel>`, que se mantuvo tal cual
+  para "Revisar alta" y para abrir el detalle de una fila.
+
+  Dos decisiones de producto se confirmaron con el cliente antes de
+  implementar (el handoff no las resolvía):
+  1. El filtro de rango de fechas (Desde/Hasta, con los dos
+     `p-date-picker` de la sección anterior) se sacó de esta pantalla —
+     el nuevo diseño no lo contemplaba.
+  2. En vez de duplicar el filtro de estado en dos lugares (las tarjetas
+     de métrica nuevas + las pestañas de `SearchToolbarComponent` de la
+     sección anterior), se sacaron las pestañas: el filtro de estado
+     queda solo en las 4 tarjetas de métrica (grupos en alta/activa/
+     inactivas) + un `p-select` para elegir uno de los 7 valores de
+     `EstadoEmpresa` puntual. `filtroEstados: EstadoEmpresa[] | null` es
+     ahora la única fuente de verdad del filtro de estado, alimentada
+     por ambos controles.
+
+  Esto también movió la pantalla a un modelo 100% client-side: como
+  `EmpresaService.listar()` ya traía hasta 100 filas en una sola llamada
+  (documentado en su propio JSDoc desde antes), y ya no hace falta
+  re-consultar al backend por fecha, todo el filtrado/orden/paginación
+  (estado, plan, buscador, orden por nombre/fecha, páginas de 10) se
+  resuelve en `computed()` sobre esas filas en memoria — se sacó el
+  patrón anterior de re-pedir al backend en cada cambio de filtro.
+
+  Nuevo preset para esto: **`paginatorPt()`** (`shared-ui`'s
+  `lib/utils/pagination-pt.ts`) — mismo enfoque que el resto de los
+  presets `pt` bajo `theme: 'none'`: nombres de sección confirmados
+  grepeando `ptm('...')` directo en el bundle instalado de
+  `p-paginator` (no hay `root` propio en su template — el host del
+  componente ES la raíz, pero `pt.root` igual aplica, como en el resto
+  de los composites de PrimeNG). Hallazgo no obvio: la página
+  seleccionada del paginador **no** es una sección de `pt` — PrimeNG
+  siempre agrega la clase `p-paginator-page-selected` al lado de lo que
+  ponga `pt.page`, así que ese estado se resuelve con un selector
+  arbitrario de Tailwind (`[&.p-paginator-page-selected]:bg-primary-button`,
+  mismo patrón que `[&_tr:hover]` en `dataTablePt()`).
+
+  `SearchToolbarComponent` sumó un input opcional
+  `resultsSummary: string | null` — texto tipo "N resultados" que se
+  muestra en la fila de chips aunque no haya ningún filtro tipo chip
+  puesto (antes esa fila solo aparecía si había chips).
+
+  Verificado con build real (`ng build shared-ui`/`staff`/`admin`, los
+  tres sin errores) + Playwright contra un usuario de prueba real: clic
+  en cada tarjeta de métrica filtra correctamente, el `p-select` de
+  Estado filtra por un valor puntual, la búsqueda por texto combina con
+  el filtro activo, y la paginación cambia de página y resalta la
+  página actual.
+
+  **Actualización 2026-09-17 (mismo día) — tercer ajuste de
+  `empresas-page`, sobre un SEGUNDO handoff de diseño que reemplaza al
+  de arriba:** el cliente subió una carpeta "zip" nueva con los mismos
+  dos archivos de referencia más un `LEEME.md` explicando los cambios.
+  Reemplaza las 4 tarjetas de métrica clicables por un **"embudo de
+  alta"**: barras horizontales, una por etapa (`solicitud_recibida` →
+  `pendiente` → `informacion_corroborada` → `activa`), con ancho
+  proporcional al conteo de cada una y clicables para filtrar por esa
+  etapa — más una barra aparte "Fuera del embudo" para las 3 inactivas
+  (`suspendida`/`rechazada`/`cancelada`). El header suma badges de
+  resumen ("N esperando revisión"/"N vigentes"/"N inactivas", reusando
+  `app-status-badge` con label dinámico en vez de HTML a mano) y una
+  nota de la solicitud más vieja sin atender. Tipografía nueva:
+  **Archivo** (self-hosted vía `@fontsource/archivo`, no el `<link>` de
+  Google Fonts que pedía el handoff — el proyecto ya evita esa
+  dependencia externa para el resto de la tipografía, ver el comentario
+  de cabecera de `staff/src/styles.css`) solo para el título "Empresas"
+  y los números del embudo, vía el nuevo token `--font-display`
+  (sumado también a `admin/src/styles.css` en paridad, aunque `admin`
+  no lo usa todavía).
+
+  Nuevo tono **`info`** en `StatusBadgeComponent` (`shared-ui`) — sumado
+  específicamente para `informacion_corroborada`: ni ámbar (ya no hay
+  nada pendiente del lado del staff) ni verde (todavía no es cliente
+  activo). Tokens nuevos en ambos `styles.css` (`staff` y `admin`, en
+  paridad): `--color-badge-info-bg` (`#c8ecff`, tal cual el handoff) y
+  `--color-badge-info-solid` (`#0284c7`, criterio propio para la barra
+  del embudo, mismo patrón -bg/-solid que warning/success).
+
+  El handoff traía además un mapa de "próximo paso" por fila (ej.
+  "Llamar al dueño" con flecha) que resultó ser una **suposición propia
+  del autor del handoff, no el flujo real** ya aprobado por gerencia en
+  `PROPUESTA_FLUJO_ALTA_ASISTIDA.md` §1: asumía que en
+  `informacion_corroborada` todavía faltaba llamar al dueño, cuando en
+  realidad esa llamada YA se hizo para llegar a ese estado (ahí se
+  espera al cliente, no al staff). Se ajustó al flujo real, confirmado
+  con el cliente:
+  1. `solicitud_recibida` → "Mandar a Altas pendientes", un solo clic
+     (`EmpresaService.enviarAAltasPendientes`), sin abrir nada.
+  2. `pendiente` → "Llamar / verificar datos", abre
+     `ActivarEmpresaWizardComponent` — **hallazgo importante**: este
+     asistente de activación de 2 pasos (§4/§11 Paso 3 de
+     PROPUESTA_FLUJO_ALTA_ASISTIDA.md) YA estaba construido de punta a
+     punta (wizard, `SidePanelComponent`, `CampoDetalleComponent`,
+     `RealtimeService` con WebSocket + polling de 30s) de una tarea
+     anterior — la nota de avance del documento de propuesta decía
+     "pendiente" pero estaba desactualizada; verificado contra el
+     código real antes de escribir una sola línea nueva. Esta pantalla
+     solo necesitaba engancharlo (mismo patrón que
+     `AltasPendientesPageComponent`: señal `empresaSeleccionadaWizard`
+     + `abrirWizard`/`cerrarWizard`/`onWizardActualizada`), no
+     construirlo de nuevo.
+  3. `informacion_corroborada` → sin botón, solo texto de lectura
+     "Esperando confirmación del cliente" — retomar esa Empresa
+     (reenviar enlace, rechazar) se hace desde "Altas pendientes", que
+     ya la muestra con la misma etiqueta.
+  4. `suspendida` → sin próximo paso — el handoff suponía "Revisar el
+     pago", pero no existe ninguna pantalla de facturación todavía.
+
+  También corregido de paso: el embudo original del handoff (`ETAPAS`
+  en el `.ts`) traía solo 3 etapas y se olvidaba de `pendiente` — igual
+  que el handoff anterior se había olvidado de este mismo estado en sus
+  tarjetas de métricas. Se agregó como cuarta etapa entre "Solicitud" y
+  "Corroborada".
+
+  Umbral de urgencia (filas "en alta" marcadas en ámbar) confirmado con
+  el cliente en 10 días, tal como sugería el handoff.
+
+  Verificado con build real (`ng build shared-ui`/`staff`/`admin`, los
+  tres sin errores) + Playwright contra un usuario de prueba real: clic
+  en cada etapa del embudo filtra correctamente y atenúa las demás,
+  "Mandar a Altas pendientes" transiciona la fila y actualiza el embudo
+  en vivo, y "Llamar / verificar datos" abre el asistente de activación
+  ya construido (paso 1, con "Guardar cambios"/"Llamar ahora"/
+  "Programar llamada"/"Rechazar"/"Cerrar y seguir trabajando" visibles y
+  funcionales).
+
+  **Actualización 2026-09-21 — rediseño de `empresa-detalle-panel`, sobre
+  un TERCER handoff de diseño (esta vez componente por componente, a
+  pedido del cliente):** la carpeta "zip" volvió a cambiar de nombre
+  (`Conectar repositorio al proyecto_unico/handoff/`) y el `LEEME.md`
+  ahora es un manual grande que cubre **seis pantallas futuras**
+  (`altas-pendientes` "hoja del día", `planes`, `suscripciones`,
+  `auditoría`, `usuarios`) además de esta — se integró solo la sección
+  4 (`empresa-detalle-panel`), como pidió el cliente explícitamente
+  ("vamos a ir componente por componente"); el resto queda documentado
+  en el `LEEME.md` para cuando toque su turno.
+
+  Mismos tres cambios de forma que anticipaba el propio handoff:
+
+  1. **Ya no usa `SidePanelComponent`.** Arma su propio overlay de
+     pantalla completa (mismo backdrop `bg-black/50`, mismo `z-50`,
+     mismas keyframes `fade-in-up`/`slide-in-right`) porque la cabecera
+     y la barra de guardado ahora quedan fijas y solo el cuerpo
+     scrollea — cosa que `SidePanelComponent` no permite (scrollea todo
+     junto). Punto que el handoff no verificaba y sí se confirmó acá:
+     este panel se sigue abriendo **anidado** arriba del
+     `app-side-panel` propio de `ActivarEmpresaWizardComponent` (icono
+     de información del Paso 1) — mismo `z-50`/`fixed inset-0` en
+     ambos, así que el orden del DOM decide el apilado, igual que
+     apilaba antes con la versión vieja. Verificado con Playwright
+     abriendo el asistente desde "Altas pendientes" y clickeando el
+     icono de info: se ve un solo overlay limpio, sin backdrop doble.
+     `SidePanelComponent` sigue intacto — lo sigue usando el asistente.
+  2. **Ya no usa `CampoDetalleComponent`** para rubro/correo/teléfono:
+     van en una sola tarjeta de filas etiqueta + `<input pInputText>`.
+     Primer uso de `InputTextModule` de PrimeNG en el proyecto — como
+     `theme: 'none'` no inyecta CSS de tema, el input se ve 100% por las
+     clases de Tailwind del propio template (`border-0 bg-transparent
+     ...`), sin conflicto. `CampoDetalleComponent` también sigue intacto
+     para el asistente.
+  3. **Sección "Personas" nueva**: lo declarado en el registro público y
+     la cuenta real (`duenoUsuario`) se muestran como dos puntos de una
+     línea de tiempo, con un veredicto arriba ("Coincide con lo
+     declarado" / "No coincide con lo declarado" / "La cuenta todavía no
+     existe") — comparación de nombres laxa a propósito (sin acentos,
+     sin mayúsculas, espacios colapsados). Badge de estado con etiqueta
+     legible (`ETIQUETA_POR_ESTADO`) en vez del `estado` crudo — mismo
+     mapa duplicado sin exportar que ya existe en
+     `EmpresasPageComponent` (mismo criterio ya documentado que
+     `TONO_POR_ESTADO`: no vale la pena un tercer archivo por siete
+     líneas).
+
+  Un ajuste propio, no pedido por el handoff: el punto "Cuenta del
+  dueño" de la línea de tiempo mostraba solo nombre + estado de
+  verificación, sin el correo real de esa cuenta — a diferencia del
+  punto "Declarado en el registro", que sí muestra su correo. El dato
+  (`dueno.correo`, de `ResumenDuenoEmpresa`) ya estaba disponible y es
+  útil para el staff, así que se agregó al lado del nombre para que los
+  dos puntos de la línea de tiempo sean simétricos.
+
+  La barra inferior de guardado pasó de estar siempre visible
+  (deshabilitada sin cambios) a solo aparecer cuando hay algo que decir
+  (cambios sin guardar / guardando / guardado / error) — suma un estado
+  "Cambios guardados." que no existía antes.
+
+  Sin tokens ni tipografía nueva esta vez — reutiliza `font-display` y
+  los tokens `badge-info` que ya se habían sumado con el rediseño de
+  `empresas-page`.
+
+  Verificado con build real (`ng build staff`, sin errores) + Playwright
+  contra datos reales de la base de prueba: Empresa sin cuenta todavía
+  ("la cuenta todavía no existe"), Empresa con cuenta real coincidente
+  (veredicto verde, correo real visible), Empresa rechazada (sección
+  "Motivo de rechazo" visible), edición de los tres campos editables con
+  "Guardar cambios" actualizando la fila de la lista en vivo sin
+  recargar, y el panel anidado dentro del asistente de activación desde
+  "Altas pendientes". No había en la base de prueba ninguna Empresa con
+  nombre declarado distinto al de la cuenta real, así que el veredicto
+  "No coincide" se verificó por revisión de código, no con screenshot.
+
+
+**Actualización 2026-09-21 — rediseño de `altas-pendientes-page` +
+`activar-empresa-wizard`, cuarto componente del mismo handoff (LEEME.md
+§3 y §5):** siguiente en la lista "componente por componente" que pidió
+el cliente, con instrucción explícita de seguir el `LEEME.md` con
+cuidado. Dos archivos por pantalla, cuatro en total.
+
+**`AltasPendientesPageComponent` ("hoja del día"):**
+
+1. **Se fue la tabla.** `p-table`, `dataTablePt()` y `DataTableComponent`
+   ya no se usan acá (siguen intactos, en uso en otras pantallas). La
+   lista pasa a ser dos secciones de tarjetas: "Te toca llamar" (con
+   corte visual entre las urgentes y el resto) y "Esperando al cliente".
+2. Tres constantes nuevas son supuestos de diseño a ajustar al proceso
+   real, tal como el propio handoff advierte: `UMBRAL_URGENTE = 10`
+   (reutiliza el mismo umbral de "más de 10 días" ya confirmado con el
+   cliente en el rediseño de `empresas-page` del 17/9, no uno nuevo),
+   `DIAS_REINTENTO = 3` y `MAX_DESTACADAS = 3` (el resalte cálido se
+   limita a las tres peores a propósito — con cola larga, pintar todas
+   las vencidas hace que el color deje de significar algo).
+3. **`agendadaEn` sigue sin sobrevivir un refresh.** `programarLlamada`
+   ya persiste del lado del backend, pero `GET /empresas` no devuelve
+   esa fecha, así que la etiqueta "Agendada …" de la fila vive en un
+   signal en memoria de la página, tal como advertía el handoff. Cuando
+   se exponga el campo del lado del backend, hay que leerlo de ahí y
+   sacar el signal.
+
+**`ActivarEmpresaWizardComponent`:**
+
+1. **`fase: FaseWizard` (`'preparar' | 'enCurso' | 'esperando' |
+   'activada'`) reemplaza lo que lee el template** de los tres signals
+   viejos (`paso`, `llamadaIniciada`, `exito`) — esos tres siguen siendo
+   la fuente real, así que la lógica de red (mismos métodos de
+   `EmpresaService`: `corregirNombre`, `actualizar`, `cambiarPlan`,
+   `programarLlamada`, `llamadaFinalizada`, `reenviarEnlace`,
+   `rechazar`, mismo `RealtimeService.escuchar`) quedó igual.
+2. **Ya no usa `SidePanelComponent` ni `CampoDetalleComponent`.** Mismo
+   cambio de forma que `empresa-detalle-panel` diez días antes: overlay
+   de pantalla completa propio, mismo `bg-black/50` + `z-50` + keyframes
+   `fade-in-up`/`slide-in-right`. Los dos componentes siguen intactos,
+   en uso en otras pantallas.
+3. **Los dos modales (confirmar llamada finalizada / rechazar) quedaron
+   inline**, ya no usan `ModalComponent` (que sigue intacto, en uso en
+   otras pantallas) — el de confirmar lleva un mini-checklist y un
+   bloque de consecuencias, no dos botones genéricos. Los dos van a
+   `z-[60]`, por encima del `z-50` del asistente — mejora propia sobre
+   depender solo del orden del DOM, que es lo que usa el resto de los
+   overlays superpuestos del proyecto.
+4. **Guion mínimo de llamada + cronómetro**: cuatro puntos tildables
+   (nunca obligatorios — el botón "Terminé la llamada" funciona igual
+   sin tildar ninguno) y un cronómetro en vivo (`00:01`, `00:02`…)
+   mientras `fase() === 'enCurso'`. Verificado con Playwright: tildar
+   puntos del guion, ver el cronómetro correr, y el botón habilitado en
+   todo momento.
+5. **`verEmpresa()`** navega a `/empresas` (antes no existía esa salida
+   directa desde la pantalla final).
+
+**Hueco encontrado en el handoff, corregido acá:** el `.ts` traía
+`abrirDetalle()`/`cerrarDetalle()` y el signal `mostrarDetalle`
+intactos, y el `.html` traía el bloque `@if (mostrarDetalle()) {
+<app-empresa-detalle-panel ... /> }` al final — pero **ningún botón del
+`.html` nuevo llamaba a `abrirDetalle()`**. La versión vieja del
+asistente sí tenía ese disparador: un ícono de información junto a
+"Datos a confirmar" en el paso 1, con `aria-label="Ver todos los datos
+de la Empresa"`. Se restituyó ese botón en la cabecera del nuevo
+asistente (junto al de cerrar, visible salvo en la fase "activada" — ya
+no tiene sentido revisar datos después de la activación, esa pantalla
+ya ofrece "Ver la Empresa"), llamando al mismo `abrirDetalle()` que ya
+traía el handoff. Es el único punto de este handoff que no se siguió
+al pie de la letra — todo lo demás sí, incluido el resto del §5 del
+`LEEME.md`.
+
+Esto era el punto más delicado de todo el handoff: el asistente dejó de
+usar `SidePanelComponent`, así que había que confirmar que
+`EmpresaDetallePanelComponent` (que también arma su propio overlay
+`z-50` desde el rediseño anterior) se siguiera anidando arriba sin
+backdrop doble ni problema de apilado. Verificado con Playwright:
+clickeando el botón restituido se ve un solo overlay limpio encima del
+asistente, igual que se veía anidado sobre la versión vieja con
+`app-side-panel`.
+
+**Keyframes nuevas — solo en `staff/src/styles.css`, no en
+`admin`** (mismo criterio que `slide-in-right`: son de una pantalla que
+no existe del otro lado): `latido` (el punto verde de "Llamada en
+curso" y el hito "ahora" de la línea de progreso del paso 2, pulso
+`opacity`/`scale`), `aparecer` (entrada del paso 2 y de los dos modales
+inline, un fade con leve `scale` sin desplazamiento vertical), `pop`
+(el círculo de tilde de la pantalla "Activada", con rebote vía
+`cubic-bezier` con overshoot) y `onda` (el anillo que se expande y se
+desvanece en loop detrás de ese círculo).
+
+Verificado con build real (`ng build staff`, sin errores) + Playwright
+contra datos reales de la base de prueba: la hoja del día completa
+(sección "Te toca llamar" con el corte urgente/no urgente, "Esperando
+al cliente" con "Reenviar el enlace"), el asistente en fase "preparar"
+(incluida una fila sin teléfono, con "Llamar ahora" bloqueado y
+reemplazado por el aviso correspondiente — comportamiento que ya venía
+en el propio template condicional), la fase "enCurso" con guion
+tildándose y cronómetro corriendo, el modal de confirmar llamada
+finalizada, la fase "esperando" con la línea de progreso y la animación
+`latido` en el hito "ahora", el modal de rechazo (`z-[60]` por encima
+del asistente), "Reenviar el enlace" desde la hoja abriendo el
+asistente directo en el paso 2, y el panel de detalle anidado (con el
+botón restituido) sobre el asistente nuevo. La fase final "activada"
+(que llega por WebSocket o por el poll cuando el cliente confirma) no
+se pudo disparar en vivo sin simular esa confirmación del cliente — se
+revisó por código: mismo patrón de clases `animate-[...]` con las
+keyframes `pop`/`onda`/`aparecer` ya verificadas funcionando en la fase
+"esperando" con `latido`, así que no hay motivo para esperar un
+comportamiento distinto.
+
+
+**Actualización 2026-09-21 — rediseño de `planes-page` ("catálogo
+comparado"), siguiente componente del mismo handoff (LEEME.md §6):**
+sigue el `abrirDetalle()`/`activar-empresa-wizard` de más arriba en la
+lista "componente por componente".
+
+Deja de ser una tabla de cinco columnas con un modal de edición y pasa a
+ser una matriz: un plan por columna, las características como filas
+compartidas.
+
+1. **Se fue el modal.** `ModalComponent`, `FormularioPlan` y el textarea
+   de "una característica por línea" ya no se usan acá — era el punto
+   más frágil de la versión anterior (se editaba a ciegas, sin ver cómo
+   quedaba el plan al lado de sus vecinos). Ahora se edita en la celda,
+   con `<input pInputText>` (mismo primer uso de `InputTextModule` que
+   `empresa-detalle-panel`). `ModalComponent` sigue intacto, en uso en
+   otras pantallas. También se fue la columna "N ítems", que escondía
+   justo lo que diferencia un plan de otro.
+2. **Los huecos se detectan solos** (`esHueco`): si un plan más caro NO
+   incluye algo que sí incluye uno más barato (activo), la celda sale en
+   ámbar con un triángulo y el párrafo de arriba (`lectura()`) lo dice
+   en palabras — verificado con Playwright en dos escenarios: el hueco
+   que ya traía la base de prueba (Plus vs. Base) y uno nuevo generado
+   en vivo al reactivar un plan más barato que sí cubría algo que el más
+   caro no tiene.
+3. **Nada se guarda al tocar.** Los cambios (nombre, precio, descripción,
+   características marcadas, plan nuevo) viven en el signal `borrador` y
+   se publican juntos desde una barra fija al pie (`slide-up` de entrada)
+   que solo existe si `hayCambios()` — esto lo ve el cliente en la
+   página de precios, no es un ajuste interno. Verificado: editar,
+   publicar (persiste de verdad — confirmado con reload de la página),
+   y descartar (revierte todo, plan nuevo incluido, sin pegarle al
+   backend).
+4. **Desactivar/reactivar es una acción directa** en la columna — sí
+   pega contra el backend al instante (`DELETE /planes/:id` /
+   `PATCH` con `activo: true`), no un badge distinto en una celda.
+   Verificado con Playwright: reactivar y volver a desactivar un plan,
+   sin pasar por la barra de publicación.
+
+**SUPOSICIÓN A VALIDAR, del propio handoff:** `Plan.caracteristicas` es
+un `string[]` libre por plan — la matriz arma el *union* de todas las
+características del catálogo y al publicar reconstruye el array de cada
+plan. Funciona con el backend actual sin cambios, pero renombrar una
+característica es un renombre por texto en todos los planes que la
+tienen. Si esto se usa seguido, conviene una tabla `caracteristica` real
+con relación N:M.
+
+**Un ajuste propio sobre el handoff:** `mostrarSuscripciones` pedía
+`SuscripcionService.listar()` **sin filtro de estado**, así que el
+conteo "Empresas por plan" iba a incluir suscripciones canceladas o
+vencidas — de haber alguna en la base, se hubiera contado como cliente
+activo sin serlo. Se agregó el filtro `listar('activa')`, el mismo que
+ya usa `EmpresasPageComponent` para lo mismo (`GET
+/suscripciones?estado=activa` + cruce con `PlanService.listarTodos()`
+en memoria). No fue posible confirmar la diferencia con datos reales
+porque la base de prueba no tenía ninguna suscripción cancelada o
+vencida en ese momento — corregido por revisión de código y por
+coherencia con el criterio ya establecido, no por comparación de
+antes/después con Playwright.
+
+**Otro ajuste propio, de tipos, no de lógica:** `desactivar()` devuelve
+`Observable<void>` y `reactivar()` `Observable<Plan>` — el handoff
+unificaba las dos ramas en una constante `request` sin anotar, y el
+compilador de Angular no podía resolver qué sobrecarga de `.subscribe()`
+aplicaba sobre esa unión de tipos (`ng build` fallaba). Se anotó
+`request: Observable<unknown>` explícitamente — el `next` de esa
+suscripción no usa el valor emitido, así que el tipo real nunca importó,
+solo hacía falta decírselo al compilador.
+
+**Keyframe nueva — solo en `staff/src/styles.css`, no en `admin`**
+(mismo criterio que las demás): `slide-up`, la entrada de la barra de
+publicación desde el borde inferior de la pantalla, análoga a
+`slide-in-right` pero en vertical.
+
+Verificado con build real (`ng build staff`, sin errores ni warnings —
+se corrigió también un warning de Angular sobre `attr.aria-label`
+estático que traía el handoff, cambiado a `aria-label` a secas) y
+Playwright contra datos reales de la base de prueba: la matriz completa
+con sus tres planes (uno desactivado), el hueco ya existente entre Plus
+y Base, agregar una característica nueva y un plan nuevo (con su
+columna vacía y grid recalculado), descartar (revierte todo sin tocar
+el backend), editar y publicar una descripción (con reload para
+confirmar que persistió del lado del backend) y luego revertirla de la
+misma forma, y reactivar/desactivar un plan de forma directa (sin pasar
+por la barra de publicación), que de paso generó un segundo hueco en
+vivo y confirmó que `lectura()` lo detecta dinámicamente.
+
+
+**Actualización 2026-09-21 — rediseño de `suscripciones-page` ("ingresos
+por Empresa"), siguiente componente del mismo handoff (LEEME.md §7):**
+sigue el de `planes-page` en la lista "componente por componente".
+
+Dos cambios de tesis respecto de la tabla anterior:
+
+1. **Una fila por Empresa, no por registro.** El historial venía ordenado
+   por `creadoEn desc` con todas las Empresas mezcladas, así que las dos
+   suscripciones de una misma Empresa quedaban separadas por filas de
+   otras Empresas. Ahora se agrupa por `empresaId`, la vigente al frente
+   y el resto en una línea de tiempo que se despliega con el chevron
+   (keyframe `desplegar`, nueva). Verificado con Playwright: desplegar el
+   historial de una Empresa con dos planes, ver la línea de tiempo con el
+   punto verde en el vigente.
+2. **Esto es plata.** La pantalla ahora cruza `Plan.precioMensual` y
+   expone el MRR total, el desglose por plan y el monto de cada Empresa.
+   Verificado en vivo: el MRR y el desglose por plan se recalculan
+   correctamente después de un cambio de plan real (ver más abajo).
+
+Además: los estados hablan castellano y dicen la consecuencia
+(`ESTADO_UI`: "Cobrando", "Sin cobrar aún"), el orden es por facturación
+y no por fecha de creación, y ya no usa `ModalComponent`/`p-table`/
+`dataTablePt()`/`DataTableComponent` (siguen intactos, en uso en el
+resto del panel de staff). No hay "crear" ni "eliminar": una Suscripción
+nace con el alta de una Empresa o con un cambio de plan (cierra la vieja,
+abre una nueva) — nunca se crea ni se borra a mano.
+
+**A pedido explícito del cliente — distinto del resto de los handoffs
+integrados hasta acá, que traían el panel embebido en un `@if` dentro de
+la página: el panel de "Mover a otro plan / cambiar el estado" se separó
+en un componente aparte, `GestionarSuscripcionPanelComponent`
+(`features/suscripciones/pages/gestionar-suscripcion-panel/`), mismo
+patrón que ya tenían `EmpresaDetallePanelComponent`
+(`features/empresas/pages/`) y `ActivarEmpresaWizardComponent`
+(`features/altas-pendientes/pages/`) — un componente por panel, sibling
+de la página en `pages/`, no un bloque más del template de la página.**
+
+Cómo quedó dividido:
+
+- **`SuscripcionesPageComponent`** conserva toda la lista: MRR, desglose
+  por plan, filtros, agrupado por Empresa, historial desplegable. Guarda
+  solo `empresaGestionandoId: signal<number | null>` (antes era
+  `filaGestionando: signal<FilaEmpresa | null>`, la fila entera) y se lo
+  pasa al panel como `[empresaId]`.
+- **`GestionarSuscripcionPanelComponent`** recibe `[empresaId]` y carga
+  por su cuenta la Suscripción vigente de esa Empresa
+  (`SuscripcionService.listar(undefined, empresaId)`), el nombre
+  (`EmpresaService.obtenerUno`) y el catálogo de planes activos
+  (`PlanService.listarTodos`) — mismo criterio que
+  `EmpresaDetallePanelComponent`: no depende de que la página ya tenga
+  esos datos en memoria, se abre y se cierra sola. `(cerrar)` y
+  `(actualizada)` son los mismos dos eventos que ya usan los otros dos
+  paneles.
+- **Una excepción deliberada:** además de `empresaId`, el panel recibe
+  `[mrrTotal]` como segundo `input`. La nota del cambio de plan dice a
+  cuánto pasa la facturación mensual de TODO Goods (no solo de esta
+  Empresa) — recalcular ese número acá adentro exigiría traer las
+  Suscripciones de las demás Empresas otra vez, por un solo valor que la
+  página ya tiene calculado. Se pasa tal cual en vez de recargarlo.
+  Verificado con Playwright: bajar "Taller Creativo Norte" de Plus
+  ($140.000) a Base ($100.000) mostró correctamente "La facturación
+  mensual de Goods pasa a $700.059,9" (740.059,9 − 40.000), calculado con
+  el `mrrTotal` recibido de la página.
+- **El aviso de éxito sigue viviendo en la página, no en el panel.** El
+  panel emite `actualizada` con el mensaje ya armado (ej. "Taller
+  Creativo Norte pasó a Base.") en vez de un evento vacío — la página lo
+  usa tal cual para el toast de abajo a la derecha, que aparece recién
+  después de que el panel ya se cerró (por eso no podía vivir dentro del
+  panel: para cuando se muestra, el panel ya no está montado). La página
+  también dispara su propio `cargar()` al recibir `actualizada`, para
+  traer los montos y el desglose actualizados.
+- **`ESTADO_UI` y `formatCop` quedaron duplicados** entre la página y el
+  panel — mismo criterio ya documentado varias veces (`TONO_POR_ESTADO`/
+  `ETIQUETA_POR_ESTADO` en Empresas): no vale la pena un archivo
+  compartido por un mapa de cuatro líneas.
+
+Verificado con build real (`ng build staff`, sin errores ni warnings,
+primer intento) y Playwright contra datos reales de la base de prueba:
+la lista completa con MRR/desglose/filtros, desplegar el historial de
+una Empresa con dos planes, abrir el panel nuevo (confirmando que carga
+sus propios datos de forma independiente), elegir un plan más barato y
+ver el delta calculado correctamente con el `mrrTotal` recibido por
+`input`, aplicar el cambio de verdad (el panel se cerró solo, apareció
+el toast en la página, la lista se refrescó con los montos nuevos) y
+revertirlo de la misma forma, y cerrar el panel tanto con el botón X
+como haciendo click en el backdrop.
+
+
+**Actualización 2026-09-21 — rediseño de `auditoria-page` ("bitácora"),
+cuarto componente del mismo handoff (LEEME.md §8): sigue el de
+`suscripciones-page` en la lista "componente por componente".**
+
+La tabla anterior era el log HTTP crudo: `PATCH /empresas/14` es una ruta,
+no una acción; el usuario era un número; tres intentos de login fallidos
+seguidos se veían igual que un PATCH exitoso. Una auditoría se lee de dos
+maneras — barriendo ("¿pasó algo raro?") e investigando ("¿quién tocó
+Empresa 14?") — y la tabla no servía para ninguna. Cinco cosas nuevas,
+todas sacadas de lo que el endpoint ya devuelve:
+
+1. **`REGLAS`: la ruta se traduce a una frase** — `POST
+   /api/suscripciones/cambiar-plan` con `cuerpo.empresaId: 14` → "Cambió
+   el plan de Empresa #14". Once reglas por endpoint de escritura, más el
+   fallback `METODO /ruta` para lo que no tiene regla todavía.
+2. **`alertas()`: anomalías detectadas en cliente** — 3+ intentos de
+   sesión fallidos desde una misma IP, acciones hechas fuera de un
+   navegador (`userAgent` con `PostmanRuntime`/`curl`/etc.), cambios
+   sensibles (permisos y bajas).
+3. **`pulso()`: volumen por hora del día**, con los errores apilados en
+   rojo — el pico se ve sin leer una fila.
+4. **El `cuerpo` por fin se usa** (pestaña "Datos" del panel), con
+   `[oculto]` mostrado como "No se guarda".
+5. **`rastroPanel()` / `verRastroCompleto()`**: modo investigación — todo
+   lo que pasó con una misma entidad, filtrando la bitácora por
+   `entidad`+`entidadId`.
+
+Agrupado por día, orden estricto descendente por `creadoEn`, panel de
+detalle partido en tres pestañas (Resumen / Datos / Técnico) con el
+contexto de sesión (`sesion()`: otras acciones de la misma persona/IP en
+la misma media hora). `SearchToolbarComponent`/`p-table`/`dataTablePt()`/
+`DataTableComponent`/`p-popover`/`p-date-picker` se fueron de esta
+pantalla — siguen en uso en el resto del panel.
+
+**El panel de detalle NO se extrajo a un componente aparte**, a
+diferencia de `EmpresaDetallePanelComponent` / `ActivarEmpresaWizardComponent`
+/ `GestionarSuscripcionPanelComponent` (ver esos tres): el pedido
+explícito del cliente de separar el panel en un componente fue puntual
+para suscripciones, y los tres paneles ya separados comparten un patrón
+que este no tiene — cargan sus propios datos por `id` contra el backend,
+independientes de lo que ya tenga cargado la página. El panel de
+auditoría es lo opuesto: es una vista derivada de `leibles()`, la lista
+ENTERA ya cargada por la página (`sesion()` y `rastroPanel()` recorren
+todas las acciones ya en memoria) — extraerlo exigiría pasarle la lista
+completa como `input` igual, sin ahorrar ninguna carga. Se deja como en
+el handoff: un bloque `@if` dentro de la página.
+
+Verificado antes de integrar, tal como pedía LEEME.md §8:
+`environment.apiUrl` es `http://localhost:3000/api` y
+`AuditoriaAccionInterceptor` guarda `ruta: request.originalUrl`, que sí
+incluye ese prefijo (`main.ts` llama `app.setGlobalPrefix('api')`) — las
+regex de `REGLAS`, todas ancladas a `/api/...`, matchean contra los
+valores reales guardados (confirmado en vivo con la pestaña "Técnico":
+`Ruta: /api/planes/1`). `UsuarioService.listar()` no toma argumentos y
+devuelve `RespuestaPaginada<UsuarioGoods>` con `nombres`/`apellidos`/
+`correo` — coincide tal cual con lo que espera `cargar()`.
+
+**Cuatro ajustes propios al integrar — bugs del handoff, no decisiones de
+diseño, los primeros dos hacían que `ng build` no compilara con
+`strictTemplates`:**
+
+1. `accion.cuando` y `accion.caja`, usados en el encabezado del panel de
+   detalle, no existían en la interfaz `AccionLeible` del handoff — se
+   agregan ahí, calculados una sola vez en `leibles()` (TS2339 sin esto).
+2. `dias()` tipaba `filas` como `ReturnType<typeof this.aFila>[]` inline
+   dentro del `computed()`, lo que disparaba TS2683 ("'this' implicitly
+   has type 'any'") — se extrajo `FilaAuditoria` como interfaz propia y
+   se anotó el retorno de `aFila()` con ella.
+3. La regla de login en `REGLAS` solo cubría `/api/auth/login` (el que
+   usa el panel `admin`) — se amplió a `/api/auth/login(-staff)?`, el que
+   de verdad pega el panel de staff (`AuthController`, `@Post('login-staff')`).
+   Sin esto, el login — la acción más frecuente de esta pantalla — caía
+   siempre al fallback genérico en vez de mostrar "Inició sesión".
+4. Ninguna keyframe nueva hacía falta: `fade-in-up` y `slide-in-right`
+   (las que usa esta pantalla para el panel) ya estaban en
+   `staff/src/styles.css` desde rediseños anteriores.
+
+Verificado con build real (`ng build staff`, sin errores ni warnings tras
+los cuatro ajustes) y Playwright contra datos reales de la base de
+prueba: lista agrupada por día con las cifras/alertas/pulso, la regla de
+login-staff mostrando "Inició sesión" en vez del fallback crudo, abrir el
+panel de detalle y navegar las tres pestañas (Resumen con "Quién y desde
+dónde" + "En la misma sesión", Datos con los campos reales del payload,
+Técnico con método/ruta/estado/IP/agente), "Ver todo el rastro" filtrando
+la bitácora a una sola entidad (`plan #6`, 2 acciones) y volviendo con el
+chip "Salir del rastro", los cinco lentes (incluido "Sensibles"),
+búsqueda con resultado vacío ("Nada con estos filtros") y cerrar el panel
+con el botón X.
+
+
+**Corrección 2026-09-21 (más tarde el mismo día) — el panel de detalle de
+`auditoria-page` SÍ se separó en un componente aparte.** El párrafo de
+arriba decía que no, por no encajar con el patrón de carga independiente
+de los otros tres paneles — el cliente pidió explícitamente mantener la
+misma estructura de `pages/` para todos los módulos, así que se corrigió:
+
+**`AccionDetallePanelComponent`** (`features/auditoria/pages/accion-detalle-panel/`)
+— mismo patrón de carpeta que `EmpresaDetallePanelComponent` /
+`ActivarEmpresaWizardComponent` / `GestionarSuscripcionPanelComponent`: un
+componente por panel, sibling de la página en `pages/`.
+
+La diferencia real con esos tres sigue siendo cierta y se documenta en el
+propio componente: este panel no carga sus datos por `id` contra el
+backend. Recibe `[accionId]` (qué acción mostrar) y `[acciones]` — la
+lista COMPLETA `leibles()` que ya cargó la página — porque "En la misma
+sesión" y "Historia de X" necesitan recorrer todas las acciones, y
+recargar eso por su cuenta significaría reimplementar ahí adentro las 11
+reglas de `REGLAS`/`describir()`/`agente()` de la página y pegarle una
+segunda vez a `AuditoriaService.listar()` + `UsuarioService.listar()`. Es
+la misma clase de excepción que `[mrrTotal]` en
+`GestionarSuscripcionPanelComponent`: no todo lo que se pasa por `input`
+rompe el patrón, cuando es un dato que la página ya tiene y recalcularlo
+adentro del panel no ahorra nada.
+
+Para que el panel no necesitara tampoco el mapa `nombrePorUsuario` ni el
+método `nombreUsuario()` de la página, se agregó `nombreResuelto: string
+| null` a la interfaz `AccionLeible` (ahora exportada desde
+`auditoria-page.component.ts`) — el nombre de usuario ya resuelto, una
+vez por acción, en `leibles()`.
+
+La navegación DENTRO del panel (botones de "En la misma sesión"/"Historia
+de X", que cambian qué acción se muestra sin cerrar el panel) no la
+resuelve el panel solo: emite `(verAccion)` con el id nuevo y la página
+—dueña de qué acción se está viendo— decide, reutilizando el mismo
+`abrirPanel()` que abre desde la lista. "Ver todo el rastro" emite
+`(verRastro)` con la entidad; la página arma el filtro transversal y
+cierra el panel (antes esto lo hacía `verRastroCompleto()` en la propia
+página, ahora es `onVerRastro()`).
+
+Verificado con build real (`ng build staff`, sin errores ni warnings tras
+la extracción — incluida la referencia cruzada de tipos entre
+`auditoria-page.component.ts` y `accion-detalle-panel.component.ts`, con
+`import type` de un lado para que no genere un ciclo real en el JS
+compilado) y Playwright: abrir el panel desde una fila de la lista,
+navegar internamente a otra acción desde "En la misma sesión" sin que el
+panel se cierre, las tres pestañas, "Ver todo el rastro" cerrando el
+panel y activando el filtro transversal correctamente — mismo
+comportamiento exacto que antes de la extracción, cero errores de consola
+en todo el flujo.
+
+
+**Actualización 2026-09-21 (más tarde el mismo día) — rediseño de
+`usuarios-page` ("matriz de accesos"), quinto componente del mismo
+handoff (LEEME.md §9): sigue el de `auditoria-page` en la lista
+"componente por componente".**
+
+La pantalla anterior era una tabla + tres modales (crear/editar/eliminar)
+sin forma de ver de un vistazo quién puede hacer qué. La nueva es una
+matriz: una fila por persona (agrupadas por rol), una columna por módulo,
+el nivel de acceso como medidor de tres barras (Sin acceso/Solo ver/
+Editar/Todo). El rol se elige viendo lo que concede, no por su nombre.
+
+**El panel se separó en DOS componentes aparte** (no uno con `modo()`
+interno como traía el handoff), mismo patrón de `pages/` que el resto de
+los módulos: `FichaUsuarioPanelComponent` (ver/editar a alguien que ya
+existe) y `CrearUsuarioPanelComponent` (dar de alta). El handoff los
+trataba como dos cuerpos muy distintos compartiendo solo el contenedor
+deslizable — separarlos en dos componentes, uno por concepto, es más
+consistente con el resto de la app.
+
+`CrearUsuarioPanelComponent` es completamente autónomo (no hay ninguna
+fila existente con la que cruzar un diff), así que carga su propia copia
+de `MODULOS`/`nivelDe()` — misma clase de duplicación deliberada que
+`fechaCorta`/`horaCorta` en `AccionDetallePanelComponent`.
+`FichaUsuarioPanelComponent` en cambio sí depende de la página: mientras
+hay un cambio de rol en preview, la fila de esa persona en la matriz (a
+la izquierda, fuera del panel) tiene que pintar el mismo diff y el velo
+del panel se vuelve transparente para que se vea — por eso `rolPreview`
+sigue viviendo en la página (el panel lo recibe por `[rolPreviewId]` y lo
+cambia emitiendo `(rolPreviewSeleccionado)`) y `matrizPanel()`/
+`textoCambioRol()` se calculan en la página y se pasan ya armados. Misma
+clase de excepción que `[mrrTotal]`/`[acciones]` en los paneles
+anteriores.
+
+Ajustes propios hechos durante la integración (no estaban en el handoff):
+
+- **`RUTA_LOGIN` no matcheaba nunca** — mismo bug ya corregido en
+  `auditoria-page`: el handoff traía `/^\/api\/auth\/login$/`, pero el
+  staff siempre entra por `/api/auth/login-staff`. Sin el fix,
+  `reconstruirAccesos()` nunca encuentra un login de staff y toda la
+  función (estado/último acceso/tira de 14 días) queda rota para el
+  propio personal de Goods. Corregido a `/^\/api\/auth\/login(-staff)?$/`.
+
+- **Columna "Altas pendientes" completamente rota** — el LEEME ya avisaba
+  "ojo altas" y tenía razón: se verificó contra la tabla `permiso` real
+  (`SELECT codigo, modulo FROM permisos`, no solo migraciones) y no existe
+  ningún `modulo = 'altas'` — `empresas.activar`/`empresas.rechazar`/
+  `empresas.gestionar_alta` están agrupados bajo `modulo: 'empresas'`.
+  Sin corregir, esa columna mostraba "Sin acceso" para TODOS los roles,
+  incluido admin/staff_goods. Se agregó un campo opcional `codigos?:
+  string[]` a la definición de columna (`ModuloDef`) que `nivelDe()` usa
+  para matchear por código exacto en vez de por `modulo`/prefijo cuando
+  está presente — usado solo para la columna `altas`.
+
+- **`PAGINA_AUDITORIA = 500` reventaba la pantalla ENTERA, siempre** —
+  este no es el mismo tipo de ajuste menor que los anteriores: todo
+  endpoint paginado del backend hereda `PaginationQueryDto`, que fuerza
+  `@Max(100)` en `pageSize` a propósito. Pedir 500 no traía "menos
+  cobertura a partir de cierta escala" como sugería el comentario del
+  handoff — hacía que `GET /auditoria` respondiera 400 SIEMPRE, lo que
+  rompía el `forkJoin` completo y la pantalla se quedaba mostrando "No se
+  pudo cargar el personal de Goods" de forma permanente, para cualquier
+  cantidad de personal. Bajado a 100 (el máximo real) para que la
+  pantalla cargue — sigue siendo una ventana chica para reconstruir
+  accesos con más de ~100 acciones de auditoría recientes entre todo el
+  personal, así que el punto del LEEME de mover este cálculo al backend
+  (un `ultimoAccesoEn` real en `Usuario`) sigue vigente y es más urgente
+  de lo que el handoff pensaba.
+
+- **`<i-tabler>` no existe en este codebase** — el selector real de
+  `TablerIconComponent` es `tabler-icon` (confirmado contra el `.mjs`
+  compilado). El handoff usaba `<i-tabler [icon]="x" class="size-N">` en
+  los 15 lugares donde usa un ícono; convertido a `<tabler-icon [icon]="x"
+  [size]="Npx" [stroke]="N" />`, con las clases que no eran de tamaño
+  movidas a `class`.
+
+- **Clases `animate-*` sueltas no hacían nada** — este codebase no define
+  tokens `--animate-*` de Tailwind; toda animación usa la sintaxis de
+  valor arbitrario (`animate-[nombre-keyframe_duración_timing]`) contra
+  los `@keyframes` crudos de `styles.css`. El handoff usaba
+  `animate-fade-in-up`/`animate-slide-in-right`/`animate-desplegar`/
+  `animate-latido` sueltos (no hacen nada así) y dos bindings
+  `[class.animate-latido]="cond"` (sintaxis inválida con corchetes en el
+  nombre de clase) — convertidos a la sintaxis de corchetes con las
+  duraciones ya usadas en los módulos anteriores, y los dos
+  `[class.animate-latido]` reescritos como `[class]="cond ? '...' : ''"`.
+
+- **Firma de `nivelDe()` cambiada** de `(rol, moduloId: string)` a `(rol,
+  modulo: ModuloDef)` — necesario para que pueda leer el nuevo campo
+  `codigos` de la columna, no solo su `id`.
+
+- **Bug real de timing con signal inputs en `CrearUsuarioPanelComponent`**
+  — inicializar el signal `formulario` leyendo
+  `this.rolPreseleccionado()`/`this.roles()` directamente en el
+  inicializador de campo tira `NG0950` ("Input is required but no value
+  is available yet"): los signal inputs todavía no tienen valor ni en los
+  inicializadores de campo ni en el cuerpo del constructor, Angular los
+  asigna después. Se resolvió sin usar `effect()`: `formulario().rolId`
+  arranca en `null` (elección explícita del usuario, si la hizo) y un
+  `computed` nuevo, `rolIdEfectivo`, resuelve el valor por defecto
+  (preseleccionado o `staff_goods`) leyendo los inputs de forma reactiva
+  en vez de una sola vez al construir.
+
+- **Se sacó la frase "Se le pide cambiar la contraseña en su primer
+  acceso"** del pie del panel de alta, tal como sugería el propio LEEME
+  si no se iba a implementar: no existe ese flujo (no hay invitación ni
+  `debeCambiarPassword` en `Usuario`/`CreateUsuarioDto`, la cuenta entra
+  directo con la contraseña que se define en el formulario).
+
+Sin corregir, documentado nomás (son mejoras de backend, no bugs de esta
+pantalla): la reconstrucción de accesos vía `GET /auditoria` sigue siendo
+frágil a escala (ver el punto de `PAGINA_AUDITORIA` arriba); no hay
+`ultimoAccesoEn` en `Usuario`; no hay flujo de invitación (`POST
+/usuarios` crea la cuenta con contraseña directa, no una invitación); y
+`CreateUsuarioDto` del backend solo exige `MinLength(8)` en la contraseña
+— sin mayúscula/número/símbolo — mientras el frontend sí lo exige. Es una
+capa de UX intencional que no hace falta debilitar para "coincidir" con
+el backend; la mejora pendiente es reforzar el backend, no relajar el
+frontend.
+
+Verificado con build real (`ng build staff`, sin errores tras la
+extracción en tres componentes) y Playwright contra datos reales: matriz
+cargando con roles dinámicos (incluye roles fuera de los tres
+hardcodeados en `ETIQUETA_ROL`/`PUNTO_ROL`, con el fallback al nombre
+crudo funcionando), abrir la ficha de una persona, las tres pestañas,
+elegir otro rol y ver el diff pintado en el panel Y en la fila de la
+matriz con el velo transparente, aplicar el cambio de verdad, crear un
+usuario nuevo de punta a punta (con el rol `staff_goods` preseleccionado
+por defecto), buscarlo en la matriz, y quitarle el acceso (borra la
+cuenta, cierra el panel, la lista se refresca) — cero errores de consola
+en todo el flujo.
+
+**Corrección posterior (mismo día):** tres ajustes pedidos después de la
+primera integración, sobre este mismo módulo:
+
+1. **El panel vuelve a ser overlay, no push.** La primera versión seguía al
+   pie de la letra la instrucción original del handoff de "empujar" el
+   contenido con `marginRight` cuando había un panel abierto (ficha o
+   crear). Se corrigió para que coincida con el patrón real de todos los
+   demás módulos ya integrados (Empresas, Suscripciones, Auditoría...): el
+   panel es un `fixed inset-0 z-50` con velo, la matriz de atrás no se
+   mueve ni se encoge. Se quitó el binding de `marginRight` y la clase de
+   transición de `usuarios-page.component.html`; los paneles (`ficha` y
+   `crear`) ya eran overlay desde el principio, así que no hizo falta
+   tocarlos.
+
+2. **Nombres de rol humanizados.** La matriz, el selector de rol del panel
+   de ficha, el panel de crear, y el texto de diff al cambiar de rol
+   mostraban el slug crudo de la base (`dueno_empresa`, `admin_goods`,
+   etc.). Se armó un mapa `ETIQUETA_ROL` completo con los 8 roles reales
+   del sistema (sacado de las constantes con docstring de `rol.service.ts`
+   para que cada etiqueta refleje el significado real, no una traducción
+   literal del slug): `admin` → "Administrador", `staff_goods` → "Staff
+   Goods", `admin_goods` → "Admin de Goods", `auditoria_goods` →
+   "Auditoría de Goods", `empleado_goods` → "Empleado de Goods", `cliente`
+   → "Cliente", `dueno_empresa` → "Dueño de la Empresa", `empleado_empresa`
+   → "Empleado de la Empresa". Para un rol nuevo o ad-hoc fuera de esa
+   lista (ej. el rol de prueba "soporte-690" que ya existía en la BD desde
+   antes) hay un fallback (`etiquetaRolTexto`) que capitaliza cada palabra
+   del slug en vez de mostrarlo crudo. `CrearUsuarioPanelComponent`
+   mantiene su propia copia local (consistente con que ya era
+   "completamente autónomo"); `FichaUsuarioPanelComponent`, que ya
+   importaba otras constantes de la página, importa esta función en vez de
+   duplicarla.
+
+3. **El rol `admin` ve usuarios de cualquier Empresa, no solo el
+   sub-conjunto de staff de Goods.** El pedido era literal ("como es super
+   admin se le deben mostrar todos los usuarios del sistema pero solo a
+   ese rol admin"), pero investigando el mecanismo real de login
+   (`AuthService.loginParaStaff`) apareció un detalle importante: el rol
+   `admin` tiene `esRolStaff: false` (es el superadmin de bootstrap,
+   pensado para un futuro panel `admin`, no para `staff`) — así que
+   `loginParaStaff` nunca deja pasar la identidad real `admin` dentro de
+   una sesión del panel `staff`: o la rechaza, o (si el usuario tiene
+   `accesoStaffGoods`) le presta la identidad `admin_goods`. Es decir, un
+   chequeo literal de `rolNombre === 'admin'` no habría tenido ningún
+   efecto observable hoy. La solución cubre los dos casos:
+   `TenantContextData` ahora lleva también `rolNombre` y
+   `esSesionCrossPanelStaff` (este último ya viaja en el JWT — es la
+   bandera de "Acceso especial de superadmin" que se ve en el badge
+   naranja arriba a la derecha, hoy exclusiva de la cuenta de Samuel), y
+   `UsuarioService.filtroTenantUsuarios()` devuelve `{}` (sin filtro de
+   Empresa) si cualquiera de las dos es cierta — la primera por si algún
+   día existe login directo como `admin` fuera del panel `staff`; la
+   segunda es la que efectivamente hace que hoy, adentro de `staff`, la
+   sesión con acceso especial de superadmin vea las 29 cuentas reales
+   repartidas en varias Empresas en vez de solo las de Goods. Antes de
+   implementarlo se verificó por `psql` que las 4 cuentas con rol `admin`
+   existentes tienen `empresaId: null` — el split de roles de la Fase 4
+   (`ROL_DUENO_EMPRESA`) ya separó "admin de Goods" de "dueño de una
+   Empresa", así que dar visibilidad total a `admin` no reabre el bug
+   histórico que el filtro de tenant vino a cerrar.
+
+Verificado de nuevo con Playwright contra datos reales tras las tres
+correcciones: el panel abre como velo fijo sobre la matriz sin que esta
+se mueva ni encoja (`marginRight: 0px` confirmado); la matriz, el
+selector de rol de la ficha, el panel de crear usuario y el texto de
+preview del cambio de rol muestran únicamente las etiquetas humanizadas
+(cero apariciones de los slugs crudos `dueno_empresa`, `admin_goods`,
+`auditoria_goods`, `empleado_goods`, `empleado_empresa`); y la sesión con
+acceso especial de superadmin ve "29 cuentas" repartidas en los 8 grupos
+de rol, incluyendo 14 personas bajo "Dueño de la Empresa" y 7 bajo
+"Cliente" de distintas Empresas — antes de este ajuste esa misma sesión
+solo veía el subconjunto de Goods. Cero errores de consola en todo el
+flujo.
+
+**Segunda corrección (mismo día): "nunca entró" para todos + presencia en
+línea.** El usuario notó que la columna `Usuario.ultimoAcceso` del backend
+aparecía en `null` para todas las cuentas, y que la matriz de Usuarios
+mostraba "nunca entró" hasta para la propia cuenta con la que estaba
+probando — que había entrado decenas de veces ese mismo día. Investigando
+aparecieron dos bugs reales, no uno:
+
+1. `Usuario.ultimoAcceso` (columna `ultimo_acceso`) existía en la entidad
+   desde antes, pero nada la escribía — confirmado por código (no
+   aparecía en ningún `.update()`/`.save()` de `AuthService`) y por base
+   (0 de 29 cuentas con valor). La pantalla de Usuarios ni siquiera la
+   leía: reconstruía "último acceso" enteramente filtrando `GET
+   /auditoria` (ver la nota de arriba sobre por qué "conviene un
+   `ultimoAccesoEn` en el backend").
+2. Esa reconstrucción vía auditoría tampoco funcionaba, por una razón más
+   sutil: cada intento de login SÍ queda auditado por
+   `AuditoriaAccionInterceptor` (el interceptor global), pero siempre con
+   `usuario_id: null` — en el momento en que un login corre, `request.user`
+   todavía no existe (es el propio login el que lo crea), así que ninguna
+   captura automática puede saber QUIÉN entró. El frontend descarta esas
+   filas justo por tener `usuarioId: null`. Había un único registro manual
+   con el id real — la rama de "acceso especial de superadmin" de
+   `AuthService.loginParaStaff` — pero quedó escrito con
+   `ruta: '/auth/login-staff'` (sin el prefijo `/api` que sí lleva todo lo
+   demás en esa tabla, porque el server corre con `setGlobalPrefix('api')`),
+   así que el regex `RUTA_LOGIN` del frontend nunca hacía match con esas
+   filas tampoco — 51 logins reales, invisibles. Y esa rama manual era la
+   ÚNICA que auditaba algo: cuando alguien entraba con su propio rol real
+   de staff (el caso más común, `loginParaStaff` rama 1), no se registraba
+   nada en absoluto.
+
+Arreglado con `AuthService.registrarAccesoExitoso()`, un método
+compartido que se llama desde `login()` y las DOS ramas de
+`loginParaStaff()` (nunca desde `refrescarToken()` — un refresh no es un
+acceso nuevo, pasa solo cada pocos minutos mientras la sesión sigue
+abierta) y hace dos cosas: guarda `Usuario.ultimoAcceso` de verdad
+(`UsuarioService.registrarUltimoAcceso`), y registra el login a mano en
+`auditoria_acciones` con el usuarioId real y la ruta CON el prefijo
+`/api`. El frontend (`usuarios-page.component.ts` y
+`ficha-usuario-panel.component.ts`, cada uno con su propia copia de
+`ultimoMsEfectivo()` — mismo criterio de duplicación que el resto del
+módulo) combina `usuario.ultimoAcceso` con `acceso.ultimoMs`
+(reconstruido de auditoría) tomando el más reciente de los dos, en vez de
+reemplazar uno por el otro — así no se pierde el historial de accesos que
+ya estaba auditado antes de este fix (las 51 filas del acceso especial de
+superadmin, ahora sí visibles con el prefijo corregido).
+
+De paso, el usuario preguntó si existía algo de "usuario en línea" — no
+existía. Se construyó sobre `RealtimeGateway` (el WebSocket compartido
+que ya usaba el chat de soporte y el asistente de activación, no uno
+nuevo): un contador en memoria por usuarioId
+(`conteoPorUsuario`, sube/baja en `handleConnection`/`handleDisconnect`,
+cuenta conexiones porque una misma persona puede tener varias pestañas
+abiertas), una sala nueva `staff:presencia` (a la que se une, al
+conectar, cualquiera cuyo rol tenga `usuarios.ver` — el mismo permiso que
+protege la pantalla, no reutiliza la sala de soporte porque son permisos
+distintos), y un evento `presencia:cambio` que se emite SOLO en las
+transiciones (0 conexiones → 1, o 1 → 0), no en cada conexión/desconexión
+individual. `GET /usuarios/en-linea` (mismo permiso `usuarios.ver`,
+ruta literal declarada ANTES de `@Get(':id')` para que Nest no la
+confunda con un id) da la foto inicial; el frontend se suscribe aparte al
+evento en vivo para mantenerla al día. El socket, que antes solo se
+abría en las pantallas que necesitaban escuchar algo puntual (Usuarios,
+el asistente de activación de empresa), ahora también se abre desde
+`ShellComponent` (el layout raíz de toda sesión de staff autenticada,
+vía `RealtimeService.mantenerConectado()`) — si no, alguien navegando por
+Empresas o Planes nunca contaría como "conectado" aunque esté usando la
+app en ese momento.
+
+En la matriz y en la ficha, "en línea ahora" (verde, con un punto sobre
+el avatar/indicador de estado) reemplaza al texto de días cuando aplica —
+es más específico y más cierto que "hace X días" en el instante en que
+de verdad hay una conexión abierta.
+
+Verificado con Playwright con dos sesiones simultáneas (contextos de
+browser separados) más una tercera "mirando" la matriz: el login con rol
+real de staff (`staff_goods`, antes completamente sin auditar) y el login
+del acceso especial de superadmin quedan ambos con `ultimoAcceso`
+guardado y con una fila `/api/auth/login-staff` en `auditoria_acciones`
+con su usuarioId real (confirmado por `psql`); "2 con acceso esta semana"
+en vez de 0; las dos cuentas conectadas muestran el punto verde y "en
+línea ahora" tanto en la matriz como en la ficha; y al cerrar una de las
+dos sesiones, la otra pestaña (que seguía con la matriz abierta, sin
+recargar) pasó sola de "en línea ahora" a "hace minutos" en cuanto llegó
+el evento de desconexión. Cero errores de consola en las tres sesiones.
+
+**Roles y permisos ("matriz de permisos") — integrado 2026-09-22.**
+Reemplaza la tabla de 4 columnas + los tres modales (crear/editar,
+asignar permisos, eliminar) de la pantalla anterior por la matriz
+roles × módulos del LEEME (§10): el acceso de un rol a un módulo es
+**acumulativo** (0 sin acceso, 1 `ver`, 2 `ver+crear`, 3 `+editar`, 4
+`+eliminar`), con un segmento por acción real del módulo — no todos
+tienen cuatro, `auditoria`/`permisos` tienen una sola acción y la celda
+dibuja un solo segmento, no cuatro vacíos. Un panel único hace de
+ficha, edición y alta (con presets "Sin acceso"/"Solo lectura"/"Acceso
+total" y plantillas de partida al crear), y una barra flotante agrupa
+los cambios sin guardar de los roles que quedaron tocados fuera del
+panel.
+
+Sin cambios de backend: `RolService`/`Rol`/`Permiso` del frontend ya
+tenían exactamente lo que pedía el handoff (`listar`, `crear`,
+`actualizar`, `eliminar`, `asignarPermisos`, `listarPermisos`), así que
+fue un reemplazo directo de `roles-page.component.ts`/`.html`.
+
+Único ajuste propio hecho durante la integración (no estaba en el
+handoff): el panel del LEEME es un `<aside class="fixed inset-y-0
+right-0 z-50">` suelto, sin backdrop — a diferencia de Empresas y de
+Usuarios (ver arriba), que envuelven el panel deslizante en un `fixed
+inset-0 z-50 flex justify-end` con velo y `onBackdropClick`. Se agregó
+ese wrapper acá también — mismo criterio de "el panel nunca corre la
+página, siempre es overlay `fixed`" recién corregido en Usuarios el
+mismo día que se integró este módulo — pero con el velo **transparente**
+en vez de oscurecer la pantalla: la barra flotante de "cambios sin
+guardar" (`tocadosFuera()`) está pensada por diseño para convivir con
+el panel abierto — tocar la matriz de un rol, abrir el panel de otro
+para revisarlo, y seguir viendo ese aviso — y un velo oscuro la taparía.
+El clic afuera del panel lo cierra igual que en los demás módulos, solo
+sin el oscurecido (`RolesPageComponent.onBackdropClick`).
+
+Keyframe nueva en `styles.css`: `rise` (entrada de la barra flotante y
+del aviso de confirmación, ambos centrados con `-translate-x-1/2` — el
+LEEME advertía que el `-50%` en X tiene que ir dentro de la keyframe, no
+alcanza con la clase sola, o el elemento salta al terminar la
+animación).
+
+Verificado con Playwright: la matriz carga con los 9 roles reales
+agrupados en plantillas del sistema / roles propios de clientes, y las
+16 columnas reales que devuelve el backend — incluidas las que no están
+en `ORDEN_MODULO` (`categorias`, `chat`, `compras`, etc.), que aparecen
+al final con su id crudo como etiqueta, tal como describe el LEEME. El
+panel abre como overlay sin correr la página (`margin-right` del
+contenedor en `0px`, ancho del panel 432px de punta a punta); un clic
+afuera lo cierra; togglear un permiso dentro del panel marca la celda
+como sucia, actualiza las métricas y habilita "Guardar cambios"; guardar
+hace el `PUT /roles/:id/permisos`, muestra el aviso de confirmación y
+refleja el cambio en la matriz sin recargar. Cero errores de consola.
+(La verificación tocó y volvió a revertir un permiso real del rol
+`admin` para probar el flujo de guardado — quedó con el mismo conteo de
+permisos que antes, confirmado contra `roles_permisos`.)
+
+**Roles y permisos, segunda pasada (mismo día): panel aparte + nombres
+legibles.** El usuario pidió dos ajustes sobre la integración de arriba,
+ambos ya aplicados en otros módulos y ahora traídos acá:
+
+1. **El panel se separó en `RolPanelComponent`**, componente aparte,
+   sibling de `roles-page` en `pages/` — mismo patrón que
+   `EmpresaDetallePanelComponent`/`FichaUsuarioPanelComponent`. A
+   diferencia de Usuarios (que separó ficha y alta en dos componentes
+   distintos), acá queda uno solo: el LEEME (§10) diseñó a propósito un
+   único panel que cambia de modo con `creando()`, reusando la misma
+   lista de switches de permisos y los mismos preajustes para ver/editar
+   y para dar de alta — separarlo en dos hubiera duplicado ese template
+   entero, justo lo que el diseño evitaba. `niveles`/`nivelesOriginales`/
+   `edits`/`roles`/`modulos` se quedan en la página (la matriz, afuera
+   del panel, necesita pintar el diff en vivo de TODOS los roles
+   tocados, no solo el abierto, y la barra flotante también); el panel
+   recibe todo lo que se arma con ese estado ya calculado —
+   `modulosPanel`/`metricas`/`bases`/`metadatos`/`chip`/`nombrePanel`/
+   `textoPie`, etc. — por `@Input`, y emite `confirmar`/`eliminar`/
+   `duplicar`/`fijar`/`aplicarPreset`/`elegirBase`/`actualizarTexto`;
+   `persistir`/`crearRol`/`eliminarRol` (que necesitan ese mismo estado
+   compartido) se quedan en la página, así que el panel nunca llama a
+   `RolService` por su cuenta — mismo tipo de excepción que
+   `[matrizPanel]`/`[textoCambioRol]` en `FichaUsuarioPanelComponent`. Lo
+   único genuinamente interno del panel es la pestaña activa
+   (permisos/datos): un `effect` la reinicia solo cuando cambia de QUÉ
+   se trata el panel (`creando()`, o el id del rol — nunca la referencia
+   sola, que cambia cada vez que algo se guarda), mismo criterio que el
+   `effect` de `FichaUsuarioPanelComponent`.
+
+2. **Los nombres de rol que se MUESTRAN pasan por `etiquetaRolTexto()`**
+   — el mismo ajuste que ya tenía Usuarios para sus cabeceras de grupo
+   (`ETIQUETA_ROL`/`etiquetaRolTexto()` en `usuarios-page.component.ts`),
+   ahora también en su propio módulo: la fila de la matriz, el título
+   del panel y las plantillas de "Partir de" al crear muestran "Admin de
+   Goods" en vez del slug crudo `admin_goods`; un rol propio sin
+   etiqueta a mano (`soporte-690`) cae al fallback genérico y se lee
+   "Soporte 690". Exportado desde `roles-page.component.ts` (mismos
+   ocho roles de sistema, mismas etiquetas que la copia de Usuarios) e
+   importado por `RolPanelComponent` — mismo criterio que
+   `FichaUsuarioPanelComponent` importando eso de `usuarios-page` en vez
+   de duplicarlo, porque ya depende de la página para todo lo demás.
+   **La traducción es puramente de lectura**: el campo editable de
+   "Datos del rol" nunca la usa — recibe `nombreEdicion` (el `nombreDe()`
+   crudo, sin pasar por `etiquetaRolTexto()`) para que lo que se ve
+   escrito, letra por letra, sea exactamente lo que se termina
+   guardando. Mientras se está creando un rol nuevo el título del panel
+   también queda crudo (es lo que la persona está tecleando en ese
+   instante, no un slug de la base que traducir).
+
+Verificado con Playwright: la matriz muestra "Admin de Goods"/
+"Soporte 690"/etc. en vez de los slugs; abrir el rol de sistema `admin`
+muestra "Administrador" como título del panel pero el input de "Datos
+del rol" (deshabilitado) sigue mostrando `admin` crudo; abrir el rol
+propio `soporte-690` muestra "Soporte 690" en el título y `soporte-690`
+crudo en el input editable; crear un rol nuevo y escribir
+`cajero_turno-noche` deja el título del panel exactamente así, sin
+traducir mientras se escribe; `<app-rol-panel>` aparece como elemento
+propio en el DOM, con el mismo ancho fijo de 432px y sin `margin-right`
+en el contenedor de la página (overlay, no empuja); clic afuera sigue
+cerrando el panel; togglear un permiso y guardar desde el panel ya
+separado hace el `PUT` real y actualiza la matriz. Cero errores de
+consola. (Volvió a tocar y revertir un permiso real de `admin` para
+probar el guardado a través del componente nuevo — mismo conteo que
+antes, confirmado contra `roles_permisos`.)
+
+**Roles y permisos, tercera pasada (mismo día): más espacio, matriz con
+scroll horizontal.** El usuario sintió la tabla y el panel "muy pegados
+o apretados" y pidió más espacio, aceptando que la matriz se desplace
+horizontalmente en vez de comprimir columnas para que quepa todo — así
+que se ensancharon las columnas y se dejó que el contenedor
+`overflow-x-auto` que ya existía absorbiera el sobrante, en vez de
+encoger nada:
+
+- Grid de la matriz: `212px repeat(N, minmax(52px, 1fr)) 84px` →
+  `240px repeat(N, minmax(88px, 1fr)) 100px` (columna Rol, columnas de
+  módulo y columna Total, las tres); el piso `min-w-[700px]` del
+  contenedor subió a `min-w-[900px]`. Con los 16 módulos reales de hoy
+  esto da un ancho de contenido de ~1750px contra ~1120px visibles en
+  1440px de pantalla — el scroll horizontal entra en juego a propósito,
+  confirmado con Playwright (`scrollWidth` 1768 vs `clientWidth` 1118).
+- Padding de filas/celdas/encabezados de la matriz subido un escalón
+  (`px-4`→`px-5`, `py-2.5`→`py-3`, celda de módulo `gap-0.5 px-1 py-2`→
+  `gap-1 px-1.5 py-2.5`) y los segmentos de nivel de acceso más altos
+  (`h-[18px]`→`h-5`). `anchoSegmento()` en `roles-page.component.ts` se
+  escaló junto con la columna más ancha (`38px/13px/9px` →
+  `44px/15px/10px`) — sigue centrado dentro de la celda, así que el
+  ancho extra de columna que no usan los segmentos queda de gutter.
+- `RolPanelComponent` pasó de `w-[432px]` a `w-[480px]`, con el mismo
+  ajuste de un escalón en su padding interno (`px-5`→`px-6` en cabecera/
+  cuerpo/pie, tarjetas de módulo y filas de metadatos con más aire).
+
+Puramente visual — ningún dato, permiso ni endpoint tocado. Verificado
+con Playwright: matriz y panel se ven con más aire en captura, scroll
+horizontal funciona (`scrollLeft` se mueve y el contenido se desplaza),
+`ng build staff --configuration production` sale limpio, cero errores
+de consola. No se guardó ningún cambio de permisos durante esta
+verificación (solo se abrió el panel para la captura), así que no hizo
+falta revertir nada esta vez.
+
+**Roles y permisos, cuarta pasada (mismo día): los segmentos llenan la
+celda, columna Total más ancha.** El usuario mandó una captura señalando
+dos cosas puntuales sobre el ajuste anterior: la columna Total "no se
+logra ver bien", y los colores de la matriz "apenas llegan hasta
+inventario" sin extenderse por el resto del panel. La causa real de lo
+segundo: los segmentos de nivel de acceso tenían un ancho fijo en `px`
+(`anchoSegmento()`) centrado dentro de la celda — al ensanchar las
+columnas en la pasada anterior, quedó mucho blanco alrededor de cada
+grupo de segmentos, dando la sensación de que el color no llega a cubrir
+la celda. Arreglado así:
+
+- Cada segmento pasó de `[style.width]` fijo a `flex-1` (mismo reparto
+  entre los segmentos de una celda) — ahora el color genuinamente ocupa
+  todo el ancho de la celda, sea cual sea el ancho real de la columna
+  (fija en 88px de piso o estirada por el `1fr` en pantallas anchas).
+  `s.ancho`/`anchoSegmento()` no se borraron: pasaron de ancho fijo a
+  piso mínimo (`min-width`), para que un módulo con una sola acción
+  (`auditoria`, `reportes`) no quede con un segmento demasiado angosto.
+- Columna Total: `84px` → `130px` en la pasada anterior había quedado
+  corta todavía; subió a los mismos `130px` en ambas filas de grid
+  (encabezado y filas), y la barra de progreso de `w-[34px] h-1` pasó a
+  `w-14 h-1.5` para que se note más con el número al lado.
+
+Verificado con Playwright: los segmentos ahora se ven como una barra
+segmentada continua que llena cada celda (antes quedaban agrupados
+chicos al centro); haciendo scroll hasta el final del contenedor, la
+columna "Total" se confirmó con `getBoundingClientRect()` — termina en
+x=1407 dentro de un viewport de 1440px, ya no cortada. `ng build staff
+--configuration production` sale limpio, cero errores de consola.
+
+**Roles y permisos, quinta pasada (mismo día): Rol y Total quedan
+`sticky`, ya no dependen del ancho de pantalla.** El usuario mostró
+capturas de su propia pantalla: al hacer scroll horizontal, cualquier
+columna que quedara a medio cortar en el borde del visor se veía "sin
+color" — que es exactamente lo esperable de un scroll normal (lo que no
+entra en el visor no se ve hasta scrollear), pero la columna Total en
+particular quedaba fuera de vista salvo que se scrolleara hasta el
+final, y con 16+ módulos reales eso no siempre entra en una pantalla
+normal por más ancho que se le diera. La solución robusta: las columnas
+"Rol" (izquierda) y "Total" (derecha) pasaron a `position: sticky` —
+quedan siempre visibles sin importar cuánto se scrollee ni cuántos
+módulos tenga el sistema, en vez de depender de que alcance el ancho.
+
+Detalle técnico que costó una vuelta extra: la primera versión usó
+`sticky left-5`/`right-5` con un margen negativo (`-ml-5`/`-mr-5`) para
+que la columna fija "tapara" el padding lateral de la fila (`px-5`) —
+dejaba un hueco de ~20px por el que se colaba la celda de al lado
+(confirmado con `getBoundingClientRect()`: el borde de Total quedaba a
+1387px con el contenedor terminando en 1408px). Se resolvió sacando el
+`px-5` de la fila entera y poniendo ese padding como `pl-5`/`pr-5`
+directamente dentro de las columnas Rol/Total, con `sticky left-0`/
+`right-0` — así no hace falta ningún margen negativo compensatorio y el
+borde de la columna fija queda exacto contra el borde del contenedor.
+Cada columna fija lleva su propio color de fondo (mismas clases
+condicionales que ya tenía la fila — blanco/seleccionada/tocada) y una
+sombra sutil hacia el lado donde scrollea el resto, para que se note que
+hay contenido pasando por debajo.
+
+Verificado con Playwright en tres posiciones de scroll (al inicio, a la
+mitad, al final) con `getBoundingClientRect()` + `elementFromPoint()` en
+los bordes de ambas columnas fijas — sin huecos, sin fuga de celdas
+vecinas. Interacciones (abrir el panel de un rol, clic en un segmento)
+siguen funcionando igual a través del wrapper nuevo. `ng build staff
+--configuration production` sale limpio, cero errores de consola.
+
+**Roles y permisos, sexta pasada (mismo día): la descripción larga se
+desbordaba sobre las columnas de módulo.** Efecto colateral de envolver
+el botón del nombre en el `<div sticky>` de la pasada anterior: el
+`<button class="flex ...">` dejó de ser un ítem directo del grid (que
+`justify-items: stretch` sí ajusta a los 240px de la columna) y pasó a
+ser un hijo normal del wrapper `sticky` — sin un ancho explícito, un
+contenedor flex con texto `white-space: nowrap` adentro se dimensiona
+por contenido en vez de heredar el ancho del padre, así que roles con
+descripción larga ("Empleado de un emprendimiento cliente de Goods —
+acceso operativo acotado dentro de la Empresa de su dueño") medían
+618px en vez de ~220px y se desbordaban visualmente sobre las celdas de
+módulo de al lado — confirmado midiendo con `getBoundingClientRect()`.
+Arreglado dándole al wrapper `sticky` un ancho fijo explícito
+(`w-[240px]` + `overflow-hidden` como resguardo) y `w-full` al botón de
+adentro, para que el ancho de 240px se propague de forma explícita en
+vez de depender de que el navegador lo infiera solo — confirmado que
+ahora mide 220px (240 menos el padding) y el `truncate` con "…" vuelve
+a cortar donde corresponde. `ng build` limpio, interacciones (abrir
+panel, tocar un segmento) verificadas de nuevo tras el cambio.
+
+**Topbar de staff: aviso de acceso especial pasa de píldora suelta a
+segunda línea del bloque de usuario (handoff, §11).** Integrado desde
+`projects/staff/src/app/layout/topbar/` del zip — reemplaza
+`topbar.component.html` entero; el `.ts` queda con la misma lógica de
+siempre (`currentUser`/`initials`/`displayName`/`esCrossPanelStaff`/
+`logout`), solo cambió el comentario de cabecera.
+
+Qué cambió, tal como lo documentaba el LEEME:
+- La píldora ámbar "Acceso especial de superadmin" que flotaba suelta a
+  la izquierda del avatar desapareció. El dato es sobre *esa cuenta*, no
+  un estado de la aplicación, así que ahora es una segunda línea dentro
+  del bloque de usuario: punto cian + `SUPERADMIN`, separador de 1px,
+  "Acceso especial". El `title` con la explicación completa se movió del
+  badge viejo al bloque de usuario.
+- El header pasó de `h-14` a `h-15` y el logo de `h-6` a `h-12`; la
+  píldora "Staff" con borde redondeado se volvió un separador de 1px +
+  "Staff" en versalitas de 10px — menos peso a la izquierda.
+- En sesión normal (sin acceso especial) el bloque de usuario queda
+  idéntico al de siempre (avatar + nombre en una línea) — verificado con
+  la cuenta `staff.qa@goods.example.com`.
+
+**Desviación del handoff**: el nuevo HTML referenciaba
+`logo-goods-plus-wordmark.png`, un archivo que no existe ni en
+`projects/staff/public/` ni en la carpeta del zip — el usuario confirmó
+seguir con el `logo-goods-wordmark.png` de siempre, solo al tamaño nuevo
+(`h-12`). Nada de tokens nuevos (usa `--color-topbar-badge-border` y
+`--color-topbar-avatar-bg`/`-text`, que ya existían) ni keyframes.
+
+Verificado con Playwright en las dos cuentas de prueba (superadmin
+cross-panel y staff normal), capturas del topbar en ambos casos, cero
+errores de consola, `ng build staff --configuration production` limpio.
+
+
+
+
+
+
+**Settings del panel de staff: nuevo ítem de sidebar + módulo de perfil
+propio (pedido 2026-09-22, sin handoff — "con base a los estilos que hay
+y que estamos usando").**
+
+A diferencia de `admin/features/settings/` (gestiona el equipo de UNA
+Empresa, con sub-páginas Usuarios/Roles), en staff no había nada que
+copiar de ahí: la propia página de Settings de admin es un placeholder
+reconocido sin contenido definido, y sus únicas sub-páginas reales
+administran a "otros", algo que en staff ya viven como ítems de primer
+nivel del sidebar (Usuarios / Roles y permisos, system-wide). Se planteó
+esto al usuario antes de construir — confirmó que Settings acá es el
+perfil de la PROPIA cuenta, no gestión de otros.
+
+Sidebar: se sumó `settingsItem` a `layout/sidebar/sidebar.component.ts`
+calcado en posición/estilo del de `admin` — link simple sin submenú,
+empujado al fondo con `mt-auto`, fuera del `@for`/indicador deslizante
+de primer nivel. A diferencia de `admin`, sin sección "Administración"
+arriba (no aplica: acá no hay nada de eso). Sin `permiso`: es el perfil
+de la cuenta logueada, visible para cualquier rol de staff — el propio
+backend tampoco lo gatea (`GET`/`PATCH /usuarios/:id` permiten el propio
+id sin `usuarios.ver`/`usuarios.editar`, ver
+`UsuarioController.verificarPropioOPermiso`).
+
+Contenido de `features/settings/` (una sola ruta, `SettingsPageComponent`),
+decidido con el usuario campo por campo:
+- **Perfil completo editable** (nombres/apellidos/teléfono) vía
+  `UsuarioService.obtener()`/`.actualizar()` — mismos endpoints que ya
+  usaba `ficha-usuario-panel` para editar a otros, acá apuntados al
+  propio id (`AuthService.currentUser().id`). El correo se muestra de
+  solo lectura ("no se cambia desde acá").
+- **Foto de perfil**: nuevo `core/upload/upload.service.ts` (`POST
+  /upload`, genérico, ya existía en el backend sin consumidor en staff)
+  + `PATCH /usuarios/:id { imagenPerfil }` para asociarla. Valida tipo
+  (jpg/png/webp/gif) y tamaño (5 MB) en el cliente, espejo de los límites
+  reales del backend (`upload.constants.ts`).
+- **Aviso de correo sin verificar**: si `correoVerificado` es `false`,
+  tarjeta con botón "Enviar código" (`POST /auth/send-verification`) +
+  input de 6 dígitos (`POST /auth/verify-email`) — ambos endpoints ya
+  existían, sin uso previo en staff.
+- **Último acceso**: solo se muestra (`Usuario.ultimoAcceso`, ya viene
+  en el perfil), no hace falta pedir nada aparte.
+- **Cambiar contraseña**: decisión explícita del usuario — NO se
+  construyó un endpoint nuevo de "cambiar con la actual" (el propio
+  `UpdateUsuarioDto` excluye `password` a propósito: "el cambio de
+  contraseña pasa por auth: reset/forgot-password"). El botón reusa
+  `POST /auth/forgot-password` a la propia cuenta — mismo flujo que ya
+  usa la pantalla de login, la persona termina el cambio en su correo,
+  fuera del panel.
+
+Extensiones de servicios existentes (sin tocar nada del backend):
+`UsuarioGoods` sumó `imagenPerfil`/`correoVerificado`;
+`UsuarioService` sumó `obtener(id)` (`GET /usuarios/:id`) y
+`ActualizarUsuarioGoodsPayload` sumó `imagenPerfil?`; `AuthService`
+(staff) sumó `solicitarRecuperacionPassword`/`reenviarVerificacionCorreo`/
+`verificarCorreoConCodigo`. `app.config.ts` sumó `IconSettings2`
+(registrado por nombre de string, igual que el resto del sidebar —
+`admin` usa la misma variante para el mismo ítem).
+
+**Bug encontrado y arreglado durante la verificación**: la primera
+versión de `SettingsPageComponent` leía
+`authService.currentUser()?.id` una sola vez en el constructor.
+`AuthService.currentUser` no se persiste (solo el accessToken) — tras un
+F5 o un deep-link directo a `/settings`, `ShellComponent.ngOnInit` recién
+dispara `GET /auth/me` de forma asíncrona, así que esa lectura síncrona
+corría real riesgo de encontrar `null` (confirmado con Playwright:
+navegar directo a `/settings` tras login mostraba "No se pudo identificar
+tu sesión" pese a la sesión ser válida). Arreglado con un `effect()` que
+reacciona cuando el signal por fin trae el id, en vez de depender de que
+el shell termine antes.
+
+Verificado con Playwright en dos cuentas (`staff.qa@goods.example.com`,
+plana, sin `usuarios.ver`/`roles.ver` — Settings visible igual; y la
+cuenta superadmin cross-panel, con Usuarios/Roles visibles además de
+Settings): editar y guardar datos (persiste tras reload), subir foto
+(URL nueva `http://localhost:3000/uploads/...`), disparar
+envío-de-código con manejo de error (en este entorno de verificación no
+hay un SMTP local corriendo — `ECONNREFUSED 127.0.0.1:1025` en el log
+del backend, mismo límite que ya tenía la pantalla de login con su
+"olvidé mi contraseña", no es un bug nuevo), botón de cambiar contraseña.
+Cero errores de consola tras el fix del ícono/la carrera de `currentUser`.
+`ng build staff --configuration production` sale limpio (solo el warning
+preexistente de presupuesto de bundle inicial, no relacionado).
+
+
+
+
+**Settings de staff, segunda vuelta el mismo día: de "nombres/apellidos/
+teléfono" a "toda la información" del perfil.** El usuario pegó el JSON
+crudo de `GET /usuarios/:id` como referencia de lo que quería ver
+("hay que ajustar para mostrar toda la información").
+
+Se creó un modelo aparte, `core/usuarios/models/mi-perfil.model.ts`
+(`MiPerfil`/`ActualizarPerfilPayload`), en vez de bolsear los campos
+nuevos en `UsuarioGoods` — esa exclusión ("no repite columnas de
+e-commerce que no aplican al personal de Goods") seguía siendo correcta
+para `features/usuarios/` (gestionar a OTROS colegas), pero para el
+PROPIO perfil esos mismos campos sí son "su información". `obtener()`/
+`actualizar()` de `UsuarioService` se volvieron genéricos en el tipo de
+respuesta (`<T = UsuarioGoods>`) para servir a los dos modelos sin
+duplicar el HTTP — cero ruptura de los llamadores existentes
+(`ficha-usuario-panel` sigue recibiendo `UsuarioGoods` por defecto).
+
+Campos sumados a la tarjeta "Datos personales" (todos editables vía el
+mismo `PATCH /usuarios/:id` de siempre — `UpdateUsuarioDto` ya los
+permitía, cero cambios de backend): tipo y número de documento, fecha de
+nacimiento, género, dirección + referencia, y un checkbox de "acepto
+comunicaciones de Goods" (`aceptaMarketing`). El teléfono sumó un
+indicador de verificado/sin verificar a la derecha (`telefonoVerificado`
+— sin flujo de reenvío como el de correo, el backend no tiene un
+endpoint equivalente para teléfono, así que acá solo se MUESTRA).
+
+Nueva tarjeta "Cuenta" (solo lectura): banner verde si la cuenta tiene
+`accesoStaffGoods` (acceso especial de superadmin — dato de la CUENTA,
+distinto de `esCrossPanelStaff` del topbar que es de la SESIÓN actual),
+estado (activa/desactivada), miembro desde, términos aceptados (si hay
+fecha), origen de registro y código de referido (si vienen), puntos de
+fidelidad, última actualización.
+
+Quedaron afuera a propósito (documentado en el docstring de `MiPerfil`):
+`latitud`/`longitud` (coordenadas crudas sin mapa no son información
+legible, no hay flujo que las use), `tokenRecuperacionExpira`/
+`intentosFallidos`/`bloqueadoHasta` (metadata interna de seguridad
+anti-fuerza-bruta, no "perfil"), `eliminadoEn`/`motivoDesactivacion`
+(solo aplican a una cuenta desactivada, que no podría tener una sesión
+propia viendo su Settings), `empresaId`/`rolId` (siempre null / redundante
+con `rol.id`), `preferenciasNotificaciones` (sin lógica de negocio
+todavía, ver el propio comentario de la entidad `Usuario`),
+`referidoPorId` (un id crudo sin nombre no dice nada útil).
+
+Sin precedente en el repo para un `<select>` de tipoDocumento/género
+(se buscó en `admin`/`staff`/`shared-ui`, no existe ningún formulario de
+registro con esos campos) — se dejaron como texto libre en vez de
+inventar una lista de opciones (ej. CC/CE/TI/Pasaporte) que el negocio
+no pidió. Fecha de nacimiento sí usa `<input type="date">` nativo
+(compatible con `@IsDateString()` del backend, que ya validaba ese
+formato).
+
+Verificado con Playwright en las dos cuentas de siempre: la superadmin
+cross-panel (mostró el banner de acceso especial, guardó y persistió
+documento/fecha de nacimiento/género/dirección tras reload) y la staff
+plana (sin el banner, campos opcionales en blanco se ven bien vacíos,
+nada roto). Cero errores de consola, `ng build staff --configuration
+production` limpio.
+
+
+
+
 ### Estructura de carpetas de `admin/src/app/`
 
 A partir de acá `admin` deja de ser un único `app.html` con todo

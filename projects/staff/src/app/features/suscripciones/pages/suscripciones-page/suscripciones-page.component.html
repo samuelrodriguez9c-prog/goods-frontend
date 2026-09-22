@@ -1,118 +1,218 @@
 <div class="p-8">
-  <h1 class="text-lg font-semibold text-gray-900">Suscripciones</h1>
-  <p class="mt-1 text-sm text-gray-500">
-    Historial completo de planes contratados por cada Empresa — incluye canceladas y vencidas.
-  </p>
-
-  @if (error(); as mensaje) {
-    <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
-  } @else if (cargando()) {
-    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
-  } @else {
-    <div class="mt-6">
-      <app-data-table>
-        <p-table [value]="filas()" dataKey="id" [pt]="tablePt">
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Empresa</th>
-              <th>Plan</th>
-              <th>Estado</th>
-              <th>Inicio</th>
-              <th>Fin</th>
-              <th></th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-fila>
-            <tr>
-              <td class="font-medium text-gray-900">{{ fila.empresaNombre }}</td>
-              <td class="text-gray-700">{{ fila.planNombre }}</td>
-              <td>
-                <app-status-badge [label]="fila.estado" [tone]="tonoDe(fila.estado)" dot="filled" />
-              </td>
-              <td class="text-gray-500">{{ fila.fechaInicio ? (fila.fechaInicio | date: 'd MMM y') : '—' }}</td>
-              <td class="text-gray-500">{{ fila.fechaFin ? (fila.fechaFin | date: 'd MMM y') : '—' }}</td>
-              <td>
-                @if (fila.estado === 'activa' || fila.estado === 'pendiente') {
-                  <button
-                    type="button"
-                    (click)="abrirGestionar(fila)"
-                    class="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-                  >
-                    <tabler-icon [icon]="iconGestionar" [size]="14" [stroke]="2" />
-                    Gestionar
-                  </button>
-                }
-              </td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="6" class="py-6 text-center text-sm text-gray-500">
-                Todavía no hay Suscripciones registradas.
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </app-data-table>
+  <div class="mx-auto max-w-[1000px]">
+    <div class="flex items-baseline gap-4">
+      <h1 class="shrink-0 font-display text-[34px] font-semibold leading-10 tracking-[-0.02em] text-gray-900">
+        Suscripciones
+      </h1>
+      <span class="h-px flex-1 bg-gray-300"></span>
+      <span class="shrink-0 text-[13px] text-gray-500">{{ notaCabecera() }}</span>
     </div>
-  }
+
+    @if (error(); as mensaje) {
+      <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
+    }
+
+    @if (cargando()) {
+      <div class="mt-[22px] flex animate-pulse flex-col gap-2">
+        <span class="h-[100px] w-full rounded-xl bg-gray-200"></span>
+        @for (s of skeletons; track $index) {
+          <span class="h-[72px] w-full rounded-[10px] bg-gray-100"></span>
+        }
+      </div>
+    } @else {
+      <!-- Lo que Goods factura por mes, que es la razón de esta pantalla -->
+      <div class="mt-[22px] rounded-xl border border-gray-200 bg-card-bg px-6 py-5">
+        <div class="flex flex-wrap items-end gap-7">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+              Facturación mensual
+            </p>
+            <p class="mt-1.5 font-display text-[38px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-gray-900">
+              {{ formatCop(mrrTotal()) }}
+            </p>
+            <p class="mt-[5px] text-xs text-gray-400">COP por mes · {{ notaMrr() }}</p>
+          </div>
+
+          @if (mostrarDesglose) {
+            <span class="w-px self-stretch bg-gray-100"></span>
+
+            @for (linea of desglosePorPlan(); track linea.planId) {
+              <div class="min-w-[88px]">
+                <p class="text-xs font-medium text-gray-700">{{ linea.nombre }}</p>
+                <p class="mt-1 font-display text-xl font-semibold leading-none tabular-nums text-gray-900">
+                  {{ formatCop(linea.monto) }}
+                </p>
+                <div class="mt-1.5 flex items-center gap-[5px]">
+                  <span class="block h-1 rounded-full bg-primary-button" [style.width.px]="linea.barra"></span>
+                  <span class="whitespace-nowrap text-[11px] text-gray-400">{{ linea.textoConteo }}</span>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        @if (atencion(); as aviso) {
+          <div class="mt-4 flex items-center gap-2.5 border-t border-gray-100 pt-3.5">
+            <tabler-icon [icon]="iconAtencion" [size]="16" [stroke]="2" class="shrink-0 text-amber-700" />
+            <p class="min-w-0 flex-1 text-xs leading-[18px] text-amber-800 text-pretty">
+              <strong class="font-semibold text-amber-900">{{ aviso.titulo }}</strong> · {{ aviso.nota }}
+            </p>
+          </div>
+        }
+      </div>
+
+      <!-- Filtro: una sola dimensión, el estado de lo vigente -->
+      <div class="mt-6 flex flex-wrap items-center gap-2">
+        @for (f of filtros(); track f.clave) {
+          <button
+            type="button"
+            (click)="filtro.set(f.clave)"
+            class="flex items-center gap-[7px] rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-all duration-200"
+            [class]="filtro() === f.clave ? 'border-primary-button bg-primary-button text-white' : 'border-gray-200 bg-card-bg text-gray-700'"
+          >
+            {{ f.texto }}
+            <span
+              class="text-xs tabular-nums"
+              [class]="filtro() === f.clave ? 'text-white/65' : 'text-gray-400'"
+            >
+              {{ f.contador }}
+            </span>
+          </button>
+        }
+        <span class="ml-auto text-xs text-gray-400">Ordenadas por lo que facturan</span>
+      </div>
+
+      <!-- Una fila por Empresa, no por registro de suscripción -->
+      <div class="mt-3 flex flex-col gap-2">
+        @for (fila of filasVisibles(); track fila.empresaId) {
+          <div
+            class="overflow-hidden rounded-[10px] border transition-shadow duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
+            [class]="fila.cobra ? 'border-gray-200 bg-card-bg' : fila.estado === 'vencida' ? 'border-[#f0d8d2] bg-neutral-50' : 'border-gray-200 bg-neutral-50'"
+          >
+            <div class="flex flex-wrap items-center gap-[18px] px-[18px] py-[15px]">
+              <button
+                type="button"
+                (click)="alternarHistorial(fila.empresaId)"
+                [attr.aria-label]="'Ver el historial de ' + fila.empresaNombre"
+                class="flex shrink-0 rounded-[7px] p-1 text-gray-400 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-600"
+              >
+                <tabler-icon
+                  [icon]="estaDesplegada(fila.empresaId) ? iconAbajo : iconDerecha"
+                  [size]="16"
+                  [stroke]="2"
+                />
+              </button>
+
+              <div class="min-w-[190px] flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-base font-semibold leading-[22px] tracking-[-0.01em] text-gray-900">
+                    {{ fila.empresaNombre }}
+                  </span>
+                  @if (fila.historial.length > 1) {
+                    <span class="rounded-full bg-canvas-bg px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                      {{ fila.historial.length }} planes en el historial
+                    </span>
+                  }
+                </div>
+                <p class="mt-1 text-xs leading-[18px] text-gray-400">{{ fila.pie }}</p>
+              </div>
+
+              <div class="w-32 shrink-0">
+                <div class="flex items-center gap-[7px]">
+                  <span class="inline-block size-[7px] shrink-0 rounded-full" [class]="fila.puntoEstado"></span>
+                  <span class="text-sm font-medium text-gray-900">{{ fila.planNombre }}</span>
+                </div>
+                <p class="mt-[3px] pl-3.5 text-xs" [class]="fila.estadoTinta">{{ fila.estadoTexto }}</p>
+              </div>
+
+              <div class="w-[126px] shrink-0 text-right">
+                <p
+                  class="font-display text-[19px] font-semibold leading-none tabular-nums"
+                  [class]="fila.cobra ? 'text-gray-900' : 'text-gray-400'"
+                >
+                  {{ fila.cobra ? formatCop(fila.precioMensual) : '—' }}
+                </p>
+                <p class="mt-1 text-[11px] text-gray-400">{{ fila.montoNota }}</p>
+              </div>
+
+              <button
+                type="button"
+                (click)="abrirGestionar(fila.empresaId)"
+                class="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-card-bg px-3 py-[7px] text-[13px] font-medium text-gray-700 transition-all duration-200 hover:-translate-y-px hover:bg-canvas-bg"
+              >
+                {{ fila.accionTexto }}
+                <tabler-icon [icon]="iconDerecha" [size]="14" [stroke]="2" class="text-gray-400" />
+              </button>
+            </div>
+
+            <!-- Historial: la vida de ESA Empresa, junta -->
+            @if (estaDesplegada(fila.empresaId)) {
+              <div
+                class="animate-[desplegar_0.18s_ease-out] border-t border-gray-100 bg-neutral-50 py-4 pl-[52px] pr-[18px]"
+              >
+                <p class="mb-3 text-[11px] font-semibold uppercase tracking-[0.07em] text-gray-400">
+                  Historial de planes
+                </p>
+                <div class="relative">
+                  <span class="absolute bottom-3 left-1.5 top-2 w-0.5 bg-gray-200"></span>
+                  @for (hito of fila.historial; track hito.suscripcionId) {
+                    <div class="relative flex flex-wrap items-baseline gap-3 pb-3.5 pl-6">
+                      <span
+                        class="absolute left-0 top-[5px] block size-3.5 rounded-full border-2"
+                        [class]="hito.punto"
+                      ></span>
+                      <div class="min-w-[180px] flex-1">
+                        <p class="text-[13px] font-medium leading-[19px]" [class]="hito.tinta">
+                          {{ hito.titulo }}
+                        </p>
+                        <p class="mt-0.5 text-xs leading-[18px] text-gray-400">{{ hito.detalle }}</p>
+                      </div>
+                      <span class="shrink-0 text-xs tabular-nums text-gray-500">{{ hito.monto }}</span>
+                    </div>
+                  }
+                </div>
+                <p class="mt-0.5 text-[11px] leading-[17px] text-gray-400 text-pretty">
+                  {{
+                    fila.historial.length > 1
+                      ? 'Cada cambio de plan cierra la suscripción anterior y abre una nueva — el historial no se pierde.'
+                      : 'Nunca cambió de plan.'
+                  }}
+                </p>
+              </div>
+            }
+          </div>
+        } @empty {
+          <div class="rounded-[10px] border border-gray-200 bg-card-bg px-6 py-[22px]">
+            <p class="text-[15px] font-semibold text-gray-900">Ninguna Empresa en este estado.</p>
+            <p class="mt-1 text-[13px] text-gray-500">Probá con otro filtro.</p>
+          </div>
+        }
+      </div>
+
+      <p class="mt-5 text-xs leading-[18px] text-gray-400 text-pretty">
+        Una Suscripción nunca se crea ni se borra a mano: nace con el alta de la Empresa y un cambio de plan
+        cierra la vigente y abre una nueva. Por eso esta pantalla se lee por Empresa, no por registro.
+      </p>
+    }
+  </div>
 </div>
 
-@if (filaGestionando(); as fila) {
-  <app-modal [titulo]="'Gestionar suscripción — ' + fila.empresaNombre" (cerrar)="cerrarGestionar()">
-    <div class="space-y-6">
-      <div>
-        <p class="mb-2 text-sm font-medium text-gray-700">Cambiar de plan</p>
-        <div class="flex items-center gap-2">
-          <select
-            [value]="nuevoPlanId()"
-            (change)="nuevoPlanId.set(+$any($event.target).value)"
-            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-          >
-            @for (plan of planesActivos(); track plan.id) {
-              <option [value]="plan.id">{{ plan.nombre }}</option>
-            }
-          </select>
-          <button
-            type="button"
-            [disabled]="guardando() || nuevoPlanId() === fila.planId"
-            (click)="confirmarCambioPlan()"
-            class="shrink-0 rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-          >
-            Aplicar
-          </button>
-        </div>
-      </div>
+<!-- Panel de gestión: componente aparte, mismo patrón que
+     `app-empresa-detalle-panel` / `app-activar-empresa-wizard` -->
+@if (empresaGestionandoId(); as id) {
+  <app-gestionar-suscripcion-panel
+    [empresaId]="id"
+    [mrrTotal]="mrrTotal()"
+    (cerrar)="cerrarGestionar()"
+    (actualizada)="onGestionActualizada($event)"
+  />
+}
 
-      <div class="border-t border-gray-100 pt-4">
-        <p class="mb-2 text-sm font-medium text-gray-700">Cambiar estado</p>
-        <div class="flex items-center gap-2">
-          <select
-            [value]="nuevoEstado()"
-            (change)="nuevoEstado.set($any($event.target).value)"
-            class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-          >
-            <option [value]="null" disabled selected>Elegir estado nuevo…</option>
-            @for (estado of estadosAsignables; track estado) {
-              <option [value]="estado">{{ estado }}</option>
-            }
-          </select>
-          <button
-            type="button"
-            [disabled]="guardando() || !nuevoEstado()"
-            (click)="confirmarCambioEstado()"
-            class="shrink-0 rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-          >
-            Aplicar
-          </button>
-        </div>
-      </div>
-
-      @if (errorGestionar(); as mensaje) {
-        <p class="rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid">
-          {{ mensaje }}
-        </p>
-      }
-    </div>
-  </app-modal>
+@if (aviso(); as mensaje) {
+  <div
+    class="animate-[fade-in-up_0.2s_ease-out] fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-success-solid px-[18px] py-2.5 text-[13px] font-medium text-white shadow-lg"
+  >
+    <tabler-icon [icon]="iconTilde" [size]="15" [stroke]="2" />
+    {{ mensaje }}
+  </div>
 }

@@ -1,235 +1,266 @@
-<div class="p-8">
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-lg font-semibold text-gray-900">Roles y permisos</h1>
-      <p class="mt-1 text-sm text-gray-500">
-        Catálogo completo del sistema — incluye los roles internos de cada cliente.
+<!-- projects/staff/src/app/features/roles/pages/roles-page/roles-page.component.html -->
+
+<div class="p-8 pb-24">
+  <div class="flex flex-wrap items-start justify-between gap-6">
+    <div class="min-w-[280px]">
+      <h1 class="font-display text-[26px] font-semibold leading-8 tracking-[-0.02em] text-gray-900">
+        Roles y permisos
+      </h1>
+      <p class="mt-1.5 max-w-[60ch] text-sm leading-5 text-gray-500 [text-wrap:pretty]">
+        Quién puede hacer qué, en todo el sistema. Tocá una celda para subir o bajar el nivel de
+        acceso — se guarda cuando confirmás.
       </p>
     </div>
-    <button
-      type="button"
-      (click)="abrirCrear()"
-      class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-    >
-      <tabler-icon [icon]="iconPlus" [size]="16" [stroke]="2" />
-      Nuevo rol
-    </button>
+
+    <div class="flex flex-wrap items-center gap-7">
+      @for (c of cifras(); track c.etiqueta) {
+        <div>
+          <div class="font-display text-[22px] font-semibold leading-[26px] text-gray-900">{{ c.valor }}</div>
+          <div class="mt-0.5 text-xs text-gray-500">{{ c.etiqueta }}</div>
+        </div>
+      }
+      <button
+        type="button"
+        (click)="abrirCreacion()"
+        class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3.5 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+      >
+        <tabler-icon [icon]="iconos.plus" [size]="16" [stroke]="2" />
+        Nuevo rol
+      </button>
+    </div>
   </div>
 
   @if (error(); as mensaje) {
-    <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
-  } @else if (cargando()) {
-    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
+    <p class="mt-4 rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid">{{ mensaje }}</p>
+  }
+
+  @if (cargando()) {
+    <p class="mt-6 text-sm text-gray-500">Cargando…</p>
   } @else {
-    <div class="mt-6">
-      <app-data-table>
-        <p-table [value]="roles()" dataKey="id" [pt]="tablePt">
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Rol</th>
-              <th>Permisos</th>
-              <th>Estado</th>
-              <th></th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-rol>
-            <tr>
-              <td>
-                <div class="flex items-center gap-1.5 font-medium text-gray-900">
-                  {{ rol.nombre }}
-                  @if (rol.esRolSistema) {
-                    <tabler-icon [icon]="iconSistema" [size]="13" [stroke]="2" class="text-gray-400" />
-                  }
-                </div>
-                @if (rol.descripcion) {
-                  <div class="mt-0.5 text-xs text-gray-500">{{ rol.descripcion }}</div>
+    <div class="mt-6 flex flex-wrap items-center gap-5 rounded-[10px] bg-[#e8e8e8] px-3.5 py-2.5">
+      <span class="text-xs font-medium text-gray-600">Nivel de acceso</span>
+      <div class="flex flex-wrap items-center gap-3.5">
+        @for (l of leyenda(); track l.texto) {
+          <span class="flex items-center gap-1.5 text-xs text-gray-500">
+            <span class="h-3.5 w-2.5 rounded-sm" [style.background]="l.color"></span>{{ l.texto }}
+          </span>
+        }
+      </div>
+      <span class="text-xs text-gray-400">
+        Clic en el encabezado de un módulo para aplicarlo a todos los roles
+      </span>
+    </div>
+
+    <div class="mt-3 overflow-x-auto overflow-y-hidden rounded-xl border border-gray-200 bg-white">
+      <!-- Encabezado: una columna por módulo real del backend. Columnas más
+           anchas a propósito (ajuste "se ve apretado" de 2026-09-22): en vez
+           de achicar todo para que quepa, se deja que el contenedor
+           `overflow-x-auto` haga scroll horizontal. "Rol" y "Total" quedan
+           `sticky` (ajuste "el total no se ve bien" de 2026-09-22, segunda
+           vuelta): con 16+ módulos reales, ensanchar ya no alcanza para que
+           Total quede siempre visible en una pantalla normal — fijo a los
+           dos costados es la solución que no depende del ancho de pantalla
+           ni de cuántos módulos haya. El padding lateral de la fila (antes
+           `px-5` en el `.grid`) se sacó de ahí y se puso como `pl-5`/`pr-5`
+           dentro de las columnas Rol/Total: así `sticky left-0`/`right-0`
+           queda exacto contra el borde del contenedor con scroll, sin
+           depender de un margen negativo para "tapar" el padding (esa
+           primera versión con `left-5`/`-ml-5` dejaba un hueco de ~20px por
+           el que se colaba la celda de al lado — ver ADMIN_DISENO.md). -->
+      <div
+        class="grid min-w-[900px] items-end border-b border-gray-200 bg-[#fafafa] py-3"
+        [style.gridTemplateColumns]="'240px repeat(' + modulos().length + ', minmax(106px, 1fr)) 130px'"
+      >
+        <div
+          class="sticky left-0 z-10 bg-[#fafafa] py-0 pl-5 pr-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400"
+        >
+          Rol
+        </div>
+        @for (m of modulos(); track m.id) {
+          <button
+            type="button"
+            (click)="aplicarColumna(m)"
+            [title]="'Dar acceso total a todos los roles en ' + m.largo"
+            class="rounded-md px-1 py-1.5 text-center text-[11px] font-medium leading-[14px] text-gray-600 transition-colors duration-200 hover:bg-[#efefef] hover:text-gray-900"
+          >
+            {{ m.corto }}
+          </button>
+        }
+        <div
+          class="sticky right-0 z-10 bg-[#fafafa] py-0 pl-2 pr-5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400"
+        >
+          Total
+        </div>
+      </div>
+
+      @for (g of grupos(); track g.titulo) {
+        <div class="flex min-w-[900px] items-center gap-2 border-b border-gray-100 bg-[#f7f7f7] px-5 py-2">
+          <span class="text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-500">
+            {{ g.titulo }}
+          </span>
+          <span class="text-[11px] text-gray-400">{{ g.nota }}</span>
+        </div>
+
+        @for (f of g.filas; track f.rol.id) {
+          <div
+            class="grid min-w-[900px] items-center border-b border-gray-100 transition-colors duration-150"
+            [class.bg-white]="!f.seleccionada && !f.tocada"
+            [class.bg-[#fafafa]]="f.seleccionada"
+            [class.bg-[#fcfcfa]]="f.tocada && !f.seleccionada"
+            [style.gridTemplateColumns]="'240px repeat(' + modulos().length + ', minmax(106px, 1fr)) 130px'"
+          >
+            <div
+              class="sticky left-0 z-10 w-[240px] overflow-hidden pl-5 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.08)]"
+              [class.bg-white]="!f.seleccionada && !f.tocada"
+              [class.bg-[#fafafa]]="f.seleccionada"
+              [class.bg-[#fcfcfa]]="f.tocada && !f.seleccionada"
+            >
+              <button
+                type="button"
+                (click)="abrirRol(f.rol)"
+                class="flex w-full items-center gap-2 py-3 pr-3 text-left"
+              >
+                <span
+                  class="h-[22px] w-[3px] shrink-0 rounded-sm"
+                  [style.background]="f.seleccionada ? '#303030' : f.tocada ? '#8a8a8a' : 'transparent'"
+                ></span>
+                <span class="min-w-0">
+                  <span class="flex items-center gap-1 text-[13px] font-medium text-gray-900">
+                    {{ f.nombre }}
+                    @if (f.esSistema) {
+                      <tabler-icon [icon]="iconos.lock" [size]="12" [stroke]="2" class="text-[#b0b0b0]" />
+                    }
+                  </span>
+                  <span class="block truncate text-[11px] text-gray-400">{{ f.descripcion }}</span>
+                </span>
+              </button>
+            </div>
+
+            <!-- Una celda por módulo; un segmento por acción real. Cada
+                 segmento es `flex-1` (mismo reparto) para que el color
+                 llene todo el ancho de la celda en vez de quedar agrupado
+                 chiquito al centro — ajuste "los colores no se extienden"
+                 de 2026-09-22: con columnas más anchas, los chips de ancho
+                 fijo dejaban demasiado blanco alrededor. `s.ancho` queda
+                 como piso mínimo (min-width), no como ancho fijo. -->
+            @for (c of f.celdas; track c.modulo) {
+              <div
+                class="flex items-stretch gap-1 rounded-md px-1.5 py-2.5"
+                [title]="c.titulo"
+                [style.boxShadow]="c.sucia ? 'inset 0 0 0 1.5px #303030' : 'none'"
+              >
+                @for (s of c.segmentos; track s.codigo) {
+                  <button
+                    type="button"
+                    (click)="alternarSegmento(f.rol.id, c.modulo, s.nivel)"
+                    [attr.aria-label]="s.codigo"
+                    [title]="s.codigo"
+                    class="h-5 flex-1 rounded-sm p-0 ring-1 ring-inset ring-black/10 transition-all duration-150 hover:scale-y-110"
+                    [style.minWidth]="s.ancho"
+                    [style.background]="s.color"
+                  ></button>
                 }
-              </td>
-              <td class="text-gray-500">{{ rol.permisos.length }} permisos</td>
-              <td>
-                <app-status-badge
-                  [label]="rol.activo ? 'Activo' : 'Inactivo'"
-                  [tone]="tonoActivo(rol.activo)"
-                  dot="filled"
-                />
-              </td>
-              <td>
-                <div class="flex items-center justify-end gap-1">
-                  <button
-                    type="button"
-                    (click)="abrirPermisos(rol)"
-                    class="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-                  >
-                    <tabler-icon [icon]="iconPermisos" [size]="14" [stroke]="2" />
-                    Permisos
-                  </button>
-                  <button
-                    type="button"
-                    (click)="abrirEditar(rol)"
-                    class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
-                    aria-label="Editar"
-                  >
-                    <tabler-icon [icon]="iconEdit" [size]="16" [stroke]="2" />
-                  </button>
-                  @if (!rol.esRolSistema) {
-                    <button
-                      type="button"
-                      (click)="abrirEliminar(rol)"
-                      class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-field-error-bg hover:text-badge-error-solid"
-                      aria-label="Eliminar"
-                    >
-                      <tabler-icon [icon]="iconDelete" [size]="16" [stroke]="2" />
-                    </button>
-                  }
-                </div>
-              </td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="4" class="py-6 text-center text-sm text-gray-500">Todavía no hay roles.</td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </app-data-table>
+              </div>
+            }
+
+            <div
+              class="sticky right-0 z-10 flex items-center justify-end gap-2.5 py-2.5 pr-5 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.08)]"
+              [class.bg-white]="!f.seleccionada && !f.tocada"
+              [class.bg-[#fafafa]]="f.seleccionada"
+              [class.bg-[#fcfcfa]]="f.tocada && !f.seleccionada"
+            >
+              <span
+                class="text-xs tabular-nums"
+                [class.text-gray-300]="f.total === 0"
+                [class.text-gray-600]="f.total > 0"
+              >
+                {{ f.totalTexto }}
+              </span>
+              <span class="h-1.5 w-14 shrink-0 overflow-hidden rounded-sm bg-[#ececec]">
+                <span class="block h-1.5 bg-primary-button" [style.width]="f.anchoBarra"></span>
+              </span>
+            </div>
+          </div>
+        }
+
+        <!-- Fila fantasma: crear sin salir de la pantalla. -->
+        <button
+          type="button"
+          (click)="abrirCreacion()"
+          class="flex w-full min-w-[900px] items-center gap-1.5 border-b border-gray-100 px-5 py-3 text-xs text-gray-400 transition-all duration-200 hover:bg-[#fafafa] hover:text-gray-600"
+        >
+          <tabler-icon [icon]="iconos.plus" [size]="13" [stroke]="2" />
+          {{ g.etiquetaNuevo }}
+        </button>
+      }
     </div>
   }
 </div>
 
-@if (modalAbierto()) {
-  <app-modal [titulo]="rolEditando() ? 'Editar rol' : 'Nuevo rol'" (cerrar)="cerrarModal()">
-    <form class="space-y-4" (submit)="$event.preventDefault(); guardar()">
-      <div>
-        <label for="nombre" class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
-        <input
-          id="nombre"
-          type="text"
-          autofocus
-          [disabled]="!!rolEditando()?.esRolSistema"
-          [value]="formulario().nombre"
-          (input)="actualizarCampo('nombre', $any($event.target).value)"
-          class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400 disabled:opacity-60"
-        />
-        @if (rolEditando()?.esRolSistema) {
-          <p class="mt-1 text-xs text-gray-400">Es un rol del sistema — su nombre no se puede cambiar.</p>
-        }
-      </div>
-
-      <div>
-        <label for="descripcion" class="mb-1 block text-sm font-medium text-gray-700">
-          Descripción <span class="font-normal text-gray-400">(opcional)</span>
-        </label>
-        <textarea
-          id="descripcion"
-          rows="2"
-          [value]="formulario().descripcion"
-          (input)="actualizarCampo('descripcion', $any($event.target).value)"
-          class="w-full resize-none rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-        ></textarea>
-      </div>
-
-      @if (errorGuardar(); as mensaje) {
-        <p class="rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid">
-          {{ mensaje }}
-        </p>
-      }
-
-      <div class="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          (click)="cerrarModal()"
-          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-        >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          [disabled]="guardando()"
-          class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-        >
-          {{ guardando() ? 'Guardando…' : 'Guardar' }}
-        </button>
-      </div>
-    </form>
-  </app-modal>
+<!-- Barra flotante: solo por roles tocados FUERA del panel. -->
+@if (tocadosFuera().length > 0) {
+  <div
+    class="animate-[rise_0.2s_ease-out] fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3.5 rounded-xl bg-[#1a1a1a] py-2.5 pl-[18px] pr-3 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.45)]"
+  >
+    <span class="text-[13px] text-white">{{ textoBarra() }}</span>
+    <span class="text-xs text-gray-400">{{ detalleBarra() }}</span>
+    <button
+      type="button"
+      (click)="descartarTodo()"
+      class="rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-gray-300 transition-colors duration-200 hover:bg-[#2e2e2e]"
+    >
+      Descartar
+    </button>
+    <button
+      type="button"
+      (click)="guardarTodo()"
+      [disabled]="guardando()"
+      class="rounded-lg bg-white px-3.5 py-1.5 text-[13px] font-medium text-gray-900 transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
+    >
+      {{ guardando() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </div>
 }
 
-@if (rolAsignando(); as rol) {
-  <app-modal [titulo]="'Permisos — ' + rol.nombre" (cerrar)="cerrarPermisos()">
-    <div class="max-h-96 space-y-5 overflow-y-auto pr-1">
-      @for (grupo of permisosPorModulo(); track grupo[0]) {
-        <div>
-          <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ grupo[0] }}</p>
-          <div class="space-y-1.5">
-            @for (permiso of grupo[1]; track permiso.id) {
-              <label class="flex items-start gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  [checked]="estaSeleccionado(permiso.id)"
-                  (change)="alternarPermiso(permiso.id, $any($event.target).checked)"
-                  class="mt-0.5 rounded border-gray-300"
-                />
-                <span>
-                  <span class="font-mono text-xs text-gray-500">{{ permiso.codigo }}</span>
-                  @if (permiso.descripcion) {
-                    <span class="block text-xs text-gray-400">{{ permiso.descripcion }}</span>
-                  }
-                </span>
-              </label>
-            }
-          </div>
-        </div>
-      }
-    </div>
-
-    @if (errorPermisos(); as mensaje) {
-      <p class="mt-4 rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid">
-        {{ mensaje }}
-      </p>
-    }
-
-    <div class="mt-6 flex justify-end gap-2 border-t border-gray-100 pt-4">
-      <button
-        type="button"
-        (click)="cerrarPermisos()"
-        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-      >
-        Cancelar
-      </button>
-      <button
-        type="button"
-        [disabled]="guardandoPermisos()"
-        (click)="guardarPermisos()"
-        class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-      >
-        {{ guardandoPermisos() ? 'Guardando…' : 'Guardar' }}
-      </button>
-    </div>
-  </app-modal>
+@if (aviso(); as texto) {
+  <div
+    class="animate-[rise_0.2s_ease-out] fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-xl bg-[#1a1a1a] px-4 py-2.5 text-[13px] text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.45)]"
+  >
+    {{ texto }}
+  </div>
 }
 
-@if (rolEliminando(); as rol) {
-  <app-modal titulo="Eliminar rol" (cerrar)="cerrarEliminar()">
-    <p class="text-sm text-gray-600">
-      ¿Eliminar el rol <span class="font-medium text-gray-900">{{ rol.nombre }}</span>? Esta acción
-      no se puede deshacer.
-    </p>
-    <div class="mt-6 flex justify-end gap-2">
-      <button
-        type="button"
-        (click)="cerrarEliminar()"
-        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-      >
-        Cancelar
-      </button>
-      <button
-        type="button"
-        [disabled]="eliminando()"
-        (click)="confirmarEliminar()"
-        class="rounded-lg bg-badge-error-solid px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-      >
-        {{ eliminando() ? 'Eliminando…' : 'Eliminar' }}
-      </button>
-    </div>
-  </app-modal>
+
+<!--
+  Panel único: ficha, edición y alta — componente aparte
+  (`RolPanelComponent`, ver su docstring). La página le pasa todo lo que
+  ya tiene armado con el estado compartido (`niveles`/`edits`/`roles`) y
+  escucha sus outputs; el overlay `fixed`, el backdrop transparente y el
+  clic-afuera-cierra viven en el propio `RolPanelComponent`.
+-->
+@if (panelAbierto()) {
+  <app-rol-panel
+    [creando]="creando()"
+    [rol]="seleccionado()"
+    [chip]="chip()"
+    [nombrePanel]="nombrePanel()"
+    [nombreEdicion]="nombreEdicion()"
+    [descripcionPanel]="descripcionPanel()"
+    [subtitulo]="subtitulo()"
+    [metricas]="metricas()"
+    [modulosPanel]="modulosPanel()"
+    [bases]="bases()"
+    [metadatos]="metadatos()"
+    [textoPie]="textoPie()"
+    [puedeConfirmar]="puedeConfirmar()"
+    [guardando]="guardando()"
+    (cerrar)="cerrarPanel()"
+    (confirmar)="confirmarPanel()"
+    (eliminar)="eliminarRol()"
+    (duplicar)="abrirCreacion(seleccionado()!)"
+    (aplicarPreset)="aplicarPreset($event)"
+    (fijar)="fijar(claveObjetivo()!, $event.modulo, $event.nivel)"
+    (elegirBase)="elegirBase($event)"
+    (actualizarTexto)="actualizarTexto($event.campo, $event.valor)"
+  />
 }

@@ -1,0 +1,173 @@
+<div
+  class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-50 flex justify-end bg-black/50"
+  (click)="onBackdropClick($event)"
+>
+  <div
+    class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[520px] flex-col bg-card-bg shadow-xl"
+  >
+    @if (error(); as mensaje) {
+      <div class="flex flex-1 items-center justify-center p-6">
+        <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
+      </div>
+    } @else if (cargando()) {
+      <div class="flex flex-1 animate-pulse flex-col gap-5 p-6">
+        <span class="h-6 w-64 rounded bg-gray-200"></span>
+        <span class="h-4 w-40 rounded bg-gray-100"></span>
+        <span class="h-40 w-full rounded-lg bg-gray-100"></span>
+        <span class="h-24 w-full rounded-lg bg-gray-100"></span>
+      </div>
+    } @else if (fila(); as fila) {
+      <div class="shrink-0 border-b border-gray-200 px-6 pb-4 pt-5">
+        <div class="flex items-start gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+              Suscripción vigente
+            </p>
+            <h2 class="mt-[5px] font-display text-[23px] font-semibold leading-[29px] tracking-[-0.015em] text-gray-900">
+              {{ fila.empresaNombre }}
+            </h2>
+            <p class="mt-1.5 text-[13px] text-gray-500">{{ subtituloPanel() }}</p>
+          </div>
+          <button
+            type="button"
+            (click)="cerrar.emit()"
+            aria-label="Cerrar"
+            class="shrink-0 rounded-lg p-[5px] text-gray-400 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-600"
+          >
+            <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+        <section>
+          <div class="mb-2.5 flex items-center gap-2">
+            <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+            <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+              Mover a otro plan
+            </h3>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            @for (plan of planesActivos(); track plan.id) {
+              <button
+                type="button"
+                (click)="nuevoPlanId.set(plan.id)"
+                class="flex items-center gap-[13px] rounded-[9px] border px-[15px] py-[13px] text-left transition-all duration-150"
+                [class]="nuevoPlanId() === plan.id ? 'border-primary-button bg-neutral-50' : 'border-gray-200 bg-card-bg'"
+              >
+                <span
+                  class="flex size-[18px] shrink-0 items-center justify-center rounded-full border-2"
+                  [class]="nuevoPlanId() === plan.id ? 'border-primary-button bg-primary-button' : 'border-gray-300 bg-card-bg'"
+                >
+                  <span
+                    class="block size-1.5 rounded-full bg-white transition-opacity"
+                    [class]="nuevoPlanId() === plan.id ? 'opacity-100' : 'opacity-0'"
+                  ></span>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-gray-900">
+                    {{ plan.nombre }}{{ plan.id === fila.planId ? ' · actual' : '' }}
+                  </p>
+                  <p class="mt-0.5 text-xs leading-[18px] text-gray-500">
+                    {{ resumenPlan(plan) }}
+                  </p>
+                </div>
+                <span class="shrink-0 font-display text-base font-semibold tabular-nums text-gray-900">
+                  {{ plan.precioMensual === null ? '—' : formatCop(plan.precioMensual) }}
+                </span>
+              </button>
+            }
+          </div>
+        </section>
+
+        <!-- El efecto en plata, antes de confirmar -->
+        @if (delta(); as d) {
+          <section class="animate-[fade-in-up_0.2s_ease-out]">
+            <div class="flex items-center gap-3.5 rounded-[10px] border px-[18px] py-[15px]" [class]="d.caja">
+              <tabler-icon [icon]="d.icono" [size]="20" [stroke]="2" class="shrink-0" [class]="d.tinta" />
+              <div class="min-w-0 flex-1">
+                <p class="text-[15px] font-semibold" [class]="d.tinta">{{ d.titulo }}</p>
+                <p class="mt-[3px] text-xs leading-[18px] text-pretty" [class]="d.notaTinta">{{ d.nota }}</p>
+              </div>
+            </div>
+
+            <div class="mt-3 rounded-[9px] bg-neutral-100 px-[15px] py-3.5">
+              <p class="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">
+                Qué pasa al aplicar
+              </p>
+              @for (paso of consecuencias(); track paso.texto) {
+                <div class="flex items-start gap-2.5 py-[3px]">
+                  <tabler-icon [icon]="paso.icono" [size]="14" [stroke]="2" class="mt-[3px] shrink-0 text-gray-500" />
+                  <p class="min-w-0 flex-1 text-xs leading-[18px] text-gray-600">{{ paso.texto }}</p>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        <section>
+          <div class="mb-2.5 flex items-center gap-2">
+            <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+            <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+              O cambiar el estado
+            </h3>
+          </div>
+          <p class="mb-2.5 text-xs leading-[18px] text-gray-400 text-pretty">
+            Cancelada o vencida le saca el acceso al cliente. No se puede volver a "pendiente": ese estado lo
+            asigna el alta.
+          </p>
+          <div class="flex flex-wrap gap-2">
+            @for (opcion of opcionesEstado; track opcion.estado) {
+              <button
+                type="button"
+                [disabled]="guardando() || fila.estado === opcion.estado"
+                (click)="confirmarCambioEstado(opcion.estado)"
+                class="flex items-center gap-[7px] rounded-lg border border-gray-200 bg-card-bg px-[13px] py-2.5 text-[13px] font-medium text-gray-700 transition-all duration-200 hover:bg-canvas-bg disabled:opacity-40"
+              >
+                <tabler-icon [icon]="opcion.icono" [size]="15" [stroke]="2" />
+                {{ opcion.texto }}
+              </button>
+            }
+          </div>
+        </section>
+
+        @if (errorGestionar(); as mensaje) {
+          <p class="rounded-lg bg-field-error-bg px-3 py-2.5 text-[13px] text-badge-error-solid">{{ mensaje }}</p>
+        }
+      </div>
+
+      <div class="flex shrink-0 items-center gap-3.5 border-t border-gray-200 bg-card-bg px-5 py-3">
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-medium text-gray-600">
+            {{ delta() ? 'Cambio de plan listo para aplicar' : 'Sin cambios' }}
+          </p>
+          <p class="mt-0.5 text-[11px] leading-4 text-gray-400">
+            {{ delta() ? 'Es un hecho contable: queda en el historial.' : 'Elegí otro plan o cambiá el estado.' }}
+          </p>
+        </div>
+        <button
+          type="button"
+          (click)="cerrar.emit()"
+          class="shrink-0 rounded-lg px-3 py-2.5 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:bg-gray-200"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          [disabled]="!delta() || guardando()"
+          (click)="confirmarCambioPlan()"
+          class="flex shrink-0 items-center gap-[7px] rounded-lg px-3.5 py-2.5 text-[13px] font-medium transition-all duration-200"
+          [class]="
+            delta() && !guardando()
+              ? 'bg-primary-button text-white hover:-translate-y-px hover:opacity-90'
+              : 'cursor-not-allowed bg-badge-neutral-bg text-gray-400'
+          "
+        >
+          <tabler-icon [icon]="iconTilde" [size]="15" [stroke]="2" />
+          {{ textoBotonAplicar() }}
+        </button>
+      </div>
+    }
+  </div>
+</div>

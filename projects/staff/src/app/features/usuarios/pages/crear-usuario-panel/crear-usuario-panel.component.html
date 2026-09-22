@@ -1,0 +1,216 @@
+<div
+  (click)="onBackdropClick($event)"
+  class="fixed inset-0 z-50 flex justify-end bg-[rgba(17,24,39,0.22)]"
+>
+  <div
+    class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[432px] flex-col bg-card-bg shadow-[-18px_0_44px_rgba(17,24,39,0.16)]"
+  >
+    <div class="flex shrink-0 items-start gap-[11px] px-5 pb-3.5 pt-[18px]">
+      <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
+        <tabler-icon [icon]="iconUserPlus" [size]="18" [stroke]="2" />
+      </span>
+      <div class="min-w-0 flex-1">
+        <p class="text-base font-semibold tracking-[-0.012em] text-gray-900">Agregar usuario</p>
+        <p class="mt-0.5 text-xs leading-[18px] text-gray-400 text-pretty">
+          Entra con la contraseña que definas acá y el rol que elijas abajo.
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="cerrar.emit()"
+        aria-label="Cerrar"
+        class="shrink-0 rounded-lg p-[5px] text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+      >
+        <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-5 pb-5 pt-1.5">
+      <div class="flex flex-col gap-2.5">
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+              Nombres
+            </label>
+            <input
+              type="text"
+              [ngModel]="formulario().nombres"
+              (ngModelChange)="actualizarCampo('nombres', $event)"
+              placeholder="Camila"
+              class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+            />
+          </div>
+          <div>
+            <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+              Apellidos
+            </label>
+            <input
+              type="text"
+              [ngModel]="formulario().apellidos"
+              (ngModelChange)="actualizarCampo('apellidos', $event)"
+              placeholder="Duarte"
+              class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+            Correo
+          </label>
+          <input
+            type="email"
+            [ngModel]="formulario().correo"
+            (ngModelChange)="actualizarCampo('correo', $event)"
+            placeholder="camila@goods.com"
+            class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+          />
+        </div>
+
+        <div>
+          <label
+            class="mb-[5px] flex items-baseline gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400"
+          >
+            Teléfono <span class="font-medium normal-case tracking-normal text-gray-300">opcional</span>
+          </label>
+          <input
+            type="tel"
+            [ngModel]="formulario().telefono"
+            (ngModelChange)="actualizarCampo('telefono', $event)"
+            placeholder="+57 300 123 4567"
+            class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+              Contraseña
+            </label>
+            <input
+              type="password"
+              [ngModel]="formulario().password"
+              (ngModelChange)="actualizarCampo('password', $event)"
+              placeholder="Mínimo 8 caracteres"
+              class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+            />
+          </div>
+          <div>
+            <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+              Repetir
+            </label>
+            <input
+              type="password"
+              [ngModel]="formulario().password2"
+              (ngModelChange)="actualizarCampo('password2', $event)"
+              placeholder="La misma otra vez"
+              class="w-full rounded-[9px] border bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none transition-colors"
+              [class]="
+                noCoinciden() ? 'border-badge-error-solid' : coinciden() ? 'border-[#a4ffb6]' : 'border-gray-200'
+              "
+            />
+          </div>
+        </div>
+
+        <!-- Validación en vivo: barra de fuerza + los cuatro requisitos.
+             El botón de crear queda inactivo hasta que se cumplan todos. -->
+        <div>
+          <div class="flex h-1 items-center gap-[3px]">
+            @for (barra of fuerza().barras; track $index) {
+              <span class="block h-1 flex-1 rounded-full transition-colors duration-200" [style.background]="barra"></span>
+            }
+          </div>
+          <div class="mt-1.5 flex items-baseline justify-between gap-2">
+            <span class="text-[11.5px] font-medium" [class]="fuerza().tinta">{{ fuerza().texto }}</span>
+            @if (noCoinciden()) {
+              <span class="text-[11.5px] text-badge-error-solid">No coinciden</span>
+            } @else if (coinciden()) {
+              <span class="text-[11.5px] text-badge-success-solid">Coinciden</span>
+            }
+          </div>
+          <div class="mt-2 flex flex-wrap gap-x-2.5 gap-y-[5px]">
+            @for (req of requisitos(); track req.texto) {
+              <span class="flex items-center gap-1.5 text-[11.5px] transition-colors" [class]="req.ok ? 'text-badge-success-solid' : 'text-gray-300'">
+                <tabler-icon [icon]="req.ok ? iconOk : iconVacio" [size]="12" [stroke]="2" />
+                {{ req.texto }}
+              </span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <p class="mb-[7px] mt-[18px] text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">Rol</p>
+      <div class="flex flex-col gap-[7px]">
+        @for (rol of roles(); track rol.id) {
+          <button
+            type="button"
+            (click)="elegirRolAlta(rol)"
+            class="flex items-center gap-2.5 rounded-[10px] border px-[13px] py-[11px] text-left transition-colors hover:border-gray-300"
+            [class]="rolIdEfectivo() === rol.id ? 'border-gray-800 bg-gray-50' : 'border-gray-200 bg-card-bg'"
+          >
+            <span
+              class="flex size-4 shrink-0 items-center justify-center rounded-full border bg-card-bg"
+              [class]="rolIdEfectivo() === rol.id ? 'border-gray-800' : 'border-gray-300'"
+            >
+              <span
+                class="block size-2 rounded-full transition-colors"
+                [class]="rolIdEfectivo() === rol.id ? 'bg-gray-800' : 'bg-transparent'"
+              ></span>
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-[13px] font-semibold text-gray-900">{{ etiquetaRol(rol) }}</span>
+              <span class="mt-0.5 block text-[11.5px] leading-[17px] text-gray-500 text-pretty">
+                {{ rol.descripcion }}
+              </span>
+            </span>
+          </button>
+        }
+      </div>
+
+      <p class="mb-[7px] mt-[18px] text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+        Con ese rol podrá
+      </p>
+      <div class="overflow-hidden rounded-[10px] border border-gray-200">
+        @for (m of previsualizacion(); track m.modulo) {
+          <div class="flex items-center gap-2.5 border-b border-gray-100 px-3 py-2">
+            <tabler-icon [icon]="m.icono" [size]="14" [stroke]="2" class="shrink-0 text-gray-300" />
+            <span class="min-w-0 flex-1 text-[12.5px] text-gray-700">{{ m.modulo }}</span>
+            <span class="shrink-0 text-xs font-medium" [class]="m.tinta">{{ m.texto }}</span>
+            <span class="flex h-3.5 w-[18px] items-end justify-end gap-0.5">
+              <span class="block h-[5px] w-1 rounded-[1px] transition-colors duration-200" [style.background]="m.s1"></span>
+              <span class="block h-[9px] w-1 rounded-[1px] transition-colors duration-200" [style.background]="m.s2"></span>
+              <span class="block h-[13px] w-1 rounded-[1px] transition-colors duration-200" [style.background]="m.s3"></span>
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="flex shrink-0 items-center gap-2 border-t border-gray-100 px-5 py-3">
+      <!-- Ajuste propio: el handoff traía acá "Se le pide cambiar la
+           contraseña en su primer acceso" — no existe ese flujo (no hay
+           invitación ni `debeCambiarPassword`, el usuario entra
+           directamente con la contraseña que se define acá). Se saca la
+           frase en vez de dejar un texto que no es cierto, tal como
+           sugería el propio LEEME si no se iba a implementar. Ver
+           ADMIN_DISENO.md. -->
+      <span class="min-w-0 flex-1"></span>
+      <button
+        type="button"
+        (click)="cerrar.emit()"
+        class="shrink-0 rounded-lg px-[11px] py-2 text-[12.5px] font-medium text-gray-500 transition-colors hover:bg-gray-100"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        (click)="crearUsuario()"
+        [disabled]="!puedeCrear()"
+        class="flex shrink-0 items-center gap-1.5 rounded-lg bg-gray-800 px-3.5 py-2 text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-45"
+      >
+        <tabler-icon [icon]="iconEnviar" [size]="14" [stroke]="2" />
+        {{ guardando() ? 'Creando…' : 'Crear usuario' }}
+      </button>
+    </div>
+  </div>
+</div>

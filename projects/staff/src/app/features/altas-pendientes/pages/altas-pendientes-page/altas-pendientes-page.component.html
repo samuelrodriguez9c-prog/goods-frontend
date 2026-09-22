@@ -1,72 +1,198 @@
 <div class="p-8">
-  <h1 class="text-lg font-semibold text-gray-900">Altas pendientes</h1>
-  <p class="mt-1 text-sm text-gray-500">
-    Negocios que se registraron y esperan revisión para activarse.
-  </p>
-
-  @if (error(); as mensaje) {
-    <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
-  } @else if (cargando()) {
-    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
-  } @else {
-    <div class="mt-6">
-      <app-data-table>
-        <p-table [value]="filas()" dataKey="id" [pt]="tablePt">
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Empresa</th>
-              <th>Rubro</th>
-              <th>Dueño</th>
-              <th>Plan solicitado</th>
-              <th>Fecha de solicitud</th>
-              <th></th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-empresa>
-            <tr>
-              <td class="font-medium text-gray-900">{{ empresa.nombre }}</td>
-              <td class="text-gray-500">{{ empresa.rubro ?? '—' }}</td>
-              <td class="text-gray-500">
-                {{ empresa.duenoNombres }} {{ empresa.duenoApellidos }}
-                <br />
-                <span class="text-xs">{{ empresa.duenoCorreo }}</span>
-              </td>
-              <td>{{ empresa.planNombre ?? '—' }}</td>
-              <td class="text-gray-500">{{ empresa.creadoEn | date: 'd MMM y' }}</td>
-              <td>
-                @if (empresa.estado === 'informacion_corroborada') {
-                  <button type="button" (click)="abrirWizard(empresa)" class="rounded-full">
-                    <app-status-badge label="Esperando confirmación del cliente" tone="warning" dot="filled" />
-                  </button>
-                } @else {
-                  <button
-                    type="button"
-                    class="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors duration-200 hover:bg-gray-700"
-                    (click)="abrirWizard(empresa)"
-                  >
-                    Activar
-                  </button>
-                }
-              </td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="6" class="py-6 text-center text-sm text-gray-500">
-                No hay altas pendientes por revisar.
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </app-data-table>
+  <div class="mx-auto max-w-[960px]">
+    <div class="flex items-baseline gap-4">
+      <h1 class="shrink-0 font-display text-[34px] font-semibold leading-10 tracking-[-0.02em] text-gray-900">
+        Altas pendientes
+      </h1>
+      <span class="h-px flex-1 bg-gray-300"></span>
+      <span class="shrink-0 text-[13px] text-gray-500">{{ hoy | date: 'EEEE d \'de\' MMMM' }}</span>
     </div>
-  }
 
-  @if (empresaSeleccionadaWizard(); as id) {
-    <app-activar-empresa-wizard
-      [empresaId]="id"
-      (cerrar)="cerrarWizard()"
-      (actualizada)="onWizardActualizada()"
-    />
-  }
+    <p class="mt-3.5 max-w-[620px] text-sm leading-[22px] text-gray-500 text-pretty">{{ resumenDia() }}</p>
+
+    @if (error(); as mensaje) {
+      <p class="mt-6 text-sm text-badge-error-solid">{{ mensaje }}</p>
+    } @else if (cargando()) {
+      <div class="mt-8 flex animate-pulse flex-col gap-2.5">
+        @for (s of skeletons; track $index) {
+          <div class="flex items-center gap-5 rounded-[10px] border border-gray-200 bg-card-bg px-5 py-4">
+            <span class="h-6 w-8 shrink-0 rounded bg-gray-200"></span>
+            <div class="flex flex-1 flex-col gap-2">
+              <span class="h-4 w-52 rounded-full bg-gray-200"></span>
+              <span class="h-3 w-64 rounded-full bg-gray-100"></span>
+            </div>
+            <span class="h-9 w-32 shrink-0 rounded-lg bg-gray-100"></span>
+          </div>
+        }
+      </div>
+    } @else {
+      <!-- Te toca llamar -->
+      <div class="mt-8 flex items-center gap-3">
+        <h2 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-700">Te toca llamar</h2>
+        <span class="h-px flex-1 bg-gray-300"></span>
+        <span class="shrink-0 text-xs text-gray-400">{{ notaLlamar() }}</span>
+      </div>
+
+      <div class="mt-3 flex flex-col gap-2.5">
+        @for (fila of llamadas(); track fila.id) {
+          @if (fila.corte) {
+            <div class="flex items-center gap-2.5 px-0.5 pb-1 pt-2">
+              <span class="whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.04em] text-gray-400">
+                En tiempo — menos de {{ umbralUrgente }} días
+              </span>
+              <span class="h-px flex-1 bg-gray-200"></span>
+            </div>
+          }
+
+          <div
+            class="relative flex overflow-hidden rounded-[10px] border transition-shadow duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.07)]"
+            [class]="fila.destacada ? 'border-[#eccfc8] bg-[#fdf6f4]' : 'border-gray-200 bg-card-bg'"
+          >
+            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-5 px-5 py-4">
+              <span
+                class="w-[34px] shrink-0 font-display text-2xl font-semibold leading-none tabular-nums"
+                [class]="fila.destacada ? 'text-orange-700' : 'text-gray-400'"
+              >
+                {{ fila.orden }}
+              </span>
+
+              <div class="min-w-[220px] flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-[17px] font-semibold leading-6 tracking-[-0.01em] text-gray-900">
+                    {{ fila.nombre }}
+                  </span>
+                  @if (!fila.telefonoContacto) {
+                    <span
+                      class="inline-flex items-center gap-[5px] rounded-full bg-badge-error-solid/12 px-2.5 py-[3px] text-[11px] font-semibold text-badge-error-solid"
+                    >
+                      <tabler-icon [icon]="iconSinTelefono" [size]="12" [stroke]="2" />
+                      Sin teléfono
+                    </span>
+                  }
+                </div>
+                <div class="mt-[5px] text-[13px] leading-[19px] text-gray-500">
+                  <strong class="font-semibold text-gray-700">{{ fila.dueno }}</strong> · {{ fila.contacto }}
+                </div>
+                <div class="mt-0.5 text-xs leading-[18px] text-gray-400">{{ fila.contexto }}</div>
+              </div>
+
+              <div class="w-[150px] shrink-0">
+                @if (fila.agendadaEn; as agenda) {
+                  <div class="flex items-center gap-1.5 text-[13px] font-semibold text-sky-800">
+                    <tabler-icon [icon]="iconAgenda" [size]="15" [stroke]="2" />
+                    Agendada
+                  </div>
+                  <div class="mt-[3px] whitespace-nowrap text-xs text-sky-700">
+                    {{ agenda | date: 'EEE d MMM, HH:mm' }}
+                  </div>
+                } @else {
+                  <div class="flex items-baseline gap-1.5" [class]="fila.urgente ? 'text-amber-700' : 'text-gray-500'">
+                    <span class="font-display text-[22px] font-semibold leading-none tabular-nums">
+                      {{ fila.diasEspera === 0 ? 'Hoy' : fila.diasEspera }}
+                    </span>
+                    <span class="whitespace-nowrap text-xs">{{ fila.unidadEspera }}</span>
+                  </div>
+                  <div class="mt-1 whitespace-nowrap text-xs text-gray-400">
+                    {{ fila.diasEspera === 0 ? 'Sin esperar todavía' : ('Desde el ' + (fila.creadoEn | date: 'd MMM y')) }}
+                  </div>
+                }
+              </div>
+
+              <div class="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  (click)="verDatos(fila)"
+                  aria-label="Ver los datos"
+                  title="Ver los datos"
+                  class="flex rounded-lg border border-gray-200 bg-card-bg px-2.5 py-[7px] text-gray-500 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-700"
+                >
+                  <tabler-icon [icon]="iconDatos" [size]="16" [stroke]="2" />
+                </button>
+                <button
+                  type="button"
+                  (click)="abrirWizard(fila)"
+                  class="flex items-center gap-[7px] whitespace-nowrap rounded-lg bg-primary-button px-3.5 py-2 text-[13px] font-medium text-white transition-opacity duration-200 hover:opacity-90"
+                >
+                  <tabler-icon [icon]="iconLlamar" [size]="15" [stroke]="2" />
+                  {{ fila.agendadaEn ? 'Empezar ahora' : 'Empezar la llamada' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        } @empty {
+          <div class="flex items-center gap-4 rounded-[10px] border border-gray-200 bg-card-bg px-6 py-[22px]">
+            <span
+              class="flex size-10 shrink-0 items-center justify-center rounded-full bg-badge-success-bg text-emerald-900"
+            >
+              <tabler-icon [icon]="iconListo" [size]="20" [stroke]="2" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-[15px] font-semibold text-gray-900">Ninguna llamada por hacer.</p>
+              <p class="mt-1 text-[13px] leading-[19px] text-gray-500 text-pretty">{{ textoVacio() }}</p>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Esperando al cliente -->
+      <div class="mt-9 flex items-center gap-3">
+        <h2 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-700">Esperando al cliente</h2>
+        <span class="h-px flex-1 bg-gray-300"></span>
+        <span class="shrink-0 text-xs text-gray-400">{{ notaEsperando() }}</span>
+      </div>
+
+      <div class="mt-3 overflow-hidden rounded-[10px] border border-gray-200 bg-card-bg">
+        @for (fila of esperando(); track fila.id) {
+          <div class="flex flex-wrap items-center gap-4 border-b border-gray-100 px-5 py-[13px] last:border-0">
+            <span class="flex size-4 shrink-0 items-center justify-center rounded-full border-2 border-sky-300 bg-card-bg"></span>
+            <div class="min-w-[200px] flex-1">
+              <span class="text-sm font-medium text-gray-900">{{ fila.nombre }}</span>
+              <div class="mt-0.5 text-xs leading-[18px] text-gray-400">{{ fila.contexto }}</div>
+            </div>
+            <span class="shrink-0 text-[13px]" [class]="fila.insistir ? 'text-amber-700' : 'text-gray-500'">
+              {{ fila.textoEspera }}
+            </span>
+            <div class="flex shrink-0 items-center gap-1.5">
+              @if (fila.insistir) {
+                <button
+                  type="button"
+                  (click)="reenviarEnlace(fila)"
+                  class="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg"
+                >
+                  <tabler-icon [icon]="iconReenviar" [size]="14" [stroke]="2" />
+                  Reenviar el enlace
+                </button>
+              }
+              <button
+                type="button"
+                (click)="abrirWizard(fila)"
+                aria-label="Retomar"
+                title="Retomar en el paso 2"
+                class="flex rounded-lg p-1.5 text-gray-400 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-700"
+              >
+                <tabler-icon [icon]="iconRetomar" [size]="16" [stroke]="2" />
+              </button>
+            </div>
+          </div>
+        } @empty {
+          <p class="px-5 py-[18px] text-[13px] text-gray-400">
+            Nadie esperando confirmar. Todo lo que se llamó, ya se activó.
+          </p>
+        }
+      </div>
+
+      <p class="mt-5 text-xs leading-[18px] text-gray-400 text-pretty">
+        Las que se rechazaron o ya se activaron salen de esta hoja y viven en
+        <a routerLink="/empresas" class="font-medium">Empresas</a>.
+      </p>
+    }
+  </div>
 </div>
+
+@if (empresaSeleccionadaWizard(); as id) {
+  <app-activar-empresa-wizard
+    [empresaId]="id"
+    (cerrar)="cerrarWizard()"
+    (actualizada)="onWizardActualizada()"
+  />
+}

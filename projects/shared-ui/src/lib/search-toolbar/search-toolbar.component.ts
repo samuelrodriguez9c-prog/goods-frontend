@@ -80,6 +80,13 @@ export class SearchToolbarComponent {
   readonly filterRemoved = output<string>();
   readonly filtersCleared = output<void>();
 
+  /** Texto opcional tipo "12 resultados" (ver `empresas-page`, "Total
+   * REAL vs. filtrado" en ese componente) — se muestra a la izquierda de
+   * la fila de tags, y por sí solo ya alcanza para mostrar esa fila
+   * (útil para dar feedback en vivo del filtrado aunque no haya ningún
+   * chip todavía). `null` = no mostrar nada. */
+  readonly resultsSummary = input<string | null>(null);
+
   protected readonly iconSearch = IconSearch;
   protected readonly iconX = IconX;
 

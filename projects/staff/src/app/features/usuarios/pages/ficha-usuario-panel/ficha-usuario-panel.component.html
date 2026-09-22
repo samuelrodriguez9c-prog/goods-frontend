@@ -1,0 +1,241 @@
+@if (fichaEstado(); as ficha) {
+  <div
+    (click)="onBackdropClick($event)"
+    class="fixed inset-0 z-50 flex justify-end transition-colors"
+    [style.background]="hayCambioRol() ? 'rgba(17,24,39,0)' : 'rgba(17,24,39,0.22)'"
+  >
+    <div
+      class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[432px] flex-col bg-card-bg shadow-[-18px_0_44px_rgba(17,24,39,0.16)]"
+    >
+      <div class="flex shrink-0 items-center gap-[11px] px-5 pb-3.5 pt-[18px]">
+        <span class="relative flex size-10 shrink-0 items-center justify-center">
+          <span class="flex size-10 items-center justify-center rounded-full text-[13px] font-semibold" [class]="ficha.avatar">
+            {{ ficha.iniciales }}
+          </span>
+          @if (ficha.enLinea) {
+            <span
+              title="En línea ahora"
+              class="absolute -right-px -top-px size-2.5 rounded-full bg-badge-success-solid ring-2 ring-card-bg"
+            ></span>
+          }
+        </span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-base font-semibold tracking-[-0.012em] text-gray-900">{{ ficha.nombre }}</p>
+          <p class="mt-0.5 flex items-center gap-1.5 overflow-hidden text-xs text-gray-400">
+            <span class="inline-block size-1.5 shrink-0 rounded-full" [style.background]="ficha.punto"></span>
+            <span class="font-medium" [class]="ficha.enLinea ? 'text-badge-success-solid' : ficha.tinta">{{ ficha.texto }}</span>
+            <span class="text-gray-300">·</span>
+            <span [class]="ficha.enLinea ? 'font-medium text-badge-success-solid' : ''">{{ ficha.nota }}</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          (click)="cerrar.emit()"
+          aria-label="Cerrar"
+          class="shrink-0 rounded-lg p-[5px] text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+        >
+          <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
+        </button>
+      </div>
+
+      <div class="shrink-0 px-5 pb-3">
+        <div class="flex gap-0.5 rounded-full bg-gray-100 p-[3px]">
+          @for (tab of ['permisos', 'actividad', 'datos']; track tab) {
+            <button
+              type="button"
+              (click)="pestana.set($any(tab))"
+              class="flex-1 rounded-full px-2.5 py-1.5 text-xs font-semibold capitalize transition-all"
+              [class]="
+                pestana() === tab ? 'bg-card-bg text-gray-900 shadow-[0_1px_2px_rgba(17,24,39,0.10)]' : 'text-gray-500'
+              "
+            >
+              {{ tab }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-5 pb-5 pt-1.5">
+        @switch (pestana()) {
+          @case ('permisos') {
+            <div class="animate-[desplegar_0.18s_ease-out]">
+              <div class="flex flex-wrap gap-1.5">
+                @for (rol of roles(); track rol.id) {
+                  <button
+                    type="button"
+                    (click)="elegirRolPreview(rol)"
+                    class="flex items-center gap-1.5 rounded-lg border px-[11px] py-1.5 text-xs font-medium transition-colors"
+                    [class]="
+                      (rolPreviewId() ?? usuario().rolId) === rol.id
+                        ? 'border-gray-800 bg-gray-100 text-gray-900'
+                        : 'border-gray-200 bg-card-bg text-gray-500'
+                    "
+                  >
+                    <span class="inline-block size-1.5 rounded-full" [style.background]="grupoPunto(rol)"></span>
+                    {{ etiquetaRol(rol) }}
+                  </button>
+                }
+              </div>
+
+              <div class="mt-3.5">
+                @for (m of matrizPanel(); track m.modulo) {
+                  <div
+                    class="flex items-center gap-2.5 border-b border-gray-100 px-0.5 py-[9px]"
+                    [style.background]="m.cambia ? '#fffdf2' : 'transparent'"
+                  >
+                    <tabler-icon [icon]="m.icono" [size]="15" [stroke]="2" class="shrink-0 text-gray-300" />
+                    <span class="min-w-0 flex-1 text-[13px] font-medium text-gray-700">{{ m.modulo }}</span>
+                    <span class="shrink-0 text-xs font-medium" [class]="m.tinta + (m.tachado ? ' line-through' : '')">
+                      {{ m.texto }}
+                    </span>
+                    @if (m.cambia) {
+                      <span class="flex shrink-0 items-center gap-1.5">
+                        <tabler-icon [icon]="iconFlecha" [size]="12" [stroke]="2" class="text-gray-300" />
+                        <span class="text-xs font-semibold" [class]="m.tintaNuevo">{{ m.nuevo }}</span>
+                      </span>
+                    }
+                    <span class="flex h-3.5 w-[18px] items-end justify-end gap-0.5">
+                      <span class="block h-[5px] w-1 rounded-[1px] transition-colors duration-200" [style.background]="m.s1"></span>
+                      <span class="block h-[9px] w-1 rounded-[1px] transition-colors duration-200" [style.background]="m.s2"></span>
+                      <span class="block h-[13px] w-1 rounded-[1px] transition-colors duration-200" [style.background]="m.s3"></span>
+                    </span>
+                  </div>
+                }
+              </div>
+
+              <p
+                class="mt-[11px] text-xs leading-[18px] text-pretty"
+                [class]="hayCambioRol() ? 'text-[#78350f]' : 'text-gray-400'"
+              >
+                @if (hayCambioRol()) {
+                  Tachado es lo que tiene hoy. Verde entra, rojo sale — acá y en su fila de la matriz, que se corre a
+                  la izquierda para que la veas.
+                } @else {
+                  Permisos reales del rol, no una descripción. Elegí otro rol arriba para ver la diferencia antes de
+                  aplicar.
+                }
+              </p>
+            </div>
+          }
+
+          @case ('actividad') {
+            <div class="animate-[desplegar_0.18s_ease-out]">
+              <div class="flex flex-wrap gap-4 rounded-[10px] border border-gray-200 bg-gray-50 px-3.5 py-3">
+                @for (dato of actividad(); track dato.etiqueta) {
+                  <div>
+                    <p class="font-display text-lg font-semibold leading-none tabular-nums text-gray-900">
+                      {{ dato.valor }}
+                    </p>
+                    <p class="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-400">
+                      {{ dato.etiqueta }}
+                    </p>
+                  </div>
+                }
+              </div>
+              <p class="mt-3.5 text-[13px] leading-5 text-gray-500 text-pretty">
+                Los accesos se reconstruyen desde la auditoría: cada inicio de sesión registrado en los últimos
+                {{ 14 }} días es una barra de la tira.
+              </p>
+              <a routerLink="/auditoria" class="mt-3 inline-block text-xs font-medium text-gray-800 no-underline">
+                Ver todo en Auditoría →
+              </a>
+            </div>
+          }
+
+          @case ('datos') {
+            <div class="animate-[desplegar_0.18s_ease-out] flex flex-col gap-2.5">
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Nombres
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="datos().nombres"
+                  (ngModelChange)="actualizarDato('nombres', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Apellidos
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="datos().apellidos"
+                  (ngModelChange)="actualizarDato('apellidos', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+              <div>
+                <label class="mb-[5px] block text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
+                  Teléfono <span class="normal-case tracking-normal text-gray-300">opcional</span>
+                </label>
+                <input
+                  type="tel"
+                  [ngModel]="datos().telefono"
+                  (ngModelChange)="actualizarDato('telefono', $event)"
+                  class="w-full rounded-[9px] border border-gray-200 bg-card-bg px-[11px] py-[9px] text-[13px] text-gray-900 outline-none"
+                />
+              </div>
+              <p class="text-[11.5px] leading-4 text-gray-400">
+                El correo no se cambia desde acá: es la identidad de la cuenta.
+              </p>
+              <button
+                type="button"
+                (click)="guardarDatos()"
+                [disabled]="guardando()"
+                class="mt-1 self-start rounded-lg bg-gray-800 px-3.5 py-2 text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-45"
+              >
+                {{ guardando() ? 'Guardando…' : 'Guardar datos' }}
+              </button>
+            </div>
+          }
+        }
+      </div>
+
+      @if (hayCambioRol()) {
+        <div class="shrink-0 animate-[desplegar_0.18s_ease-out] border-t border-[#f0e6c8] bg-[#fffdf2] px-5 py-3">
+          <p class="text-[12.5px] leading-[18px] text-[#78350f] text-pretty">{{ textoCambioRol() }}</p>
+          <div class="mt-2.5 flex gap-[7px]">
+            <button
+              type="button"
+              (click)="aplicarCambioRol()"
+              [disabled]="guardando()"
+              class="rounded-lg bg-gray-800 px-[13px] py-2 text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-45"
+            >
+              {{ guardando() ? 'Aplicando…' : 'Aplicar' }}
+            </button>
+            <button
+              type="button"
+              (click)="descartarCambioRol()"
+              class="rounded-lg px-[11px] py-2 text-[12.5px] font-medium text-[#92400e] transition-colors hover:bg-[#fdf6e3]"
+            >
+              Descartar
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="flex shrink-0 items-center gap-[7px] border-t border-gray-100 px-5 py-3">
+          <button
+            type="button"
+            (click)="pestana.set('datos')"
+            class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-card-bg px-3 py-[7px] text-[12.5px] font-medium text-gray-700 transition-colors hover:bg-gray-100"
+          >
+            <tabler-icon [icon]="iconEditar" [size]="14" [stroke]="2" />
+            Editar datos
+          </button>
+          <span class="flex-1"></span>
+          <button
+            type="button"
+            (click)="quitarAcceso()"
+            [disabled]="guardando()"
+            class="flex items-center gap-1.5 rounded-lg px-[11px] py-[7px] text-[12.5px] font-medium text-badge-error-solid transition-colors hover:bg-badge-error disabled:opacity-45"
+          >
+            <tabler-icon [icon]="iconQuitar" [size]="14" [stroke]="2" />
+            {{ guardando() ? 'Quitando…' : 'Quitar acceso' }}
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}
