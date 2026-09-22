@@ -1,0 +1,285 @@
+<!-- projects/staff/src/app/features/roles/pages/rol-panel/rol-panel.component.html -->
+
+<!--
+  Overlay `fixed` sobre toda la pantalla, nunca corre la página (mismo
+  criterio corregido en Usuarios el mismo día que se integró este
+  módulo — ver ADMIN_DISENO.md). El backdrop queda transparente en vez de
+  oscurecer, a diferencia de Empresas/Usuarios: acá tiene que convivir
+  visible con la barra flotante de "cambios sin guardar en otros roles"
+  de `roles-page` (`tocadosFuera`), que un velo oscuro taparía. El clic
+  afuera del panel lo cierra igual (`onBackdropClick`) — mismo
+  comportamiento, sin el oscurecido.
+-->
+<div class="fixed inset-0 z-50 flex justify-end" (click)="onBackdropClick($event)">
+  <aside
+    class="animate-[slide-in-right_0.22s_ease-out] flex h-full w-[480px] max-w-full flex-col border-l border-gray-200 bg-white shadow-[-14px_0_36px_-18px_rgba(0,0,0,0.22)]"
+  >
+    <div class="shrink-0 border-b border-gray-100 bg-white">
+      <div class="flex items-center justify-between gap-3 px-6 pt-4">
+        <span
+          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+          [class]="chip().clase"
+        >
+          <tabler-icon [icon]="chip().icono" [size]="12" [stroke]="2" />
+          {{ chip().texto }}
+        </span>
+        <button
+          type="button"
+          (click)="cerrar.emit()"
+          aria-label="Cerrar"
+          class="shrink-0 rounded-lg p-1 text-gray-400 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-600"
+        >
+          <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
+        </button>
+      </div>
+
+      <div class="px-6 pt-2">
+        <div class="flex items-center gap-1.5">
+          <h2
+            class="font-display text-xl font-semibold tracking-[-0.01em]"
+            [class.text-gray-900]="!creando() || nombrePanel().length > 0"
+            [class.text-gray-300]="creando() && nombrePanel().length === 0"
+          >
+            {{ creando() ? (nombrePanel() || 'Sin nombre todavía') : nombrePanel() }}
+          </h2>
+          @if (rol()?.esRolSistema) {
+            <tabler-icon [icon]="iconLock" [size]="14" [stroke]="2" class="text-[#b0b0b0]" />
+          }
+        </div>
+        <p class="mt-0.5 text-xs leading-[18px] text-gray-500">{{ subtitulo() }}</p>
+      </div>
+
+      <div class="mx-6 mt-4 grid grid-cols-3 overflow-hidden rounded-[10px] border border-gray-100">
+        @for (m of metricas(); track m.etiqueta; let i = $index) {
+          <div class="px-3.5 py-3" [class.border-l]="i > 0" [class.border-gray-100]="i > 0">
+            <div class="text-base font-semibold tabular-nums text-gray-900">{{ m.valor }}</div>
+            <div class="mt-px text-[11px] text-gray-400">{{ m.etiqueta }}</div>
+          </div>
+        }
+      </div>
+
+      <div class="mx-6 mb-3.5 mt-4 flex gap-0.5 rounded-[9px] bg-canvas-bg p-0.5">
+        <button
+          type="button"
+          (click)="pestana.set('permisos')"
+          class="flex-1 rounded-[7px] px-2.5 py-1.5 text-xs font-medium transition-all duration-200"
+          [class]="
+            pestana() === 'permisos'
+              ? 'bg-white text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.08)]'
+              : 'bg-transparent text-gray-500'
+          "
+        >
+          Permisos
+        </button>
+        <button
+          type="button"
+          (click)="pestana.set('datos')"
+          class="flex-1 rounded-[7px] px-2.5 py-1.5 text-xs font-medium transition-all duration-200"
+          [class]="
+            pestana() === 'datos'
+              ? 'bg-white text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.08)]'
+              : 'bg-transparent text-gray-500'
+          "
+        >
+          Datos del rol
+        </button>
+      </div>
+    </div>
+
+    <div class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-4">
+      @if (pestana() === 'permisos') {
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="mr-0.5 text-[11px] text-gray-400">Preajustes</span>
+          <button
+            type="button"
+            (click)="aplicarPreset.emit('nada')"
+            class="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+          >
+            Sin acceso
+          </button>
+          <button
+            type="button"
+            (click)="aplicarPreset.emit('lectura')"
+            class="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+          >
+            Solo lectura
+          </button>
+          <button
+            type="button"
+            (click)="aplicarPreset.emit('total')"
+            class="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+          >
+            Acceso total
+          </button>
+        </div>
+
+        <div class="mt-4 flex flex-col gap-2">
+          @for (m of modulosPanel(); track m.id) {
+            <div class="overflow-hidden rounded-[10px] border border-gray-100">
+              <div class="flex items-center gap-2 bg-[#fafafa] px-3.5 py-2">
+                <span class="text-xs font-medium text-gray-700">{{ m.nombre }}</span>
+                <span class="ml-auto text-[11px] text-gray-400">{{ m.resumen }}</span>
+                <button
+                  type="button"
+                  (click)="fijar.emit({ modulo: m.id, nivel: m.nivelTotal })"
+                  class="rounded-md px-1.5 py-0.5 text-[11px] font-medium text-gray-600 transition-colors duration-200 hover:bg-[#ececec]"
+                >
+                  {{ m.etiquetaTodo }}
+                </button>
+              </div>
+              <div class="flex flex-col gap-0.5 px-3.5 pb-2.5 pt-2">
+                @for (a of m.acciones; track a.codigo) {
+                  <button
+                    type="button"
+                    (click)="fijar.emit({ modulo: m.id, nivel: a.activa ? a.indice : a.indice + 1 })"
+                    class="flex w-full items-center gap-2.5 rounded-md px-1.5 py-2 text-left transition-colors duration-150 hover:bg-[#fafafa]"
+                  >
+                    <span
+                      class="flex h-[15px] w-[26px] shrink-0 rounded-full p-0.5 transition-colors duration-150"
+                      [style.background]="
+                        a.activa ? (a.destructiva ? '#d82c0d' : '#303030') : '#d8d8d8'
+                      "
+                    >
+                      <span
+                        class="h-[11px] w-[11px] rounded-full bg-white transition-transform duration-150"
+                        [style.transform]="a.activa ? 'translateX(11px)' : 'translateX(0)'"
+                      ></span>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span
+                        class="block font-mono text-[11px]"
+                        [class.text-gray-700]="a.activa"
+                        [class.text-gray-300]="!a.activa"
+                      >
+                        {{ a.codigo }}
+                      </span>
+                      <span class="block text-[11px] text-gray-400">{{ a.descripcion }}</span>
+                    </span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div>
+          <label for="rol-nombre" class="mb-1 block text-xs font-medium text-gray-600">Nombre</label>
+          <input
+            id="rol-nombre"
+            type="text"
+            [value]="nombreEdicion()"
+            [disabled]="!!rol()?.esRolSistema"
+            [placeholder]="creando() ? 'Ej. Cajero, Repartidor, Encargado' : ''"
+            (input)="actualizarTexto.emit({ campo: 'nombre', valor: $any($event.target).value })"
+            class="w-full rounded-lg bg-[#f4f4f4] px-3 py-2.5 text-[13px] text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400 disabled:opacity-60"
+          />
+          @if (creando()) {
+            <p class="mt-1 text-[11px] leading-4 text-gray-400">
+              Mínimo 3 caracteres. Se guarda tal cual lo escribís — es lo que ve el cliente en su panel.
+            </p>
+          } @else if (rol()?.esRolSistema) {
+            <p class="mt-1 text-[11px] leading-4 text-gray-400">
+              Rol del sistema — el nombre no se puede cambiar, pero sus permisos sí.
+            </p>
+          }
+        </div>
+
+        <div class="mt-3">
+          <label for="rol-descripcion" class="mb-1 block text-xs font-medium text-gray-600">
+            Descripción <span class="font-normal text-gray-300">(opcional)</span>
+          </label>
+          <textarea
+            id="rol-descripcion"
+            rows="2"
+            [value]="descripcionPanel()"
+            placeholder="Para qué sirve este rol"
+            (input)="actualizarTexto.emit({ campo: 'descripcion', valor: $any($event.target).value })"
+            class="w-full resize-none rounded-lg bg-[#f4f4f4] px-3 py-2.5 text-[13px] leading-[18px] text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+          ></textarea>
+        </div>
+
+        @if (creando()) {
+          <div class="mt-5">
+            <span class="mb-1.5 block text-xs font-medium text-gray-600">Partir de</span>
+            <p class="mb-2 text-[11px] leading-4 text-gray-400">
+              Copia los permisos de una plantilla como punto de partida — después los ajustás en la
+              pestaña Permisos.
+            </p>
+            <div class="flex flex-wrap gap-1.5">
+              @for (b of bases(); track b.etiqueta) {
+                <button
+                  type="button"
+                  (click)="elegirBase.emit(b.rol)"
+                  class="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all duration-200"
+                  [class]="
+                    b.elegida
+                      ? 'border-primary-button bg-[#f6f6f6] text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600'
+                  "
+                >
+                  {{ b.etiqueta }}
+                  <span class="text-[11px] font-normal text-gray-400">{{ b.conteo }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="mt-5 flex flex-col overflow-hidden rounded-[10px] border border-gray-100">
+            @for (m of metadatos(); track m.clave) {
+              <div class="flex items-center justify-between gap-3 border-b border-gray-50 px-3.5 py-2.5">
+                <span class="text-[11px] text-gray-400">{{ m.clave }}</span>
+                <span class="text-right text-xs text-gray-700">{{ m.valor }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="mt-5 flex items-center gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              (click)="onDuplicar()"
+              class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition-colors duration-200 hover:bg-[#f7f7f7]"
+            >
+              <tabler-icon [icon]="iconCopy" [size]="15" [stroke]="2" />
+              Duplicar como rol propio
+            </button>
+            @if (rol() && esPropio(rol()!)) {
+              <button
+                type="button"
+                (click)="eliminar.emit()"
+                class="ml-auto flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-badge-error-solid transition-colors duration-200 hover:bg-field-error-bg"
+              >
+                <tabler-icon [icon]="iconTrash" [size]="15" [stroke]="2" />
+                Eliminar
+              </button>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <div class="flex shrink-0 items-center gap-2.5 border-t border-gray-100 bg-[#fcfcfc] px-6 py-3.5">
+      <span
+        class="min-w-0 flex-1 text-[11px] leading-4"
+        [class.text-gray-600]="puedeConfirmar()"
+        [class.text-gray-300]="!puedeConfirmar()"
+      >
+        {{ textoPie() }}
+      </span>
+      <button
+        type="button"
+        (click)="cerrar.emit()"
+        class="rounded-lg px-2.5 py-2 text-[13px] font-medium text-gray-500 transition-colors duration-200 hover:bg-canvas-bg"
+      >
+        {{ creando() ? 'Cancelar' : 'Cerrar' }}
+      </button>
+      <button
+        type="button"
+        (click)="confirmar.emit()"
+        [disabled]="!puedeConfirmar()"
+        class="rounded-lg bg-primary-button px-3.5 py-2 text-[13px] font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300"
+      >
+        {{ guardando() ? 'Guardando…' : creando() ? 'Crear rol' : 'Guardar cambios' }}
+      </button>
+    </div>
+  </aside>
+</div>

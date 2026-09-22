@@ -1,125 +1,226 @@
 <div class="p-8">
-  <h1 class="text-lg font-semibold text-gray-900">Auditoría</h1>
-  <p class="mt-1 text-sm text-gray-500">
-    Quién hizo qué y cuándo — {{ total() }} acciones registradas (mostrando las últimas 50).
-  </p>
-
-  @if (error(); as mensaje) {
-    <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
-  } @else if (cargando()) {
-    <p class="mt-4 text-sm text-gray-500">Cargando…</p>
-  } @else {
-    <div class="mt-6">
-      <app-data-table>
-        <app-search-toolbar
-          toolbar
-          placeholder="Buscar por entidad, ej. producto, empresa"
-          [searchValue]="filtroEntidad()"
-          (searchValueChange)="onBuscarChange($event)"
-          (submitted)="cargar()"
-          [appliedFilters]="filtrosAplicados()"
-          (filterRemoved)="quitarFiltro($event)"
-          (filtersCleared)="limpiarFiltros()"
-        >
-          <button
-            toolbarActions
-            type="button"
-            (click)="abrirFiltros($event)"
-            class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg"
-          >
-            <tabler-icon [icon]="iconFiltros" [size]="16" [stroke]="1.75" />
-            Filtros
-            @if (cantidadFiltrosActivos() > 0) {
-              <span
-                class="flex h-4 w-4 items-center justify-center rounded-full bg-primary-button text-[10px] font-semibold text-white"
-              >
-                {{ cantidadFiltrosActivos() }}
-              </span>
-            }
-          </button>
-        </app-search-toolbar>
-
-        <p-popover [pt]="popoverPt">
-          <div class="w-72 space-y-3 p-4">
-            <div>
-              <label class="mb-1 block text-xs font-medium text-gray-500">Desde</label>
-              <p-date-picker
-                [ngModel]="filtroDesdeFecha()"
-                (ngModelChange)="onDesdeChange($event)"
-                dateFormat="d M yy"
-                [showIcon]="true"
-                iconDisplay="input"
-                [pt]="datePickerPt"
-                styleClass="w-full"
-              />
-            </div>
-            <div>
-              <label class="mb-1 block text-xs font-medium text-gray-500">Hasta</label>
-              <p-date-picker
-                [ngModel]="filtroHastaFecha()"
-                (ngModelChange)="onHastaChange($event)"
-                dateFormat="d M yy"
-                [showIcon]="true"
-                iconDisplay="input"
-                [pt]="datePickerPt"
-                styleClass="w-full"
-              />
-            </div>
-            <div class="flex items-center justify-end gap-2 pt-1">
-              <button
-                type="button"
-                (click)="limpiarFiltros()"
-                class="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-              >
-                Limpiar
-              </button>
-              <button
-                type="button"
-                (click)="aplicarFiltros()"
-                class="rounded-lg bg-primary-button px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-              >
-                Aplicar
-              </button>
-            </div>
-          </div>
-        </p-popover>
-
-        <p-table [value]="acciones()" dataKey="id" [pt]="tablePt">
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Cuándo</th>
-              <th>Método</th>
-              <th>Ruta</th>
-              <th>Entidad</th>
-              <th>Usuario</th>
-              <th>Resultado</th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-accion>
-            <tr>
-              <td class="whitespace-nowrap text-gray-500">{{ accion.creadoEn | date: 'd MMM y, HH:mm' }}</td>
-              <td class="font-mono text-xs text-gray-700">{{ accion.metodo }}</td>
-              <td class="font-mono text-xs text-gray-500">{{ accion.ruta }}</td>
-              <td class="text-gray-700">{{ accion.entidad ?? '—' }}</td>
-              <td class="text-gray-500">{{ accion.usuarioId ?? 'Anónimo' }}</td>
-              <td>
-                <app-status-badge
-                  [label]="accion.exitoso ? accion.statusCode + '' : accion.statusCode + ' — error'"
-                  [tone]="tonoExito(accion.exitoso)"
-                  dot="filled"
-                />
-              </td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="6" class="py-6 text-center text-sm text-gray-500">
-                No hay acciones registradas con estos filtros.
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </app-data-table>
+  <div class="mx-auto max-w-[1060px]">
+    <div class="flex items-baseline gap-4">
+      <h1 class="shrink-0 font-display text-[34px] font-semibold leading-10 tracking-[-0.02em] text-gray-900">
+        Auditoría
+      </h1>
+      <span class="h-px flex-1 bg-gray-300"></span>
+      <span class="shrink-0 text-[13px] text-gray-500">{{ total() }} acciones registradas · últimas 48 h</span>
     </div>
-  }
+
+    <div class="mt-3.5 flex flex-wrap items-baseline gap-x-[22px] gap-y-2.5">
+      <p class="min-w-[280px] max-w-[560px] flex-1 text-sm leading-[22px] text-gray-500 text-pretty">
+        {{ lectura() }}
+      </p>
+      <div class="flex flex-wrap items-baseline gap-5">
+        @for (cifra of cifras(); track cifra.etiqueta) {
+          <div>
+            <p class="font-display text-[22px] font-semibold leading-none tabular-nums" [class]="cifra.tinta">
+              {{ cifra.valor }}
+            </p>
+            <p class="mt-[5px] whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.06em] text-gray-400">
+              {{ cifra.etiqueta }}
+            </p>
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (error(); as mensaje) {
+      <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
+    }
+
+    @if (cargando()) {
+      <div class="mt-[22px] flex animate-pulse flex-col gap-3">
+        <span class="h-[104px] w-full rounded-xl bg-gray-200"></span>
+        <span class="h-[96px] w-full rounded-xl bg-gray-100"></span>
+        <span class="h-[280px] w-full rounded-[10px] bg-gray-100"></span>
+      </div>
+    } @else {
+      <!-- Qué revisar: lo que el log dice pero una tabla no grita -->
+      @if (alertas().length) {
+        <div class="mt-[22px] overflow-hidden rounded-xl border border-[#f0d8d2] bg-card-bg">
+          <div class="flex items-center gap-2.5 border-b border-[#f7ece9] bg-[#fdf6f4] px-[18px] py-[11px]">
+            <tabler-icon [icon]="iconAlerta" [size]="16" [stroke]="2" class="text-amber-700" />
+            <p class="text-xs font-semibold uppercase tracking-[0.06em] text-amber-900">Qué revisar</p>
+            <span class="ml-auto text-xs text-amber-800">Detectado en las últimas 48 h</span>
+          </div>
+          @for (alerta of alertas(); track alerta.clave) {
+            <div class="flex flex-wrap items-center gap-3.5 border-b border-neutral-100 px-[18px] py-[13px] last:border-0">
+              <span class="flex size-[30px] shrink-0 items-center justify-center rounded-lg" [class]="alerta.caja">
+                <tabler-icon [icon]="alerta.icono" [size]="16" [stroke]="2" />
+              </span>
+              <div class="min-w-[220px] flex-1">
+                <p class="text-sm font-semibold leading-5 text-gray-900">{{ alerta.titulo }}</p>
+                <p class="mt-0.5 text-xs leading-[18px] text-gray-500 text-pretty">{{ alerta.detalle }}</p>
+              </div>
+              <button
+                type="button"
+                (click)="aplicarLente(alerta.lente)"
+                class="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-card-bg px-[11px] py-1.5 text-xs font-medium text-gray-700 transition-all duration-200 hover:-translate-y-px hover:bg-canvas-bg"
+              >
+                Ver {{ alerta.conteo }}
+                <tabler-icon [icon]="iconDerecha" [size]="13" [stroke]="2" class="text-gray-400" />
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Pulso: volumen por hora, para ver picos sin leer filas -->
+      <div class="mt-3 rounded-xl border border-gray-200 bg-card-bg px-[18px] pb-3.5 pt-4">
+        <div class="flex flex-wrap items-baseline gap-3">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Pulso de hoy</p>
+          <span class="h-px flex-1 bg-canvas-bg"></span>
+          <span class="shrink-0 text-xs text-gray-400">{{ notaPulso() }}</span>
+        </div>
+        <div class="mt-3 flex h-11 items-end gap-[3px]">
+          @for (hora of pulso(); track hora.hora) {
+            <div class="relative flex h-full flex-1 flex-col justify-end" [title]="hora.titulo">
+              <span class="block w-full rounded-t-sm bg-badge-error-solid" [style.height.px]="hora.altoError"></span>
+              <span
+                class="block w-full"
+                [class]="hora.total ? 'bg-primary-button' : 'bg-canvas-bg'"
+                [style.height.px]="hora.alto"
+                [style.border-radius]="hora.altoError ? '0 0 2px 2px' : '2px'"
+              ></span>
+            </div>
+          }
+        </div>
+        <div class="mt-1.5 flex justify-between text-[10px] text-gray-300">
+          <span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>23h</span>
+        </div>
+      </div>
+
+      <!-- Buscador + lentes -->
+      <div class="mt-5 overflow-hidden rounded-[10px] border border-gray-200 bg-card-bg">
+        <div class="flex items-center gap-2 border-b border-gray-100 px-3 py-2.5">
+          <tabler-icon [icon]="iconBuscar" [size]="16" [stroke]="1.75" class="shrink-0 text-gray-400" />
+          <input
+            type="text"
+            [ngModel]="busqueda()"
+            (ngModelChange)="busqueda.set($event)"
+            placeholder="Buscar por quién, qué o cuál — ej. Nube, plan, Empresa 14"
+            class="w-full border-0 bg-transparent p-0 text-sm text-gray-900 outline-none placeholder:text-gray-500"
+          />
+          <span class="shrink-0 whitespace-nowrap text-xs text-gray-400">{{ conteoVisible() }}</span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 border-b border-gray-100 px-3 py-2">
+          <div class="inline-flex items-center gap-0.5 rounded-lg bg-neutral-100 p-[3px]">
+            @for (l of lentes(); track l.clave) {
+              <button
+                type="button"
+                (click)="aplicarLente(l.clave)"
+                class="flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-[5px] text-xs font-medium transition-[background-color,color,box-shadow] duration-200 ease-out"
+                [class]="
+                  lente() === l.clave
+                    ? 'bg-card-bg text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.07)]'
+                    : 'bg-transparent text-gray-500'
+                "
+              >
+                {{ l.texto }}
+                <span
+                  class="tabular-nums transition-colors duration-200"
+                  [class]="lente() === l.clave ? 'text-gray-400' : 'text-gray-300'"
+                >
+                  {{ l.conteo }}
+                </span>
+              </button>
+            }
+          </div>
+
+          @if (rastro(); as r) {
+            <span
+              class="animate-[fade-in-up_0.2s_ease-out] inline-flex items-center gap-[7px] rounded-[7px] bg-sky-100 py-[5px] pl-[11px] pr-1.5 text-xs font-medium text-sky-900"
+            >
+              <tabler-icon [icon]="iconRastro" [size]="13" [stroke]="2" />
+              Rastro de {{ r.entidad }} #{{ r.entidadId }}
+              <button
+                type="button"
+                (click)="rastro.set(null)"
+                aria-label="Salir del rastro"
+                class="flex size-4 items-center justify-center rounded-full text-sky-700 transition-colors duration-150 hover:bg-sky-200"
+              >
+                <tabler-icon [icon]="iconCerrar" [size]="12" [stroke]="2.25" />
+              </button>
+            </span>
+          }
+        </div>
+
+        <!-- La bitácora: frases agrupadas por día -->
+        @for (grupo of dias(); track grupo.dia) {
+          <div>
+            <div class="flex items-center gap-2.5 border-b border-gray-100 bg-neutral-50 px-4 py-2">
+              <p class="text-xs font-semibold text-gray-700">{{ grupo.titulo }}</p>
+              <span class="h-px flex-1 bg-gray-100"></span>
+              <span class="shrink-0 text-[11px] text-gray-400">{{ grupo.resumen }}</span>
+            </div>
+
+            @for (fila of grupo.filas; track fila.id) {
+              <button
+                type="button"
+                (click)="abrirPanel(fila.id)"
+                class="flex w-full items-start gap-[13px] border-b border-neutral-100 px-4 py-3 text-left transition-colors duration-150 hover:bg-neutral-50"
+                [class]="fila.exitoso ? 'bg-card-bg' : 'bg-[#fffcfc]'"
+              >
+                <span class="w-11 shrink-0 pt-0.5 font-mono text-xs tabular-nums text-gray-400">
+                  {{ fila.hora }}
+                </span>
+
+                <span class="flex size-[26px] shrink-0 items-center justify-center rounded-[7px]" [class]="fila.caja">
+                  <tabler-icon [icon]="fila.icono" [size]="14" [stroke]="2" />
+                </span>
+
+                <span class="min-w-0 flex-1">
+                  <span
+                    class="block text-sm font-medium leading-5"
+                    [class]="fila.exitoso ? 'text-gray-900' : 'text-gray-500'"
+                  >
+                    {{ fila.frase }}
+                  </span>
+                  <span class="mt-[3px] block text-xs leading-[18px] text-gray-400">{{ fila.contexto }}</span>
+                </span>
+
+                @if (fila.marca; as marca) {
+                  <span
+                    class="inline-flex shrink-0 items-center gap-[5px] whitespace-nowrap rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
+                    [class]="marca.caja"
+                  >
+                    <tabler-icon [icon]="marca.icono" [size]="12" [stroke]="2" />
+                    {{ marca.texto }}
+                  </span>
+                }
+
+                <tabler-icon [icon]="iconDerecha" [size]="15" [stroke]="2" class="mt-[3px] shrink-0 text-gray-300" />
+              </button>
+            }
+          </div>
+        } @empty {
+          <div class="px-[18px] py-[26px] text-center">
+            <p class="text-sm font-medium text-gray-700">Nada con estos filtros.</p>
+            <p class="mt-1 text-[13px] text-gray-400">Probá otro lente o limpiá la búsqueda.</p>
+          </div>
+        }
+      </div>
+
+      <p class="mt-[18px] text-xs leading-[18px] text-gray-400 text-pretty">
+        Este historial lo escribe solo el sistema en cada acción de escritura. Nadie puede editarlo ni borrarlo —
+        por eso acá no hay más acciones que mirar.
+      </p>
+    }
+  </div>
 </div>
+
+<!-- Detalle: componente aparte, mismo patrón que
+     `app-empresa-detalle-panel` / `app-activar-empresa-wizard` /
+     `app-gestionar-suscripcion-panel` -->
+@if (panelId(); as id) {
+  <app-accion-detalle-panel
+    [accionId]="id"
+    [acciones]="leibles()"
+    (cerrar)="cerrarPanel()"
+    (verAccion)="abrirPanel($event)"
+    (verRastro)="onVerRastro($event)"
+  />
+}

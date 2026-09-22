@@ -1,239 +1,656 @@
-<app-side-panel [titulo]="titulo()" (cerrar)="cerrarYSeguirTrabajando()">
-  @if (error(); as mensaje) {
-    <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
-  } @else if (cargando()) {
-    <p class="text-sm text-gray-500">Cargando…</p>
-  } @else if (empresa(); as e) {
-    @if (exito()) {
-      <div class="space-y-4 py-6 text-center">
-        <p class="text-base font-medium text-gray-900">¡Listo! La Empresa quedó activa.</p>
-        <button
-          type="button"
-          (click)="cerrarConExito()"
-          class="rounded-lg bg-primary-button px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-        >
-          Cerrar
-        </button>
+<div
+  class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-50 flex justify-end bg-black/50"
+  (click)="onBackdropClick($event)"
+>
+  <div
+    class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[560px] flex-col bg-card-bg shadow-xl"
+  >
+    @if (error(); as mensaje) {
+      <div class="flex flex-1 items-center justify-center p-6">
+        <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
       </div>
-    } @else if (paso() === 1) {
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <p class="text-sm font-medium text-gray-700">Datos a confirmar</p>
-          <button
-            type="button"
-            (click)="abrirDetalle()"
-            class="text-gray-400 transition-colors duration-200 hover:text-gray-600"
-            aria-label="Ver todos los datos de la Empresa"
+    } @else if (cargando()) {
+      <div class="flex flex-1 animate-pulse flex-col gap-5 p-6">
+        <span class="h-11 w-11 rounded-lg bg-gray-200"></span>
+        <span class="h-6 w-64 rounded bg-gray-200"></span>
+        <span class="h-28 w-full rounded-lg bg-gray-100"></span>
+        <span class="h-44 w-full rounded-lg bg-gray-100"></span>
+      </div>
+    } @else if (empresa(); as e) {
+      <!-- Cabecera -->
+      <div class="shrink-0 border-b border-gray-200 px-6 pb-3.5 pt-5">
+        <div class="flex items-start gap-3">
+          <span
+            class="flex size-[42px] shrink-0 items-center justify-center rounded-[9px] bg-badge-neutral-bg text-[15px] font-semibold text-gray-700"
           >
-            <tabler-icon [icon]="iconInfo" [size]="18" [stroke]="1.75" />
-          </button>
-        </div>
-
-        <app-campo-detalle
-          etiqueta="Nombre del negocio"
-          [valor]="nombre()"
-          [editable]="true"
-          (valorCambiado)="nombre.set($event)"
-        />
-
-        <div>
-          <p class="text-sm font-medium text-gray-700">Plan</p>
-          <select
-            [value]="planId() ?? ''"
-            (change)="planId.set($any($event.target).value ? +$any($event.target).value : null)"
-            class="mt-1 w-full rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-          >
-            <option value="">Sin plan</option>
-            @for (plan of planes(); track plan.id) {
-              <option [value]="plan.id">{{ plan.nombre }}</option>
+            {{ iniciales(nombre() || e.nombre) }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <h2 class="font-display text-[23px] font-semibold leading-[29px] tracking-[-0.015em] text-gray-900">
+              {{ nombre() || e.nombre }}
+            </h2>
+            <div class="mt-[7px] flex flex-wrap items-center gap-2">
+              <app-status-badge [label]="etiquetaEstado()" [tone]="tonoEstado()" dot="filled" />
+              <span class="text-xs text-gray-500">{{ subtitulo() }}</span>
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center gap-1">
+            @if (fase() !== 'activada') {
+              <button
+                type="button"
+                (click)="abrirDetalle()"
+                aria-label="Ver todos los datos de la Empresa"
+                title="Ver todos los datos de la Empresa"
+                class="rounded-lg p-[5px] text-gray-400 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-600"
+              >
+                <tabler-icon [icon]="iconInfo" [size]="18" [stroke]="1.75" />
+              </button>
             }
-          </select>
+            <button
+              type="button"
+              (click)="cerrarYSeguirTrabajando()"
+              aria-label="Cerrar"
+              class="rounded-lg p-[5px] text-gray-400 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-600"
+            >
+              <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
+            </button>
+          </div>
         </div>
 
-        <app-campo-detalle
-          etiqueta="Teléfono de contacto"
-          [valor]="telefono()"
-          [editable]="true"
-          placeholder="Opcional"
-          (valorCambiado)="telefono.set($event)"
-        />
-
-        <div class="flex items-center gap-3">
-          <button
-            type="button"
-            [disabled]="!hayCambiosDatos() || guardandoDatos()"
-            (click)="guardarDatos()"
-            class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {{ guardandoDatos() ? 'Guardando…' : 'Guardar cambios' }}
-          </button>
-          @if (errorGuardarDatos(); as mensajeGuardar) {
-            <span class="text-xs text-badge-error-solid">{{ mensajeGuardar }}</span>
+        <!-- Progreso de los dos pasos -->
+        <div class="mt-4 flex gap-2">
+          @for (p of pasos(); track p.texto) {
+            <div class="min-w-0 flex-1">
+              <span class="block h-[3px] rounded-full transition-colors duration-300" [class]="p.barra"></span>
+              <p class="mt-[7px] flex items-center gap-[5px] text-[11px] font-semibold tracking-[0.02em]" [class]="p.tinta">
+                <tabler-icon [icon]="p.icono" [size]="13" [stroke]="2" />
+                {{ p.texto }}
+              </p>
+            </div>
           }
         </div>
+      </div>
 
-        <div class="border-t border-gray-200 pt-5">
-          @if (!llamadaIniciada()) {
-            <div class="flex flex-wrap gap-3">
-              <button
-                type="button"
-                (click)="llamarAhora()"
-                class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-              >
-                Llamar ahora
-              </button>
-              <button
-                type="button"
-                (click)="abrirProgramarLlamada()"
-                class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-              >
-                Programar llamada
-              </button>
+      <div class="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+        <!-- ══ Paso 1: antes de marcar ══ -->
+        @if (fase() === 'preparar') {
+          <div class="flex flex-col gap-[22px]">
+            <div class="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200">
+              @for (f of ficha(); track f.etiqueta) {
+                <div class="bg-card-bg px-3.5 py-[11px]">
+                  <p class="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-400">{{ f.etiqueta }}</p>
+                  <p class="mt-[3px] truncate text-[13px] font-medium leading-[19px]" [class]="f.tinta">
+                    {{ f.valor }}
+                  </p>
+                </div>
+              }
             </div>
-            @if (mostrarFormularioProgramar()) {
-              <div class="mt-3 flex flex-wrap items-end gap-3 animate-[fade-in-up_0.15s_ease-out]">
-                <div>
-                  <label for="fechaHora" class="mb-1 block text-xs font-medium text-gray-500">Fecha y hora</label>
+
+            <section>
+              <div class="mb-2.5 flex items-center gap-2">
+                <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+                <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                  Corroborá esto en la llamada
+                </h3>
+                <span class="h-px flex-1 bg-gray-100"></span>
+                <span class="shrink-0 text-[11px] text-gray-400">Editable</span>
+              </div>
+
+              <div class="flex flex-col overflow-hidden rounded-lg border border-gray-200">
+                <label class="flex items-center gap-3 border-b border-gray-100 px-4">
+                  <span class="w-28 shrink-0 text-[13px] text-gray-500">Nombre</span>
                   <input
-                    id="fechaHora"
+                    type="text"
+                    pInputText
+                    [ngModel]="nombre()"
+                    (ngModelChange)="nombre.set($event)"
+                    class="w-full min-w-0 border-0 bg-transparent px-0 py-3 text-sm font-medium text-gray-900 outline-none transition-shadow duration-150 focus:shadow-[inset_0_-2px_0_theme(colors.gray.800)]"
+                  />
+                  <tabler-icon [icon]="iconEditar" [size]="14" [stroke]="2" class="shrink-0 text-gray-300" />
+                </label>
+
+                <label class="flex items-center gap-3 border-b border-gray-100 px-4">
+                  <span class="w-28 shrink-0 text-[13px] text-gray-500">Plan</span>
+                  <select
+                    [value]="planId() ?? ''"
+                    (change)="planId.set($any($event.target).value ? +$any($event.target).value : null)"
+                    class="w-full min-w-0 cursor-pointer border-0 bg-transparent px-0 py-3 text-sm font-medium text-gray-900 outline-none"
+                  >
+                    <option value="">Sin plan</option>
+                    @for (plan of planes(); track plan.id) {
+                      <option [value]="plan.id">{{ plan.nombre }}</option>
+                    }
+                  </select>
+                </label>
+
+                <label class="flex items-center gap-3 px-4" [class]="telefono() ? 'bg-card-bg' : 'bg-[#fffdf2]'">
+                  <span class="w-28 shrink-0 text-[13px] text-gray-500">Teléfono</span>
+                  <input
+                    type="tel"
+                    pInputText
+                    [ngModel]="telefono()"
+                    (ngModelChange)="telefono.set($event)"
+                    placeholder="Hace falta para llamar"
+                    class="w-full min-w-0 border-0 bg-transparent px-0 py-3 text-sm font-medium text-gray-900 outline-none transition-shadow duration-150 focus:shadow-[inset_0_-2px_0_theme(colors.gray.800)]"
+                  />
+                  <tabler-icon [icon]="iconEditar" [size]="14" [stroke]="2" class="shrink-0 text-gray-300" />
+                </label>
+              </div>
+
+              @if (!telefono()) {
+                <p class="mt-2 flex items-start gap-[7px] text-xs leading-[18px] text-amber-700 text-pretty">
+                  <tabler-icon [icon]="iconSinTelefono" [size]="14" [stroke]="2" class="mt-0.5 shrink-0" />
+                  <span>
+                    No dejó teléfono en el registro. Escribile a {{ e.correoContacto }} para conseguirlo, o
+                    cargalo acá si ya lo tenés.
+                  </span>
+                </p>
+              }
+
+              @if (hayCambiosDatos() || datosGuardados()) {
+                <button
+                  type="button"
+                  [disabled]="guardandoDatos()"
+                  (click)="guardarDatos()"
+                  class="mt-2.5 flex items-center gap-1.5 rounded-lg border border-gray-200 bg-card-bg px-3 py-[7px] text-[13px] font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg disabled:opacity-50"
+                >
+                  <tabler-icon [icon]="iconGuardar" [size]="15" [stroke]="2" />
+                  {{ guardandoDatos() ? 'Guardando…' : datosGuardados() && !hayCambiosDatos() ? 'Datos guardados' : 'Guardar cambios' }}
+                </button>
+              }
+              @if (errorGuardarDatos(); as mensajeGuardar) {
+                <p class="mt-2 text-xs text-badge-error-solid">{{ mensajeGuardar }}</p>
+              }
+            </section>
+
+            <section>
+              <div class="mb-2.5 flex items-center gap-2">
+                <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+                <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">La llamada</h3>
+              </div>
+
+              @if (agendadaEn(); as agenda) {
+                <div class="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3.5">
+                  <tabler-icon [icon]="iconAgenda" [size]="18" [stroke]="2" class="text-sky-700" />
+                  <div class="min-w-[140px] flex-1">
+                    <p class="text-sm font-semibold text-sky-900">
+                      Agendada para {{ agenda | date: 'EEE d MMM, HH:mm' }}
+                    </p>
+                    <p class="mt-0.5 text-xs text-sky-700">Queda en la hoja con la etiqueta de agenda.</p>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="quitarAgenda()"
+                    class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-sky-700 transition-colors hover:bg-sky-100"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              }
+
+              <div class="mb-3 flex flex-wrap items-center gap-2.5 rounded-[10px] border border-gray-200 bg-neutral-50 px-4 py-3.5">
+                <tabler-icon [icon]="iconMovil" [size]="17" [stroke]="2" class="shrink-0 text-gray-400" />
+                <div class="min-w-[150px] flex-1">
+                  <p
+                    class="font-display text-[17px] font-semibold leading-[23px] tracking-[0.01em]"
+                    [class]="telefono() ? 'text-gray-900' : 'text-gray-400'"
+                  >
+                    {{ telefono() || 'Sin número' }}
+                  </p>
+                  <p class="mt-0.5 text-xs text-gray-400">
+                    {{ telefono() ? 'Número de contacto del registro' : 'Cargalo arriba o escribile al correo para conseguirlo' }}
+                  </p>
+                </div>
+                <span class="shrink-0 rounded-full bg-badge-neutral-bg px-2.5 py-[3px] text-[11px] font-medium text-gray-600">
+                  {{ agendadaEn() ? ('Agendada ' + (agendadaEn() | date: 'EEE d MMM, HH:mm')) : 'Sin agendar' }}
+                </span>
+              </div>
+
+              <div class="flex flex-wrap gap-2.5">
+                @if (telefono()) {
+                  <button
+                    type="button"
+                    (click)="llamarAhora()"
+                    class="flex items-center gap-[7px] rounded-lg bg-primary-button px-4 py-2.5 text-sm font-medium text-white transition-opacity duration-200 hover:opacity-90"
+                  >
+                    <tabler-icon [icon]="iconLlamar" [size]="16" [stroke]="2" />
+                    Llamar ahora
+                  </button>
+                } @else {
+                  <span
+                    title="Cargá el teléfono para poder llamar"
+                    class="flex cursor-not-allowed items-center gap-[7px] rounded-lg border border-dashed border-gray-300 bg-neutral-50 px-4 py-2.5 text-sm font-medium text-gray-400"
+                  >
+                    <tabler-icon [icon]="iconSinTelefono" [size]="16" [stroke]="2" />
+                    Llamar ahora
+                  </span>
+                }
+
+                <button
+                  type="button"
+                  (click)="alternarProgramar()"
+                  class="flex items-center gap-[7px] rounded-lg border border-gray-200 bg-card-bg px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg"
+                >
+                  <tabler-icon [icon]="iconAgendaMas" [size]="16" [stroke]="2" />
+                  {{ agendadaEn() ? 'Cambiar la fecha' : 'Programar' }}
+                </button>
+              </div>
+
+              @if (mostrarFormularioProgramar()) {
+                <div class="animate-[fade-in-up_0.15s_ease-out] mt-3 rounded-lg border border-gray-200 bg-neutral-50 px-4 py-3.5">
+                  <p class="mb-2.5 text-xs text-gray-500">¿Cuándo la llamás?</p>
+
+                  <div class="flex flex-wrap gap-2">
+                    @for (atajo of atajos(); track atajo.valor) {
+                      <button
+                        type="button"
+                        (click)="fechaHoraProgramada.set(atajo.valor)"
+                        class="rounded-lg border px-3 py-[7px] text-[13px] font-medium text-gray-700 transition-all duration-150"
+                        [class]="fechaHoraProgramada() === atajo.valor ? 'border-gray-300 bg-badge-neutral-bg' : 'border-gray-200 bg-card-bg'"
+                      >
+                        {{ atajo.texto }}
+                      </button>
+                    }
+                  </div>
+
+                  <input
                     type="datetime-local"
                     [value]="fechaHoraProgramada()"
                     (input)="fechaHoraProgramada.set($any($event.target).value)"
-                    class="rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                    class="mt-3 w-full min-w-[190px] rounded-lg border border-gray-200 bg-card-bg px-3 py-2.5 text-[13px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400"
                   />
+
+                  <div class="mt-3 flex items-start gap-2 border-t border-gray-200 pt-3">
+                    <tabler-icon [icon]="iconInfo" [size]="14" [stroke]="2" class="mt-0.5 shrink-0 text-gray-400" />
+                    <p class="min-w-0 flex-1 text-xs leading-[18px] text-gray-500 text-pretty">
+                      {{ resumenAgenda() }}
+                    </p>
+                  </div>
+
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      [disabled]="!fechaHoraProgramada() || programando()"
+                      (click)="confirmarProgramarLlamada()"
+                      class="flex items-center gap-1.5 rounded-lg border px-3.5 py-2.5 text-[13px] font-medium transition-all duration-200"
+                      [class]="
+                        fechaHoraProgramada()
+                          ? 'border-primary-button bg-primary-button text-white hover:opacity-90'
+                          : 'cursor-not-allowed border-gray-200 bg-card-bg text-gray-500'
+                      "
+                    >
+                      <tabler-icon [icon]="iconAgendaCheck" [size]="15" [stroke]="2" />
+                      {{ textoBotonAgendar() }}
+                    </button>
+                    <button
+                      type="button"
+                      (click)="alternarProgramar()"
+                      class="rounded-lg px-3 py-2.5 text-[13px] font-medium text-gray-500 transition-colors duration-200 hover:bg-gray-200"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+
+                  @if (errorProgramar(); as mensajeProgramar) {
+                    <p class="mt-2 text-xs text-badge-error-solid">{{ mensajeProgramar }}</p>
+                  }
                 </div>
-                <button
-                  type="button"
-                  [disabled]="!fechaHoraProgramada() || programando()"
-                  (click)="confirmarProgramarLlamada()"
-                  class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {{ programando() ? 'Guardando…' : 'Confirmar' }}
-                </button>
-              </div>
-              @if (errorProgramar(); as mensajeProgramar) {
-                <p class="mt-1 text-xs text-badge-error-solid">{{ mensajeProgramar }}</p>
               }
-            }
-          } @else {
-            <button
-              type="button"
-              (click)="abrirConfirmarLlamadaFinalizada()"
-              class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-            >
-              Llamada finalizada
-            </button>
+            </section>
+          </div>
+        }
+
+        <!-- ══ Paso 1b: llamada en curso ══ -->
+        @if (fase() === 'enCurso') {
+          <div class="animate-[fade-in-up_0.2s_ease-out] flex flex-col gap-[22px]">
+            <div class="flex items-center gap-3.5 rounded-[10px] border border-badge-success-bg bg-emerald-50 px-4.5 py-3.5">
+              <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-badge-success-bg text-emerald-900">
+                <tabler-icon [icon]="iconLlamar" [size]="18" [stroke]="2" />
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="flex items-center gap-[7px] text-[15px] font-semibold text-emerald-900">
+                  <span class="animate-[latido_1.4s_ease-in-out_infinite] inline-block size-2 shrink-0 rounded-full bg-success-solid"></span>
+                  Llamada en curso
+                </p>
+                <p class="mt-[3px] text-[13px] text-emerald-800">
+                  {{ telefono() }} · empezó {{ horaInicio() }}
+                </p>
+              </div>
+              <span class="shrink-0 font-display text-[22px] font-semibold leading-none tabular-nums text-emerald-900">
+                {{ cronometro() }}
+              </span>
+            </div>
+
+            <section>
+              <div class="mb-2.5 flex items-center gap-2">
+                <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+                <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Guion mínimo</h3>
+                <span class="h-px flex-1 bg-gray-100"></span>
+                <span
+                  class="shrink-0 text-[11px] font-medium"
+                  [class]="guionCompleto() ? 'text-success-solid' : 'text-gray-400'"
+                >
+                  {{ puntosHechos().length }} de {{ guion.length }}
+                </span>
+              </div>
+
+              <div class="flex flex-col overflow-hidden rounded-lg border border-gray-200">
+                @for (punto of guion; track punto.texto; let i = $index) {
+                  <button
+                    type="button"
+                    (click)="alternarPunto(i)"
+                    class="flex w-full items-start gap-[11px] border-b border-gray-100 px-4 py-3 text-left transition-colors duration-150 last:border-0 hover:bg-neutral-50"
+                    [class]="estaHecho(i) ? 'bg-neutral-50' : 'bg-card-bg'"
+                  >
+                    <span
+                      class="mt-px flex size-[19px] shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200"
+                      [class]="estaHecho(i) ? 'border-success-solid bg-success-solid' : 'border-gray-300 bg-card-bg'"
+                    >
+                      <tabler-icon
+                        [icon]="iconTilde"
+                        [size]="12"
+                        [stroke]="2.5"
+                        class="text-white transition-opacity duration-200"
+                        [class]="estaHecho(i) ? 'opacity-100' : 'opacity-0'"
+                      />
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-sm leading-5 transition-colors duration-200"
+                        [class]="estaHecho(i) ? 'text-gray-400' : 'text-gray-900'"
+                      >
+                        {{ punto.texto }}
+                      </p>
+                      <p class="mt-0.5 text-xs leading-[18px] text-gray-400">{{ punto.nota }}</p>
+                    </div>
+                  </button>
+                }
+              </div>
+            </section>
+
+            <div>
+              <button
+                type="button"
+                (click)="abrirConfirmarLlamadaFinalizada()"
+                class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-button px-4 py-[13px] text-sm font-medium text-white transition-all duration-150 hover:-translate-y-px hover:opacity-90"
+              >
+                <tabler-icon [icon]="iconLlamadaOk" [size]="17" [stroke]="2" />
+                Terminé la llamada
+              </button>
+              <p class="mt-2.5 text-center text-xs text-gray-400">
+                {{ guionCompleto() ? 'Cubriste todo el guion.' : 'Podés terminarla igual — el guion es una ayuda, no un requisito.' }}
+              </p>
+            </div>
+          </div>
+        }
+
+        <!-- ══ Paso 2: en manos del cliente ══ -->
+        @if (fase() === 'esperando') {
+          <div class="animate-[aparecer_0.25s_ease-out] flex flex-col gap-5">
+            <div class="flex items-center gap-4 rounded-[10px] border border-sky-200 bg-sky-50 px-4.5 py-4">
+              <span class="relative flex size-11 shrink-0 items-center justify-center">
+                <span class="absolute inset-0 rounded-full border-[3px] border-blue-100"></span>
+                <span
+                  class="absolute inset-0 animate-spin rounded-full border-[3px] border-transparent border-r-sky-300 border-t-sky-600"
+                ></span>
+                <tabler-icon [icon]="iconEnlace" [size]="18" [stroke]="2" class="text-sky-700" />
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-[15px] font-semibold text-sky-900">Esperando que el cliente confirme</p>
+                <p class="mt-[3px] break-words text-[13px] leading-[19px] text-sky-700">
+                  Enlace enviado a {{ e.duenoCorreo ?? e.correoContacto }}
+                </p>
+              </div>
+            </div>
+
+            <section>
+              <div class="mb-2.5 flex items-center gap-2">
+                <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+                <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Dónde va la cosa</h3>
+              </div>
+
+              <div class="relative overflow-hidden rounded-lg border border-gray-200 px-4 py-3.5">
+                <span class="absolute bottom-[26px] left-6 top-[26px] w-0.5 bg-gray-200"></span>
+                @for (hito of progreso(); track hito.texto) {
+                  <div class="relative flex gap-3 py-[7px]">
+                    <span
+                      class="mt-px flex size-[18px] shrink-0 items-center justify-center rounded-full border-2"
+                      [class]="hito.punto"
+                    >
+                      <tabler-icon [icon]="hito.icono" [size]="11" [stroke]="2.5" [class]="hito.iconoTinta" />
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-[13px] leading-[19px]" [class]="hito.tinta">{{ hito.texto }}</p>
+                      <p class="mt-px text-xs leading-[18px] text-gray-400">{{ hito.nota }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <p class="mt-2.5 text-xs leading-[18px] text-gray-400 text-pretty">
+                No hace falta que quedes acá: cuando el cliente abra el enlace, la Empresa se activa sola y sale
+                de la hoja.
+              </p>
+            </section>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                [disabled]="reenviando()"
+                (click)="reenviarEnlace()"
+                class="flex items-center gap-[7px] rounded-lg border border-gray-200 bg-card-bg px-3.5 py-2.5 text-[13px] font-medium text-gray-700 transition-all duration-200 hover:-translate-y-px hover:bg-canvas-bg disabled:opacity-50"
+              >
+                <tabler-icon [icon]="iconReenviar" [size]="15" [stroke]="2" />
+                {{ reenviando() ? 'Reenviando…' : enlaceReenviado() ? 'Reenviar de nuevo' : 'Reenviar el enlace' }}
+              </button>
+              @if (enlaceReenviado()) {
+                <span class="animate-[fade-in-up_0.2s_ease-out] flex items-center gap-1.5 text-xs font-medium text-success-solid">
+                  <tabler-icon [icon]="iconTilde" [size]="14" [stroke]="2.5" />
+                  Enlace reenviado hace un momento.
+                </span>
+              }
+              @if (errorReenviar(); as mensajeReenviar) {
+                <span class="text-xs text-badge-error-solid">{{ mensajeReenviar }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ══ Activada (llega por WebSocket, ver RealtimeService) ══ -->
+        @if (fase() === 'activada') {
+          <div class="flex flex-col items-center gap-5 pb-2 pt-[26px] text-center">
+            <span class="relative flex size-[76px] items-center justify-center">
+              <span class="animate-[onda_1.6s_ease-out_infinite] absolute inset-0 rounded-full bg-badge-success-bg"></span>
+              <span
+                class="animate-[pop_0.42s_cubic-bezier(0.34,1.56,0.64,1)] relative flex size-16 items-center justify-center rounded-full bg-success-solid"
+              >
+                <tabler-icon [icon]="iconTilde" [size]="34" [stroke]="2.5" class="animate-[aparecer_0.3s_ease-out_0.16s_both] text-white" />
+              </span>
+            </span>
+            <div class="animate-[fade-in-up_0.3s_ease-out_0.1s_both]">
+              <p class="font-display text-[21px] font-semibold leading-[27px] text-gray-900">
+                {{ nombre() || e.nombre }} quedó activa
+              </p>
+              <p class="mx-auto mt-2 max-w-[340px] text-[13px] leading-5 text-gray-500 text-pretty">
+                El dueño definió su contraseña y ya puede entrar a su panel.
+                {{ nombrePlanElegido() ? 'La suscripción al plan ' + nombrePlanElegido() + ' empezó hoy.' : '' }}
+              </p>
+            </div>
+            <div class="animate-[fade-in-up_0.3s_ease-out_0.18s_both] flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                (click)="cerrarConExito()"
+                class="flex items-center gap-[7px] rounded-lg bg-primary-button px-4 py-2.5 text-[13px] font-medium text-white transition-all duration-200 hover:-translate-y-px hover:opacity-90"
+              >
+                <tabler-icon [icon]="iconVolver" [size]="15" [stroke]="2" />
+                Volver a la hoja
+              </button>
+              <button
+                type="button"
+                (click)="verEmpresa()"
+                class="rounded-lg border border-gray-200 bg-card-bg px-4 py-2.5 text-[13px] font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg"
+              >
+                Ver la Empresa
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Pie contextual -->
+      @if (fase() !== 'activada') {
+        <div class="flex shrink-0 items-center gap-3.5 border-t border-gray-200 bg-card-bg px-5 py-3">
+          <div class="min-w-0 flex-1">
+            <p class="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+              <tabler-icon [icon]="pie().icono" [size]="14" [stroke]="2" [class]="pie().tinta" />
+              {{ pie().texto }}
+            </p>
+            <p class="mt-0.5 text-[11px] leading-4 text-gray-400">{{ pie().nota }}</p>
+          </div>
+
+          <button
+            type="button"
+            (click)="abrirRechazar()"
+            title="Rechazar la solicitud"
+            class="flex shrink-0 items-center gap-[7px] rounded-lg border border-gray-200 bg-card-bg px-3 py-2 text-[13px] font-medium text-gray-500 transition-all duration-200 hover:border-badge-error-solid/35 hover:bg-badge-error-solid/6 hover:text-badge-error-solid"
+          >
+            <tabler-icon [icon]="iconRechazar" [size]="15" [stroke]="2" />
+            Rechazar
+          </button>
+
+          <button
+            type="button"
+            (click)="cerrarYSeguirTrabajando()"
+            class="flex shrink-0 items-center gap-2.5 rounded-lg bg-primary-button py-2.5 pl-3.5 pr-3 text-[13px] font-medium text-white transition-all duration-200 hover:-translate-y-px hover:opacity-90"
+          >
+            Cerrar y seguir
+            <span class="flex items-center rounded-[5px] bg-white/[0.16] px-1.5 py-0.5 text-[10px] font-semibold tracking-[0.04em]">
+              ESC
+            </span>
+          </button>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+<!-- ══ Modal: terminaste la llamada ══ -->
+@if (mostrarConfirmacionLlamada()) {
+  <div
+    class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-6"
+    (click)="onModalBackdropClick($event)"
+  >
+    <div class="animate-[aparecer_0.18s_ease-out] w-full max-w-[440px] overflow-hidden rounded-xl bg-card-bg shadow-2xl">
+      <div class="px-6 pt-[22px]">
+        <h3 class="font-display text-lg font-semibold leading-6 text-gray-900">Terminaste la llamada</h3>
+        <p class="mt-2 text-[13px] leading-5 text-gray-500 text-pretty">
+          Antes de seguir, confirmá que la llamada se hizo y que los datos quedaron corroborados con el dueño.
+        </p>
+
+        <div class="mt-4 flex flex-col overflow-hidden rounded-lg border border-gray-200">
+          @for (item of checklist; track item) {
+            <div class="flex items-center gap-2.5 border-b border-gray-100 px-3.5 py-2.5 last:border-0">
+              <tabler-icon [icon]="iconTilde" [size]="15" [stroke]="2.5" class="shrink-0 text-success-solid" />
+              <span class="text-[13px] text-gray-700">{{ item }}</span>
+            </div>
           }
         </div>
-      </div>
-    } @else {
-      <div class="space-y-4 py-6 text-center">
-        <div
-          class="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700"
-          aria-hidden="true"
-        ></div>
-        <p class="text-sm text-gray-700">
-          Le enviamos un enlace de confirmación a <strong>{{ e.duenoCorreo }}</strong>. Esperando a que el
-          cliente confirme…
+
+        <div class="mt-3.5 rounded-lg bg-neutral-100 px-3.5 py-3">
+          <p class="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">
+            Qué pasa al confirmar
+          </p>
+          @for (paso of consecuencias(); track paso.texto) {
+            <div class="flex items-start gap-2.5 py-[3px]">
+              <tabler-icon [icon]="paso.icono" [size]="14" [stroke]="2" class="mt-[3px] shrink-0 text-gray-500" />
+              <p class="min-w-0 flex-1 break-words text-xs leading-[18px] text-gray-600">{{ paso.texto }}</p>
+            </div>
+          }
+        </div>
+
+        <p class="mt-2.5 text-xs leading-[18px] text-gray-400 text-pretty">
+          Esto no activa la Empresa todavía — la activa el cliente al definir su contraseña.
         </p>
-        <button
-          type="button"
-          [disabled]="reenviando()"
-          (click)="reenviarEnlace()"
-          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {{ reenviando() ? 'Reenviando…' : 'Reenviar enlace' }}
-        </button>
-        @if (enlaceReenviado()) {
-          <p class="text-xs text-success-solid">Enlace reenviado.</p>
-        }
-        @if (errorReenviar(); as mensajeReenviar) {
-          <p class="text-xs text-badge-error-solid">{{ mensajeReenviar }}</p>
+
+        @if (errorConfirmarLlamada(); as mensaje) {
+          <p class="mt-2 text-xs text-badge-error-solid">{{ mensaje }}</p>
         }
       </div>
-    }
 
-    @if (!exito()) {
-      <div class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+      <div class="mt-5 flex justify-end gap-2 border-t border-gray-100 bg-neutral-50 px-6 py-3">
         <button
           type="button"
-          (click)="abrirRechazar()"
-          class="text-sm font-medium text-badge-error-solid hover:underline"
+          (click)="cancelarConfirmacionLlamada()"
+          class="rounded-lg px-3.5 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:bg-badge-neutral-bg"
         >
-          Rechazar
+          Cancelar
         </button>
         <button
           type="button"
-          (click)="cerrarYSeguirTrabajando()"
-          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+          [disabled]="confirmandoLlamada()"
+          (click)="confirmarLlamadaFinalizada()"
+          class="flex items-center gap-[7px] rounded-lg bg-primary-button px-3.5 py-2 text-[13px] font-medium text-white transition-opacity duration-200 hover:opacity-90 disabled:opacity-50"
         >
-          Cerrar y seguir trabajando
+          <tabler-icon [icon]="iconReenviar" [size]="15" [stroke]="2" />
+          {{ confirmandoLlamada() ? 'Confirmando…' : 'Confirmar y mandar el enlace' }}
         </button>
       </div>
-    }
-  }
-</app-side-panel>
-
-@if (mostrarConfirmacionLlamada()) {
-  <app-modal titulo="Confirmar llamada realizada" (cerrar)="cancelarConfirmacionLlamada()">
-    <p class="text-sm text-gray-700">
-      Antes de continuar, confirmá que la llamada ya se realizó y que los datos fueron corroborados con el
-      cliente.
-    </p>
-    @if (errorConfirmarLlamada(); as mensaje) {
-      <p class="mt-2 text-xs text-badge-error-solid">{{ mensaje }}</p>
-    }
-    <div class="mt-5 flex justify-end gap-3">
-      <button
-        type="button"
-        (click)="cancelarConfirmacionLlamada()"
-        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-      >
-        Cancelar
-      </button>
-      <button
-        type="button"
-        [disabled]="confirmandoLlamada()"
-        (click)="confirmarLlamadaFinalizada()"
-        class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {{ confirmandoLlamada() ? 'Confirmando…' : 'Confirmar' }}
-      </button>
     </div>
-  </app-modal>
+  </div>
 }
 
+<!-- ══ Modal: rechazar ══ -->
 @if (mostrarRechazar()) {
-  <app-modal titulo="Rechazar solicitud" (cerrar)="cancelarRechazar()">
-    <label for="motivoRechazo" class="mb-1 block text-xs font-medium text-gray-500">Motivo</label>
-    <textarea
-      id="motivoRechazo"
-      rows="3"
-      [value]="motivoRechazo()"
-      (input)="motivoRechazo.set($any($event.target).value)"
-      class="w-full rounded-lg bg-canvas-bg px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-    ></textarea>
-    @if (errorRechazar(); as mensaje) {
-      <p class="mt-2 text-xs text-badge-error-solid">{{ mensaje }}</p>
-    }
-    <div class="mt-5 flex justify-end gap-3">
-      <button
-        type="button"
-        (click)="cancelarRechazar()"
-        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
-      >
-        Cancelar
-      </button>
-      <button
-        type="button"
-        [disabled]="!motivoRechazo().trim() || rechazando()"
-        (click)="confirmarRechazar()"
-        class="rounded-lg bg-badge-error-solid px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {{ rechazando() ? 'Rechazando…' : 'Rechazar' }}
-      </button>
+  <div
+    class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-6"
+    (click)="onModalBackdropClick($event)"
+  >
+    <div class="animate-[aparecer_0.18s_ease-out] w-full max-w-[440px] overflow-hidden rounded-xl bg-card-bg shadow-2xl">
+      <div class="px-6 pt-[22px]">
+        <h3 class="font-display text-lg font-semibold leading-6 text-gray-900">Rechazar la solicitud</h3>
+        <p class="mt-2 text-[13px] leading-5 text-gray-500 text-pretty">
+          La Empresa sale de esta hoja y queda en Empresas como rechazada. Se le avisa al dueño por correo.
+        </p>
+
+        <div class="mt-3.5">
+          <label for="motivoRechazo" class="mb-1.5 block text-xs font-medium text-gray-500">
+            Motivo — lo ve el cliente en el correo de rechazo
+          </label>
+          <textarea
+            id="motivoRechazo"
+            rows="3"
+            [value]="motivoRechazo()"
+            (input)="motivoRechazo.set($any($event.target).value)"
+            placeholder="ej. El negocio no existe en la dirección declarada."
+            class="w-full resize-y rounded-lg border border-gray-200 bg-card-bg px-3 py-2.5 text-[13px] leading-5 text-gray-900 outline-none focus:border-gray-400"
+          ></textarea>
+        </div>
+
+        @if (errorRechazar(); as mensaje) {
+          <p class="mt-2 text-xs text-badge-error-solid">{{ mensaje }}</p>
+        }
+      </div>
+
+      <div class="mt-5 flex justify-end gap-2 border-t border-gray-100 bg-neutral-50 px-6 py-3">
+        <button
+          type="button"
+          (click)="cancelarRechazar()"
+          class="rounded-lg px-3.5 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:bg-badge-neutral-bg"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          [disabled]="!motivoRechazo().trim() || rechazando()"
+          (click)="confirmarRechazar()"
+          class="flex items-center gap-[7px] rounded-lg bg-badge-error-solid px-3.5 py-2 text-[13px] font-medium text-white transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <tabler-icon [icon]="iconRechazar" [size]="15" [stroke]="2" />
+          {{ rechazando() ? 'Rechazando…' : 'Rechazar' }}
+        </button>
+      </div>
     </div>
-  </app-modal>
+  </div>
 }
 
 @if (mostrarDetalle()) {

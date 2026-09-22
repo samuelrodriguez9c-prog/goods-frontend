@@ -89,6 +89,42 @@ export class AuthService {
     this.limpiarSesion();
   }
 
+  /** `POST /auth/forgot-password` — mismo endpoint que ya usa la pantalla
+   *  de "olvidé mi contraseña" del login, reusado acá para el botón
+   *  "Cambiar contraseña" de `features/settings/` (decisión 2026-09-22:
+   *  no se construyó un endpoint nuevo de "cambiar con la actual" —
+   *  UpdateUsuarioDto excluye `password` a propósito, "el cambio de
+   *  contraseña pasa por auth: reset/forgot-password" — así que Settings
+   *  dispara este mismo correo a la cuenta logueada). El backend responde
+   *  igual exista o no el correo, así que acá siempre hay éxito: no hace
+   *  falta manejar un caso de error especial más allá del de red. */
+  solicitarRecuperacionPassword(correo: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/forgot-password`, {
+      correo,
+    });
+  }
+
+  /** `POST /auth/send-verification` — reenvía el código de verificación de
+   *  correo (Settings lo ofrece cuando `UsuarioGoods.correoVerificado` es
+   *  `false`). Mismo criterio de privacidad que el de arriba: la
+   *  respuesta no distingue si el correo ya estaba verificado o no. */
+  reenviarVerificacionCorreo(correo: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/send-verification`, {
+      correo,
+    });
+  }
+
+  /** `POST /auth/verify-email` — confirma el código de 6 dígitos que
+   *  mandó el endpoint de arriba. A diferencia de forgot-password, este SÍ
+   *  puede fallar de verdad (código vencido o incorrecto) — el error se
+   *  propaga tal cual para que `SettingsPageComponent` lo muestre. */
+  verificarCorreoConCodigo(correo: string, codigo: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/verify-email`, {
+      correo,
+      codigo,
+    });
+  }
+
   limpiarSesion(): void {
     localStorage.removeItem(CLAVE_ACCESS_TOKEN);
     localStorage.removeItem(CLAVE_REFRESH_TOKEN);

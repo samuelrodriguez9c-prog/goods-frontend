@@ -1,102 +1,273 @@
-<app-side-panel [titulo]="empresa()?.nombre ?? 'Detalle de la Empresa'" (cerrar)="cerrar.emit()">
-  @if (error(); as mensaje) {
-    <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
-  } @else if (cargando()) {
-    <p class="text-sm text-gray-500">Cargando…</p>
-  } @else if (empresa(); as e) {
-    <div class="space-y-5">
-      <div>
-        <p class="text-sm font-medium text-gray-700">Estado</p>
-        <div class="mt-1.5">
-          <app-status-badge [label]="e.estado" [tone]="tonoEstado(e.estado)" dot="filled" />
+<div
+  class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-50 flex justify-end bg-black/50"
+  (click)="onBackdropClick($event)"
+>
+  <div
+    class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[640px] flex-col bg-card-bg shadow-xl"
+  >
+    @if (error(); as mensaje) {
+      <div class="flex flex-1 items-center justify-center p-6">
+        <div class="text-center">
+          <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
+          <button
+            type="button"
+            (click)="cerrar.emit()"
+            class="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-canvas-bg"
+          >
+            Cerrar
+          </button>
         </div>
       </div>
-
-      <app-campo-detalle
-        etiqueta="Nombre del negocio"
-        [valor]="e.nombre"
-        ayuda="Tal como el cliente lo escribió en el registro público — es el que ve en su propio panel. Solo se corrige desde el paso 1 del asistente de activación."
-      />
-
-      @if (e.estado === 'rechazada' && e.motivoRechazo) {
-        <app-campo-detalle etiqueta="Motivo de rechazo" [valor]="e.motivoRechazo" />
-      }
-
-      <app-campo-detalle
-        etiqueta="Rubro"
-        [valor]="rubro()"
-        [editable]="true"
-        placeholder="ej. Restaurante, Ropa, Servicios"
-        (valorCambiado)="rubro.set($event)"
-      />
-
-      <app-campo-detalle
-        etiqueta="Correo de contacto"
-        [valor]="correoContacto()"
-        [editable]="true"
-        (valorCambiado)="correoContacto.set($event)"
-      />
-
-      <app-campo-detalle
-        etiqueta="Teléfono de contacto"
-        [valor]="telefonoContacto()"
-        [editable]="true"
-        placeholder="Opcional"
-        (valorCambiado)="telefonoContacto.set($event)"
-      />
-
-      <div>
-        <p class="text-sm font-medium text-gray-700">Declarado en el registro</p>
-        <p class="mt-0.5 text-sm text-gray-900">
-          {{ e.duenoNombres }} {{ e.duenoApellidos }}
-        </p>
-        @if (e.duenoCorreo) {
-          <p class="text-xs text-gray-500">{{ e.duenoCorreo }}</p>
-        }
-        <p class="mt-1 text-xs text-gray-400">
-          Lo que el visitante tipeó en el formulario público — todavía no es la cuenta real, ver "Cuenta del
-          dueño" abajo.
-        </p>
+    } @else if (cargando()) {
+      <div class="flex flex-1 animate-pulse flex-col gap-6 p-6">
+        <div class="flex items-center gap-3">
+          <span class="size-10 shrink-0 rounded-lg bg-gray-200"></span>
+          <div class="flex flex-1 flex-col gap-2">
+            <span class="h-4 w-56 rounded-full bg-gray-200"></span>
+            <span class="h-3 w-40 rounded-full bg-gray-100"></span>
+          </div>
+        </div>
+        <span class="h-24 w-full rounded-lg bg-gray-100"></span>
+        <span class="h-40 w-full rounded-lg bg-gray-100"></span>
+      </div>
+    } @else if (empresa(); as e) {
+      <!-- Cabecera fija -->
+      <div class="flex shrink-0 items-start gap-3 border-b border-gray-200 px-6 py-5">
+        <span
+          class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-badge-neutral-bg text-sm font-semibold text-gray-700"
+        >
+          {{ iniciales(e.nombre) }}
+        </span>
+        <div class="min-w-0 flex-1">
+          <h2
+            class="font-display text-xl font-semibold leading-[26px] tracking-[-0.01em] text-gray-900"
+          >
+            {{ e.nombre }}
+          </h2>
+          <div class="mt-1.5 flex flex-wrap items-center gap-2">
+            <app-status-badge [label]="etiquetaEstado(e.estado)" [tone]="tonoEstado(e.estado)" dot="filled" />
+            <span class="text-xs text-gray-500">Alta {{ e.creadoEn | date: 'd MMM y' }}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          (click)="cerrar.emit()"
+          aria-label="Cerrar"
+          class="shrink-0 rounded-lg p-1 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+        >
+          <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
+        </button>
       </div>
 
-      <div>
-        <p class="text-sm font-medium text-gray-700">Cuenta del dueño</p>
-        @if (e.duenoUsuario; as dueno) {
-          <p class="mt-0.5 text-sm text-gray-900">{{ dueno.nombres }} {{ dueno.apellidos }}</p>
-          <p class="text-xs text-gray-500">{{ dueno.correo }}</p>
-          <p class="mt-1 text-xs text-gray-400">
-            {{ dueno.correoVerificado ? 'Correo verificado' : 'Correo sin verificar' }} ·
-            {{ dueno.tieneContrasena ? 'Ya definió su contraseña' : 'Todavía no definió su contraseña' }}
+      <!-- Cuerpo scrolleable -->
+      <div class="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+        <!-- Nombre del negocio (solo lectura) -->
+        <section>
+          <div class="mb-2.5 flex items-center gap-2">
+            <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+            <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+              Nombre del negocio
+            </h3>
+          </div>
+          <p class="text-xl font-semibold leading-[26px] text-gray-900">{{ e.nombre }}</p>
+          <p class="mt-1.5 text-[13px] leading-[19px] text-gray-500 text-pretty">
+            Tal como el cliente lo escribió en el
+            <strong class="font-semibold text-gray-700">registro público</strong> — es el que ve en su propio
+            panel. Solo se corrige desde el
+            <strong class="font-semibold text-gray-700">paso 1 del asistente de activación</strong>.
           </p>
-        } @else {
-          <p class="mt-0.5 text-sm text-gray-400">
-            Todavía no se creó — se crea automáticamente al terminar la llamada (paso 2 del asistente de
-            activación).
-          </p>
+        </section>
+
+        @if (e.estado === 'rechazada' && e.motivoRechazo) {
+          <section>
+            <div class="mb-2.5 flex items-center gap-2">
+              <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+              <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                Motivo de rechazo
+              </h3>
+            </div>
+            <p class="text-sm leading-[22px] text-gray-700 text-pretty">{{ e.motivoRechazo }}</p>
+          </section>
         }
+
+        <!-- Datos editables -->
+        <section>
+          <div class="mb-2.5 flex items-center gap-2">
+            <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+            <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+              Datos editables
+            </h3>
+          </div>
+          <div class="flex flex-col overflow-hidden rounded-lg border border-gray-200">
+            <label class="flex items-center gap-3 border-b border-gray-100 px-4">
+              <span class="w-[132px] shrink-0 text-[13px] text-gray-500">Rubro</span>
+              <input
+                type="text"
+                pInputText
+                [ngModel]="rubro()"
+                (ngModelChange)="rubro.set($event)"
+                placeholder="ej. Restaurante, Ropa, Servicios"
+                class="w-full min-w-0 border-0 bg-transparent px-0 py-3 text-sm font-medium text-gray-900 outline-none"
+              />
+            </label>
+            <label class="flex items-center gap-3 border-b border-gray-100 px-4">
+              <span class="w-[132px] shrink-0 text-[13px] text-gray-500">Correo de contacto</span>
+              <input
+                type="email"
+                pInputText
+                [ngModel]="correoContacto()"
+                (ngModelChange)="correoContacto.set($event)"
+                class="w-full min-w-0 border-0 bg-transparent px-0 py-3 text-sm font-medium text-gray-900 outline-none"
+              />
+            </label>
+            <label class="flex items-center gap-3 px-4">
+              <span class="w-[132px] shrink-0 text-[13px] text-gray-500">Teléfono</span>
+              <input
+                type="tel"
+                pInputText
+                [ngModel]="telefonoContacto()"
+                (ngModelChange)="telefonoContacto.set($event)"
+                placeholder="Opcional"
+                class="w-full min-w-0 border-0 bg-transparent px-0 py-3 text-sm font-medium text-gray-900 outline-none"
+              />
+            </label>
+          </div>
+        </section>
+
+        <!-- Personas: declarado vs cuenta real, con veredicto arriba -->
+        <section>
+          <div class="mb-2.5 flex items-center gap-2">
+            <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+            <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Personas</h3>
+          </div>
+          <div class="overflow-hidden rounded-lg border border-gray-200">
+            <div class="flex items-center gap-2.5 px-4 py-2.5" [class]="veredicto().fondo">
+              <tabler-icon
+                [icon]="veredicto().icono"
+                [size]="16"
+                [stroke]="2"
+                class="shrink-0"
+                [class]="veredicto().tinta"
+              />
+              <span class="text-[13px] font-semibold" [class]="veredicto().tinta">
+                {{ veredicto().texto }}
+              </span>
+            </div>
+
+            <div class="relative p-4">
+              <span class="absolute bottom-11 left-[23px] top-11 w-0.5 bg-gray-200"></span>
+
+              <div class="flex gap-3">
+                <span
+                  class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white"
+                ></span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400">
+                    Declarado en el registro
+                  </p>
+                  <p class="mt-[3px] text-sm leading-5 text-gray-500">
+                    <strong class="font-semibold text-gray-900">{{ nombreDeclarado() }}</strong>
+                    @if (e.duenoCorreo) {
+                      · {{ e.duenoCorreo }}
+                    }
+                  </p>
+                  <p class="mt-[3px] text-xs leading-[18px] text-gray-400 text-pretty">
+                    Lo que el visitante tipeó en el formulario público —
+                    <strong class="font-semibold text-gray-500">todavía no es la cuenta real</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-4 flex gap-3">
+                <span
+                  class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2"
+                  [class]="veredicto().punto"
+                ></span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400">
+                    Cuenta del dueño
+                  </p>
+                  @if (e.duenoUsuario; as dueno) {
+                    <p class="mt-[3px] text-sm font-semibold leading-5 text-gray-900">
+                      {{ dueno.nombres }} {{ dueno.apellidos }}
+                      @if (dueno.correo) {
+                        <span class="font-normal text-gray-500">· {{ dueno.correo }}</span>
+                      }
+                    </p>
+                    <p class="mt-[3px] text-xs leading-[18px] text-gray-400 text-pretty">
+                      {{ dueno.correoVerificado ? 'Correo verificado' : 'Correo sin verificar' }} ·
+                      {{ dueno.tieneContrasena ? 'Ya definió su contraseña' : 'Todavía no definió su contraseña' }}
+                    </p>
+                  } @else {
+                    <p class="mt-[3px] text-sm font-semibold leading-5 text-gray-400">Todavía no se creó</p>
+                    <p class="mt-[3px] text-xs leading-[18px] text-gray-400 text-pretty">
+                      Se crea automáticamente al terminar la llamada (paso 2 del asistente de activación).
+                    </p>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Actividad -->
+        <section>
+          <div class="mb-2.5 flex items-center gap-2">
+            <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+            <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Actividad</h3>
+          </div>
+          <p class="text-sm leading-[22px] text-gray-500 text-pretty">
+            Dada de alta el
+            <strong class="font-semibold text-gray-900">{{ e.creadoEn | date: 'd MMM y' }}</strong>, con última
+            actualización el
+            <strong class="font-semibold text-gray-900">{{ e.actualizadoEn | date: 'd MMM y, HH:mm' }}</strong>.
+          </p>
+        </section>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
-        <app-campo-detalle etiqueta="Fecha de alta" [valor]="(e.creadoEn | date: 'd MMM y') ?? ''" />
-        <app-campo-detalle
-          etiqueta="Última actualización"
-          [valor]="(e.actualizadoEn | date: 'd MMM y, HH:mm') ?? ''"
-        />
-      </div>
-    </div>
+      <!-- Barra contextual: solo existe si hay algo que guardar o algo que informar -->
+      @if (hayCambios() || guardando() || guardado() || errorGuardar()) {
+        <div
+          class="animate-[fade-in-up_0.2s_ease-out] flex shrink-0 items-center justify-between gap-3 border-t border-gray-200 bg-neutral-50 px-6 py-3"
+        >
+          @if (errorGuardar(); as mensajeGuardar) {
+            <span class="flex items-center gap-2 text-[13px] text-badge-error-solid">
+              <tabler-icon [icon]="iconError" [size]="16" [stroke]="2" />
+              {{ mensajeGuardar }}
+            </span>
+          } @else {
+            <span class="flex items-center gap-2 text-[13px]" [class]="estadoBarra().tinta">
+              <tabler-icon
+                [icon]="estadoBarra().icono"
+                [size]="16"
+                [stroke]="2"
+                [class]="guardando() ? 'animate-spin' : ''"
+              />
+              {{ estadoBarra().texto }}
+            </span>
+          }
 
-    <div class="mt-6 flex items-center gap-3 border-t border-gray-200 pt-4">
-      <button
-        type="button"
-        [disabled]="!hayCambios() || guardando()"
-        (click)="guardar()"
-        class="rounded-lg bg-primary-button px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
-      </button>
-      @if (errorGuardar(); as mensajeGuardar) {
-        <span class="animate-[fade-in-up_0.2s_ease-out] text-xs text-badge-error-solid">{{ mensajeGuardar }}</span>
+          @if (hayCambios() && !guardando()) {
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                (click)="descartar()"
+                class="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-badge-neutral-bg"
+              >
+                Descartar
+              </button>
+              <button
+                type="button"
+                (click)="guardar()"
+                class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+              >
+                <tabler-icon [icon]="iconGuardar" [size]="16" [stroke]="2" />
+                Guardar cambios
+              </button>
+            </div>
+          }
+        </div>
       }
-    </div>
-  }
-</app-side-panel>
+    }
+  </div>
+</div>

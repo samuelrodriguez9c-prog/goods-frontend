@@ -1,82 +1,227 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
-import { TableModule } from 'primeng/table';
-import { DataTableComponent, StatusBadgeComponent, StatusBadgeTone, dataTablePt } from 'shared-ui';
-import { IconPencil, IconPlus, IconRotate, IconTrash, TablerIconComponent } from '@tabler/icons-angular';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { InputTextModule } from 'primeng/inputtext';
+import {
+  IconAlertTriangle,
+  IconBuildingStore,
+  IconCheck,
+  IconCircleOff,
+  IconMinus,
+  IconPlus,
+  IconRotateClockwise,
+  IconTrash,
+  TablerIconComponent,
+} from '@tabler/icons-angular';
+import { Observable, forkJoin } from 'rxjs';
 import { GuardarPlanPayload, PlanService } from '../../../../core/catalog/plan.service';
+import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
 import { Plan } from '../../../../core/catalog/models/plan.model';
-import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 
-/** Mismo formato que `formatCop` de `admin` (registro-publico-page) —
- * repetido a propósito, no vale la pena compartirlo entre dos proyectos
- * Angular por una función de una línea (ver el mismo criterio en
- * `RespuestaPaginada`, `core/catalog/models/empresa.model.ts`). */
-function formatCop(value: number): string {
-  return `$${value.toLocaleString('es-CO')}`;
+/** Un plan en edición. `id` negativo = plan nuevo que todavía no existe en
+ * el backend (se crea al publicar). */
+type PlanBorrador = Plan;
+
+interface CeldaMatriz {
+  planId: number;
+  planIndice: number;
+  icono: typeof IconCheck;
+  tamano: number;
+  tinta: string;
+  fondo: string;
+  label: string;
 }
 
-interface FormularioPlan {
-  nombre: string;
-  descripcion: string;
-  precioMensual: string;
-  /** Una característica por línea — se separa en array recién al armar
-   * el payload (ver `armarPayload`), así el textarea puede quedar con
-   * líneas vacías mientras el staff escribe sin que se filtren solas. */
-  caracteristicas: string;
+interface FilaMatriz {
+  indice: number;
+  etiqueta: string;
+  celdas: CeldaMatriz[];
 }
-
-const FORMULARIO_VACIO: FormularioPlan = {
-  nombre: '',
-  descripcion: '',
-  precioMensual: '',
-  caracteristicas: '',
-};
 
 /**
- * CRUD del catálogo de planes (Base/Plus hoy, ver
- * `scripts/seed-planes.sql` del backend) — pantalla "Planes" del sidebar
- * de staff (PIVOTE_SAAS_MULTITENANT.md §8). "Eliminar" en realidad
- * desactiva (ver `PlanService.desactivar` del frontend / `PlanService
- * .remove` del backend: un plan con Suscripciones apuntándole no se
- * puede borrar de verdad), por eso el botón dice "Desactivar" y hay uno
- * de "Reactivar" para los planes ya desactivados, en vez de un checkbox
- * "activo" dentro del formulario de editar.
+ * Catálogo de planes — rediseño del 2026-09-18 ("catálogo comparado"),
+ * integrado 2026-09-21 (LEEME.md §6, siguiente componente del mismo
+ * handoff tras `altas-pendientes-page`/`activar-empresa-wizard`).
+ *
+ * Deja de ser una tabla de cinco columnas con un modal de edición y pasa a
+ * ser una matriz: **un plan por columna, las características como filas
+ * compartidas**. La tesis es que un plan no significa nada solo — solo se
+ * entiende al lado del que está abajo y el que está arriba, así que la
+ * pantalla tiene la forma de la decisión que el staff está tomando.
+ *
+ * Lo que eso cambia respecto de la versión anterior:
+ *
+ * 1. **Se fue el modal.** `ModalComponent`, `FormularioPlan` y el textarea
+ *    de "una característica por línea" ya no existen: era el punto más
+ *    frágil (se editaba a ciegas, sin ver cómo quedaba el plan al lado de
+ *    sus vecinos). Ahora se edita en la celda. `ModalComponent` sigue
+ *    intacto, en uso en otras pantallas.
+ * 2. **Se fue la columna "N ítems"**, que escondía justo lo que diferencia
+ *    un plan de otro.
+ * 3. **Los huecos se detectan solos** (`esHueco`): si un plan más caro NO
+ *    incluye algo que sí incluye uno más barato, la celda sale en ámbar con
+ *    un triángulo, y el párrafo de arriba lo dice en palabras
+ *    (`lectura()`). Ese chequeo es imposible de hacer a ojo en una tabla.
+ * 4. **Nada se guarda al tocar**: los cambios viven en `borrador` y se
+ *    publican juntos desde la barra de abajo, porque esto lo ve el cliente
+ *    en la página de precios — no es un ajuste interno.
+ * 5. **Desactivar/reactivar es una acción directa** en la columna (sí pega
+ *    contra el backend al instante, `DELETE /planes/:id` y `PATCH` con
+ *    `activo: true`), no un badge distinto en una celda.
+ *
+ * SUPOSICIÓN A VALIDAR (del propio handoff): el modelo `Plan` guarda
+ * `caracteristicas` como `string[]` libre por plan. La matriz necesita el
+ * *union* de todas las características del catálogo (`caracteristicas`),
+ * y al publicar reconstruye el array de cada plan a partir de las celdas
+ * marcadas. Eso funciona con el backend actual sin cambios, pero renombrar
+ * una característica es un renombre por texto en todos los planes que la
+ * tienen. Si esto se usa mucho, conviene una tabla `caracteristica` real
+ * con relación N:M — ver la nota de `renombrarCaracteristica`.
+ *
+ * Un ajuste propio sobre el handoff: `mostrarSuscripciones` pedía
+ * `SuscripcionService.listar()` SIN filtro de estado, así que el conteo
+ * "Empresas por plan" incluía suscripciones canceladas/vencidas — contaba
+ * clientes que ya se fueron. Se agregó el filtro `'activa'`, el mismo que
+ * ya usa `EmpresasPageComponent` (`listar('activa')`) para lo mismo.
  */
 @Component({
   selector: 'app-planes-page',
   standalone: true,
-  imports: [TableModule, DataTableComponent, StatusBadgeComponent, TablerIconComponent, ModalComponent],
+  imports: [FormsModule, InputTextModule, TablerIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './planes-page.component.html',
 })
 export class PlanesPageComponent {
   private readonly planService = inject(PlanService);
+  private readonly suscripcionService = inject(SuscripcionService);
 
-  protected readonly tablePt = dataTablePt();
-  protected readonly formatCop = formatCop;
+  /** Mostrar cuántas Empresas hay en cada plan. Requiere
+   * `SuscripcionService.listar()` — apagalo si el endpoint no está. */
+  protected readonly mostrarSuscripciones = true;
+
+  protected readonly skeletons = [0, 1, 2, 3];
   protected readonly iconPlus = IconPlus;
-  protected readonly iconEdit = IconPencil;
-  protected readonly iconDesactivar = IconTrash;
-  protected readonly iconReactivar = IconRotate;
+  protected readonly iconTilde = IconCheck;
+  protected readonly iconBorrar = IconTrash;
+  protected readonly iconDesactivar = IconCircleOff;
+  protected readonly iconReactivar = IconRotateClockwise;
+  protected readonly iconEmpresas = IconBuildingStore;
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly planes = signal<Plan[]>([]);
-
-  // Modal de crear/editar — `planEditando` en `null` es "creando uno
-  // nuevo", con valor es "editando ese plan" (mismo patrón que
-  // `AltasPendientesPageComponent.errorActivar` para el estado por fila,
-  // pero acá es un único formulario modal, no por fila).
-  protected readonly modalAbierto = signal(false);
-  protected readonly planEditando = signal<Plan | null>(null);
-  protected readonly formulario = signal<FormularioPlan>({ ...FORMULARIO_VACIO });
-  protected readonly guardando = signal(false);
-  protected readonly errorGuardar = signal<string | null>(null);
-
-  // Id del plan que se está desactivando/reactivando ahora mismo (para
-  // deshabilitar solo ESE botón, no toda la tabla) — `null` cuando
-  // ninguno está en vuelo.
+  protected readonly publicando = signal(false);
+  protected readonly publicado = signal(false);
   protected readonly accionandoId = signal<number | null>(null);
+  protected readonly nuevaCaracteristica = signal('');
+
+  /** Lo que el staff está editando. */
+  private readonly borrador = signal<PlanBorrador[]>([]);
+  /** Copia serializada de lo último publicado, para diffear y descartar. */
+  private readonly publicadoSnapshot = signal('[]');
+  /** Union de características, en el orden en que se muestran las filas. */
+  private readonly caracteristicas = signal<string[]>([]);
+  protected readonly suscripcionesPorPlan = signal<Map<number, number>>(new Map());
+
+  private proximoIdTemporal = -1;
+
+  protected readonly planes = computed(() => this.borrador());
+
+  protected readonly gridCols = computed(
+    () => `minmax(250px, 1fr) repeat(${this.planes().length}, minmax(210px, 1.1fr)) 96px`,
+  );
+
+  /** El wrapper scrolleable necesita un ancho mínimo real, si no las
+   * columnas de plan se comen el espacio de las etiquetas y los nombres
+   * largos se cortan. */
+  protected readonly anchoMinimo = computed(() => {
+    const n = this.planes().length;
+    return `${250 + n * 220 + 96 + (n + 1) * 10}px`;
+  });
+
+  protected readonly resumen = computed(() => {
+    const total = this.planes().length;
+    const activos = this.planes().filter((p) => p.activo).length;
+    return `${total} ${total === 1 ? 'plan' : 'planes'} · ${activos} a la venta`;
+  });
+
+  /** El plan más caro que no agrega nada sobre el anterior (o que
+   * directamente pierde algo) es el síntoma que esta pantalla existe para
+   * mostrar. */
+  protected readonly lectura = computed(() => {
+    const vendibles = this.planes()
+      .filter((p) => p.activo && p.precioMensual !== null)
+      .sort((a, b) => (a.precioMensual ?? 0) - (b.precioMensual ?? 0));
+
+    for (let i = 1; i < vendibles.length; i++) {
+      const caro = vendibles[i];
+      const barato = vendibles[i - 1];
+      const setCaro = new Set(caro.caracteristicas ?? []);
+      const setBarato = new Set(barato.caracteristicas ?? []);
+      const faltantes = [...setBarato].filter((c) => !setCaro.has(c));
+      const extra = [...setCaro].filter((c) => !setBarato.has(c));
+
+      if (faltantes.length) {
+        const resto =
+          faltantes.length > 1
+            ? ` y ${faltantes.length - 1} cosa${faltantes.length > 2 ? 's' : ''} más`
+            : '';
+        return `${caro.nombre} cuesta más que ${barato.nombre} pero le falta ${faltantes[0].toLowerCase()}${resto}. Revisá qué incluye cada uno antes de seguir vendiéndolos.`;
+      }
+      if (!extra.length) {
+        return `${caro.nombre} cuesta más que ${barato.nombre} y no agrega nada. Revisá qué incluye cada uno antes de seguir vendiéndolos.`;
+      }
+    }
+
+    const total = [...this.suscripcionesPorPlan().values()].reduce((a, b) => a + b, 0);
+    const cola = total
+      ? ` ${total} ${total === 1 ? 'Empresa suscrita' : 'Empresas suscritas'} en total.`
+      : '';
+    return `El catálogo escala parejo: cada plan agrega algo sobre el anterior.${cola}`;
+  });
+
+  protected readonly filas = computed<FilaMatriz[]>(() =>
+    this.caracteristicas().map((etiqueta, indice) => ({
+      indice,
+      etiqueta,
+      celdas: this.planes().map((plan, planIndice) => {
+        const tiene = (plan.caracteristicas ?? []).includes(etiqueta);
+        const hueco = !tiene && this.esHueco(plan, etiqueta);
+        return {
+          planId: plan.id,
+          planIndice,
+          icono: tiene ? IconCheck : hueco ? IconAlertTriangle : IconMinus,
+          tamano: tiene ? 16 : hueco ? 14 : 12,
+          tinta: tiene
+            ? plan.activo
+              ? 'text-success-solid'
+              : 'text-gray-400'
+            : hueco
+              ? 'text-amber-700'
+              : 'text-gray-400',
+          fondo: tiene
+            ? plan.activo
+              ? 'bg-card-bg'
+              : 'bg-neutral-50'
+            : hueco
+              ? 'bg-[#fffdf2]'
+              : 'bg-card-bg',
+          label: `${tiene ? 'Quitar' : 'Agregar'} ${etiqueta} de ${plan.nombre}`,
+        };
+      }),
+    })),
+  );
+
+  protected readonly hayCambios = computed(
+    () => JSON.stringify(this.borrador()) !== this.publicadoSnapshot(),
+  );
+
+  protected readonly textoCambios = computed(() => {
+    const anterior: PlanBorrador[] = JSON.parse(this.publicadoSnapshot());
+    const n = this.borrador().filter((plan) => {
+      const previo = anterior.find((p) => p.id === plan.id);
+      return !previo || JSON.stringify(previo) !== JSON.stringify(plan);
+    }).length;
+    return n <= 1 ? 'Cambios sin publicar' : `${n} planes modificados`;
+  });
 
   constructor() {
     this.cargar();
@@ -85,9 +230,26 @@ export class PlanesPageComponent {
   protected cargar(): void {
     this.cargando.set(true);
     this.error.set(null);
-    this.planService.listarTodos().subscribe({
-      next: (respuesta) => {
-        this.planes.set(respuesta.data);
+
+    // Ajuste propio: 'activa' — ver la nota en el docstring de la clase.
+    const peticiones = this.mostrarSuscripciones
+      ? forkJoin({ planes: this.planService.listarTodos(), suscripciones: this.suscripcionService.listar('activa') })
+      : forkJoin({ planes: this.planService.listarTodos() });
+
+    peticiones.subscribe({
+      next: (respuesta: { planes: { data: Plan[] }; suscripciones?: { data: { planId: number }[] } }) => {
+        const planes = respuesta.planes.data;
+        this.borrador.set(planes.map((p) => ({ ...p, caracteristicas: [...(p.caracteristicas ?? [])] })));
+        this.publicadoSnapshot.set(JSON.stringify(this.borrador()));
+        this.caracteristicas.set(this.unionCaracteristicas(planes));
+
+        if (respuesta.suscripciones) {
+          const conteo = new Map<number, number>();
+          for (const s of respuesta.suscripciones.data) {
+            conteo.set(s.planId, (conteo.get(s.planId) ?? 0) + 1);
+          }
+          this.suscripcionesPorPlan.set(conteo);
+        }
         this.cargando.set(false);
       },
       error: () => {
@@ -97,127 +259,227 @@ export class PlanesPageComponent {
     });
   }
 
-  protected abrirCrear(): void {
-    this.planEditando.set(null);
-    this.formulario.set({ ...FORMULARIO_VACIO });
-    this.errorGuardar.set(null);
-    this.modalAbierto.set(true);
-  }
-
-  protected abrirEditar(plan: Plan): void {
-    this.planEditando.set(plan);
-    this.formulario.set({
-      nombre: plan.nombre,
-      descripcion: plan.descripcion ?? '',
-      precioMensual: plan.precioMensual === null ? '' : String(plan.precioMensual),
-      caracteristicas: (plan.caracteristicas ?? []).join('\n'),
-    });
-    this.errorGuardar.set(null);
-    this.modalAbierto.set(true);
-  }
-
-  protected cerrarModal(): void {
-    this.modalAbierto.set(false);
-  }
-
-  protected actualizarCampo(campo: keyof FormularioPlan, valor: string): void {
-    this.formulario.update((actual) => ({ ...actual, [campo]: valor }));
-  }
-
-  protected guardar(): void {
-    const f = this.formulario();
-    if (!f.nombre.trim() || this.guardando()) {
-      return;
-    }
-
-    this.guardando.set(true);
-    this.errorGuardar.set(null);
-    const payload = this.armarPayload(f);
-    const editando = this.planEditando();
-    const request = editando
-      ? this.planService.actualizar(editando.id, payload)
-      : this.planService.crear(payload);
-
-    request.subscribe({
-      next: (plan) => {
-        this.guardando.set(false);
-        this.modalAbierto.set(false);
-        this.planes.update((actuales) =>
-          editando
-            ? actuales.map((p) => (p.id === plan.id ? plan : p))
-            : [...actuales, plan],
-        );
-      },
-      error: (err: unknown) => {
-        this.guardando.set(false);
-        this.errorGuardar.set(this.mensajeDeError(err));
-      },
-    });
-  }
-
-  private armarPayload(f: FormularioPlan): GuardarPlanPayload {
-    const caracteristicas = f.caracteristicas
-      .split('\n')
-      .map((linea) => linea.trim())
-      .filter((linea) => linea.length > 0);
-    const precio = f.precioMensual.trim();
-    return {
-      nombre: f.nombre.trim(),
-      descripcion: f.descripcion.trim() || undefined,
-      precioMensual: precio ? Number(precio) : undefined,
-      caracteristicas,
-    };
-  }
-
-  protected desactivar(plan: Plan): void {
-    if (this.accionandoId() !== null) {
-      return;
-    }
-    this.accionandoId.set(plan.id);
-    this.planService.desactivar(plan.id).subscribe({
-      next: () => {
-        this.accionandoId.set(null);
-        this.planes.update((actuales) =>
-          actuales.map((p) => (p.id === plan.id ? { ...p, activo: false } : p)),
-        );
-      },
-      error: () => {
-        this.accionandoId.set(null);
-        this.error.set('No se pudo desactivar el plan. Intenta de nuevo.');
-      },
-    });
-  }
-
-  protected reactivar(plan: Plan): void {
-    if (this.accionandoId() !== null) {
-      return;
-    }
-    this.accionandoId.set(plan.id);
-    this.planService.reactivar(plan.id).subscribe({
-      next: (actualizado) => {
-        this.accionandoId.set(null);
-        this.planes.update((actuales) =>
-          actuales.map((p) => (p.id === plan.id ? actualizado : p)),
-        );
-      },
-      error: () => {
-        this.accionandoId.set(null);
-        this.error.set('No se pudo reactivar el plan. Intenta de nuevo.');
-      },
-    });
-  }
-
-  protected tonoActivo(activo: boolean): StatusBadgeTone {
-    return activo ? 'success' : 'neutral';
-  }
-
-  private mensajeDeError(err: unknown): string {
-    if (err instanceof HttpErrorResponse) {
-      const mensaje = (err.error as { message?: string } | null)?.message;
-      if (mensaje) {
-        return Array.isArray(mensaje) ? mensaje.join(' ') : mensaje;
+  /** Orden de las filas: el plan más completo manda, así la matriz se lee
+   * como una escalera y no como el orden de inserción del backend. */
+  private unionCaracteristicas(planes: Plan[]): string[] {
+    const porCobertura = [...planes].sort(
+      (a, b) => (b.caracteristicas?.length ?? 0) - (a.caracteristicas?.length ?? 0),
+    );
+    const union: string[] = [];
+    for (const plan of porCobertura) {
+      for (const c of plan.caracteristicas ?? []) {
+        if (!union.includes(c)) {
+          union.push(c);
+        }
       }
     }
-    return 'No se pudo guardar. Intenta de nuevo.';
+    return union;
+  }
+
+  /** Hueco: algún plan activo MÁS BARATO sí incluye esta característica. */
+  private esHueco(plan: PlanBorrador, etiqueta: string): boolean {
+    if (plan.precioMensual === null) {
+      return false;
+    }
+    return this.planes().some(
+      (otro) =>
+        otro.activo &&
+        otro.precioMensual !== null &&
+        otro.precioMensual < plan.precioMensual! &&
+        (otro.caracteristicas ?? []).includes(etiqueta),
+    );
+  }
+
+  protected precioTexto(plan: PlanBorrador): string {
+    return plan.precioMensual === null ? '' : plan.precioMensual.toLocaleString('es-CO');
+  }
+
+  protected textoSuscripciones(plan: PlanBorrador): string {
+    const n = this.suscripcionesPorPlan().get(plan.id) ?? 0;
+    return `${n} ${n === 1 ? 'Empresa' : 'Empresas'}`;
+  }
+
+  protected editarPlan(indice: number, cambios: Partial<PlanBorrador>): void {
+    this.borrador.update((planes) => planes.map((p, i) => (i === indice ? { ...p, ...cambios } : p)));
+    this.publicado.set(false);
+  }
+
+  protected editarPrecio(indice: number, valor: string): void {
+    const limpio = valor.replace(/[^\d]/g, '');
+    this.editarPlan(indice, { precioMensual: limpio ? Number(limpio) : null });
+  }
+
+  protected alternarCaracteristica(planIndice: number, filaIndice: number): void {
+    const etiqueta = this.caracteristicas()[filaIndice];
+    this.borrador.update((planes) =>
+      planes.map((plan, i) => {
+        if (i !== planIndice) {
+          return plan;
+        }
+        const actuales = plan.caracteristicas ?? [];
+        return {
+          ...plan,
+          caracteristicas: actuales.includes(etiqueta)
+            ? actuales.filter((c) => c !== etiqueta)
+            : [...actuales, etiqueta],
+        };
+      }),
+    );
+    this.publicado.set(false);
+  }
+
+  /** Renombre por texto: toca todos los planes que tenían la etiqueta
+   * anterior. Ver la SUPOSICIÓN A VALIDAR en el comentario de la clase. */
+  protected renombrarCaracteristica(indice: number, nuevo: string): void {
+    const anterior = this.caracteristicas()[indice];
+    this.caracteristicas.update((cs) => cs.map((c, i) => (i === indice ? nuevo : c)));
+    this.borrador.update((planes) =>
+      planes.map((plan) => ({
+        ...plan,
+        caracteristicas: (plan.caracteristicas ?? []).map((c) => (c === anterior ? nuevo : c)),
+      })),
+    );
+    this.publicado.set(false);
+  }
+
+  protected quitarCaracteristica(indice: number): void {
+    const etiqueta = this.caracteristicas()[indice];
+    this.caracteristicas.update((cs) => cs.filter((_, i) => i !== indice));
+    this.borrador.update((planes) =>
+      planes.map((plan) => ({
+        ...plan,
+        caracteristicas: (plan.caracteristicas ?? []).filter((c) => c !== etiqueta),
+      })),
+    );
+    this.publicado.set(false);
+  }
+
+  protected agregarCaracteristica(): void {
+    const limpio = this.nuevaCaracteristica().trim();
+    if (!limpio || this.caracteristicas().includes(limpio)) {
+      this.nuevaCaracteristica.set('');
+      return;
+    }
+    this.caracteristicas.update((cs) => [...cs, limpio]);
+    this.nuevaCaracteristica.set('');
+  }
+
+  protected agregarPlan(): void {
+    this.borrador.update((planes) => [
+      ...planes,
+      {
+        id: this.proximoIdTemporal--,
+        nombre: 'Plan sin nombre',
+        descripcion: null,
+        precioMensual: null,
+        caracteristicas: [],
+        activo: false,
+      } as PlanBorrador,
+    ]);
+    this.publicado.set(false);
+  }
+
+  /** Esto sí pega al backend al instante: desactivar un plan es una acción
+   * del catálogo, no una edición de contenido. */
+  protected alternarActivo(plan: PlanBorrador): void {
+    if (this.accionandoId() !== null) {
+      return;
+    }
+    // Un plan nuevo todavía no existe: solo se alterna en el borrador.
+    if (plan.id < 0) {
+      this.editarPlan(
+        this.borrador().findIndex((p) => p.id === plan.id),
+        { activo: !plan.activo },
+      );
+      return;
+    }
+
+    this.accionandoId.set(plan.id);
+    // Tipado explícito a `Observable<unknown>`: `desactivar` devuelve
+    // `Observable<void>` y `reactivar` `Observable<Plan>` — sin esto, el
+    // union de los dos tipos de Observable hace que TS no pueda resolver
+    // qué sobrecarga de `subscribe` aplica (el `next` de acá no usa el
+    // valor emitido de todos modos, así que el tipo real no importa).
+    const request: Observable<unknown> = plan.activo
+      ? this.planService.desactivar(plan.id)
+      : this.planService.reactivar(plan.id);
+
+    request.subscribe({
+      next: () => {
+        this.accionandoId.set(null);
+        this.borrador.update((planes) =>
+          planes.map((p) => (p.id === plan.id ? { ...p, activo: !plan.activo } : p)),
+        );
+        this.publicadoSnapshot.update((snap) => {
+          const anterior: PlanBorrador[] = JSON.parse(snap);
+          return JSON.stringify(
+            anterior.map((p) => (p.id === plan.id ? { ...p, activo: !plan.activo } : p)),
+          );
+        });
+      },
+      error: () => {
+        this.accionandoId.set(null);
+        this.error.set(
+          plan.activo
+            ? 'No se pudo desactivar el plan. Intenta de nuevo.'
+            : 'No se pudo reactivar el plan. Intenta de nuevo.',
+        );
+      },
+    });
+  }
+
+  protected descartar(): void {
+    const anterior: PlanBorrador[] = JSON.parse(this.publicadoSnapshot());
+    this.borrador.set(anterior);
+    this.caracteristicas.set(this.unionCaracteristicas(anterior));
+    this.publicado.set(false);
+  }
+
+  protected publicar(): void {
+    if (this.publicando() || !this.hayCambios()) {
+      return;
+    }
+
+    const anterior: PlanBorrador[] = JSON.parse(this.publicadoSnapshot());
+    const modificados = this.borrador().filter((plan) => {
+      const previo = anterior.find((p) => p.id === plan.id);
+      return !previo || JSON.stringify(previo) !== JSON.stringify(plan);
+    });
+
+    if (!modificados.length) {
+      return;
+    }
+
+    this.publicando.set(true);
+    this.error.set(null);
+
+    const payload = (plan: PlanBorrador): GuardarPlanPayload => ({
+      nombre: plan.nombre.trim(),
+      descripcion: plan.descripcion?.trim() || null,
+      precioMensual: plan.precioMensual,
+      caracteristicas: plan.caracteristicas ?? [],
+      activo: plan.activo,
+    });
+
+    forkJoin(
+      modificados.map((plan) =>
+        plan.id < 0 ? this.planService.crear(payload(plan)) : this.planService.actualizar(plan.id, payload(plan)),
+      ),
+    ).subscribe({
+      next: (guardados) => {
+        this.publicando.set(false);
+        this.publicado.set(true);
+        // Los planes nuevos vuelven con su id real: se reemplazan por
+        // posición dentro de `modificados`, en el mismo orden.
+        const porIdTemporal = new Map<number, Plan>();
+        modificados.forEach((plan, i) => porIdTemporal.set(plan.id, guardados[i]));
+        this.borrador.update((planes) => planes.map((p) => porIdTemporal.get(p.id) ?? p));
+        this.publicadoSnapshot.set(JSON.stringify(this.borrador()));
+      },
+      error: () => {
+        this.publicando.set(false);
+        this.error.set('No se pudo publicar el catálogo. Revisá los planes e intenta de nuevo.');
+      },
+    });
   }
 }

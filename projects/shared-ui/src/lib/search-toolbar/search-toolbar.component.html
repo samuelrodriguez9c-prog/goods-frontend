@@ -40,8 +40,11 @@
   </div>
 </div>
 
-@if (appliedFilters().length) {
+@if (appliedFilters().length || resultsSummary()) {
   <div class="flex flex-wrap items-center gap-2 border-b border-gray-100 px-3 pb-2.5 pt-2.5 animate-[fade-in-up_0.2s_ease-out]">
+    @if (resultsSummary(); as resumen) {
+      <span class="text-xs text-gray-500">{{ resumen }}</span>
+    }
     @for (chip of appliedFilters(); track chip.key) {
       <span
         class="inline-flex items-center gap-1.5 rounded-full bg-badge-neutral-bg py-1 pl-3 pr-1.5 text-xs font-medium text-gray-700"
@@ -57,12 +60,14 @@
         </button>
       </span>
     }
-    <button
-      type="button"
-      (click)="filtersCleared.emit()"
-      class="text-xs font-medium text-gray-500 underline decoration-gray-300 underline-offset-2 transition-colors duration-150 hover:text-gray-900"
-    >
-      Limpiar todo
-    </button>
+    @if (appliedFilters().length) {
+      <button
+        type="button"
+        (click)="filtersCleared.emit()"
+        class="text-xs font-medium text-gray-500 underline decoration-gray-300 underline-offset-2 transition-colors duration-150 hover:text-gray-900"
+      >
+        Limpiar todo
+      </button>
+    }
   </div>
 }

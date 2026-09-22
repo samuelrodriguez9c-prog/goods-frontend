@@ -1,0 +1,265 @@
+@if (accionAbierta(); as accion) {
+  <div
+    class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-50 flex justify-end bg-black/50"
+    (click)="onBackdropClick($event)"
+  >
+    <div
+      class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[540px] flex-col bg-card-bg shadow-xl"
+    >
+      <div class="shrink-0 border-b border-gray-200 px-6 pb-4 pt-5">
+        <div class="flex items-start gap-[13px]">
+          <span class="flex size-[38px] shrink-0 items-center justify-center rounded-[9px]" [class]="accion.caja">
+            <tabler-icon [icon]="accion.icono" [size]="19" [stroke]="2" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <h2 class="font-display text-xl font-semibold leading-[26px] tracking-[-0.01em] text-gray-900">
+              {{ accion.frase }}
+            </h2>
+            <p class="mt-[5px] text-xs text-gray-500">{{ accion.cuando }} · acción #{{ accion.id }}</p>
+          </div>
+          <button
+            type="button"
+            (click)="cerrar.emit()"
+            aria-label="Cerrar"
+            class="shrink-0 rounded-lg p-[5px] text-gray-400 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-600"
+          >
+            <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
+          </button>
+        </div>
+
+        <div class="mt-3.5 flex items-center gap-2.5 rounded-lg px-3 py-2.5" [class]="resultado().caja">
+          <tabler-icon [icon]="resultado().icono" [size]="15" [stroke]="2" class="shrink-0" />
+          <p class="min-w-0 flex-1 text-xs font-medium leading-[18px]">{{ resultado().texto }}</p>
+        </div>
+
+        <div class="mt-3.5 inline-flex items-center gap-0.5 rounded-lg bg-neutral-100 p-[3px]">
+          @for (t of pestanas(); track t.clave) {
+            <button
+              type="button"
+              (click)="tab.set(t.clave)"
+              class="flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-[5px] text-xs font-medium transition-[background-color,color,box-shadow] duration-200 ease-out"
+              [class]="
+                tab() === t.clave
+                  ? 'bg-card-bg text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.07)]'
+                  : 'bg-transparent text-gray-500'
+              "
+            >
+              {{ t.texto }}
+              @if (t.conteo) {
+                <span class="tabular-nums" [class]="tab() === t.clave ? 'text-gray-400' : 'text-gray-300'">
+                  {{ t.conteo }}
+                </span>
+              }
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-6 py-[22px]">
+        <!-- Resumen -->
+        @if (tab() === 'resumen') {
+          <div class="animate-[fade-in-up_0.18s_ease-out] flex flex-col gap-[22px]">
+            <section>
+              <div class="mb-2.5 flex items-center gap-2">
+                <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+                <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                  Quién y desde dónde
+                </h3>
+              </div>
+              <div class="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200">
+                @for (dato of identidad(); track dato.etiqueta) {
+                  <div class="bg-card-bg px-3.5 py-[11px]">
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-400">
+                      {{ dato.etiqueta }}
+                    </p>
+                    <p class="mt-[3px] break-words text-[13px] font-medium leading-[19px]" [class]="dato.tinta">
+                      {{ dato.valor }}
+                    </p>
+                    @if (dato.nota) {
+                      <p class="mt-0.5 text-[11px] leading-4 text-gray-400">{{ dato.nota }}</p>
+                    }
+                  </div>
+                }
+              </div>
+            </section>
+
+            <section>
+              <div class="mb-2.5 flex items-center gap-2">
+                <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+                <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                  En la misma sesión
+                </h3>
+                <span class="h-px flex-1 bg-gray-100"></span>
+                <span class="shrink-0 text-[11px] text-gray-400">±30 min</span>
+              </div>
+              <div class="relative overflow-hidden rounded-lg border border-gray-200 py-1.5">
+                @for (hito of sesion(); track hito.id) {
+                  <button
+                    type="button"
+                    [disabled]="hito.esEsta"
+                    (click)="verOtraAccion(hito.id)"
+                    class="relative flex w-full items-center gap-3 px-3.5 py-2 text-left transition-colors duration-150 enabled:hover:bg-neutral-50"
+                    [class]="hito.esEsta ? 'bg-neutral-50' : 'bg-card-bg'"
+                  >
+                    <span class="w-[34px] shrink-0 font-mono text-[11px] text-gray-400">{{ hito.hora }}</span>
+                    <!-- El riel vive dentro de cada fila: así no hay que calcular
+                         el offset de la columna de la hora ni queda tapado. -->
+                    <span class="relative flex h-[35px] w-3 shrink-0 items-center justify-center">
+                      <span
+                        class="absolute left-[5px] w-0.5 bg-gray-100"
+                        [style.top]="hito.rielTop"
+                        [style.bottom]="hito.rielBottom"
+                      ></span>
+                      <span
+                        class="relative box-border block size-3 rounded-full border-2"
+                        [class]="hito.punto"
+                      ></span>
+                    </span>
+                    <span class="min-w-0 flex-1 text-[13px] leading-[19px]" [class]="hito.tinta">
+                      {{ hito.frase }}
+                    </span>
+                    @if (hito.esEsta) {
+                      <span class="shrink-0 text-[10px] font-semibold uppercase tracking-[0.05em] text-gray-400">
+                        Esta
+                      </span>
+                    }
+                  </button>
+                }
+              </div>
+              <p class="mt-2 text-[11px] leading-[17px] text-gray-400 text-pretty">{{ notaSesion() }}</p>
+            </section>
+
+            @if (rastroPanel().length > 1) {
+              <section>
+                <div class="mb-2.5 flex items-center gap-2">
+                  <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+                  <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                    Historia de {{ accion.entidad }} #{{ accion.entidadId }}
+                  </h3>
+                  <span class="h-px flex-1 bg-gray-100"></span>
+                  <span class="shrink-0 text-[11px] text-gray-400">{{ rastroPanel().length }} acciones</span>
+                </div>
+                <div class="overflow-hidden rounded-lg border border-gray-200">
+                  @for (hito of rastroPanel().slice(0, 4); track hito.id) {
+                    <button
+                      type="button"
+                      [disabled]="hito.esEsta"
+                      (click)="verOtraAccion(hito.id)"
+                      class="flex w-full items-center gap-3 border-b border-gray-100 px-3.5 py-2.5 text-left transition-colors duration-150 last:border-0 enabled:hover:bg-neutral-50"
+                      [class]="hito.esEsta ? 'bg-neutral-50' : 'bg-card-bg'"
+                    >
+                      <span class="w-[82px] shrink-0 text-[11px] text-gray-400">{{ hito.cuando }}</span>
+                      <span class="min-w-0 flex-1 text-[13px] leading-[19px]" [class]="hito.tinta">
+                        {{ hito.frase }}
+                      </span>
+                      <span class="shrink-0 text-[11px] text-gray-300">{{ hito.quien }}</span>
+                    </button>
+                  }
+                </div>
+              </section>
+            }
+          </div>
+        }
+
+        <!-- Datos -->
+        @if (tab() === 'datos') {
+          <div class="animate-[fade-in-up_0.18s_ease-out]">
+            @if (campos().length) {
+              <div>
+                <div class="mb-2.5 flex items-center gap-2">
+                  <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+                  <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Qué se mandó</h3>
+                  <span class="h-px flex-1 bg-gray-100"></span>
+                  <span class="shrink-0 text-[11px] text-gray-400">{{ campos().length }} campos</span>
+                </div>
+                <div class="overflow-hidden rounded-lg border border-gray-200">
+                  @for (campo of campos(); track campo.clave) {
+                    <div
+                      class="flex items-baseline gap-3 border-b border-gray-100 px-3.5 py-2.5 last:border-0"
+                      [class]="campo.oculto ? 'bg-neutral-50' : 'bg-card-bg'"
+                    >
+                      <span class="w-28 shrink-0 font-mono text-xs text-gray-500">{{ campo.clave }}</span>
+                      <span
+                        class="min-w-0 flex-1 break-words text-[13px] leading-[19px]"
+                        [class]="campo.oculto ? 'text-gray-400' : 'text-gray-900'"
+                      >
+                        {{ campo.valor }}
+                      </span>
+                      @if (campo.oculto) {
+                        <tabler-icon
+                          [icon]="iconCandado"
+                          [size]="13"
+                          [stroke]="2"
+                          class="shrink-0 text-gray-400"
+                          title="El sistema no guarda este valor"
+                        />
+                      }
+                    </div>
+                  }
+                </div>
+                <p class="mt-2 text-[11px] leading-[17px] text-gray-400 text-pretty">
+                  Es lo que viajó en la petición. Las contraseñas y otros secretos llegan acá ya tapados por el
+                  sistema.
+                </p>
+              </div>
+            } @else {
+              <div class="rounded-lg border border-dashed border-gray-200 px-[18px] py-[22px] text-center">
+                <p class="text-[13px] font-medium text-gray-700">Esta acción no mandó datos.</p>
+                <p class="mx-auto mt-1 max-w-[300px] text-xs leading-[18px] text-gray-400 text-pretty">
+                  {{
+                    accion.metodo === 'DELETE'
+                      ? 'Los DELETE no llevan cuerpo: la ruta ya dice qué registro se quiso tocar.'
+                      : 'El interceptor no registró cuerpo para esta petición.'
+                  }}
+                </p>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Técnico -->
+        @if (tab() === 'tecnico') {
+          <div class="animate-[fade-in-up_0.18s_ease-out] flex flex-col gap-3.5">
+            <div class="flex flex-col gap-[9px] rounded-lg bg-neutral-100 px-4 py-3.5">
+              @for (dato of tecnico(); track dato.etiqueta) {
+                <div class="flex items-baseline gap-3">
+                  <span class="w-[70px] shrink-0 text-[11px] text-gray-400">{{ dato.etiqueta }}</span>
+                  <span
+                    class="min-w-0 flex-1 break-words font-mono leading-[18px]"
+                    [class]="dato.pequeno ? 'text-[11px] text-gray-500' : 'text-xs text-gray-700'"
+                  >
+                    {{ dato.valor }}
+                  </span>
+                </div>
+              }
+            </div>
+            <p class="text-[11px] leading-[17px] text-gray-400 text-pretty">
+              Estos valores son los que guardó el interceptor tal cual llegaron. Sirven para reproducir la
+              petición o cruzarla con los logs del servidor.
+            </p>
+          </div>
+        }
+      </div>
+
+      <div class="flex shrink-0 items-center gap-3 border-t border-gray-200 bg-card-bg px-5 py-3">
+        <p class="min-w-0 flex-1 text-[11px] leading-4 text-gray-400 text-pretty">
+          {{
+            accion.entidadId
+              ? 'Podés ver todo lo que pasó con ' + accion.entidad + ' #' + accion.entidadId + '.'
+              : 'Esta acción no apunta a un registro puntual.'
+          }}
+        </p>
+        @if (accion.entidadId) {
+          <button
+            type="button"
+            (click)="solicitarRastroCompleto()"
+            class="flex shrink-0 items-center gap-[7px] whitespace-nowrap rounded-lg bg-primary-button px-[13px] py-2.5 text-[13px] font-medium text-white transition-all duration-200 hover:-translate-y-px hover:opacity-90"
+          >
+            <tabler-icon [icon]="iconRastro" [size]="15" [stroke]="2" />
+            Ver todo el rastro
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}
