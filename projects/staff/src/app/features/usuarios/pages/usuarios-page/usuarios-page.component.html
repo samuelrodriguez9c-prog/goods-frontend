@@ -1,51 +1,36 @@
-<div class="p-8 pb-[90px]">
-  <div class="mx-auto max-w-[1080px]">
-    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-3">
-      <h1 class="shrink-0 font-display text-[34px] font-semibold leading-10 tracking-[-0.02em] text-gray-900">
-        Usuarios
-      </h1>
-      <span class="h-px min-w-[40px] flex-1 bg-gray-300"></span>
-      <span class="shrink-0 text-[13px] text-gray-500">
-        {{ usuarios().length }} cuentas · {{ conAcceso() }} con acceso esta semana
-      </span>
+<div class="pt-2 px-8 pb-[90px]">
+  <!-- Sin `mx-auto max-w-[...]`: todo el módulo ocupa el ancho completo
+       del layout, igual que Empresas — pedido explícito 2026-09-23. -->
+  <app-cabecera-modulo
+    titulo="Usuarios"
+    [metricas]="metricasCabecera()"
+    [total]="usuarios().length + ' cuentas'"
+  >
+    <tabler-icon icono [icon]="iconModulo" [size]="20" [stroke]="1.75" />
+    <ng-container acciones>
       <button
         type="button"
         (click)="abrirAlta()"
-        class="flex shrink-0 items-center gap-[7px] rounded-[9px] bg-gray-800 px-3.5 py-[9px] text-[13px] font-medium text-white transition-opacity hover:opacity-90"
+        class="flex items-center gap-1.5 rounded-lg border-0 bg-primary-button px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] hover:opacity-90"
       >
-        <tabler-icon [icon]="iconAgregar" [size]="16" [stroke]="2" />
+        <tabler-icon [icon]="iconAgregar" [size]="14" [stroke]="1.75" />
         Agregar usuario
       </button>
-    </div>
+    </ng-container>
+    <ng-container lectura>{{ lectura() }}</ng-container>
+  </app-cabecera-modulo>
 
-    <div class="mt-3.5 flex flex-wrap items-baseline gap-x-[22px] gap-y-2.5">
-      <p class="min-w-[280px] max-w-[500px] flex-1 text-sm leading-[22px] text-gray-500 text-pretty">
-        {{ lectura() }}
-      </p>
-      <div class="flex flex-wrap items-baseline gap-5">
-        @for (cifra of cifras(); track cifra.etiqueta) {
-          <div>
-            <p class="font-display text-[22px] font-semibold leading-none tabular-nums" [class]="cifra.tinta">
-              {{ cifra.valor }}
-            </p>
-            <p class="mt-[5px] whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.06em] text-gray-400">
-              {{ cifra.etiqueta }}
-            </p>
-          </div>
-        }
-      </div>
-    </div>
-
-    @if (error(); as mensaje) {
-      <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
-    }
-
-    @if (cargando()) {
-      <div class="mt-[22px] flex animate-pulse flex-col gap-3">
+  <app-pantalla-estado
+      [estado]="estadoPantalla()"
+      modulo="Usuarios"
+      (reintentar)="reintentar()"
+      (volver)="volver()"
+    >
+      <div esqueleto class="mt-[22px] flex animate-pulse flex-col gap-3">
         <span class="h-10 w-full rounded-[9px] bg-gray-200"></span>
         <span class="h-[320px] w-full rounded-xl bg-gray-100"></span>
       </div>
-    } @else {
+
       <div class="mt-[22px] flex flex-wrap items-center gap-2">
         <div class="relative min-w-[210px] max-w-[300px] flex-1">
           <tabler-icon
@@ -199,8 +184,7 @@
         <span class="h-[11px] w-px bg-gray-200"></span>
         <span class="text-[11px] text-gray-400">Cada barra de los 14 días es una jornada con acceso.</span>
       </div>
-    }
-  </div>
+  </app-pantalla-estado>
 </div>
 
 <!-- Detalle/alta: dos componentes aparte, mismo patrón que
@@ -219,8 +203,6 @@
     (rolPreviewSeleccionado)="rolPreview.set($event)"
     (usuarioActualizado)="onUsuarioActualizado($event)"
     (accesoQuitado)="onAccesoQuitado($event)"
-    (avisoTexto)="mostrarAviso($event)"
-    (errorTexto)="error.set($event)"
   />
 }
 
@@ -230,16 +212,5 @@
     [rolPreseleccionado]="rolParaAlta()"
     (cerrar)="cerrarPanel()"
     (creado)="onUsuarioCreado($event)"
-    (avisoTexto)="mostrarAviso($event)"
-    (errorTexto)="error.set($event)"
   />
-}
-
-@if (aviso(); as texto) {
-  <div
-    class="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 animate-[fade-in-up_0.2s_ease-out] items-center gap-2 rounded-full bg-badge-success-solid px-[18px] py-2.5 text-[13px] font-medium text-white shadow-[0_10px_26px_rgba(8,123,93,0.3)]"
-  >
-    <tabler-icon [icon]="iconCheck" [size]="15" [stroke]="2" />
-    {{ texto }}
-  </div>
 }

@@ -1,7 +1,7 @@
 // projects/staff/src/app/features/roles/pages/roles-page/roles-page.component.ts
 
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
 import {
   IconBuildingStore,
   IconLock,
@@ -13,7 +13,13 @@ import {
 import { forkJoin, of, switchMap } from 'rxjs';
 import { GuardarRolPayload, RolService } from '../../../../core/roles/rol.service';
 import { Permiso, Rol } from '../../../../core/roles/models/rol.model';
+import { AlertaService } from '../../../../core/ui/alerta.service';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { RolPanelComponent } from '../rol-panel/rol-panel.component';
+import {
+  CabeceraModuloComponent,
+  MetricaCabecera,
+} from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 
 type Preset = 'nada' | 'lectura' | 'total';
 
@@ -198,12 +204,14 @@ const BORRADOR_VACIO: Borrador = { nombre: '', descripcion: '', baseId: null };
 @Component({
   selector: 'app-roles-page',
   standalone: true,
-  imports: [TablerIconComponent, RolPanelComponent],
+  imports: [TablerIconComponent, RolPanelComponent, PantallaEstadoComponent, CabeceraModuloComponent],
   templateUrl: './roles-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RolesPageComponent {
   private readonly rolService = inject(RolService);
+  private readonly alertas = inject(AlertaService);
+  private readonly router = inject(Router);
 
   protected readonly iconos = {
     buildingStore: IconBuildingStore,
@@ -215,7 +223,9 @@ export class RolesPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly aviso = signal<string | null>(null);
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
   protected readonly guardando = signal(false);
 
   protected readonly roles = signal<Rol[]>([]);
@@ -521,6 +531,13 @@ export class RolesPageComponent {
     },
   ]);
 
+  /** Cabecera compartida (LEEME.md §14) — mismos 3 valores de `cifras()`,
+   *  sin serie: no hay historia de roles en el tiempo. La leyenda de
+   *  niveles sigue fuera de la cabecera, debajo. */
+  protected readonly metricasCabecera = computed<MetricaCabecera[]>(() =>
+    this.cifras().map((c, i): MetricaCabecera => ({ id: `cifra-${i}`, etiqueta: c.etiqueta, valor: c.valor })),
+  );
+
   // ── Diff global ─────────────────────────────────────────────────────────
 
   private rolesTocados(): number[] {
@@ -571,17 +588,22 @@ export class RolesPageComponent {
       return;
     }
     this.guardando.set(true);
-    forkJoin(ids.map((id) => this.persistir(id))).subscribe({
-      next: (actualizados) => {
-        this.aplicarActualizados(actualizados);
-        this.guardando.set(false);
-        this.mostrarAviso(ids.length === 1 ? 'Rol actualizado' : `${ids.length} roles actualizados`);
-      },
-      error: (err: unknown) => {
-        this.guardando.set(false);
-        this.error.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(forkJoin(ids.map((id) => this.persistir(id))), {
+        titulo: 'Guardando cambios',
+        texto: ids.length === 1 ? 'en 1 rol' : `en ${ids.length} roles`,
+        exito: { titulo: ids.length === 1 ? 'Rol actualizado' : `${ids.length} roles actualizados` },
+        error: { titulo: 'No se pudo guardar', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: (actualizados) => {
+          this.aplicarActualizados(actualizados);
+          this.guardando.set(false);
+        },
+        error: () => {
+          this.guardando.set(false);
+        },
+      });
   }
 
   /** Ids de permiso que corresponden al nivel actual de cada módulo. */
@@ -890,17 +912,22 @@ export class RolesPageComponent {
       return;
     }
     this.guardando.set(true);
-    this.persistir(rol.id).subscribe({
-      next: (actualizado) => {
-        this.aplicarActualizados([actualizado]);
-        this.guardando.set(false);
-        this.mostrarAviso(`${etiquetaRolTexto(actualizado.nombre)} actualizado`);
-      },
-      error: (err: unknown) => {
-        this.guardando.set(false);
-        this.error.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.persistir(rol.id), {
+        titulo: 'Guardando el rol',
+        texto: this.nombreMostrado(rol),
+        exito: { titulo: `${this.nombreMostrado(rol)} actualizado` },
+        error: { titulo: 'No se pudo guardar', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: (actualizado) => {
+          this.aplicarActualizados([actualizado]);
+          this.guardando.set(false);
+        },
+        error: () => {
+          this.guardando.set(false);
+        },
+      });
   }
 
   /** `POST /roles` no acepta permisos, así que hay que encadenar el
@@ -913,9 +940,18 @@ export class RolesPageComponent {
       descripcion: b.descripcion.trim() || undefined,
     };
     const ids = this.permisoIdsDe(BORRADOR);
-    this.rolService
-      .crear(payload)
-      .pipe(switchMap((creado) => (ids.length ? this.rolService.asignarPermisos(creado.id, ids) : of(creado))))
+    this.alertas
+      .seguir(
+        this.rolService
+          .crear(payload)
+          .pipe(switchMap((creado) => (ids.length ? this.rolService.asignarPermisos(creado.id, ids) : of(creado)))),
+        {
+          titulo: 'Creando el rol',
+          texto: payload.nombre,
+          exito: { titulo: `Rol "${payload.nombre}" creado` },
+          error: { titulo: 'No se pudo crear el rol', texto: 'Intenta de nuevo.' },
+        },
+      )
       .subscribe({
         next: (rol) => {
           this.roles.update((lista) => [...lista, rol]);
@@ -930,11 +966,9 @@ export class RolesPageComponent {
           this.nivelesOriginales.set(new Map(this.niveles()));
           this.guardando.set(false);
           this.cerrarPanel();
-          this.mostrarAviso(`Rol "${rol.nombre}" creado`);
         },
-        error: (err: unknown) => {
+        error: () => {
           this.guardando.set(false);
-          this.error.set(this.mensajeDeError(err));
         },
       });
   }
@@ -945,32 +979,32 @@ export class RolesPageComponent {
       return;
     }
     this.guardando.set(true);
-    this.rolService.eliminar(rol.id).subscribe({
-      next: () => {
-        this.roles.update((lista) => lista.filter((r) => r.id !== rol.id));
-        this.guardando.set(false);
-        this.cerrarPanel();
-        this.mostrarAviso(`Rol "${rol.nombre}" eliminado`);
-      },
-      error: (err: unknown) => {
-        this.guardando.set(false);
-        this.error.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.rolService.eliminar(rol.id), {
+        titulo: 'Eliminando el rol',
+        texto: this.nombreMostrado(rol),
+        exito: { titulo: `Rol "${rol.nombre}" eliminado` },
+        error: { titulo: 'No se pudo eliminar el rol', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.roles.update((lista) => lista.filter((r) => r.id !== rol.id));
+          this.guardando.set(false);
+          this.cerrarPanel();
+        },
+        error: () => {
+          this.guardando.set(false);
+        },
+      });
   }
 
-  private mostrarAviso(texto: string): void {
-    this.aviso.set(texto);
-    setTimeout(() => this.aviso.set(null), 2600);
+  /** `(reintentar)` de `app-pantalla-estado`. */
+  protected reintentar(): void {
+    this.cargar();
   }
 
-  private mensajeDeError(err: unknown): string {
-    if (err instanceof HttpErrorResponse) {
-      const mensaje = (err.error as { message?: string } | null)?.message;
-      if (mensaje) {
-        return Array.isArray(mensaje) ? mensaje.join(' ') : mensaje;
-      }
-    }
-    return 'No se pudo completar la acción. Intenta de nuevo.';
+  /** `(volver)` — mismo criterio que `EmpresasPageComponent.volver()`. */
+  protected volver(): void {
+    this.router.navigateByUrl('/roles');
   }
 }

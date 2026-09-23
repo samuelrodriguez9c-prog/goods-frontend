@@ -231,3 +231,107 @@
     transform: translate(-50%, 0);
   }
 }
+
+/* Sistema transversal de alertas y estados de carga (LEEME.md §12,
+ * integrado 2026-09-22): `AlertaService` + `AlertaPilaComponent` +
+ * `AlertaOverlayComponent` + `EstadoIconoComponent` + `PantallaEstadoComponent`
+ * en `shared/ui/` y `core/ui/`. No hacen falta tokens de color nuevos —
+ * los sólidos salen de `--color-success-solid`, `--color-badge-error-solid`
+ * y `--color-badge-info-solid` ya definidos arriba, más `#b07400` para
+ * warning (el mismo `--color-badge-warning-solid` bajado a 4.5:1 sobre
+ * blanco, sin tokenizar porque por ahora solo lo usa este sistema). */
+
+/* `girar` — el arco de `EstadoIconoComponent` mientras `estado==='cargando'`. */
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* `aparecer-alerta` — entrada de cada tarjeta en `AlertaPilaComponent`. */
+@keyframes aparecer-alerta {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* `aparecer-modal` — entrada de `AlertaOverlayComponent` y de los modales
+ * nuevos de Settings (código de verificación, confirmar cambio de
+ * contraseña). Deliberadamente distinta de `aparecer` (arriba, sin
+ * translateY): esta lleva un leve desplazamiento vertical además del
+ * scale, pensada para un modal centrado en pantalla completa. */
+@keyframes aparecer-modal {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* `barra-indeterminada` — la franja que recorre la barra de progreso de
+ * `AlertaOverlayComponent` y de `PantallaEstadoComponent` mientras
+ * `estado==='cargando'`, sin duración conocida (no hay % real que mostrar). */
+@keyframes barra-indeterminada {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(340%);
+  }
+}
+
+/* `brillo` — destello de los esqueletos de página (bloque gris) que cada
+ * pantalla proyecta dentro de `<ng-content select="[esqueleto]">` de
+ * `PantallaEstadoComponent` mientras `estado==='cargando'`. */
+@keyframes brillo {
+  from {
+    background-position: -320px 0;
+  }
+  to {
+    background-position: 320px 0;
+  }
+}
+
+/* Settings (LEEME.md §13, integrado 2026-09-22): modal de código de
+ * verificación de correo. */
+
+/* `parpadeo` — el cursor del input invisible de 6 dígitos, en la caja activa. */
+@keyframes parpadeo {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* `sacudir-a`/`sacudir-b` — error del código: las cajas tiemblan. Son
+ * IDÉNTICAS a propósito (`otpSacudon()` alterna entre las dos en cada
+ * error) — reasignar el mismo nombre de animación no la vuelve a
+ * disparar, así que hacen falta dos nombres para que el sacudón se repita
+ * en errores consecutivos. */
+@keyframes sacudir-a {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+@keyframes sacudir-b {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}

@@ -6,6 +6,7 @@ import { Paginator, PaginatorState } from 'primeng/paginator';
 import {
   IconArrowRight,
   IconBolt,
+  IconBuilding,
   IconChevronRight,
   IconDownload,
   IconPlus,
@@ -22,6 +23,15 @@ import {
   paginatorPt,
 } from 'shared-ui';
 import { forkJoin } from 'rxjs';
+import { Router } from '@angular/router';
+import { AlertaService } from '../../../../core/ui/alerta.service';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
+import {
+  CabeceraModuloComponent,
+  MetricaCabecera,
+  recientes,
+  serieAcumulada,
+} from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { EmpresaService } from '../../../../core/catalog/empresa.service';
 import { PlanService } from '../../../../core/catalog/plan.service';
 import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
@@ -56,18 +66,6 @@ const INACTIVAS: EstadoEmpresa[] = ['suspendida', 'rechazada', 'cancelada'];
  * diseño de esta pantalla (2026-09-17). */
 const UMBRAL_ESPERA_DIAS = 10;
 
-/** Las 4 etapas del embudo, en orden — `pendiente` sumada acá (el
- * handoff original solo traía 3 etapas y se olvidaba de este estado,
- * igual que el handoff anterior se había olvidado de incluirlo en sus
- * tarjetas de métricas). Colores: gris para "todavía sin tocar", ámbar
- * para "el staff tiene que llamar", el nuevo tono `info` para "ya se
- * llamó, esperando al cliente", verde para activa. */
-const ETAPAS: { estado: EstadoEmpresa; corto: string; barra: string }[] = [
-  { estado: 'solicitud_recibida', corto: 'Solicitud', barra: 'bg-gray-300' },
-  { estado: 'pendiente', corto: 'Pendiente', barra: 'bg-badge-warning-solid' },
-  { estado: 'informacion_corroborada', corto: 'Corroborada', barra: 'bg-badge-info-solid' },
-  { estado: 'activa', corto: 'Activa', barra: 'bg-success-solid' },
-];
 
 const TONO_POR_ESTADO: Record<EstadoEmpresa, StatusBadgeTone> = {
   solicitud_recibida: 'neutral',
@@ -166,6 +164,8 @@ type Orden = 'urgencia' | 'desc' | 'asc';
     TablerIconComponent,
     EmpresaDetallePanelComponent,
     ActivarEmpresaWizardComponent,
+    PantallaEstadoComponent,
+    CabeceraModuloComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './empresas-page.component.html',
@@ -174,12 +174,15 @@ export class EmpresasPageComponent {
   private readonly empresaService = inject(EmpresaService);
   private readonly suscripcionService = inject(SuscripcionService);
   private readonly planService = inject(PlanService);
+  private readonly alertas = inject(AlertaService);
+  private readonly router = inject(Router);
 
   protected readonly selectPt = filterSelectPt();
   protected readonly paginatorPt = paginatorPt();
   protected readonly tonoPorEstado = TONO_POR_ESTADO;
   protected readonly hoy = new Date();
 
+  protected readonly iconEmpresas = IconBuilding;
   protected readonly iconDescargar = IconDownload;
   protected readonly iconAgregar = IconPlus;
   protected readonly iconChevron = IconChevronRight;
@@ -197,6 +200,13 @@ export class EmpresasPageComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly filas = signal<FilaEmpresa[]>([]);
   protected readonly skeletons = [1, 2, 3, 4, 5, 6];
+
+  /** Estado para `app-pantalla-estado` (LEEME.md §12, integrado
+   *  2026-09-22) — el esqueleto de abajo sigue siendo el de ESTA página
+   *  (embudo + toolbar + filas), proyectado en `[esqueleto]`. */
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
 
   // --- Filtros (todos en memoria) -------------------------------------------
   protected readonly filtroBuscar = signal('');
@@ -228,30 +238,63 @@ export class EmpresasPageComponent {
     return d === 1 ? '1 día' : `${d} días`;
   });
 
-  protected readonly notaEmbudo = computed(() =>
-    this.esperaMaximaDias() > 0
-      ? `La solicitud más vieja espera hace ${this.esperaMaximaTexto()}`
-      : 'Nada esperando revisión',
-  );
-
-  protected readonly etapas = computed(() => {
+  /** Cabecera compartida (LEEME.md §14) — reemplaza pills + embudo. Un
+   *  tile por cada etapa del embudo que reemplaza, en el mismo orden y con
+   *  los mismos colores: gris para "solicitud sin tocar", ámbar para "el
+   *  staff tiene que llamar" (`pendiente` — el handoff original se
+   *  olvidaba de este estado, igual que el anterior se había olvidado de
+   *  incluirlo en sus tarjetas de métricas), `info` para "ya se llamó,
+   *  esperando al cliente", verde para activa — más "Inactivas" y "Espera
+   *  máxima". `alternarEtapa`/`alternarInactivas` de antes pasan a
+   *  `alternarMetrica(id)` más abajo. */
+  protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const todas = this.filas();
-    const filtro = this.filtroEstados();
-    return ETAPAS.map((etapa) => {
-      const valor = todas.filter((f) => f.estado === etapa.estado).length;
+    const porEstado = (estado: EstadoEmpresa, etiqueta: string, tono: MetricaCabecera['tono']) => {
+      const fechas = todas.filter((f) => f.estado === estado).map((f) => f.creadoEn);
+      const n = recientes(fechas);
       return {
-        ...etapa,
-        valor,
-        titulo: `${ETIQUETA_POR_ESTADO[etapa.estado]} — ${valor}`,
-        flex: Math.max(valor, 1),
-        atenuada: filtro !== null && !mismoGrupo(filtro, [etapa.estado]),
+        id: estado,
+        etiqueta,
+        valor: fechas.length,
+        tono,
+        serie: serieAcumulada(fechas),
+        delta: n ? `+${n} esta semana` : null,
       };
-    });
+    };
+
+    const inactivasFechas = todas.filter((f) => INACTIVAS.includes(f.estado)).map((f) => f.creadoEn);
+    const nInactivas = recientes(inactivasFechas);
+
+    // Sin tile de "Espera máxima": con las 4 etapas + Inactivas ya son 5
+    // tiles, el máximo cómodo a este ancho (LEEME.md §14, nota 3). La
+    // espera máxima sigue visible en la lectura de abajo (`esperaMaximaTexto`)
+    // y en el botón "Por urgencia" del listado — no se pierde información.
+    return [
+      porEstado('solicitud_recibida', 'Solicitudes', 'neutro'),
+      porEstado('pendiente', 'Pendientes', 'aviso'),
+      porEstado('informacion_corroborada', 'Corroboradas', 'info'),
+      porEstado('activa', 'Activas', 'exito'),
+      {
+        id: 'inactivas',
+        etiqueta: 'Inactivas',
+        valor: inactivasFechas.length,
+        tono: 'apagado',
+        serie: serieAcumulada(inactivasFechas),
+        delta: nInactivas ? `+${nInactivas} esta semana` : null,
+      },
+    ];
   });
 
-  protected readonly inactivasAtenuadas = computed(() => {
+  /** id del tile activo en la cabecera — `null` limpia el resaltado. */
+  protected readonly metricaActivaCabecera = computed<string | null>(() => {
     const filtro = this.filtroEstados();
-    return filtro !== null && !mismoGrupo(filtro, INACTIVAS);
+    if (filtro === null) {
+      return null;
+    }
+    if (mismoGrupo(filtro, INACTIVAS)) {
+      return 'inactivas';
+    }
+    return filtro.length === 1 ? filtro[0] : null;
   });
 
   /** El `p-select` de estado puntual solo muestra un valor seleccionado
@@ -413,13 +456,16 @@ export class EmpresasPageComponent {
     this.reset();
   }
 
-  protected alternarEtapa(etapa: { estado: EstadoEmpresa }): void {
-    this.filtroEstados.update((actual) => (mismoGrupo(actual, [etapa.estado]) ? null : [etapa.estado]));
-    this.reset();
-  }
-
-  protected alternarInactivas(): void {
-    this.filtroEstados.update((actual) => (mismoGrupo(actual, INACTIVAS) ? null : INACTIVAS));
+  /** Clic en un tile de la cabecera — cada uno es un estado real o el
+   *  grupo "Inactivas". */
+  protected alternarMetrica(id: string): void {
+    if (id === 'inactivas') {
+      this.filtroEstados.update((actual) => (mismoGrupo(actual, INACTIVAS) ? null : INACTIVAS));
+      this.reset();
+      return;
+    }
+    const estado = id as EstadoEmpresa;
+    this.filtroEstados.update((actual) => (mismoGrupo(actual, [estado]) ? null : [estado]));
     this.reset();
   }
 
@@ -500,16 +546,27 @@ export class EmpresasPageComponent {
   private mandarAAltasPendientes(fila: FilaEmpresa): void {
     if (this.enviandoAAltas() === fila.id) return;
     this.enviandoAAltas.set(fila.id);
-    this.empresaService.enviarAAltasPendientes(fila.id).subscribe({
-      next: () => {
-        this.enviandoAAltas.set(null);
-        this.cargar();
-      },
-      error: () => {
-        this.enviandoAAltas.set(null);
-        this.error.set('No se pudo mandar la Empresa a Altas pendientes. Intenta de nuevo.');
-      },
-    });
+    this.alertas
+      .seguir(this.empresaService.enviarAAltasPendientes(fila.id), {
+        titulo: 'Mandando a Altas pendientes',
+        texto: fila.nombre,
+        exito: { titulo: 'Enviada a Altas pendientes' },
+        error: { titulo: 'No se pudo mandar la Empresa', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.enviandoAAltas.set(null);
+          this.cargar();
+        },
+        error: () => this.enviandoAAltas.set(null),
+      });
+  }
+
+  /** `(volver)` de `app-pantalla-estado` en el error de carga — acá mismo
+   *  es "el inicio", así que reintentar y volver terminan haciendo lo
+   *  mismo; se deja separado por consistencia con el resto de páginas. */
+  protected volver(): void {
+    this.router.navigateByUrl('/empresas');
   }
 
   protected abrirWizard(fila: FilaEmpresa): void {

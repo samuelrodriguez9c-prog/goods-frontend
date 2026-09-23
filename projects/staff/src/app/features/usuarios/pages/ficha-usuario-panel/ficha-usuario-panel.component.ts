@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { HttpErrorResponse } from '@angular/common/http';
 import { IconArrowRight, IconBan, IconPencil, IconX, TablerIconComponent, type TablerIcon } from '@tabler/icons-angular';
 import { Rol } from '../../../../core/roles/models/rol.model';
 import { UsuarioGoods } from '../../../../core/usuarios/models/usuario.model';
 import { UsuarioService } from '../../../../core/usuarios/usuario.service';
+import { AlertaService } from '../../../../core/ui/alerta.service';
 import type { Acceso, EstadoAcceso } from '../usuarios-page/usuarios-page.component';
 import { ESTADO_UI, PUNTO_ROL, etiquetaRolTexto } from '../usuarios-page/usuarios-page.component';
 
@@ -54,6 +54,11 @@ interface MatrizFila {
  * enteramente interno: el panel hace sus propias mutaciones y le avisa a
  * la página el resultado por output, la misma forma en que
  * `GestionarSuscripcionPanelComponent` gestiona sus propias acciones.
+ * El aviso de éxito/error de cada una lo muestra el panel mismo con
+ * `AlertaService.seguir()` (integración del sistema de alertas
+ * transversal, LEEME.md §12) — ya no sube por `avisoTexto`/`errorTexto` a
+ * un banner de la página: ese patrón mandaba el error lejos de donde
+ * pasó la acción.
  *
  * El `effect` del constructor reinicia pestaña y el buffer de "Datos"
  * solo cuando cambia la PERSONA (`usuario().id`), no cada vez que
@@ -71,6 +76,7 @@ interface MatrizFila {
 })
 export class FichaUsuarioPanelComponent {
   private readonly usuarioService = inject(UsuarioService);
+  private readonly alertas = inject(AlertaService);
 
   protected readonly iconCerrar = IconX;
   protected readonly iconFlecha = IconArrowRight;
@@ -92,8 +98,6 @@ export class FichaUsuarioPanelComponent {
   readonly rolPreviewSeleccionado = output<number | null>();
   readonly usuarioActualizado = output<UsuarioGoods>();
   readonly accesoQuitado = output<number>();
-  readonly avisoTexto = output<string>();
-  readonly errorTexto = output<string>();
 
   protected readonly pestana = signal<TabPanel>('permisos');
   protected readonly datos = signal({ nombres: '', apellidos: '', telefono: '' });
@@ -222,19 +226,24 @@ export class FichaUsuarioPanelComponent {
     if (rolId === null || this.guardando()) {
       return;
     }
+    const rol = this.roles().find((r) => r.id === rolId);
     this.guardando.set(true);
-    this.usuarioService.cambiarRol(u.id, rolId).subscribe({
-      next: (actualizado) => {
-        this.guardando.set(false);
-        this.usuarioActualizado.emit(actualizado);
-        const rol = this.roles().find((r) => r.id === rolId);
-        this.avisoTexto.emit(`${u.nombres} ahora es ${rol ? this.etiquetaRol(rol) : 'otro rol'}`);
-      },
-      error: () => {
-        this.guardando.set(false);
-        this.errorTexto.emit('No se pudo cambiar el rol. Intenta de nuevo.');
-      },
-    });
+    this.alertas
+      .seguir(this.usuarioService.cambiarRol(u.id, rolId), {
+        titulo: 'Cambiando el rol',
+        texto: u.nombres,
+        exito: { titulo: `${u.nombres} ahora es ${rol ? this.etiquetaRol(rol) : 'otro rol'}` },
+        error: { titulo: 'No se pudo cambiar el rol', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: (actualizado) => {
+          this.guardando.set(false);
+          this.usuarioActualizado.emit(actualizado);
+        },
+        error: () => {
+          this.guardando.set(false);
+        },
+      });
   }
 
   protected guardarDatos(): void {
@@ -244,17 +253,27 @@ export class FichaUsuarioPanelComponent {
     }
     const d = this.datos();
     this.guardando.set(true);
-    this.usuarioService
-      .actualizar(u.id, { nombres: d.nombres, apellidos: d.apellidos, telefono: d.telefono || undefined })
+    this.alertas
+      .seguir(
+        this.usuarioService.actualizar(u.id, {
+          nombres: d.nombres,
+          apellidos: d.apellidos,
+          telefono: d.telefono || undefined,
+        }),
+        {
+          titulo: 'Guardando los datos',
+          texto: u.nombres,
+          exito: { titulo: 'Datos guardados' },
+          error: { titulo: 'No se pudieron guardar los datos', texto: 'Intenta de nuevo.' },
+        },
+      )
       .subscribe({
         next: (actualizado) => {
           this.guardando.set(false);
           this.usuarioActualizado.emit(actualizado);
-          this.avisoTexto.emit('Datos guardados');
         },
         error: () => {
           this.guardando.set(false);
-          this.errorTexto.emit('No se pudieron guardar los datos.');
         },
       });
   }
@@ -265,30 +284,25 @@ export class FichaUsuarioPanelComponent {
       return;
     }
     this.guardando.set(true);
-    this.usuarioService.eliminar(u.id).subscribe({
-      next: () => {
-        this.guardando.set(false);
-        this.accesoQuitado.emit(u.id);
-        this.avisoTexto.emit(`Se quitó el acceso a ${u.nombres}`);
-      },
-      error: (err: unknown) => {
-        this.guardando.set(false);
-        this.errorTexto.emit(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.usuarioService.eliminar(u.id), {
+        titulo: 'Quitando el acceso',
+        texto: u.nombres,
+        exito: { titulo: `Se quitó el acceso a ${u.nombres}` },
+        error: { titulo: 'No se pudo quitar el acceso', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.guardando.set(false);
+          this.accesoQuitado.emit(u.id);
+        },
+        error: () => {
+          this.guardando.set(false);
+        },
+      });
   }
 
   protected actualizarDato(campo: 'nombres' | 'apellidos' | 'telefono', valor: string): void {
     this.datos.update((actual) => ({ ...actual, [campo]: valor }));
-  }
-
-  private mensajeDeError(err: unknown): string {
-    if (err instanceof HttpErrorResponse) {
-      const mensaje = (err.error as { message?: string } | null)?.message;
-      if (mensaje) {
-        return Array.isArray(mensaje) ? mensaje.join(' ') : mensaje;
-      }
-    }
-    return 'No se pudo quitar el acceso.';
   }
 }

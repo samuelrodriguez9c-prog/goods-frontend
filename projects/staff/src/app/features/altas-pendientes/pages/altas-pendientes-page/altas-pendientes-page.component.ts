@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   IconCalendarClock,
   IconCheck,
@@ -9,6 +9,7 @@ import {
   IconPhone,
   IconPhoneOff,
   IconSend,
+  IconUserPlus,
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { forkJoin } from 'rxjs';
@@ -17,6 +18,11 @@ import { PlanService } from '../../../../core/catalog/plan.service';
 import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
 import { construirMapaPlanPorEmpresa } from '../../../../core/catalog/plan-lookup.util';
 import { Empresa } from '../../../../core/catalog/models/empresa.model';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
+import {
+  CabeceraModuloComponent,
+  MetricaCabecera,
+} from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { ActivarEmpresaWizardComponent } from '../activar-empresa-wizard/activar-empresa-wizard.component';
 
 /** Días de espera desde los que una alta pasa a estar "pasada de rosca".
@@ -52,7 +58,8 @@ interface FilaLlamada extends Empresa {
    * contactarlo, no los dos datos siempre. */
   contacto: string;
   contexto: string;
-  /** Llamada agendada (solo en memoria por ahora, ver nota de la clase). */
+  /** Llamada agendada — viene de `Empresa.llamadaProgramadaPara` (ver ese
+   * campo en `empresa.model.ts`), ya persistida por el backend. */
   agendadaEn: Date | null;
 }
 
@@ -87,15 +94,26 @@ interface FilaEsperando extends Empresa {
  * 4. **Rubro y plan bajan a un renglón de contexto**: nunca decidieron nada,
  *    no merecían una columna cada uno.
  *
- * PENDIENTE DE BACKEND: `agendadaEn` (el "Programar llamada" del asistente)
- * hoy vive solo en memoria de esta pantalla — se pierde al recargar. Para
- * que sea real hace falta persistirlo (columna en `Empresa` o tabla de
- * recordatorios) y devolverlo en `GET /empresas`.
+ * `agendadaEn` (el "Programar llamada" del asistente) sale directo de
+ * `Empresa.llamadaProgramadaPara` — hasta el 2026-09-22 esta pantalla lo
+ * llevaba solo en memoria propia (un `Record<empresaId, Date>` que nunca
+ * llegó a poblarse desde ningún lado: bug real reportado por el cliente,
+ * la etiqueta "Agendada …" nunca se mostraba). El backend ya lo persistía
+ * en `GestionAlta.llamadaProgramadaPara`, solo faltaba que `GET /empresas`
+ * lo devolviera (ver el comentario en `EmpresaService.findAll` del
+ * backend) — arreglado ahí, no acá.
  */
 @Component({
   selector: 'app-altas-pendientes-page',
   standalone: true,
-  imports: [DatePipe, RouterLink, TablerIconComponent, ActivarEmpresaWizardComponent],
+  imports: [
+    DatePipe,
+    RouterLink,
+    TablerIconComponent,
+    ActivarEmpresaWizardComponent,
+    PantallaEstadoComponent,
+    CabeceraModuloComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './altas-pendientes-page.component.html',
 })
@@ -103,11 +121,13 @@ export class AltasPendientesPageComponent {
   private readonly empresaService = inject(EmpresaService);
   private readonly suscripcionService = inject(SuscripcionService);
   private readonly planService = inject(PlanService);
+  private readonly router = inject(Router);
 
   protected readonly hoy = new Date();
   protected readonly umbralUrgente = UMBRAL_URGENTE;
   protected readonly skeletons = [0, 1, 2, 3];
 
+  protected readonly iconAltas = IconUserPlus;
   protected readonly iconLlamar = IconPhone;
   protected readonly iconSinTelefono = IconPhoneOff;
   protected readonly iconAgenda = IconCalendarClock;
@@ -120,12 +140,14 @@ export class AltasPendientesPageComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly empresaSeleccionadaWizard = signal<number | null>(null);
 
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
+
   private readonly pendientes = signal<(Empresa & { planNombre: string | null })[]>([]);
   private readonly corroboradas = signal<(Empresa & { planNombre: string | null })[]>([]);
-  private readonly agenda = signal<Record<number, Date>>({});
 
   protected readonly llamadas = computed<FilaLlamada[]>(() => {
-    const agenda = this.agenda();
     // Lo más viejo arriba: la espera es el único criterio que importa acá.
     const ordenadas = [...this.pendientes()].sort(
       (a, b) => new Date(a.creadoEn).getTime() - new Date(b.creadoEn).getTime(),
@@ -152,7 +174,7 @@ export class AltasPendientesPageComponent {
         contexto: [empresa.rubro ?? 'Sin rubro declarado', empresa.planNombre ? 'Pidió el plan ' + empresa.planNombre : null]
           .filter(Boolean)
           .join(' · '),
-        agendadaEn: agenda[empresa.id] ?? null,
+        agendadaEn: empresa.llamadaProgramadaPara ? new Date(empresa.llamadaProgramadaPara) : null,
       };
     });
   });
@@ -201,6 +223,39 @@ export class AltasPendientesPageComponent {
     }
 
     return partes.length ? partes.join(' · ') + '.' : 'Ninguna alta esperando. La cola quedó vacía.';
+  });
+
+  /** Cabecera compartida (LEEME.md §14). "Reintentos" sale de `insistir`
+   *  en `esperando()` — la LEEME asumía un campo `reintento` de una señal
+   *  `agenda()` que ya no existe en esta página (era código muerto, ver
+   *  el comentario de la clase). Sin período propio a filtrar: los tiles
+   *  son solo lectura, la cola ya está ordenada por antigüedad. */
+  protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
+    const llamadas = this.llamadas();
+    const esperando = this.esperando();
+    const reintentos = esperando.filter((f) => f.insistir).length;
+    const metricas: MetricaCabecera[] = [
+      { id: 'llamar', etiqueta: 'Te toca llamar', valor: llamadas.length, tono: llamadas.length ? 'aviso' : 'exito' },
+      {
+        id: 'reintentos',
+        etiqueta: 'Reintentos',
+        valor: reintentos,
+        tono: reintentos ? 'aviso' : 'neutro',
+      },
+      { id: 'esperando', etiqueta: 'Esperando contraseña', valor: esperando.length, tono: 'info' },
+    ];
+    if (llamadas.length) {
+      const peor = llamadas[0];
+      metricas.push({
+        id: 'espera',
+        etiqueta: 'Espera máxima',
+        valor: `${peor.diasEspera} ${peor.diasEspera === 1 ? 'día' : 'días'}`,
+        tono: peor.urgente ? 'peligro' : 'neutro',
+        delta: peor.urgente ? `supera ${this.umbralUrgente} días` : null,
+        deltaTono: 'peligro',
+      });
+    }
+    return metricas;
   });
 
   protected readonly textoVacio = computed(() => {
@@ -260,6 +315,13 @@ export class AltasPendientesPageComponent {
 
   protected onWizardActualizada(): void {
     this.cargar();
+  }
+
+  /** `(volver)` de `app-pantalla-estado` en el error de carga — mismo
+   * criterio que `EmpresasPageComponent.volver()`: recarga la propia
+   * pantalla, no hay un "inicio" distinto al que volver acá. */
+  protected volver(): void {
+    this.router.navigateByUrl('/altas-pendientes');
   }
 
   private diasDesde(fechaIso: string): number {

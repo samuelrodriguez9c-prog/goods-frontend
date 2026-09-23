@@ -1,42 +1,30 @@
-<div class="p-8">
-  <div class="mx-auto max-w-[1060px]">
-    <div class="flex items-baseline gap-4">
-      <h1 class="shrink-0 font-display text-[34px] font-semibold leading-10 tracking-[-0.02em] text-gray-900">
-        Auditoría
-      </h1>
-      <span class="h-px flex-1 bg-gray-300"></span>
-      <span class="shrink-0 text-[13px] text-gray-500">{{ total() }} acciones registradas · últimas 48 h</span>
-    </div>
+<div class="pt-2 px-8 pb-8">
+  <!-- Sin `mx-auto max-w-[...]`: todo el módulo ocupa el ancho completo
+       del layout, igual que Empresas — pedido explícito 2026-09-23. -->
+  <app-cabecera-modulo
+    titulo="Auditoría"
+    periodo="Últimas 48 h"
+    [metricas]="metricasCabecera()"
+    [activa]="metricaActivaCabecera()"
+    [total]="total() + ' acciones registradas'"
+    (metricaClick)="metricaCabeceraClick($event)"
+  >
+    <tabler-icon icono [icon]="iconModulo" [size]="20" [stroke]="1.75" />
+    <ng-container lectura>{{ lectura() }}</ng-container>
+  </app-cabecera-modulo>
 
-    <div class="mt-3.5 flex flex-wrap items-baseline gap-x-[22px] gap-y-2.5">
-      <p class="min-w-[280px] max-w-[560px] flex-1 text-sm leading-[22px] text-gray-500 text-pretty">
-        {{ lectura() }}
-      </p>
-      <div class="flex flex-wrap items-baseline gap-5">
-        @for (cifra of cifras(); track cifra.etiqueta) {
-          <div>
-            <p class="font-display text-[22px] font-semibold leading-none tabular-nums" [class]="cifra.tinta">
-              {{ cifra.valor }}
-            </p>
-            <p class="mt-[5px] whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.06em] text-gray-400">
-              {{ cifra.etiqueta }}
-            </p>
-          </div>
-        }
-      </div>
-    </div>
-
-    @if (error(); as mensaje) {
-      <p class="mt-4 text-sm text-badge-error-solid">{{ mensaje }}</p>
-    }
-
-    @if (cargando()) {
-      <div class="mt-[22px] flex animate-pulse flex-col gap-3">
+  <app-pantalla-estado
+      [estado]="estadoPantalla()"
+      modulo="Auditoría"
+      (reintentar)="cargar()"
+      (volver)="volver()"
+    >
+      <div esqueleto class="mt-[22px] flex animate-pulse flex-col gap-3">
         <span class="h-[104px] w-full rounded-xl bg-gray-200"></span>
         <span class="h-[96px] w-full rounded-xl bg-gray-100"></span>
         <span class="h-[280px] w-full rounded-[10px] bg-gray-100"></span>
       </div>
-    } @else {
+
       <!-- Qué revisar: lo que el log dice pero una tabla no grita -->
       @if (alertas().length) {
         <div class="mt-[22px] overflow-hidden rounded-xl border border-[#f0d8d2] bg-card-bg">
@@ -208,8 +196,7 @@
         Este historial lo escribe solo el sistema en cada acción de escritura. Nadie puede editarlo ni borrarlo —
         por eso acá no hay más acciones que mirar.
       </p>
-    }
-  </div>
+  </app-pantalla-estado>
 </div>
 
 <!-- Detalle: componente aparte, mismo patrón que

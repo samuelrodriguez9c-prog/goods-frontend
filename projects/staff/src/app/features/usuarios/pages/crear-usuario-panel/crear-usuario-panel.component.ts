@@ -18,6 +18,7 @@ import {
 import { Rol } from '../../../../core/roles/models/rol.model';
 import { UsuarioGoods } from '../../../../core/usuarios/models/usuario.model';
 import { UsuarioService } from '../../../../core/usuarios/usuario.service';
+import { AlertaService } from '../../../../core/ui/alerta.service';
 
 interface ModuloDef {
   id: string;
@@ -123,6 +124,10 @@ const FORMULARIO_VACIO: FormularioAlta = {
  * intencional (no hace falta debilitarla para "coincidir" con el
  * backend); queda documentado en ADMIN_DISENO.md como mejora pendiente
  * del backend, no como algo a corregir acá.
+ *
+ * El aviso de éxito/error lo muestra este panel mismo con
+ * `AlertaService.seguir()` (LEEME.md §12) — ya no sube por
+ * `avisoTexto`/`errorTexto` a un banner de la página.
  */
 @Component({
   selector: 'app-crear-usuario-panel',
@@ -133,6 +138,7 @@ const FORMULARIO_VACIO: FormularioAlta = {
 })
 export class CrearUsuarioPanelComponent {
   private readonly usuarioService = inject(UsuarioService);
+  private readonly alertas = inject(AlertaService);
 
   protected readonly iconUserPlus = IconUserPlus;
   protected readonly iconCerrar = IconX;
@@ -145,8 +151,6 @@ export class CrearUsuarioPanelComponent {
 
   readonly cerrar = output<void>();
   readonly creado = output<UsuarioGoods>();
-  readonly avisoTexto = output<string>();
-  readonly errorTexto = output<string>();
 
   protected readonly guardando = signal(false);
   // Ajuste propio: los signal inputs todavía no tienen valor durante los
@@ -284,34 +288,51 @@ export class CrearUsuarioPanelComponent {
     if (!this.puedeCrear() || rolId === null) {
       return;
     }
+    const rolElegido = this.roles().find((r) => r.id === rolId);
+    const nombreCompleto = `${f.nombres} ${f.apellidos}`.trim();
+
     this.guardando.set(true);
-    this.usuarioService
-      .crear({
-        nombres: f.nombres.trim(),
-        apellidos: f.apellidos.trim(),
-        correo: f.correo.trim(),
-        telefono: f.telefono.trim() || undefined,
-        password: f.password,
-      })
+    this.alertas
+      .seguir(
+        this.usuarioService.crear({
+          nombres: f.nombres.trim(),
+          apellidos: f.apellidos.trim(),
+          correo: f.correo.trim(),
+          telefono: f.telefono.trim() || undefined,
+          password: f.password,
+        }),
+        {
+          titulo: 'Creando la cuenta',
+          texto: nombreCompleto,
+          exito: {
+            titulo: `${f.nombres} ya puede entrar como ${rolElegido ? this.etiquetaRol(rolElegido) : 'usuario'}`,
+          },
+          error: { titulo: 'No se pudo crear el usuario', texto: 'Revisá que el correo no esté en uso.' },
+        },
+      )
       .subscribe({
         next: (creado) => {
           if (rolId !== creado.rolId) {
-            this.usuarioService.cambiarRol(creado.id, rolId).subscribe({
-              next: (conRol) => this.finalizarAlta(conRol),
-              error: () => {
-                this.finalizarAlta(creado);
-                this.errorTexto.emit(
-                  'El usuario se creó, pero no se pudo asignar el rol elegido. Cambialo desde su ficha.',
-                );
-              },
-            });
+            this.alertas
+              .seguir(this.usuarioService.cambiarRol(creado.id, rolId), {
+                titulo: 'Asignando el rol',
+                texto: creado.nombres,
+                exito: { titulo: 'Rol asignado' },
+                error: {
+                  titulo: 'No se pudo asignar el rol elegido',
+                  texto: 'Cambialo desde su ficha.',
+                },
+              })
+              .subscribe({
+                next: (conRol) => this.finalizarAlta(conRol),
+                error: () => this.finalizarAlta(creado),
+              });
           } else {
             this.finalizarAlta(creado);
           }
         },
         error: () => {
           this.guardando.set(false);
-          this.errorTexto.emit('No se pudo crear el usuario. Revisá que el correo no esté en uso.');
         },
       });
   }
@@ -319,7 +340,5 @@ export class CrearUsuarioPanelComponent {
   private finalizarAlta(usuario: UsuarioGoods): void {
     this.guardando.set(false);
     this.creado.emit(usuario);
-    const rol = this.roles().find((r) => r.id === usuario.rolId);
-    this.avisoTexto.emit(`${usuario.nombres} ya puede entrar como ${rol ? this.etiquetaRol(rol) : 'usuario'}`);
   }
 }

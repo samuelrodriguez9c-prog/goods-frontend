@@ -5,19 +5,22 @@
   <div
     class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[560px] flex-col bg-card-bg shadow-xl"
   >
-    @if (error(); as mensaje) {
-      <div class="flex flex-1 items-center justify-center p-6">
-        <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
-      </div>
-    } @else if (cargando()) {
-      <div class="flex flex-1 animate-pulse flex-col gap-5 p-6">
+    <app-pantalla-estado
+      class="contents"
+      [estado]="estadoPantalla()"
+      modulo="el detalle de la Empresa"
+      (reintentar)="reintentar()"
+      (volver)="cerrarYSeguirTrabajando()"
+    >
+      <div esqueleto class="flex flex-1 animate-pulse flex-col gap-5 p-6">
         <span class="h-11 w-11 rounded-lg bg-gray-200"></span>
         <span class="h-6 w-64 rounded bg-gray-200"></span>
         <span class="h-28 w-full rounded-lg bg-gray-100"></span>
         <span class="h-44 w-full rounded-lg bg-gray-100"></span>
       </div>
-    } @else if (empresa(); as e) {
-      <!-- Cabecera -->
+
+      @if (empresa(); as e) {
+        <!-- Cabecera -->
       <div class="shrink-0 border-b border-gray-200 px-6 pb-3.5 pt-5">
         <div class="flex items-start gap-3">
           <span
@@ -530,7 +533,8 @@
           </button>
         </div>
       }
-    }
+      }
+    </app-pantalla-estado>
   </div>
 </div>
 

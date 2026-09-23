@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import {
   IconBuildingStore,
-  IconCheck,
   IconChevronRight,
   IconHistory,
   IconLayoutGrid,
@@ -23,8 +23,13 @@ import { Rol } from '../../../../core/roles/models/rol.model';
 import { RolService } from '../../../../core/roles/rol.service';
 import { UsuarioGoods } from '../../../../core/usuarios/models/usuario.model';
 import { UsuarioService } from '../../../../core/usuarios/usuario.service';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { FichaUsuarioPanelComponent } from '../ficha-usuario-panel/ficha-usuario-panel.component';
 import { CrearUsuarioPanelComponent } from '../crear-usuario-panel/crear-usuario-panel.component';
+import {
+  CabeceraModuloComponent,
+  MetricaCabecera,
+} from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 
 /** Payload real de `RealtimeGateway.EVENTO_PRESENCIA_CAMBIO` (backend,
  * `modules/realtime/realtime.constants.ts`) — mismo criterio que
@@ -249,7 +254,14 @@ export function etiquetaRolTexto(nombre: string): string {
 @Component({
   selector: 'app-usuarios-page',
   standalone: true,
-  imports: [FormsModule, TablerIconComponent, FichaUsuarioPanelComponent, CrearUsuarioPanelComponent],
+  imports: [
+    FormsModule,
+    TablerIconComponent,
+    FichaUsuarioPanelComponent,
+    CrearUsuarioPanelComponent,
+    PantallaEstadoComponent,
+    CabeceraModuloComponent,
+  ],
   templateUrl: './usuarios-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -258,12 +270,13 @@ export class UsuariosPageComponent implements OnDestroy {
   private readonly rolService = inject(RolService);
   private readonly auditoriaService = inject(AuditoriaService);
   private readonly realtimeService = inject(RealtimeService);
+  private readonly router = inject(Router);
 
+  protected readonly iconModulo = IconUsers;
   protected readonly iconAgregar = IconUserPlus;
   protected readonly iconBuscar = IconSearch;
   protected readonly iconDerecha = IconChevronRight;
   protected readonly iconMas = IconPlus;
-  protected readonly iconCheck = IconCheck;
 
   protected readonly modulos = MODULOS;
   protected readonly umbralDormido = UMBRAL_DORMIDO;
@@ -278,7 +291,9 @@ export class UsuariosPageComponent implements OnDestroy {
   protected readonly enLineaIds = signal<Set<number>>(new Set());
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly aviso = signal<string | null>(null);
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
 
   private presenciaSub: Subscription | undefined;
 
@@ -562,23 +577,35 @@ export class UsuariosPageComponent implements OnDestroy {
     this.usuarios().filter((u) => this.estadoDe(u, this.accesos().get(u.id)) === 'dormido'),
   );
 
-  protected readonly cifras = computed(() => [
-    { valor: `${this.conAcceso()}`, etiqueta: 'Con acceso', tinta: 'text-badge-success-solid' },
-    {
-      valor: `${this.sinEstrenar()}`,
-      etiqueta: 'Sin estrenar',
-      tinta: this.sinEstrenar() ? 'text-[#b45309]' : 'text-gray-900',
-    },
-    {
-      valor: `${this.dormidos().length}`,
-      etiqueta: `Dormidos ${UMBRAL_DORMIDO}d+`,
-      tinta: this.dormidos().length ? 'text-badge-error-solid' : 'text-gray-900',
-    },
-  ]);
-
   protected readonly lectura = computed(
     () => 'Quién entra, con qué permisos y desde cuándo no aparece. El rol se elige viendo lo que concede, no por su nombre.',
   );
+
+  /** Cabecera compartida (LEEME.md §14). "Intentos fallidos" solo aparece
+   *  si hubo alguno — `accesos()` ya trae `fallidos` por usuario (ver el
+   *  Map poblado en `cargar()`). */
+  protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
+    const metricas: MetricaCabecera[] = [
+      { id: 'con-acceso', etiqueta: 'Con acceso', valor: this.conAcceso(), tono: 'exito' },
+      {
+        id: 'sin-estrenar',
+        etiqueta: 'Sin estrenar',
+        valor: this.sinEstrenar(),
+        tono: this.sinEstrenar() ? 'aviso' : 'neutro',
+      },
+      {
+        id: 'dormidos',
+        etiqueta: `Dormidos ${UMBRAL_DORMIDO}d+`,
+        valor: this.dormidos().length,
+        tono: this.dormidos().length ? 'peligro' : 'neutro',
+      },
+    ];
+    const fallidos = [...this.accesos().values()].reduce((total, a) => total + a.fallidos, 0);
+    if (fallidos > 0) {
+      metricas.push({ id: 'fallidos', etiqueta: 'Intentos fallidos', valor: fallidos, tono: 'peligro' });
+    }
+    return metricas;
+  });
 
   /** Chips de la barra: lo que hay que hacer algo al respecto. Un admin
    * dormido y alguien que nunca estrenó la cuenta NO son el mismo caso. */
@@ -731,8 +758,13 @@ export class UsuariosPageComponent implements OnDestroy {
     this.cerrarPanel();
   }
 
-  protected mostrarAviso(texto: string): void {
-    this.aviso.set(texto);
-    setTimeout(() => this.aviso.set(null), 2600);
+  /** `(reintentar)` de `app-pantalla-estado`. */
+  protected reintentar(): void {
+    this.cargar();
+  }
+
+  /** `(volver)` — mismo criterio que `EmpresasPageComponent.volver()`. */
+  protected volver(): void {
+    this.router.navigateByUrl('/usuarios');
   }
 }

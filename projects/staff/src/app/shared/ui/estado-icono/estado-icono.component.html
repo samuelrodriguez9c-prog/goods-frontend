@@ -1,0 +1,56 @@
+<svg
+  [attr.width]="px()"
+  [attr.height]="px()"
+  viewBox="0 0 44 44"
+  fill="none"
+  class="block overflow-visible"
+>
+  <!-- riel: solo visible mientras gira -->
+  <circle
+    cx="22"
+    cy="22"
+    r="18"
+    [attr.stroke-width]="grosor()"
+    [style.stroke]="paleta().track"
+    [style.opacity]="cargando() ? 1 : 0"
+    style="transition: opacity 0.35s ease"
+  ></circle>
+
+  <!-- arco: gira mientras carga, se cierra en anillo al resolver -->
+  <circle
+    cx="22"
+    cy="22"
+    r="18"
+    stroke-linecap="round"
+    [attr.stroke-width]="grosor()"
+    [style.stroke]="color()"
+    [style.strokeDasharray]="arco()"
+    [style.animation]="animacion()"
+    style="
+      transform-origin: 22px 22px;
+      transition:
+        stroke-dasharray 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+        stroke 0.3s ease;
+    "
+  ></circle>
+
+  <!-- glifos: siempre en el DOM, se dibujan con stroke-dashoffset -->
+  @for (g of glifos(); track g.id) {
+    <path
+      [attr.d]="g.d"
+      pathLength="1"
+      stroke-linecap="round"
+      [attr.stroke-linejoin]="g.unir"
+      [attr.stroke-width]="grosor()"
+      [style.stroke]="g.color"
+      [style.strokeDashoffset]="g.visible ? 0 : 1"
+      [style.opacity]="g.visible ? 1 : 0"
+      style="
+        stroke-dasharray: 1;
+        transition:
+          stroke-dashoffset 0.45s cubic-bezier(0.65, 0, 0.35, 1) 0.14s,
+          opacity 0.18s ease;
+      "
+    ></path>
+  }
+</svg>

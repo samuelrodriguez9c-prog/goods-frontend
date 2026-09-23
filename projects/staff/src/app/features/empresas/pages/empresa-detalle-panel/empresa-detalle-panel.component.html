@@ -5,21 +5,14 @@
   <div
     class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[640px] flex-col bg-card-bg shadow-xl"
   >
-    @if (error(); as mensaje) {
-      <div class="flex flex-1 items-center justify-center p-6">
-        <div class="text-center">
-          <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
-          <button
-            type="button"
-            (click)="cerrar.emit()"
-            class="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-canvas-bg"
-          >
-            Cerrar
-          </button>
-        </div>
-      </div>
-    } @else if (cargando()) {
-      <div class="flex flex-1 animate-pulse flex-col gap-6 p-6">
+    <app-pantalla-estado
+      class="contents"
+      [estado]="estadoPantalla()"
+      modulo="el detalle de la Empresa"
+      (reintentar)="reintentar()"
+      (volver)="cerrar.emit()"
+    >
+      <div esqueleto class="flex flex-1 animate-pulse flex-col gap-6 p-6">
         <div class="flex items-center gap-3">
           <span class="size-10 shrink-0 rounded-lg bg-gray-200"></span>
           <div class="flex flex-1 flex-col gap-2">
@@ -30,8 +23,9 @@
         <span class="h-24 w-full rounded-lg bg-gray-100"></span>
         <span class="h-40 w-full rounded-lg bg-gray-100"></span>
       </div>
-    } @else if (empresa(); as e) {
-      <!-- Cabecera fija -->
+
+      @if (empresa(); as e) {
+        <!-- Cabecera fija -->
       <div class="flex shrink-0 items-start gap-3 border-b border-gray-200 px-6 py-5">
         <span
           class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-badge-neutral-bg text-sm font-semibold text-gray-700"
@@ -268,6 +262,7 @@
           }
         </div>
       }
-    }
+      }
+    </app-pantalla-estado>
   </div>
 </div>

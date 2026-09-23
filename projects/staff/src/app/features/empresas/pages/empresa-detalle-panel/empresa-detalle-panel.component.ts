@@ -15,6 +15,8 @@ import {
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { StatusBadgeComponent, StatusBadgeTone } from 'shared-ui';
+import { AlertaService } from '../../../../core/ui/alerta.service';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { DatosEditablesEmpresa, EmpresaService } from '../../../../core/catalog/empresa.service';
 import { Empresa, EmpresaConDueno, EstadoEmpresa } from '../../../../core/catalog/models/empresa.model';
 
@@ -79,12 +81,20 @@ const ETIQUETA_POR_ESTADO: Record<EstadoEmpresa, string> = {
 @Component({
   selector: 'app-empresa-detalle-panel',
   standalone: true,
-  imports: [DatePipe, FormsModule, InputTextModule, TablerIconComponent, StatusBadgeComponent],
+  imports: [
+    DatePipe,
+    FormsModule,
+    InputTextModule,
+    TablerIconComponent,
+    StatusBadgeComponent,
+    PantallaEstadoComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './empresa-detalle-panel.component.html',
 })
 export class EmpresaDetallePanelComponent {
   private readonly empresaService = inject(EmpresaService);
+  private readonly alertas = inject(AlertaService);
 
   readonly empresaId = input.required<number>();
   readonly cerrar = output<void>();
@@ -193,6 +203,10 @@ export class EmpresaDetallePanelComponent {
     return nombre || 'Sin datos del registro';
   });
 
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
+
   constructor() {
     effect(() => {
       this.cargar(this.empresaId());
@@ -217,6 +231,11 @@ export class EmpresaDetallePanelComponent {
         this.cargando.set(false);
       },
     });
+  }
+
+  /** `(reintentar)` de `app-pantalla-estado` — vuelve a pedir el mismo id. */
+  protected reintentar(): void {
+    this.cargar(this.empresaId());
   }
 
   protected descartar(): void {
@@ -245,18 +264,25 @@ export class EmpresaDetallePanelComponent {
       telefonoContacto: this.telefonoContacto().trim() || undefined,
     };
 
-    this.empresaService.actualizar(actual.id, datos).subscribe({
-      next: (empresaActualizada) => {
-        this.guardando.set(false);
-        this.guardado.set(true);
-        this.empresa.update((e) => (e ? { ...e, ...empresaActualizada } : e));
-        this.actualizada.emit(empresaActualizada);
-      },
-      error: (err: unknown) => {
-        this.guardando.set(false);
-        this.errorGuardar.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.empresaService.actualizar(actual.id, datos), {
+        titulo: 'Guardando cambios',
+        texto: actual.nombre,
+        exito: { titulo: 'Cambios guardados' },
+        error: { titulo: 'No se pudo guardar', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: (empresaActualizada) => {
+          this.guardando.set(false);
+          this.guardado.set(true);
+          this.empresa.update((e) => (e ? { ...e, ...empresaActualizada } : e));
+          this.actualizada.emit(empresaActualizada);
+        },
+        error: (err: unknown) => {
+          this.guardando.set(false);
+          this.errorGuardar.set(this.mensajeDeError(err));
+        },
+      });
   }
 
   protected onBackdropClick(event: MouseEvent): void {

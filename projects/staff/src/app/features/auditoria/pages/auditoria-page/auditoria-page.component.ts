@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import {
   IconAlertTriangle,
   IconBan,
@@ -8,6 +9,7 @@ import {
   IconCircleOff,
   IconCode,
   IconExchange,
+  IconHistory,
   IconLockOff,
   IconLogin,
   IconMoon,
@@ -26,7 +28,13 @@ import { forkJoin } from 'rxjs';
 import { AuditoriaService } from '../../../../core/auditoria/auditoria.service';
 import { AuditoriaAccion } from '../../../../core/auditoria/models/auditoria-accion.model';
 import { UsuarioService } from '../../../../core/usuarios/usuario.service';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { AccionDetallePanelComponent } from '../accion-detalle-panel/accion-detalle-panel.component';
+import {
+  CabeceraModuloComponent,
+  MetricaCabecera,
+  serieAcumulada,
+} from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 
 type LenteAuditoria = 'todo' | 'fallidas' | 'sensibles' | 'agente' | 'anonimas';
 export type FamiliaAccion = 'sesion' | 'alta' | 'edicion' | 'plata' | 'permisos' | 'baja';
@@ -290,14 +298,22 @@ const HORA_HASTA = 21;
 @Component({
   selector: 'app-auditoria-page',
   standalone: true,
-  imports: [FormsModule, TablerIconComponent, AccionDetallePanelComponent],
+  imports: [
+    FormsModule,
+    TablerIconComponent,
+    AccionDetallePanelComponent,
+    PantallaEstadoComponent,
+    CabeceraModuloComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './auditoria-page.component.html',
 })
 export class AuditoriaPageComponent {
   private readonly auditoriaService = inject(AuditoriaService);
   private readonly usuarioService = inject(UsuarioService);
+  private readonly router = inject(Router);
 
+  protected readonly iconModulo = IconHistory;
   protected readonly iconBuscar = IconSearch;
   protected readonly iconCerrar = IconX;
   protected readonly iconDerecha = IconChevronRight;
@@ -307,6 +323,10 @@ export class AuditoriaPageComponent {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly total = signal(0);
+
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
 
   protected readonly busqueda = signal('');
   protected readonly lente = signal<LenteAuditoria>('todo');
@@ -368,24 +388,42 @@ export class AuditoriaPageComponent {
     );
   });
 
-  protected readonly cifras = computed(() => [
-    { etiqueta: 'Hoy', valor: this.deHoy().length, tinta: 'text-gray-900' },
-    {
-      etiqueta: 'Con error',
-      valor: this.leibles().filter((a) => !a.exitoso).length,
-      tinta: 'text-badge-error-solid',
-    },
-    {
-      etiqueta: 'Personas',
-      valor: new Set(this.leibles().filter((a) => a.usuarioId).map((a) => a.usuarioId)).size,
-      tinta: 'text-gray-900',
-    },
-    {
-      etiqueta: 'IPs distintas',
-      valor: new Set(this.leibles().map((a) => a.ip)).size,
-      tinta: 'text-gray-900',
-    },
-  ]);
+  /** Cabecera compartida (LEEME.md §14). Período "Últimas 48 h" — la
+   *  ventana real de esta pantalla. Serie por hora (8 cubos de 6 h,
+   *  `serieAcumulada(fechas, 8, 0.25)`) solo donde hay una fecha por
+   *  evento que agrupar: "Personas"/"IPs distintas" son conteos de
+   *  valores únicos, no tienen una. Clic en "Con error" → `lente`. */
+  protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
+    const hoyFechas = this.deHoy().map((a) => a.creadoEn);
+    const errorFechas = this.leibles()
+      .filter((a) => !a.exitoso)
+      .map((a) => a.creadoEn);
+    return [
+      { id: 'hoy', etiqueta: 'Hoy', valor: hoyFechas.length, tono: 'neutro', serie: serieAcumulada(hoyFechas, 8, 0.25) },
+      {
+        id: 'error',
+        etiqueta: 'Con error',
+        valor: errorFechas.length,
+        tono: errorFechas.length ? 'peligro' : 'neutro',
+        serie: serieAcumulada(errorFechas, 8, 0.25),
+      },
+      {
+        id: 'personas',
+        etiqueta: 'Personas',
+        valor: new Set(this.leibles().filter((a) => a.usuarioId).map((a) => a.usuarioId)).size,
+        tono: 'info',
+      },
+      { id: 'ips', etiqueta: 'IPs distintas', valor: new Set(this.leibles().map((a) => a.ip)).size, tono: 'apagado' },
+    ];
+  });
+
+  protected metricaCabeceraClick(id: string): void {
+    if (id === 'error') {
+      this.lente.update((actual) => (actual === 'fallidas' ? 'todo' : 'fallidas'));
+    }
+  }
+
+  protected readonly metricaActivaCabecera = computed(() => (this.lente() === 'fallidas' ? 'error' : null));
 
   /** Las anomalías ya están en el log: solo hay que mirarlo. */
   protected readonly alertas = computed(() => {
@@ -575,6 +613,12 @@ export class AuditoriaPageComponent {
 
   protected cerrarPanel(): void {
     this.panelId.set(null);
+  }
+
+  /** `(volver)` de `app-pantalla-estado` — mismo criterio que
+   * `EmpresasPageComponent.volver()`. */
+  protected volver(): void {
+    this.router.navigateByUrl('/auditoria');
   }
 
   /** El panel emite la entidad al pedir "Ver todo el rastro" (ver

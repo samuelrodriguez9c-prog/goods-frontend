@@ -1,18 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import {
-  IconAlertTriangle,
-  IconCheck,
-  IconChevronDown,
-  IconChevronRight,
-  TablerIconComponent,
-} from '@tabler/icons-angular';
+import { Router } from '@angular/router';
+import { IconChevronDown, IconChevronRight, IconRepeat, TablerIconComponent } from '@tabler/icons-angular';
 import { forkJoin } from 'rxjs';
 import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
 import { EmpresaService } from '../../../../core/catalog/empresa.service';
 import { PlanService } from '../../../../core/catalog/plan.service';
 import { Suscripcion } from '../../../../core/catalog/models/suscripcion.model';
 import { Plan } from '../../../../core/catalog/models/plan.model';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { GestionarSuscripcionPanelComponent } from '../gestionar-suscripcion-panel/gestionar-suscripcion-panel.component';
+import {
+  CabeceraModuloComponent,
+  MetricaCabecera,
+} from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 
 /** Mismo formato que `formatCop` de Planes / `admin` — repetido a propósito
  * (ver el criterio ya documentado en `PlanesPageComponent`). */
@@ -105,13 +105,13 @@ const ESTADO_UI: Record<string, { texto: string; punto: string; tinta: string }>
  * de qué carga por su cuenta y qué recibe por `input` (`empresaId` y
  * `mrrTotal`).** Esta página le pasa el `empresaId` de la fila elegida y
  * escucha `(cerrar)`/`(actualizada)` — el aviso de éxito y el `cargar()`
- * de refresco siguen viviendo acá, porque el toast aparece recién después
- * de que el panel ya se cerró.
+ * de refresco siguen viviendo acá — el aviso de éxito ya no (lo muestra el
+ * panel directo con `AlertaService`, ver su docstring).
  */
 @Component({
   selector: 'app-suscripciones-page',
   standalone: true,
-  imports: [TablerIconComponent, GestionarSuscripcionPanelComponent],
+  imports: [TablerIconComponent, GestionarSuscripcionPanelComponent, PantallaEstadoComponent, CabeceraModuloComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './suscripciones-page.component.html',
 })
@@ -119,19 +119,21 @@ export class SuscripcionesPageComponent {
   private readonly suscripcionService = inject(SuscripcionService);
   private readonly empresaService = inject(EmpresaService);
   private readonly planService = inject(PlanService);
+  private readonly router = inject(Router);
 
   protected readonly formatCop = formatCop;
   protected readonly mostrarDesglose = true;
   protected readonly skeletons = [0, 1, 2, 3, 4];
 
-  protected readonly iconAtencion = IconAlertTriangle;
+  protected readonly iconModulo = IconRepeat;
   protected readonly iconAbajo = IconChevronDown;
   protected readonly iconDerecha = IconChevronRight;
-  protected readonly iconTilde = IconCheck;
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly aviso = signal<string | null>(null);
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
   protected readonly filtro = signal<FiltroSuscripciones>('cobrando');
   protected readonly desplegadas = signal<Set<number>>(new Set());
 
@@ -244,6 +246,57 @@ export class SuscripcionesPageComponent {
     return null;
   });
 
+  /** Cabecera compartida (LEEME.md §14) — se lleva el bloque "Facturación
+   *  mensual" y el aviso ámbar de abajo: los dos quedan dentro de la
+   *  tira de tiles. El filtro de chips (`filtros()`/`filtro`) sigue
+   *  aparte, es una dimensión distinta (estado de la fila, no facturación). */
+  protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
+    const metricas: MetricaCabecera[] = [
+      {
+        id: 'mrr',
+        etiqueta: 'Facturación mensual',
+        valor: formatCop(this.mrrTotal()),
+        tono: 'exito',
+        delta: this.notaMrr(),
+        deltaTono: 'apagado',
+      },
+    ];
+    if (this.mostrarDesglose) {
+      for (const linea of this.desglosePorPlan()) {
+        metricas.push({
+          id: `plan-${linea.planId}`,
+          etiqueta: linea.nombre,
+          valor: formatCop(linea.monto),
+          delta: linea.textoConteo,
+          deltaTono: 'apagado',
+        });
+      }
+    }
+    const aviso = this.atencion();
+    if (aviso) {
+      const vencidas = aviso.titulo.includes('vencida');
+      metricas.push({
+        id: 'atencion',
+        etiqueta: vencidas ? 'Vencidas' : 'Sin cobrar aún',
+        valor: aviso.titulo.split(' ')[0],
+        tono: vencidas ? 'peligro' : 'aviso',
+        delta: aviso.nota.includes('activ') ? 'esperan activación' : 'siguen con acceso',
+        deltaTono: vencidas ? 'peligro' : 'aviso',
+      });
+    }
+    return metricas;
+  });
+
+  /** Clic en el tile de "atención" filtra la lista de abajo por lo mismo
+   *  que describe — el resto de los tiles son solo lectura (facturación). */
+  protected metricaCabeceraClick(id: string): void {
+    if (id !== 'atencion') {
+      return;
+    }
+    const aviso = this.atencion();
+    this.filtro.set(aviso?.titulo.includes('vencida') ? 'vencidas' : 'pendiente');
+  }
+
   protected readonly filtros = computed(() => {
     const filas = this.filas();
     return [
@@ -343,21 +396,30 @@ export class SuscripcionesPageComponent {
 
   protected abrirGestionar(empresaId: number): void {
     this.empresaGestionandoId.set(empresaId);
-    this.aviso.set(null);
   }
 
   protected cerrarGestionar(): void {
     this.empresaGestionandoId.set(null);
   }
 
-  /** El panel ya aplicó el cambio y se cerró solo (ver
+  /** El panel ya aplicó el cambio, mostró su propio aviso de éxito
+   * (`AlertaService`) y se cerró solo (ver
    * `GestionarSuscripcionPanelComponent.confirmarCambioPlan`/
-   * `confirmarCambioEstado`) — acá solo queda mostrar el aviso y refrescar
-   * la lista con los montos/estados nuevos. */
-  protected onGestionActualizada(mensaje: string): void {
+   * `confirmarCambioEstado`) — acá solo queda refrescar la lista con los
+   * montos/estados nuevos. */
+  protected onGestionActualizada(): void {
     this.empresaGestionandoId.set(null);
-    this.aviso.set(mensaje);
     this.cargar();
+  }
+
+  /** `(reintentar)` de `app-pantalla-estado`. */
+  protected reintentar(): void {
+    this.cargar();
+  }
+
+  /** `(volver)` — mismo criterio que `EmpresasPageComponent.volver()`. */
+  protected volver(): void {
+    this.router.navigateByUrl('/suscripciones');
   }
 
   private fechaCorta(fechaIso: string | null): string {

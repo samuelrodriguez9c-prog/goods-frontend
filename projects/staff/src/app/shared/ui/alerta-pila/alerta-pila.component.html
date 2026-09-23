@@ -1,0 +1,47 @@
+<div class="pointer-events-none fixed right-5 top-[76px] z-40 flex w-[420px] flex-col gap-2.5">
+  @for (a of alertas(); track a.id) {
+    <div
+      class="pointer-events-auto flex items-start gap-3 rounded-[10px] border bg-white p-[13px_14px] shadow-[0_1px_2px_rgba(0,0,0,0.04)] animate-[aparecer-alerta_.24s_cubic-bezier(.2,.7,.3,1)_both]"
+      [class]="tono()[a.estado].borde"
+      role="status"
+      [attr.aria-live]="a.estado === 'error' ? 'assertive' : 'polite'"
+    >
+      <span
+        class="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg"
+        [class]="tono()[a.estado].halo"
+      >
+        <app-estado-icono [estado]="a.estado" [px]="18" [grosor]="3.6" />
+      </span>
+
+      <div class="min-w-0 flex-1 pt-px">
+        <div class="text-sm font-semibold text-neutral-900">{{ a.titulo }}</div>
+        @if (a.texto) {
+          <div class="mt-0.5 text-[13px] leading-[19px] text-neutral-500 text-pretty">
+            {{ a.texto }}
+          </div>
+        }
+        @if (a.accion && a.estado !== 'cargando') {
+          <button
+            type="button"
+            (click)="a.accion.ejecutar()"
+            class="mt-2.5 rounded-[7px] border border-neutral-200 px-[11px] py-[5px] text-xs font-medium text-neutral-800 hover:border-neutral-400"
+          >
+            {{ a.accion.label }}
+          </button>
+        }
+      </div>
+
+      <!-- la operación en curso no se puede descartar: no hay nada que descartar -->
+      @if (a.estado !== 'cargando') {
+        <button
+          type="button"
+          (click)="cerrar(a.id)"
+          aria-label="Cerrar alerta"
+          class="shrink-0 text-xs text-neutral-300 hover:text-neutral-500"
+        >
+          ✕
+        </button>
+      }
+    </div>
+  }
+</div>
