@@ -46,6 +46,8 @@ import { EmpresaService } from '../../../../core/catalog/empresa.service';
 import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
 import { PlanService } from '../../../../core/catalog/plan.service';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
+import { AlertaService } from '../../../../core/ui/alerta.service';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { EmpresaConDueno } from '../../../../core/catalog/models/empresa.model';
 import { Plan } from '../../../../core/catalog/models/plan.model';
 
@@ -120,10 +122,15 @@ const CHECKLIST = [
  * asistente, así que sigue pintando arriba — confirmado con Playwright, ver
  * ADMIN_DISENO.md).
  *
- * PENDIENTE DE BACKEND: `programarLlamada` ya existe, pero el listado
- * (`GET /empresas`) todavía no devuelve la fecha agendada, así que la hoja la
- * guarda en memoria. Al exponerla, la etiqueta "Agendada …" de la fila pasa a
- * sobrevivir el refresh.
+ * `agendadaEn` sale de `Empresa.llamadaProgramadaPara`, ya persistida por
+ * `programarLlamada` en `GestionAlta` — hasta el 2026-09-22 `cargar()` de
+ * acá no la leía del todo, así que sobrevivía dentro de la misma apertura
+ * del asistente (se seteaba en `confirmarProgramarLlamada`) pero se
+ * perdía si se cerraba y se volvía a abrir, o si se recargaba la página
+ * (bug real reportado por el cliente: "programé la llamada pero no sale
+ * el diseño de que se programó"). Arreglado trayéndola en `findOne` del
+ * backend (ver el comentario en `EmpresaService.findOne`) y leyéndola acá
+ * en `cargar()`.
  */
 @Component({
   selector: 'app-activar-empresa-wizard',
@@ -135,6 +142,7 @@ const CHECKLIST = [
     TablerIconComponent,
     StatusBadgeComponent,
     EmpresaDetallePanelComponent,
+    PantallaEstadoComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './activar-empresa-wizard.component.html',
@@ -145,6 +153,7 @@ export class ActivarEmpresaWizardComponent {
   private readonly planService = inject(PlanService);
   private readonly realtimeService = inject(RealtimeService);
   private readonly router = inject(Router);
+  private readonly alertas = inject(AlertaService);
 
   readonly empresaId = input.required<number>();
   readonly actualizada = output<void>();
@@ -173,6 +182,10 @@ export class ActivarEmpresaWizardComponent {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly empresa = signal<EmpresaConDueno | null>(null);
+
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
 
   protected readonly paso = signal<1 | 2>(1);
   protected readonly exito = signal(false);
@@ -453,6 +466,7 @@ export class ActivarEmpresaWizardComponent {
         this.planIdOriginal = suscripciones.data[0]?.planId ?? null;
         this.planId.set(this.planIdOriginal);
         this.planes.set(planes.data);
+        this.agendadaEn.set(empresa.llamadaProgramadaPara ? new Date(empresa.llamadaProgramadaPara) : null);
         this.cargando.set(false);
 
         if (empresa.estado === 'informacion_corroborada') {
@@ -464,6 +478,11 @@ export class ActivarEmpresaWizardComponent {
         this.cargando.set(false);
       },
     });
+  }
+
+  /** `(reintentar)` de `app-pantalla-estado` — vuelve a pedir el mismo id. */
+  protected reintentar(): void {
+    this.cargar(this.empresaId());
   }
 
   protected guardarDatos(): void {
@@ -489,21 +508,28 @@ export class ActivarEmpresaWizardComponent {
       pedidos.push(this.suscripcionService.cambiarPlan(actual.id, planElegido));
     }
 
-    forkJoin(pedidos).subscribe({
-      next: () => {
-        this.guardandoDatos.set(false);
-        this.datosGuardados.set(true);
-        this.planIdOriginal = this.planId();
-        this.empresa.update((e) =>
-          e ? { ...e, nombre: this.nombre().trim(), telefonoContacto: this.telefono().trim() || null } : e,
-        );
-        this.actualizada.emit();
-      },
-      error: (err: unknown) => {
-        this.guardandoDatos.set(false);
-        this.errorGuardarDatos.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(forkJoin(pedidos), {
+        titulo: 'Guardando cambios',
+        texto: actual.nombre,
+        exito: { titulo: 'Cambios guardados' },
+        error: { titulo: 'No se pudo guardar', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.guardandoDatos.set(false);
+          this.datosGuardados.set(true);
+          this.planIdOriginal = this.planId();
+          this.empresa.update((e) =>
+            e ? { ...e, nombre: this.nombre().trim(), telefonoContacto: this.telefono().trim() || null } : e,
+          );
+          this.actualizada.emit();
+        },
+        error: (err: unknown) => {
+          this.guardandoDatos.set(false);
+          this.errorGuardarDatos.set(this.mensajeDeError(err));
+        },
+      });
   }
 
   protected llamarAhora(): void {
@@ -531,18 +557,25 @@ export class ActivarEmpresaWizardComponent {
 
     this.programando.set(true);
     this.errorProgramar.set(null);
-    this.empresaService.programarLlamada(actual.id, new Date(fechaHora).toISOString()).subscribe({
-      next: () => {
-        this.programando.set(false);
-        this.mostrarFormularioProgramar.set(false);
-        this.agendadaEn.set(new Date(fechaHora));
-        this.actualizada.emit();
-      },
-      error: (err: unknown) => {
-        this.programando.set(false);
-        this.errorProgramar.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.empresaService.programarLlamada(actual.id, new Date(fechaHora).toISOString()), {
+        titulo: 'Agendando la llamada',
+        texto: actual.nombre,
+        exito: { titulo: 'Llamada agendada' },
+        error: { titulo: 'No se pudo agendar', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.programando.set(false);
+          this.mostrarFormularioProgramar.set(false);
+          this.agendadaEn.set(new Date(fechaHora));
+          this.actualizada.emit();
+        },
+        error: (err: unknown) => {
+          this.programando.set(false);
+          this.errorProgramar.set(this.mensajeDeError(err));
+        },
+      });
   }
 
   /** Solo limpia la vista: no hay endpoint para desagendar todavía. */
@@ -578,20 +611,27 @@ export class ActivarEmpresaWizardComponent {
 
     this.confirmandoLlamada.set(true);
     this.errorConfirmarLlamada.set(null);
-    this.empresaService.llamadaFinalizada(actual.id).subscribe({
-      next: (empresaActualizada) => {
-        this.confirmandoLlamada.set(false);
-        this.mostrarConfirmacionLlamada.set(false);
-        this.empresa.update((e) => (e ? { ...e, ...empresaActualizada } : e));
-        this.actualizada.emit();
-        this.entrarPaso2();
-      },
-      error: (err: unknown) => {
-        this.confirmandoLlamada.set(false);
-        this.mostrarConfirmacionLlamada.set(false);
-        this.errorConfirmarLlamada.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.empresaService.llamadaFinalizada(actual.id), {
+        titulo: 'Registrando la llamada',
+        texto: actual.nombre,
+        exito: { titulo: 'Llamada registrada' },
+        error: { titulo: 'No se pudo registrar la llamada', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: (empresaActualizada) => {
+          this.confirmandoLlamada.set(false);
+          this.mostrarConfirmacionLlamada.set(false);
+          this.empresa.update((e) => (e ? { ...e, ...empresaActualizada } : e));
+          this.actualizada.emit();
+          this.entrarPaso2();
+        },
+        error: (err: unknown) => {
+          this.confirmandoLlamada.set(false);
+          this.mostrarConfirmacionLlamada.set(false);
+          this.errorConfirmarLlamada.set(this.mensajeDeError(err));
+        },
+      });
   }
 
   private entrarPaso2(): void {
@@ -660,16 +700,23 @@ export class ActivarEmpresaWizardComponent {
     this.reenviando.set(true);
     this.errorReenviar.set(null);
     this.enlaceReenviado.set(false);
-    this.empresaService.reenviarEnlace(actual.id).subscribe({
-      next: () => {
-        this.reenviando.set(false);
-        this.enlaceReenviado.set(true);
-      },
-      error: (err: unknown) => {
-        this.reenviando.set(false);
-        this.errorReenviar.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.empresaService.reenviarEnlace(actual.id), {
+        titulo: 'Reenviando el enlace',
+        texto: actual.nombre,
+        exito: { titulo: 'Enlace reenviado' },
+        error: { titulo: 'No se pudo reenviar el enlace', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.reenviando.set(false);
+          this.enlaceReenviado.set(true);
+        },
+        error: (err: unknown) => {
+          this.reenviando.set(false);
+          this.errorReenviar.set(this.mensajeDeError(err));
+        },
+      });
   }
 
   protected abrirRechazar(): void {
@@ -691,20 +738,27 @@ export class ActivarEmpresaWizardComponent {
 
     this.rechazando.set(true);
     this.errorRechazar.set(null);
-    this.empresaService.rechazar(actual.id, motivo).subscribe({
-      next: () => {
-        this.rechazando.set(false);
-        this.mostrarRechazar.set(false);
-        this.detenerEscucha();
-        this.detenerCrono();
-        this.actualizada.emit();
-        this.cerrar.emit();
-      },
-      error: (err: unknown) => {
-        this.rechazando.set(false);
-        this.errorRechazar.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.empresaService.rechazar(actual.id, motivo), {
+        titulo: 'Rechazando la solicitud',
+        texto: actual.nombre,
+        exito: { titulo: 'Solicitud rechazada' },
+        error: { titulo: 'No se pudo rechazar', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.rechazando.set(false);
+          this.mostrarRechazar.set(false);
+          this.detenerEscucha();
+          this.detenerCrono();
+          this.actualizada.emit();
+          this.cerrar.emit();
+        },
+        error: (err: unknown) => {
+          this.rechazando.set(false);
+          this.errorRechazar.set(this.mensajeDeError(err));
+        },
+      });
   }
 
   protected abrirDetalle(): void {

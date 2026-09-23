@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import {
   IconAlertTriangle,
@@ -9,12 +10,19 @@ import {
   IconMinus,
   IconPlus,
   IconRotateClockwise,
+  IconStack2,
   IconTrash,
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { Observable, forkJoin } from 'rxjs';
 import { GuardarPlanPayload, PlanService } from '../../../../core/catalog/plan.service';
 import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
+import { AlertaService } from '../../../../core/ui/alerta.service';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
+import {
+  CabeceraModuloComponent,
+  MetricaCabecera,
+} from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { Plan } from '../../../../core/catalog/models/plan.model';
 
 /** Un plan en edición. `id` negativo = plan nuevo que todavía no existe en
@@ -86,19 +94,22 @@ interface FilaMatriz {
 @Component({
   selector: 'app-planes-page',
   standalone: true,
-  imports: [FormsModule, InputTextModule, TablerIconComponent],
+  imports: [FormsModule, InputTextModule, TablerIconComponent, PantallaEstadoComponent, CabeceraModuloComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './planes-page.component.html',
 })
 export class PlanesPageComponent {
   private readonly planService = inject(PlanService);
   private readonly suscripcionService = inject(SuscripcionService);
+  private readonly alertas = inject(AlertaService);
+  private readonly router = inject(Router);
 
   /** Mostrar cuántas Empresas hay en cada plan. Requiere
    * `SuscripcionService.listar()` — apagalo si el endpoint no está. */
   protected readonly mostrarSuscripciones = true;
 
   protected readonly skeletons = [0, 1, 2, 3];
+  protected readonly iconModulo = IconStack2;
   protected readonly iconPlus = IconPlus;
   protected readonly iconTilde = IconCheck;
   protected readonly iconBorrar = IconTrash;
@@ -109,9 +120,12 @@ export class PlanesPageComponent {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly publicando = signal(false);
-  protected readonly publicado = signal(false);
   protected readonly accionandoId = signal<number | null>(null);
   protected readonly nuevaCaracteristica = signal('');
+
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
 
   /** Lo que el staff está editando. */
   private readonly borrador = signal<PlanBorrador[]>([]);
@@ -141,6 +155,37 @@ export class PlanesPageComponent {
     const total = this.planes().length;
     const activos = this.planes().filter((p) => p.activo).length;
     return `${total} ${total === 1 ? 'plan' : 'planes'} · ${activos} a la venta`;
+  });
+
+  /** Cabecera compartida (LEEME.md §14). Sin período: no hay una noción de
+   *  "hoy" acá, es el catálogo tal como está ahora. "Empresas suscritas"
+   *  y "Más elegido" solo aparecen si `mostrarSuscripciones` está
+   *  prendido (mismo criterio que el resto de la pantalla). */
+  protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
+    const planes = this.planes();
+    const metricas: MetricaCabecera[] = [
+      { id: 'venta', etiqueta: 'A la venta', valor: planes.filter((p) => p.activo).length, tono: 'exito' },
+      { id: 'inactivos', etiqueta: 'Inactivos', valor: planes.filter((p) => !p.activo).length, tono: 'apagado' },
+    ];
+    if (this.mostrarSuscripciones) {
+      const conteo = this.suscripcionesPorPlan();
+      const total = [...conteo.values()].reduce((a, b) => a + b, 0);
+      let masElegido: { plan: PlanBorrador; n: number } | null = null;
+      for (const plan of planes) {
+        const n = conteo.get(plan.id) ?? 0;
+        if (n > 0 && (!masElegido || n > masElegido.n)) {
+          masElegido = { plan, n };
+        }
+      }
+      metricas.push({ id: 'suscritas', etiqueta: 'Empresas suscritas', valor: total, tono: 'info' });
+      metricas.push({
+        id: 'elegido',
+        etiqueta: 'Más elegido',
+        valor: masElegido ? masElegido.plan.nombre : '—',
+        titulo: masElegido ? `${masElegido.n} Empresa${masElegido.n === 1 ? '' : 's'} suscrita${masElegido.n === 1 ? '' : 's'}` : undefined,
+      });
+    }
+    return metricas;
   });
 
   /** El plan más caro que no agrega nada sobre el anterior (o que
@@ -301,7 +346,6 @@ export class PlanesPageComponent {
 
   protected editarPlan(indice: number, cambios: Partial<PlanBorrador>): void {
     this.borrador.update((planes) => planes.map((p, i) => (i === indice ? { ...p, ...cambios } : p)));
-    this.publicado.set(false);
   }
 
   protected editarPrecio(indice: number, valor: string): void {
@@ -325,7 +369,6 @@ export class PlanesPageComponent {
         };
       }),
     );
-    this.publicado.set(false);
   }
 
   /** Renombre por texto: toca todos los planes que tenían la etiqueta
@@ -339,7 +382,6 @@ export class PlanesPageComponent {
         caracteristicas: (plan.caracteristicas ?? []).map((c) => (c === anterior ? nuevo : c)),
       })),
     );
-    this.publicado.set(false);
   }
 
   protected quitarCaracteristica(indice: number): void {
@@ -351,7 +393,6 @@ export class PlanesPageComponent {
         caracteristicas: (plan.caracteristicas ?? []).filter((c) => c !== etiqueta),
       })),
     );
-    this.publicado.set(false);
   }
 
   protected agregarCaracteristica(): void {
@@ -376,7 +417,6 @@ export class PlanesPageComponent {
         activo: false,
       } as PlanBorrador,
     ]);
-    this.publicado.set(false);
   }
 
   /** Esto sí pega al backend al instante: desactivar un plan es una acción
@@ -404,35 +444,39 @@ export class PlanesPageComponent {
       ? this.planService.desactivar(plan.id)
       : this.planService.reactivar(plan.id);
 
-    request.subscribe({
-      next: () => {
-        this.accionandoId.set(null);
-        this.borrador.update((planes) =>
-          planes.map((p) => (p.id === plan.id ? { ...p, activo: !plan.activo } : p)),
-        );
-        this.publicadoSnapshot.update((snap) => {
-          const anterior: PlanBorrador[] = JSON.parse(snap);
-          return JSON.stringify(
-            anterior.map((p) => (p.id === plan.id ? { ...p, activo: !plan.activo } : p)),
+    this.alertas
+      .seguir(request, {
+        titulo: plan.activo ? 'Sacando el plan del catálogo' : 'Volviendo a vender el plan',
+        texto: plan.nombre,
+        exito: { titulo: plan.activo ? 'Plan sacado del catálogo' : 'Plan vuelto a vender' },
+        error: {
+          titulo: plan.activo ? 'No se pudo desactivar el plan' : 'No se pudo reactivar el plan',
+          texto: 'Intenta de nuevo.',
+        },
+      })
+      .subscribe({
+        next: () => {
+          this.accionandoId.set(null);
+          this.borrador.update((planes) =>
+            planes.map((p) => (p.id === plan.id ? { ...p, activo: !plan.activo } : p)),
           );
-        });
-      },
-      error: () => {
-        this.accionandoId.set(null);
-        this.error.set(
-          plan.activo
-            ? 'No se pudo desactivar el plan. Intenta de nuevo.'
-            : 'No se pudo reactivar el plan. Intenta de nuevo.',
-        );
-      },
-    });
+          this.publicadoSnapshot.update((snap) => {
+            const anterior: PlanBorrador[] = JSON.parse(snap);
+            return JSON.stringify(
+              anterior.map((p) => (p.id === plan.id ? { ...p, activo: !plan.activo } : p)),
+            );
+          });
+        },
+        error: () => {
+          this.accionandoId.set(null);
+        },
+      });
   }
 
   protected descartar(): void {
     const anterior: PlanBorrador[] = JSON.parse(this.publicadoSnapshot());
     this.borrador.set(anterior);
     this.caracteristicas.set(this.unionCaracteristicas(anterior));
-    this.publicado.set(false);
   }
 
   protected publicar(): void {
@@ -461,25 +505,46 @@ export class PlanesPageComponent {
       activo: plan.activo,
     });
 
-    forkJoin(
-      modificados.map((plan) =>
-        plan.id < 0 ? this.planService.crear(payload(plan)) : this.planService.actualizar(plan.id, payload(plan)),
-      ),
-    ).subscribe({
-      next: (guardados) => {
-        this.publicando.set(false);
-        this.publicado.set(true);
-        // Los planes nuevos vuelven con su id real: se reemplazan por
-        // posición dentro de `modificados`, en el mismo orden.
-        const porIdTemporal = new Map<number, Plan>();
-        modificados.forEach((plan, i) => porIdTemporal.set(plan.id, guardados[i]));
-        this.borrador.update((planes) => planes.map((p) => porIdTemporal.get(p.id) ?? p));
-        this.publicadoSnapshot.set(JSON.stringify(this.borrador()));
-      },
-      error: () => {
-        this.publicando.set(false);
-        this.error.set('No se pudo publicar el catálogo. Revisá los planes e intenta de nuevo.');
-      },
-    });
+    this.alertas
+      .seguir(
+        forkJoin(
+          modificados.map((plan) =>
+            plan.id < 0
+              ? this.planService.crear(payload(plan))
+              : this.planService.actualizar(plan.id, payload(plan)),
+          ),
+        ),
+        {
+          titulo: 'Publicando el catálogo',
+          texto: modificados.length === 1 ? modificados[0].nombre : `${modificados.length} planes`,
+          exito: { titulo: 'Catálogo publicado' },
+          error: { titulo: 'No se pudo publicar el catálogo', texto: 'Revisá los planes e intenta de nuevo.' },
+        },
+      )
+      .subscribe({
+        next: (guardados) => {
+          this.publicando.set(false);
+          // Los planes nuevos vuelven con su id real: se reemplazan por
+          // posición dentro de `modificados`, en el mismo orden.
+          const porIdTemporal = new Map<number, Plan>();
+          modificados.forEach((plan, i) => porIdTemporal.set(plan.id, guardados[i]));
+          this.borrador.update((planes) => planes.map((p) => porIdTemporal.get(p.id) ?? p));
+          this.publicadoSnapshot.set(JSON.stringify(this.borrador()));
+        },
+        error: () => {
+          this.publicando.set(false);
+        },
+      });
+  }
+
+  /** `(reintentar)` de `app-pantalla-estado` en el error de carga. */
+  protected reintentar(): void {
+    this.cargar();
+  }
+
+  /** `(volver)` de `app-pantalla-estado` — mismo criterio que
+   * `EmpresasPageComponent.volver()`: recarga la propia pantalla. */
+  protected volver(): void {
+    this.router.navigateByUrl('/planes');
   }
 }

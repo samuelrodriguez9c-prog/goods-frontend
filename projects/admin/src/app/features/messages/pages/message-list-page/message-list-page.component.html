@@ -1,0 +1,236 @@
+<div class="p-8">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-lg font-semibold text-gray-900">Messages</h1>
+      <p class="mt-2 text-sm text-gray-500">Tus conversaciones con soporte de Goods.</p>
+    </div>
+    <button
+      type="button"
+      (click)="abrirNueva()"
+      class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700"
+    >
+      <tabler-icon [icon]="iconNueva" [size]="16" [stroke]="2" />
+      Nueva conversación
+    </button>
+  </div>
+
+  @if (cargando()) {
+    <p class="mt-6 text-sm text-gray-400">Cargando…</p>
+  } @else if (error()) {
+    <div class="mt-6 flex items-center justify-between rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+      <p class="text-sm text-red-600">{{ error() }}</p>
+      <button
+        type="button"
+        (click)="cargarConversaciones()"
+        class="shrink-0 text-sm font-medium text-red-700 underline decoration-red-300 underline-offset-2 hover:text-red-800"
+      >
+        Reintentar
+      </button>
+    </div>
+  } @else if (!conversaciones().length) {
+    <div class="mt-6 flex flex-col items-center justify-center gap-2 rounded-2xl bg-card-bg py-16 text-center shadow-sm">
+      <tabler-icon [icon]="iconModulo" [size]="28" [stroke]="1.5" class="text-gray-300" />
+      <p class="text-[13px] font-medium text-gray-500">Todavía no escribiste a soporte.</p>
+      <button
+        type="button"
+        (click)="abrirNueva()"
+        class="mt-2 flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700"
+      >
+        <tabler-icon [icon]="iconNueva" [size]="16" [stroke]="2" />
+        Iniciar conversación
+      </button>
+    </div>
+  } @else {
+    <div
+      class="mt-6 flex overflow-hidden rounded-2xl bg-card-bg shadow-sm"
+      style="height: calc(100vh - 260px); min-height: 480px"
+    >
+      <!-- Lista de conversaciones -->
+      <div class="flex w-[280px] shrink-0 flex-col border-r border-gray-100">
+        <div class="flex-1 overflow-y-auto">
+          @for (c of conversaciones(); track c.id) {
+            <button
+              type="button"
+              (click)="seleccionar(c.id)"
+              class="flex w-full flex-col gap-1 border-b border-gray-50 px-3.5 py-3 text-left transition-colors duration-150 hover:bg-canvas-bg"
+              [class]="seleccionadaId() === c.id ? 'bg-canvas-bg' : 'bg-transparent'"
+            >
+              <div class="flex items-center gap-2">
+                <span
+                  class="inline-block size-[7px] shrink-0 rounded-full"
+                  [class]="c.estado === 'cerrada' ? 'bg-gray-300' : 'bg-badge-success-solid'"
+                ></span>
+                <span class="min-w-0 flex-1 truncate text-[13px] font-semibold text-gray-900">
+                  {{ nombreAgente(c) ? 'Con ' + nombreAgente(c) : 'Soporte Goods' }}
+                </span>
+                <span class="shrink-0 text-[11px] text-gray-400">{{ tiempoRelativo(c.actualizadoEn) }}</span>
+              </div>
+              <p class="truncate pl-[15px] text-xs text-gray-400">
+                {{ c.estado === 'cerrada' ? 'Cerrada' : nombreAgente(c) ? 'En curso' : 'Esperando respuesta' }}
+              </p>
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Hilo -->
+      <div class="flex min-w-0 flex-1 flex-col">
+        @if (seleccionada(); as c) {
+          <div class="flex flex-wrap items-center gap-3 border-b border-gray-100 px-4 py-3">
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-semibold text-gray-900">
+                {{ nombreAgente(c) ? nombreAgente(c) : 'Soporte Goods' }}
+              </p>
+              <p class="truncate text-xs text-gray-400">
+                {{ nombreAgente(c) ? 'Te está atendiendo' : 'Todavía nadie tomó tu conversación' }}
+              </p>
+            </div>
+            <app-status-badge
+              [label]="c.estado === 'cerrada' ? 'Cerrada' : 'Abierta'"
+              [tone]="c.estado === 'cerrada' ? 'neutral' : 'success'"
+              [dot]="'filled'"
+            />
+          </div>
+
+          <div #hiloScroll class="flex-1 overflow-y-auto px-4 py-4">
+            @if (cargandoHilo()) {
+              <div class="flex animate-pulse flex-col gap-2.5">
+                <span class="h-10 w-2/3 rounded-xl bg-gray-100"></span>
+                <span class="ml-auto h-10 w-1/2 rounded-xl bg-gray-100"></span>
+                <span class="h-10 w-3/5 rounded-xl bg-gray-100"></span>
+              </div>
+            } @else {
+              <div class="flex flex-col gap-3">
+                @for (m of mensajes(); track m.id) {
+                  @if (m.esSistema) {
+                    <div class="flex justify-center py-1">
+                      <span class="max-w-[85%] rounded-full bg-neutral-100 px-3 py-1 text-center text-[11.5px] text-gray-500">
+                        {{ m.cuerpo }}
+                      </span>
+                    </div>
+                  } @else {
+                  <div class="group flex flex-col" [class]="esMio(m) ? 'items-end' : 'items-start'">
+                    <div class="flex items-end gap-1" [class]="esMio(m) ? 'flex-row-reverse' : 'flex-row'">
+                      <div
+                        class="max-w-[70%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-[13.5px] leading-[19px] text-pretty"
+                        [class]="esMio(m) ? 'rounded-br-sm bg-[#303030] text-white' : 'rounded-bl-sm bg-neutral-100 text-gray-900'"
+                      >
+                        @if (m.respondeA; as citado) {
+                          <div
+                            class="mb-1.5 rounded-lg border-l-2 px-2 py-1 text-[12px] leading-[16px]"
+                            [class]="esMio(m) ? 'border-white/40 bg-white/10 text-white/80' : 'border-gray-300 bg-white/70 text-gray-500'"
+                          >
+                            <p class="font-medium">{{ nombreDeAutor(citado.autor, citado.autorId) }}</p>
+                            <p class="truncate">{{ citado.cuerpo }}</p>
+                          </div>
+                        }
+                        {{ m.cuerpo }}
+                      </div>
+                      <button
+                        type="button"
+                        (click)="responderA(m)"
+                        aria-label="Responder a este mensaje"
+                        class="mb-1 shrink-0 rounded-full p-1.5 text-gray-400 opacity-0 transition-opacity duration-150 hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100"
+                      >
+                        <tabler-icon [icon]="iconResponder" [size]="14" [stroke]="2" />
+                      </button>
+                    </div>
+                    <span class="mt-1 px-1 text-[11px] text-gray-400">{{ horaCorta(m.creadoEn) }}</span>
+                  </div>
+                  }
+                } @empty {
+                  <p class="py-8 text-center text-[13px] text-gray-400">Todavía no hay mensajes.</p>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="border-t border-gray-100">
+            @if (c.estado !== 'cerrada' && respondiendoA(); as citado) {
+              <div class="flex items-center gap-2 border-b border-gray-100 bg-canvas-bg px-3.5 py-2">
+                <tabler-icon [icon]="iconResponder" [size]="14" [stroke]="2" class="shrink-0 text-gray-400" />
+                <div class="min-w-0 flex-1">
+                  <p class="text-[11px] font-medium text-gray-500">
+                    Respondiendo a {{ nombreDeAutor(citado.autor, citado.autorId) }}
+                  </p>
+                  <p class="truncate text-[12px] text-gray-400">{{ citado.cuerpo }}</p>
+                </div>
+                <button
+                  type="button"
+                  (click)="cancelarRespuesta()"
+                  aria-label="Cancelar respuesta"
+                  class="shrink-0 rounded-full p-1 text-gray-400 transition-colors duration-150 hover:bg-gray-200 hover:text-gray-600"
+                >
+                  <tabler-icon [icon]="iconCancelarRespuesta" [size]="14" [stroke]="2" />
+                </button>
+              </div>
+            }
+            <div class="flex items-center gap-2 px-3 py-2.5">
+              @if (c.estado === 'cerrada') {
+                <p class="flex-1 px-1 text-xs text-gray-400">
+                  Esta conversación está cerrada — abrí una nueva si necesitás seguir hablando con soporte.
+                </p>
+              } @else {
+                <input
+                  #inputMensaje
+                  type="text"
+                  [ngModel]="mensajeNuevo()"
+                  (ngModelChange)="mensajeNuevo.set($event)"
+                  (keydown.enter)="enviar()"
+                  placeholder="Escribí un mensaje…"
+                  class="min-w-0 flex-1 rounded-[9px] border border-gray-200 bg-card-bg px-3 py-2 text-[13.5px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400"
+                />
+                <button
+                  type="button"
+                  [disabled]="enviando() || !mensajeNuevo().trim()"
+                  (click)="enviar()"
+                  class="flex shrink-0 items-center gap-1.5 rounded-lg bg-gray-900 px-3.5 py-2 text-[13px] font-medium text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-50"
+                >
+                  <tabler-icon [icon]="iconEnviar" [size]="15" [stroke]="2" />
+                  Enviar
+                </button>
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+            <tabler-icon [icon]="iconModulo" [size]="28" [stroke]="1.5" class="text-gray-300" />
+            <p class="text-[13px] font-medium text-gray-500">Elegí una conversación de la lista.</p>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+
+@if (modalNuevaAbierto()) {
+  <app-modal titulo="Nueva conversación" (cerrar)="cerrarNueva()">
+    <p class="text-sm text-gray-500">Contanos en qué te podemos ayudar — un agente de soporte te va a responder acá.</p>
+    <textarea
+      [ngModel]="nuevoMensaje()"
+      (ngModelChange)="nuevoMensaje.set($event)"
+      rows="4"
+      placeholder="Escribí tu mensaje…"
+      [disabled]="creandoConversacion()"
+      class="mt-3 w-full resize-none rounded-lg border border-gray-200 bg-card-bg px-3 py-2 text-[13.5px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400 disabled:opacity-60"
+    ></textarea>
+    <div class="mt-4 flex justify-end gap-2">
+      <button
+        type="button"
+        (click)="cerrarNueva()"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-canvas-bg"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        [disabled]="creandoConversacion() || !nuevoMensaje().trim()"
+        (click)="crearConversacion()"
+        class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3.5 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700 disabled:opacity-50"
+      >
+        <tabler-icon [icon]="iconEnviar" [size]="15" [stroke]="2" />
+        Enviar
+      </button>
+    </div>
+  </app-modal>
+}

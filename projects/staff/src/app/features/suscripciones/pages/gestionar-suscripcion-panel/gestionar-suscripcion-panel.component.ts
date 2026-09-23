@@ -18,6 +18,8 @@ import {
 } from '../../../../core/catalog/suscripcion.service';
 import { EmpresaService } from '../../../../core/catalog/empresa.service';
 import { PlanService } from '../../../../core/catalog/plan.service';
+import { AlertaService } from '../../../../core/ui/alerta.service';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { Plan } from '../../../../core/catalog/models/plan.model';
 
 /** Mismo formato que `formatCop` de `PlanesPageComponent` — repetido a
@@ -77,15 +79,16 @@ interface FilaGestion {
  * número que la página ya tiene. Se pasa como `input` en vez de
  * recargarlo.
  *
- * `actualizada` emite el mensaje de éxito (para el aviso de la página,
- * que sigue viviendo ahí porque aparece DESPUÉS de que este panel ya se
- * cerró) en vez de un evento vacío — la página lo usa tal cual para el
- * toast y recarga su lista.
+ * `actualizada` — desde la integración del sistema de alertas transversal
+ * (LEEME.md §12), el aviso de éxito ya no lo da la página: lo muestra este
+ * panel directo con `AlertaService.seguir()` (misma pila que el resto del
+ * staff), así que `actualizada` volvió a ser un evento vacío — la página
+ * solo lo usa para recargar su lista.
  */
 @Component({
   selector: 'app-gestionar-suscripcion-panel',
   standalone: true,
-  imports: [TablerIconComponent],
+  imports: [TablerIconComponent, PantallaEstadoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './gestionar-suscripcion-panel.component.html',
 })
@@ -93,11 +96,12 @@ export class GestionarSuscripcionPanelComponent {
   private readonly suscripcionService = inject(SuscripcionService);
   private readonly empresaService = inject(EmpresaService);
   private readonly planService = inject(PlanService);
+  private readonly alertas = inject(AlertaService);
 
   readonly empresaId = input.required<number>();
   readonly mrrTotal = input.required<number>();
   readonly cerrar = output<void>();
-  readonly actualizada = output<string>();
+  readonly actualizada = output<void>();
 
   protected readonly formatCop = formatCop;
   protected readonly iconCerrar = IconX;
@@ -114,6 +118,9 @@ export class GestionarSuscripcionPanelComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
+    this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
+  );
   protected readonly guardando = signal(false);
   protected readonly errorGestionar = signal<string | null>(null);
   protected readonly nuevoPlanId = signal<number | null>(null);
@@ -233,6 +240,11 @@ export class GestionarSuscripcionPanelComponent {
     });
   }
 
+  /** `(reintentar)` de `app-pantalla-estado` — vuelve a pedir el mismo id. */
+  protected reintentar(): void {
+    this.cargar(this.empresaId());
+  }
+
   protected resumenPlan(plan: Plan): string {
     const cs = plan.caracteristicas ?? [];
     if (!cs.length) {
@@ -251,16 +263,23 @@ export class GestionarSuscripcionPanelComponent {
 
     this.guardando.set(true);
     this.errorGestionar.set(null);
-    this.suscripcionService.cambiarPlan(fila.empresaId, planId).subscribe({
-      next: () => {
-        this.guardando.set(false);
-        this.actualizada.emit(`${fila.empresaNombre} pasó a ${d.nuevoNombre}.`);
-      },
-      error: (err: unknown) => {
-        this.guardando.set(false);
-        this.errorGestionar.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.suscripcionService.cambiarPlan(fila.empresaId, planId), {
+        titulo: 'Aplicando el cambio de plan',
+        texto: fila.empresaNombre,
+        exito: { titulo: `${fila.empresaNombre} pasó a ${d.nuevoNombre}` },
+        error: { titulo: 'No se pudo aplicar el cambio', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.guardando.set(false);
+          this.actualizada.emit();
+        },
+        error: (err: unknown) => {
+          this.guardando.set(false);
+          this.errorGestionar.set(this.mensajeDeError(err));
+        },
+      });
   }
 
   protected confirmarCambioEstado(estado: EstadoAsignableSuscripcion): void {
@@ -271,18 +290,25 @@ export class GestionarSuscripcionPanelComponent {
 
     this.guardando.set(true);
     this.errorGestionar.set(null);
-    this.suscripcionService.cambiarEstado(fila.suscripcionId, estado).subscribe({
-      next: () => {
-        this.guardando.set(false);
-        this.actualizada.emit(
-          estado === 'cancelada' ? 'Suscripción cancelada.' : 'Suscripción marcada como vencida.',
-        );
-      },
-      error: (err: unknown) => {
-        this.guardando.set(false);
-        this.errorGestionar.set(this.mensajeDeError(err));
-      },
-    });
+    this.alertas
+      .seguir(this.suscripcionService.cambiarEstado(fila.suscripcionId, estado), {
+        titulo: estado === 'cancelada' ? 'Cancelando la suscripción' : 'Marcando como vencida',
+        texto: fila.empresaNombre,
+        exito: {
+          titulo: estado === 'cancelada' ? 'Suscripción cancelada' : 'Suscripción marcada como vencida',
+        },
+        error: { titulo: 'No se pudo actualizar el estado', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.guardando.set(false);
+          this.actualizada.emit();
+        },
+        error: (err: unknown) => {
+          this.guardando.set(false);
+          this.errorGestionar.set(this.mensajeDeError(err));
+        },
+      });
   }
 
   protected onBackdropClick(event: MouseEvent): void {

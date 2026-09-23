@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/cor
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { RealtimeService } from '../../core/realtime/realtime.service';
+import { AlertaOverlayComponent } from '../../shared/ui/alerta-overlay/alerta-overlay.component';
+import { AlertaPilaComponent } from '../../shared/ui/alerta-pila/alerta-pila.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
 
@@ -19,11 +21,17 @@ import { TopbarComponent } from '../topbar/topbar.component';
  * Usuarios) necesita eso, no que la sesión además tenga abierta una
  * pantalla puntual que escuche algo (Usuarios, el asistente de
  * activación).
+ *
+ * `AlertaPilaComponent`/`AlertaOverlayComponent` (LEEME.md §12, integrado
+ * 2026-09-22) van acá — una sola vez para toda la sesión — porque el
+ * estado vive en `AlertaService` (`providedIn: 'root'`): una operación
+ * lanzada en una pantalla sigue avisando si el usuario navega a otra
+ * antes de que termine.
  */
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent, AlertaPilaComponent, AlertaOverlayComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.component.html',
 })

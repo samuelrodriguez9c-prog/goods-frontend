@@ -1,0 +1,84 @@
+<!-- projects/staff/src/app/shared/ui/cabecera-modulo/cabecera-modulo.component.html -->
+
+<!-- Título + acciones -->
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <div class="flex min-w-0 items-center gap-2 text-[20px] text-[#303030]">
+    <ng-content select="[icono]" />
+    <h1 class="m-0 font-display text-[22px] font-semibold leading-7 tracking-[-0.01em] text-gray-900">
+      {{ titulo() }}
+    </h1>
+  </div>
+  <div class="flex items-center gap-2">
+    <ng-content select="[acciones]" />
+  </div>
+</div>
+
+<!-- Tira de métricas -->
+@if (vista().length) {
+  <div
+    class="mt-4 flex overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,0.07),0_0_0_1px_rgba(0,0,0,0.05)]"
+  >
+    @if (periodo()) {
+      <div class="flex min-h-[88px] items-center justify-center border-r border-[#ebebeb] px-3.5">
+        <button
+          type="button"
+          [title]="periodoTitulo()"
+          (click)="periodoClick.emit()"
+          class="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border-0 bg-transparent px-2.5 py-1.5 text-[13px] font-medium text-[#303030] hover:bg-[#f1f1f1]"
+        >
+          <tabler-icon [icon]="iconCalendario" [size]="16" [stroke]="1.75" />
+          {{ periodo() }}
+        </button>
+      </div>
+    }
+
+    @for (m of vista(); track $index) {
+      <button
+        type="button"
+        [title]="m.titulo ?? m.etiqueta"
+        (click)="metricaClick.emit(m.id)"
+        class="flex min-w-0 flex-1 basis-0 cursor-pointer items-end justify-between gap-2.5 border-0 border-r border-[#ebebeb] p-4 text-left transition-colors duration-150 last:border-r-0 hover:bg-[#fafafa]"
+        [class.bg-white]="!m.activa"
+        [class.bg-[#f7f7f7]]="m.activa"
+        [class.shadow-[inset_0_-2px_0_#303030]]="m.activa"
+      >
+        <span class="flex min-w-0 flex-col gap-1.5">
+          <span
+            class="truncate text-[13px] font-semibold text-[#303030] underline decoration-[#b5b5b5] decoration-dotted underline-offset-4"
+          >
+            {{ m.etiqueta }}
+          </span>
+          <span class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            <span class="whitespace-nowrap text-[15px] font-semibold tabular-nums" [style.color]="m.tinta">
+              {{ m.valor }}
+            </span>
+            <span class="text-xs font-medium" [style.color]="m.deltaColor">{{ m.delta }}</span>
+          </span>
+        </span>
+        <svg width="56" height="28" viewBox="0 0 84 28" preserveAspectRatio="none" class="shrink-0 overflow-visible">
+          <line x1="0" y1="27" x2="84" y2="27" stroke="#d4d4d4" stroke-width="1" stroke-dasharray="2 2" />
+          @if (m.linea) {
+            <path
+              [attr.d]="m.linea"
+              fill="none"
+              [attr.stroke]="m.trazo"
+              stroke-width="1.5"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+            />
+          }
+        </svg>
+      </button>
+    }
+  </div>
+}
+
+<!-- Lectura + total -->
+<div class="mt-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 px-1">
+  <p class="m-0 max-w-[680px] text-[13px] leading-5 text-gray-500 text-pretty">
+    <ng-content select="[lectura]" />
+  </p>
+  @if (total()) {
+    <span class="whitespace-nowrap text-xs text-gray-400">{{ total() }}</span>
+  }
+</div>

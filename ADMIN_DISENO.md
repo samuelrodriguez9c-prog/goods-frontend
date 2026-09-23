@@ -2482,6 +2482,160 @@ production` limpio.
 
 
 
+### Sistema de alertas transversal + rediseño de Settings de staff
+(2026-09-22, handoff LEEME.md §12/§13)
+
+Settings (arriba) dependía a propósito de un sistema de alertas que
+todavía no existía en el proyecto — el propio LEEME lo marcaba como
+prerrequisito duro ("AlertaService y EstadoIconoComponent tienen que
+estar integrados antes") — así que se integraron los dos juntos.
+
+Seis piezas nuevas, en `projects/staff/src/app/` (proyecto-local, NO en
+la librería `shared-ui` promovida — ver "Qué construir como librería
+propia" más abajo: esto es exclusivo del panel de staff por ahora, no
+algo que `admin` también consuma):
+
+- `shared/ui/estado-icono/` — el ícono de estado (anillo que gira
+  mientras carga, se cierra en el glifo del resultado al resolver). Un
+  solo componente a 16-76px según dónde se use: fila de tabla, alerta en
+  línea, modal, overlay. Todo el movimiento es CSS
+  (`stroke-dasharray`/`stroke-dashoffset`), no Angular Animations.
+- `shared/ui/alerta-pila/` — alertas apiladas arriba-derecha. La
+  operación en curso y su resultado son la MISMA alerta (`mostrar()` +
+  `resolver(id, …)`), nunca una que desaparece y otra que aparece.
+- `shared/ui/alerta-overlay/` — alerta bloqueante para operaciones sin
+  decisión a medio camino (activar una Empresa, publicar el catálogo).
+  Dos variantes: `tarjeta` (con botones) y `velo` (solo ícono+texto).
+- `shared/ui/pantalla-estado/` — envoltorio de carga/error para una
+  pantalla entera; el esqueleto lo proyecta cada página (forma real, no
+  un spinner genérico).
+- `core/ui/alerta.service.ts` — único dueño del estado (`providedIn:
+  'root'`), con el azúcar `seguir()` para el caso de una llamada HTTP +
+  su alerta en línea.
+
+Montados una sola vez en `layout/shell/shell.component.html`
+(`<app-alerta-pila />` + `<app-alerta-overlay />`), no por página — el
+estado vive en el servicio, así que una operación lanzada en una
+pantalla sigue avisando si el usuario navega a otra antes de que
+termine. Seis keyframes nuevas en `styles.css`: `girar`,
+`aparecer-alerta`, `aparecer-modal`, `barra-indeterminada`, `brillo`
+(sistema de alertas) y `parpadeo`/`sacudir-a`/`sacudir-b` (modal de
+código de Settings). Sin tokens de color nuevos — reutiliza
+`--color-success-solid`/`--color-badge-error-solid`/
+`--color-badge-info-solid` ya definidos, más `#b07400` sin tokenizar
+para warning.
+
+Settings mismo se reescribió sobre esta base: pasó de una columna larga
+a 4 secciones con subnavegación (Perfil/Correo y contacto/Seguridad/
+Cuenta), guardado por barra de cambios flotante (aparece solo si hay
+diff real contra el perfil del servidor, no un botón fijo), modal de
+verificación de correo con un solo input invisible sobre 6 cajas
+(soporta pegar y autocompletado de iOS/Android), tarjeta de "credencial
+de staff" con historial de la cuenta. Mismos endpoints que la versión
+anterior, cero cambios de backend.
+
+Verificado con Playwright contra el backend real: login, las 4
+secciones, editar y guardar con la alerta en vivo (`AlertaPilaComponent`
+mutando de "Guardando cambios" a "Datos guardados"), toggle de
+marketing optimista, modal de cambiar contraseña. Cero errores de
+consola. `ng build staff --configuration production` sin errores
+nuevos — el bundle inicial ya excedía el budget de 500kB antes de este
+cambio (519.89kB), subió a 534.05kB con el sistema de alertas montado en
+el shell (sigue siendo warning, no error). No se pudo probar el flujo
+de verificación de correo de punta a punta (depende de SMTP, no
+disponible en el sandbox de verificación) — misma limitación de
+siempre, documentada en sesiones anteriores.
+
+
+### Alertas integradas globalmente en todo el staff (2026-09-22)
+
+Pedido del usuario: "agregar nuestro sistema de alertas... hay que
+integrarlas globalmente" — llevar `AlertaService` +
+`PantallaEstadoComponent` (construidos para Settings, ver la entrada
+anterior) a las 9 pantallas restantes del staff: Empresas (lista +
+panel de detalle), Altas pendientes (lista + wizard de activación),
+Planes, Suscripciones (lista + panel de gestionar), Auditoría,
+Usuarios (lista + panel de ficha + panel de alta) y Roles y permisos
+(matriz + panel de rol). Regla explícita del usuario en todo momento:
+sumar la capa de alertas SIN tocar la UI contextual que ya tenía cada
+pantalla (barras de guardado, checklists, pasos del wizard, modales de
+confirmación) — nunca reemplazarla.
+
+Patrón aplicado, igual en las 9 pantallas:
+
+- A nivel de página: un `computed` `estadoPantalla` (`error() ?
+  'error' : cargando() ? 'cargando' : 'listo'`) alimenta
+  `<app-pantalla-estado [estado]="estadoPantalla()" modulo="..."
+  (reintentar)="cargar()" (volver)="volver()">`. El esqueleto que ya
+  tenía cada pantalla se movió dentro de `<div esqueleto>` (se ve solo
+  en `cargando`); el resto del template quedó como contenido por
+  defecto (se ve solo en `listo`).
+- Paneles dentro de overlays `fixed inset-0` con layout flex interno
+  (cabecera/cuerpo/pie como hijos directos del flex): se envuelven con
+  `<app-pantalla-estado class="contents" ...>` — el `display: contents`
+  evita que el wrapper rompa el layout flex, dejando que sus hijos
+  actúen como ítems directos del contenedor de afuera. Confirmado en
+  el detalle de Empresa, el wizard de Altas pendientes y el panel de
+  Gestionar suscripción.
+- `(volver)` de un panel cierra el overlay (`cerrar.emit()`), no
+  navega; `(volver)` de una página enrutada vuelve a su propia ruta
+  (`Router.navigateByUrl('/<ruta>')`) — no hay "otro inicio" al que
+  volver, mismo criterio que ya se había fijado para Empresas.
+- A nivel de acción: la llamada HTTP se envuelve directo con
+  `alertas.seguir(peticion$, { titulo, texto?, exito: {...}, error:
+  {...} })`, dejando intactas todas las señales locales
+  (`guardando`/`errorGuardar`/etc.) y toda la UI contextual existente
+  — la alerta es una capa aparte, no un reemplazo.
+
+Un bug se encontró y se corrigió dos veces mientras se replicaba el
+patrón (Planes y Roles), y se evitó por diseño en las siguientes
+pantallas (Suscripciones, Usuarios): varias páginas usaban la MISMA
+señal `error` tanto para el fallo de carga de la página (la que
+alimenta `estadoPantalla`) como para errores de una acción puntual
+(`this.error.set(...)` dentro de `alternarActivo()`, `publicar()`,
+`guardarTodo()`, etc.). Sin corregirlo, que fallara una sola acción
+—por ejemplo, no poder desactivar un plan— hubiera reemplazado toda la
+pantalla por la tarjeta de error fija de `PantallaEstadoComponent` en
+vez de solo avisar la falla puntual. Se sacaron todos esos `.set()` de
+los manejadores de error de acciones; el aviso de esa falla ahora lo
+da la propia alerta en línea de `alertas.seguir()`.
+
+También se eliminó, en vez de solo dejar de usar, el patrón de aviso
+casero que tenían Planes, Suscripciones, Usuarios y Roles antes de
+esta integración: una señal `aviso`/`publicado` + `mostrarAviso()` +
+`setTimeout(2600)` reimplementada casi igual en cada página, con un
+pill de texto al pie de la pantalla. Se borró por completo (señal,
+método y markup), reemplazada por la alerta en línea del
+`AlertaService`.
+
+En Suscripciones y Usuarios había además un quirk de UX marcado en el
+reconocimiento previo a esta fase: el panel hijo (`ficha-usuario-panel`,
+`crear-usuario-panel`, `gestionar-suscripcion-panel`) hacía la llamada
+HTTP real, pero el aviso de éxito/error lo mostraba el padre, vía
+outputs `avisoTexto`/`errorTexto` burbujeando hacia arriba — el error
+aparecía lejos de su causa. Se corrigió inyectando `AlertaService`
+directo en el componente que hace la llamada, y se sacaron esos
+outputs por completo; el padre ya no necesita mostrar nada.
+
+Roles y permisos tenía además una carencia real (no solo de alertas):
+su estado de carga era un `<p>Cargando…</p>` de texto plano, sin
+esqueleto. Se aprovechó el paso por `PantallaEstadoComponent` para
+construirle un esqueleto nuevo que sigue la forma real de la matriz
+(encabezado + filas con fade), consistente con el resto del staff.
+
+Verificado con Playwright contra el backend real, con sesión logueada,
+recorriendo las 9 pantallas (lista + panel/wizard donde aplica) más
+una interacción real por pantalla que ejercita `alertas.seguir()`
+(alternar un plan del catálogo y volver a activarlo, abrir el wizard
+de una alta pendiente, abrir el panel de gestionar de una suscripción,
+abrir un panel de rol, abrir la ficha y el alta de un usuario). Cero
+errores de consola en todo el recorrido. `ng build staff
+--configuration production` sin errores nuevos en cada una de las 9
+pantallas, verificado pantalla por pantalla a medida que se integraba
+cada una (no en un solo build final) — mismo warning preexistente de
+budget del bundle inicial que ya traía Settings, ninguno nuevo.
+
+
 ### Estructura de carpetas de `admin/src/app/`
 
 A partir de acá `admin` deja de ser un único `app.html` con todo

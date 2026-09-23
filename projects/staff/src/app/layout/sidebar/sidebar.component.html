@@ -1,12 +1,14 @@
 <nav
-  class="relative flex h-full w-64 shrink-0 flex-col gap-0.5 rounded-tl-xl bg-sidebar-bg p-3"
+  class="relative flex h-full w-56 shrink-0 flex-col gap-0.5 rounded-tl-xl bg-sidebar-bg p-2.5"
   (mouseleave)="hoveredIndex.set(null)"
 >
   <!-- Indicador deslizante — ver comentario del componente y
        ADMIN_DISENO.md > "Sidebar > Animación" (mismo mecanismo que
-       `admin`, sin la parte de submenús que acá no aplica). -->
+       `admin`, sin la parte de submenús que acá no aplica). `inset-x-2.5`
+       calza con el `p-2.5` del `<nav>` (ajuste 2026-09-23: sidebar más
+       compacto, pedido explícito — ver ADMIN_DISENO.md). -->
   <div
-    class="pointer-events-none absolute inset-x-3 z-0 rounded-lg bg-nav-active transition-all duration-200 ease-out"
+    class="pointer-events-none absolute inset-x-2.5 z-0 rounded-lg bg-nav-active transition-all duration-200 ease-out"
     [style.top.px]="indicatorTop()"
     [style.height.px]="indicatorHeight()"
     [style.opacity]="indicatorVisible() ? 1 : 0"
@@ -22,9 +24,9 @@
       (isActiveChange)="onActiveChange(i, $event)"
       (mouseenter)="hoveredIndex.set(i)"
       [class.text-gray-900]="rla.isActive"
-      class="relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 ease-out"
+      class="relative z-10 flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium text-gray-700 transition-colors duration-200 ease-out"
     >
-      <tabler-icon [icon]="item.icon" [size]="20" [stroke]="1.75" svgClass="shrink-0" />
+      <tabler-icon [icon]="item.icon" [size]="18" [stroke]="1.75" svgClass="shrink-0" />
       <span class="truncate">{{ item.label }}</span>
     </a>
   }
@@ -38,9 +40,9 @@
       [routerLink]="settingsItem.path"
       routerLinkActive="bg-nav-active text-gray-900"
       [routerLinkActiveOptions]="{ exact: settingsItem.exact }"
-      class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
+      class="flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
     >
-      <tabler-icon [icon]="settingsItem.icon" [size]="20" [stroke]="1.75" svgClass="shrink-0" />
+      <tabler-icon [icon]="settingsItem.icon" [size]="18" [stroke]="1.75" svgClass="shrink-0" />
       <span class="truncate">{{ settingsItem.label }}</span>
     </a>
   </div>

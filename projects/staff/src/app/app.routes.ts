@@ -64,6 +64,17 @@ export const routes: Routes = [
           import('./features/auditoria/auditoria.routes').then((m) => m.AUDITORIA_ROUTES),
       },
       {
+        // Destino del botón "Ver todas" de la campanita (`TopbarComponent`)
+        // — pedido explícito 2026-09-23, segunda vuelta. Sin ítem propio en
+        // el sidebar a propósito: se llega acá solo desde el dropdown de
+        // notificaciones, no es un módulo de primer nivel.
+        path: 'notificaciones',
+        loadChildren: () =>
+          import('./features/notificaciones/notificaciones.routes').then(
+            (m) => m.NOTIFICACIONES_ROUTES,
+          ),
+      },
+      {
         path: 'usuarios',
         loadChildren: () =>
           import('./features/usuarios/usuarios.routes').then((m) => m.USUARIOS_ROUTES),

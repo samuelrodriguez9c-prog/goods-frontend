@@ -5,19 +5,22 @@
   <div
     class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[520px] flex-col bg-card-bg shadow-xl"
   >
-    @if (error(); as mensaje) {
-      <div class="flex flex-1 items-center justify-center p-6">
-        <p class="text-sm text-badge-error-solid">{{ mensaje }}</p>
-      </div>
-    } @else if (cargando()) {
-      <div class="flex flex-1 animate-pulse flex-col gap-5 p-6">
+    <app-pantalla-estado
+      class="contents"
+      [estado]="estadoPantalla()"
+      modulo="la Suscripción"
+      (reintentar)="reintentar()"
+      (volver)="cerrar.emit()"
+    >
+      <div esqueleto class="flex flex-1 animate-pulse flex-col gap-5 p-6">
         <span class="h-6 w-64 rounded bg-gray-200"></span>
         <span class="h-4 w-40 rounded bg-gray-100"></span>
         <span class="h-40 w-full rounded-lg bg-gray-100"></span>
         <span class="h-24 w-full rounded-lg bg-gray-100"></span>
       </div>
-    } @else if (fila(); as fila) {
-      <div class="shrink-0 border-b border-gray-200 px-6 pb-4 pt-5">
+
+      @if (fila(); as fila) {
+        <div class="shrink-0 border-b border-gray-200 px-6 pb-4 pt-5">
         <div class="flex items-start gap-3">
           <div class="min-w-0 flex-1">
             <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400">
@@ -168,6 +171,7 @@
           {{ textoBotonAplicar() }}
         </button>
       </div>
-    }
+      }
+    </app-pantalla-estado>
   </div>
 </div>

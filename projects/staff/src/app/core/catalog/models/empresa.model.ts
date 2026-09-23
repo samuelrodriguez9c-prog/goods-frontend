@@ -40,6 +40,17 @@ export interface Empresa {
   duenoNombres: string | null;
   duenoApellidos: string | null;
   duenoCorreo: string | null;
+  /** Cuándo el staff programó "Programar llamada" en el asistente de
+   * activación (`PATCH /empresas/:id/programar-llamada`) — vive en
+   * `GestionAlta.llamadaProgramadaPara` del backend, no en la fila de
+   * Empresa, pero tanto `findAll` como `findOne` ya la traen acá (ver el
+   * comentario en `EmpresaService.findAll` del backend). `null` si no hay
+   * ninguna programada. Antes de que el backend la trajera,
+   * `AltasPendientesPageComponent`/`ActivarEmpresaWizardComponent` la
+   * llevaban solo en memoria del propio componente — se perdía al
+   * recargar la página o al cerrar el asistente (bug real reportado por
+   * el cliente, 2026-09-22). */
+  llamadaProgramadaPara: string | null;
   creadoEn: string;
   actualizadoEn: string;
 }

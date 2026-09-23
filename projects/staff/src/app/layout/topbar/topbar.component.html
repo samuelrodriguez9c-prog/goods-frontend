@@ -1,6 +1,6 @@
 <header class="flex h-15 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
   <div class="flex items-center gap-3">
-    <img src="/logo-goods-plus-wordmark.png" alt="Goods" class="h-12 w-auto" />
+    <img src="/logo-goods-wordmark.png" alt="Goods" class="h-12 w-auto" />
     <span class="h-[22px] w-px bg-topbar-badge-border"></span>
     <span class="text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">Staff</span>
   </div>
@@ -8,6 +8,101 @@
   <div class="flex-1"></div>
 
   <div class="flex shrink-0 items-center gap-1">
+    <!-- Campanita de notificaciones (2026-09-23) — ver el comentario de
+         la clase. `relative` acá es el ancla del panel desplegable de
+         abajo (`absolute right-0`). -->
+    <div class="relative">
+      <button
+        type="button"
+        (click)="togglePanel()"
+        aria-label="Notificaciones"
+        class="relative rounded-md p-1.5 text-neutral-300 hover:bg-white/10 hover:text-white"
+      >
+        <tabler-icon [icon]="iconBell" [size]="20" [stroke]="1.75" />
+        @if (noLeidas() > 0) {
+          <span
+            class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white"
+          >
+            {{ noLeidas() > 9 ? '9+' : noLeidas() }}
+          </span>
+        }
+      </button>
+
+      @if (panelAbierto()) {
+        <!-- Backdrop invisible para cerrar al clickear afuera — mismo
+             criterio que un modal, sin necesitar una librería de
+             overlay para algo tan chico. -->
+        <div class="fixed inset-0 z-40" (click)="cerrarPanel()"></div>
+
+        <div
+          class="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-neutral-200 bg-white text-neutral-900 shadow-lg"
+        >
+          <div class="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
+            <span class="text-sm font-semibold">Notificaciones</span>
+            @if (noLeidas() > 0) {
+              <button
+                type="button"
+                (click)="marcarTodasLeidas()"
+                class="text-xs font-medium text-blue-600 hover:underline"
+              >
+                Marcar todas como leídas
+              </button>
+            }
+          </div>
+
+          <div class="max-h-96 overflow-y-auto">
+            @if (!notificacionesVisibles().length) {
+              <p class="px-3 py-6 text-center text-sm text-neutral-400">
+                No tenés notificaciones todavía.
+              </p>
+            }
+            @for (n of notificacionesVisibles(); track n.id) {
+              <button
+                type="button"
+                (click)="marcarLeida(n)"
+                class="flex w-full flex-col items-start gap-0.5 border-b border-neutral-50 px-3 py-2.5 text-left last:border-0 hover:bg-neutral-50"
+              >
+                <span class="flex w-full items-center gap-1.5">
+                  @if (!n.leidaEn) {
+                    <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600"></span>
+                  }
+                  <span class="truncate text-[13px] font-medium" [class.text-neutral-500]="n.leidaEn">
+                    {{ n.titulo }}
+                  </span>
+                </span>
+                <span class="line-clamp-2 text-xs text-neutral-500">{{ n.cuerpo }}</span>
+                <span class="text-[11px] text-neutral-400">{{ tiempoRelativo(n.creadoEn) }}</span>
+              </button>
+            }
+          </div>
+
+          <!-- Pie del panel — pedido explícito 2026-09-23, segunda vuelta:
+               "borrar todas" (solo visual, ver el comentario de
+               `idsOcultos` en el componente) y "ver todas" (a la página de
+               detalle completo). -->
+          <div class="flex items-center justify-between border-t border-neutral-100 px-3 py-2">
+            <button
+              type="button"
+              [disabled]="!notificacionesVisibles().length"
+              (click)="borrarTodas()"
+              class="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 disabled:opacity-40"
+            >
+              <tabler-icon [icon]="iconBorrar" [size]="13" [stroke]="1.75" />
+              Borrar todas
+            </button>
+            <button
+              type="button"
+              (click)="verTodas()"
+              class="flex items-center gap-0.5 text-xs font-medium text-blue-600 hover:underline"
+            >
+              Ver todas
+              <tabler-icon [icon]="iconVerTodas" [size]="13" [stroke]="2" />
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+
     <span
       class="flex items-center gap-2 rounded-md p-1"
       [title]="

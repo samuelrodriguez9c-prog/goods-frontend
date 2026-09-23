@@ -1,42 +1,37 @@
 <!-- projects/staff/src/app/features/roles/pages/roles-page/roles-page.component.html -->
 
-<div class="p-8 pb-24">
-  <div class="flex flex-wrap items-start justify-between gap-6">
-    <div class="min-w-[280px]">
-      <h1 class="font-display text-[26px] font-semibold leading-8 tracking-[-0.02em] text-gray-900">
-        Roles y permisos
-      </h1>
-      <p class="mt-1.5 max-w-[60ch] text-sm leading-5 text-gray-500 [text-wrap:pretty]">
-        Quién puede hacer qué, en todo el sistema. Tocá una celda para subir o bajar el nivel de
-        acceso — se guarda cuando confirmás.
-      </p>
-    </div>
-
-    <div class="flex flex-wrap items-center gap-7">
-      @for (c of cifras(); track c.etiqueta) {
-        <div>
-          <div class="font-display text-[22px] font-semibold leading-[26px] text-gray-900">{{ c.valor }}</div>
-          <div class="mt-0.5 text-xs text-gray-500">{{ c.etiqueta }}</div>
-        </div>
-      }
+<div class="pt-2 px-8 pb-24">
+  <!-- `pt-2` (no `p-8` arriba): para alinear el título con el sidebar —
+       ver el comentario equivalente en `empresas-page.component.html`. -->
+  <app-cabecera-modulo titulo="Roles y permisos" [periodo]="null" [metricas]="metricasCabecera()">
+    <tabler-icon icono [icon]="iconos.shieldLock" [size]="20" [stroke]="1.75" />
+    <ng-container acciones>
       <button
         type="button"
         (click)="abrirCreacion()"
-        class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3.5 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+        class="flex items-center gap-1.5 rounded-lg border-0 bg-primary-button px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] hover:opacity-90"
       >
-        <tabler-icon [icon]="iconos.plus" [size]="16" [stroke]="2" />
+        <tabler-icon [icon]="iconos.plus" [size]="14" [stroke]="1.75" />
         Nuevo rol
       </button>
+    </ng-container>
+    <ng-container lectura>
+      Quién puede hacer qué, en todo el sistema. Tocá una celda para subir o bajar el nivel de acceso — se guarda
+      cuando confirmás.
+    </ng-container>
+  </app-cabecera-modulo>
+
+  <app-pantalla-estado [estado]="estadoPantalla()" modulo="Roles y permisos" (reintentar)="reintentar()" (volver)="volver()">
+    <div esqueleto class="mt-6 flex animate-pulse flex-col gap-3">
+      <span class="h-10 w-full rounded-[10px] bg-gray-200"></span>
+      <div class="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <span class="block h-11 w-full bg-gray-100"></span>
+        @for (s of [0, 1, 2, 3]; track s) {
+          <span class="block h-[52px] w-full border-t border-gray-100 bg-gray-50" [style.opacity]="1 - s * 0.15"></span>
+        }
+      </div>
     </div>
-  </div>
 
-  @if (error(); as mensaje) {
-    <p class="mt-4 rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid">{{ mensaje }}</p>
-  }
-
-  @if (cargando()) {
-    <p class="mt-6 text-sm text-gray-500">Cargando…</p>
-  } @else {
     <div class="mt-6 flex flex-wrap items-center gap-5 rounded-[10px] bg-[#e8e8e8] px-3.5 py-2.5">
       <span class="text-xs font-medium text-gray-600">Nivel de acceso</span>
       <div class="flex flex-wrap items-center gap-3.5">
@@ -69,7 +64,7 @@
            el que se colaba la celda de al lado — ver ADMIN_DISENO.md). -->
       <div
         class="grid min-w-[900px] items-end border-b border-gray-200 bg-[#fafafa] py-3"
-        [style.gridTemplateColumns]="'240px repeat(' + modulos().length + ', minmax(106px, 1fr)) 130px'"
+        [style.gridTemplateColumns]="'240px repeat(' + modulos().length + ', minmax(88px, 1fr)) 130px'"
       >
         <div
           class="sticky left-0 z-10 bg-[#fafafa] py-0 pl-5 pr-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400"
@@ -107,7 +102,7 @@
             [class.bg-white]="!f.seleccionada && !f.tocada"
             [class.bg-[#fafafa]]="f.seleccionada"
             [class.bg-[#fcfcfa]]="f.tocada && !f.seleccionada"
-            [style.gridTemplateColumns]="'240px repeat(' + modulos().length + ', minmax(106px, 1fr)) 130px'"
+            [style.gridTemplateColumns]="'240px repeat(' + modulos().length + ', minmax(88px, 1fr)) 130px'"
           >
             <div
               class="sticky left-0 z-10 w-[240px] overflow-hidden pl-5 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.08)]"
@@ -194,7 +189,7 @@
         </button>
       }
     </div>
-  }
+  </app-pantalla-estado>
 </div>
 
 <!-- Barra flotante: solo por roles tocados FUERA del panel. -->
@@ -221,15 +216,6 @@
     </button>
   </div>
 }
-
-@if (aviso(); as texto) {
-  <div
-    class="animate-[rise_0.2s_ease-out] fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-xl bg-[#1a1a1a] px-4 py-2.5 text-[13px] text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.45)]"
-  >
-    {{ texto }}
-  </div>
-}
-
 
 <!--
   Panel único: ficha, edición y alta — componente aparte
