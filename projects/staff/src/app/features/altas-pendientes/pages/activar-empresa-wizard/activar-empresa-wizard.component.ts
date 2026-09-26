@@ -45,11 +45,13 @@ import { EmpresaDetallePanelComponent } from '../../../empresas/pages/empresa-de
 import { EmpresaService } from '../../../../core/catalog/empresa.service';
 import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
 import { PlanService } from '../../../../core/catalog/plan.service';
+import { ModuloService } from '../../../../core/catalog/modulo.service';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { AlertaService } from '../../../../core/ui/alerta.service';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { EmpresaConDueno } from '../../../../core/catalog/models/empresa.model';
 import { Plan } from '../../../../core/catalog/models/plan.model';
+import { ModuloCatalogo } from '../../../../core/catalog/models/modulo.model';
 
 /** Payload real de `RealtimeGateway.emitirAUsuario(..., 'empresa.activada', ...)`
  * (ver `EmpresaService.activarPorConfirmacionCliente` del backend). */
@@ -151,6 +153,7 @@ export class ActivarEmpresaWizardComponent {
   private readonly empresaService = inject(EmpresaService);
   private readonly suscripcionService = inject(SuscripcionService);
   private readonly planService = inject(PlanService);
+  private readonly moduloService = inject(ModuloService);
   private readonly realtimeService = inject(RealtimeService);
   private readonly router = inject(Router);
   private readonly alertas = inject(AlertaService);
@@ -223,6 +226,15 @@ export class ActivarEmpresaWizardComponent {
   protected readonly mostrarConfirmacionLlamada = signal(false);
   protected readonly confirmandoLlamada = signal(false);
   protected readonly errorConfirmarLlamada = signal<string | null>(null);
+
+  // Módulos extra (§11.7 de PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md, Fase 2
+  // paso 5) — la lista final se arma en el modal "Terminaste la llamada",
+  // justo antes de confirmar (ver `modulosCandidatos`/`modulosFinales`).
+  // Pre-cargada con `GestionAlta.modulosSolicitados` (lo pedido en el
+  // checkout) pero editable: staff puede sumar, sacar, o coincidir tal
+  // cual con lo pedido.
+  protected readonly catalogoModulos = signal<ModuloCatalogo[]>([]);
+  protected readonly modulosSeleccionados = signal<Set<string>>(new Set());
 
   // Llamada en curso — cronómetro y guion.
   protected readonly horaInicio = signal('');
@@ -355,6 +367,29 @@ export class ActivarEmpresaWizardComponent {
     () => this.planes().find((p) => p.id === this.planId())?.nombre ?? '',
   );
 
+  /** Códigos que YA vienen con el plan elegido — no hace falta ningún
+   * `EmpresaModulo` para esos, `ModuloAccessService` ya los da por la
+   * unión con el Plan (§4.4). Depende de `planId()`, no del original: si
+   * staff cambia el plan acá mismo (arriba, "Corroborá esto en la
+   * llamada"), la lista de candidatos se recalcula sola. */
+  private readonly codigosDelPlanElegido = computed(
+    () => new Set(this.planes().find((p) => p.id === this.planId())?.modulos.map((m) => m.codigo) ?? []),
+  );
+
+  /** Todo el catálogo MENOS lo que ya trae el plan elegido — lo pedido en
+   * el checkout aparece marcado (`pedidoEnCheckout`) y preseleccionado
+   * (ver `cargar()`), el resto queda disponible para que staff sume algo
+   * que el cliente no pidió, si hace falta. */
+  protected readonly modulosCandidatos = computed(() => {
+    const codigosPlan = this.codigosDelPlanElegido();
+    const solicitados = new Set(this.empresa()?.modulosSolicitados ?? []);
+    return this.catalogoModulos()
+      .filter((m) => !codigosPlan.has(m.codigo))
+      .map((m) => ({ ...m, pedidoEnCheckout: solicitados.has(m.codigo) }));
+  });
+
+  protected readonly hayModulosCandidatos = computed(() => this.modulosCandidatos().length > 0);
+
   protected readonly consecuencias = computed(() => {
     const e = this.empresa();
     const correo = e?.duenoCorreo ?? e?.correoContacto ?? '';
@@ -458,8 +493,9 @@ export class ActivarEmpresaWizardComponent {
       empresa: this.empresaService.obtenerUno(id),
       suscripciones: this.suscripcionService.listar('pendiente', id),
       planes: this.planService.listarTodos(),
+      catalogoModulos: this.moduloService.listarCatalogo(),
     }).subscribe({
-      next: ({ empresa, suscripciones, planes }) => {
+      next: ({ empresa, suscripciones, planes, catalogoModulos }) => {
         this.empresa.set(empresa);
         this.nombre.set(empresa.nombre);
         this.telefono.set(empresa.telefonoContacto ?? '');
@@ -467,6 +503,12 @@ export class ActivarEmpresaWizardComponent {
         this.planId.set(this.planIdOriginal);
         this.planes.set(planes.data);
         this.agendadaEn.set(empresa.llamadaProgramadaPara ? new Date(empresa.llamadaProgramadaPara) : null);
+        this.catalogoModulos.set(catalogoModulos);
+        // Pre-carga con lo pedido en el checkout (§11.6/§11.7) — se
+        // filtra contra el plan recién en `modulosCandidatos`/al mandar,
+        // no acá: guardar el crudo evita perder la selección si staff
+        // cambia de plan y vuelve a cambiarlo.
+        this.modulosSeleccionados.set(new Set(empresa.modulosSolicitados ?? []));
         this.cargando.set(false);
 
         if (empresa.estado === 'informacion_corroborada') {
@@ -594,6 +636,21 @@ export class ActivarEmpresaWizardComponent {
     return this.puntosHechos().includes(i);
   }
 
+  /** Tilde/destilde de un módulo candidato en el modal de confirmación
+   * (§11.7) — mismo patrón `Set` que `alternarModuloExtra` del checkout
+   * público (`admin`). */
+  protected alternarModuloCandidato(codigo: string): void {
+    this.modulosSeleccionados.update((actual) => {
+      const copia = new Set(actual);
+      if (copia.has(codigo)) {
+        copia.delete(codigo);
+      } else {
+        copia.add(codigo);
+      }
+      return copia;
+    });
+  }
+
   protected abrirConfirmarLlamadaFinalizada(): void {
     this.errorConfirmarLlamada.set(null);
     this.mostrarConfirmacionLlamada.set(true);
@@ -601,6 +658,24 @@ export class ActivarEmpresaWizardComponent {
 
   protected cancelarConfirmacionLlamada(): void {
     this.mostrarConfirmacionLlamada.set(false);
+  }
+
+  /** Arma `modulosFinales` (§11.7) a partir de lo tildado en
+   * `modulosSeleccionados` — se resuelve `codigo → moduloId` con
+   * `catalogoModulos()` y se filtra contra `codigosDelPlanElegido()` por
+   * las dudas: si staff cambió de plan después de tildar algo, ese código
+   * puede haber quedado cubierto por el plan nuevo y no hace falta
+   * mandarlo como `EmpresaModulo` (ya lo da la unión con el Plan, §4.4).
+   * Todo lo tildado que sobrevive el filtro se manda como `concedido` —
+   * este modal no ofrece revocar nada del plan, solo sumar extras. */
+  private construirModulosFinales(): { moduloId: number; tipo: 'concedido' | 'revocado' }[] {
+    const codigosPlan = this.codigosDelPlanElegido();
+    const porCodigo = new Map(this.catalogoModulos().map((m) => [m.codigo, m.id]));
+    return [...this.modulosSeleccionados()]
+      .filter((codigo) => !codigosPlan.has(codigo))
+      .map((codigo) => porCodigo.get(codigo))
+      .filter((moduloId): moduloId is number => moduloId !== undefined)
+      .map((moduloId) => ({ moduloId, tipo: 'concedido' as const }));
   }
 
   protected confirmarLlamadaFinalizada(): void {
@@ -611,8 +686,9 @@ export class ActivarEmpresaWizardComponent {
 
     this.confirmandoLlamada.set(true);
     this.errorConfirmarLlamada.set(null);
+    const modulosFinales = this.construirModulosFinales();
     this.alertas
-      .seguir(this.empresaService.llamadaFinalizada(actual.id), {
+      .seguir(this.empresaService.llamadaFinalizada(actual.id, modulosFinales.length ? modulosFinales : undefined), {
         titulo: 'Registrando la llamada',
         texto: actual.nombre,
         exito: { titulo: 'Llamada registrada' },

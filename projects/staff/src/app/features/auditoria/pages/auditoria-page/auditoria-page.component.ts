@@ -392,7 +392,12 @@ export class AuditoriaPageComponent {
    *  ventana real de esta pantalla. Serie por hora (8 cubos de 6 h,
    *  `serieAcumulada(fechas, 8, 0.25)`) solo donde hay una fecha por
    *  evento que agrupar: "Personas"/"IPs distintas" son conteos de
-   *  valores únicos, no tienen una. Clic en "Con error" → `lente`. */
+   *  valores únicos, no tienen una. Clic en "Con error" → `lente`.
+   *
+   *  Migrada a v2 (badge) por LEEME.md §16, 2026-09-24 — el badge lo pone
+   *  el HTML (`total() + ' acciones registradas'`, mismo texto que ya
+   *  traía el `[total]` de v1). Las series ya estaban implementadas de
+   *  antes: no hizo falta tocarlas para esta migración. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const hoyFechas = this.deHoy().map((a) => a.creadoEn);
     const errorFechas = this.leibles()

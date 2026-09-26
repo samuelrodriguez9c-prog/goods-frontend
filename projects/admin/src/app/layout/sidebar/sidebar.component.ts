@@ -27,6 +27,14 @@ interface NavItem {
   icon: string;
   /** Solo el item de Dashboard necesita match exacto (vive en '/'). */
   exact: boolean;
+  /** Código de `Modulo` (§10.2 de PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md)
+   *  que la Empresa necesita tener en su plan para ver este item — mismo
+   *  código que usa el backend en `@RequireModulo` (`ModuloGuard`, §10.3).
+   *  Coincide 1 a 1 con cada item de `navItems` de hoy (dashboard/orders/
+   *  products/customers/discounts/messages). Opcional porque `settingsItem`
+   *  (abajo) reutiliza esta misma interfaz pero NO pasa por
+   *  `navItemsVisibles` — Settings no es un módulo, siempre está visible. */
+  codigo?: string;
   /** Submenú tipo Shopify, variante "árbol" (ver ADMIN_DISENO.md >
    *  "Sidebar > Submenús") — a diferencia de la captura de referencia
    *  original, acá solo entran hijos que ya son rutas reales que cargan
@@ -140,13 +148,14 @@ export class SidebarComponent {
   private readonly authService = inject(AuthService);
 
   protected readonly navItems: NavItem[] = [
-    { label: 'Dashboard', path: '/', icon: 'home-2-filled', exact: true },
-    { label: 'Orders', path: '/orders', icon: 'inbox', exact: false },
+    { label: 'Dashboard', path: '/', icon: 'home-2-filled', exact: true, codigo: 'dashboard' },
+    { label: 'Orders', path: '/orders', icon: 'inbox', exact: false, codigo: 'orders' },
     {
       label: 'Products',
       path: '/products',
       icon: 'tag-filled',
       exact: false,
+      codigo: 'products',
       children: [
         { label: 'Categorías', path: '/products/categorias' },
         { label: 'Inventario', path: '/products/inventario' },
@@ -154,10 +163,47 @@ export class SidebarComponent {
         { label: 'Compras', path: '/products/compras' },
       ],
     },
-    { label: 'Customers', path: '/customers', icon: 'user-filled', exact: false },
-    { label: 'Discounts', path: '/discounts', icon: 'discount-2', exact: false },
-    { label: 'Messages', path: '/messages', icon: 'message-circle-2', exact: false },
+    {
+      label: 'Customers',
+      path: '/customers',
+      icon: 'user-filled',
+      exact: false,
+      codigo: 'customers',
+    },
+    {
+      label: 'Discounts',
+      path: '/discounts',
+      icon: 'discount-2',
+      exact: false,
+      codigo: 'discounts',
+    },
+    {
+      label: 'Messages',
+      path: '/messages',
+      icon: 'message-circle-2',
+      exact: false,
+      codigo: 'messages',
+    },
   ];
+
+  /** Items de primer nivel visibles para la Empresa logueada ahora — filtra
+   *  `navItems` por `CurrentUser.modulosDisponibles` (§10.5 de
+   *  PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md), mismo patrón que
+   *  `administracionChildrenVisibles` filtra por `permisos`. Esto es SOLO
+   *  UX (ocultar del menú lo que la Empresa no contrató) — quien de verdad
+   *  impide el acceso es `ModuloGuard` en el backend, así que un link roto
+   *  a mano (o una ruta escrita directo en la barra) sigue devolviendo 403,
+   *  nunca datos. El resto del componente (indicador deslizante, índices,
+   *  `flatChildren`) opera sobre ESTA lista filtrada, nunca sobre
+   *  `navItems` cruda — así los índices de `viewChildren('link')` (que
+   *  siguen el orden real del DOM) calzan siempre con los índices que este
+   *  computed produce. */
+  protected readonly navItemsVisibles = computed(() => {
+    const modulos = this.authService.currentUser()?.modulosDisponibles ?? [];
+    return this.navItems.filter(
+      (item) => item.codigo !== undefined && modulos.includes(item.codigo),
+    );
+  });
 
   /** Settings queda fuera de `navItems`/del indicador deslizante de primer
    *  nivel (está separado del grupo, empujado abajo con `mt-auto`) — es un
@@ -266,7 +312,7 @@ export class SidebarComponent {
    *  acá — no tienen conector que medir, son filas simples. */
   protected readonly flatChildren = computed<FlatChild[]>(() => {
     const result: FlatChild[] = [];
-    for (const item of this.navItems) {
+    for (const item of this.navItemsVisibles()) {
       for (const child of item.children ?? []) {
         result.push({ ...child, groupPath: item.path });
       }

@@ -533,7 +533,13 @@ export class RolesPageComponent {
 
   /** Cabecera compartida (LEEME.md §14) — mismos 3 valores de `cifras()`,
    *  sin serie: no hay historia de roles en el tiempo. La leyenda de
-   *  niveles sigue fuera de la cabecera, debajo. */
+   *  niveles sigue fuera de la cabecera, debajo.
+   *
+   *  Migrada a v2 (badge) por LEEME.md §16, 2026-09-24 — el badge lo pone
+   *  el HTML (`roles().length + ' roles activos'`). La tabla del handoff
+   *  sugiere `serieAcumulada(roles.map(r => r.creadoEn))`, pero `Rol` (ver
+   *  `rol.model.ts`) no tiene `creadoEn`: el backend no lo expone. Sigue sin
+   *  serie, como ya decía este mismo comentario antes de la migración. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() =>
     this.cifras().map((c, i): MetricaCabecera => ({ id: `cifra-${i}`, etiqueta: c.etiqueta, valor: c.valor })),
   );

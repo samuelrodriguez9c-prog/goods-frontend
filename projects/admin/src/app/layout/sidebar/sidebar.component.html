@@ -20,7 +20,7 @@
     [style.opacity]="indicatorVisible() ? 1 : 0"
   ></div>
 
-  @for (item of navItems; track item.path; let i = $index) {
+  @for (item of navItemsVisibles(); track item.path; let i = $index) {
     <div>
       <!-- Fila: el link (crece para llenar el espacio) + el chevron como
            HERMANO, nunca anidado dentro del `<a>` — un `<button>` dentro

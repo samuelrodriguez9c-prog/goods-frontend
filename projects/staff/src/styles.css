@@ -335,3 +335,202 @@
     transform: translateX(6px);
   }
 }
+
+/* Pista (LEEME.md §18, integrado 2026-09-23): aviso liviano abajo al
+ * centro, montado una sola vez en el shell. Dos pares de keyframes
+ * IDÉNTICAS a propósito (`pista-in`/`pista-in-b`, `barra`/`barra-b`):
+ * `PistaComponent` alterna entre ellas según la paridad del `id` de cada
+ * pista, para que el navegador reinicie la animación sin recrear el nodo
+ * del DOM (mismo truco que `sacudir-a`/`sacudir-b` arriba). */
+@keyframes pista-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes pista-in-b {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+/* `barra`/`barra-b` — la franja celeste de la pista con botón de acción
+ * (Deshacer/Quitar), que se va achicando durante los 5 s antes del
+ * auto-cierre. La duración real la fija el componente por `id` con
+ * `[style.animation-duration.ms]`. */
+@keyframes barra {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes barra-b {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.anim-pista-a {
+  animation: pista-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-pista-b {
+  animation: pista-in-b 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-barra-a {
+  animation: barra linear both;
+}
+.anim-barra-b {
+  animation: barra-b linear both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-pista-a,
+  .anim-pista-b {
+    animation-duration: 1ms;
+  }
+}
+
+/* Topbar (LEEME.md §17, integrado 2026-09-24): campanita de
+ * notificaciones — sacudida al llegar una nueva (`campana`), el contador
+ * hace `pop`, y cada fila nueva del panel entra con `entra`. */
+@keyframes campana {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(14deg);
+  }
+  30% {
+    transform: rotate(-12deg);
+  }
+  45% {
+    transform: rotate(9deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes entra {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-campana {
+  animation: campana 900ms ease both;
+}
+.anim-pop {
+  animation: pop 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-entra {
+  animation: entra 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-campana,
+  .anim-pop,
+  .anim-entra {
+    animation-duration: 1ms;
+  }
+}
+
+/* Soporte (LEEME.md §15, integrado 2026-09-24): bandeja rediseñada —
+ * mensajes/líneas de sistema entrando en el hilo (`msg-in`/`linea-in`),
+ * el hilo entero al cambiar de conversación (`hilo-in`), y filas nuevas
+ * que llegan en vivo en la lista agrupada (`fila-in`). Plegar grupos, la
+ * cita sobre el input, el menú de asignar y el aviso inferior usan
+ * transiciones (grid-rows 0fr↔1fr, opacidad, escala), no keyframes: por
+ * eso esos elementos quedan siempre en el DOM (ver el HTML). */
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes linea-in {
+  from {
+    opacity: 0;
+    transform: scaleX(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes hilo-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fila-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-msg-in {
+  animation: msg-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-linea-in {
+  animation: linea-in 420ms ease both;
+}
+.anim-hilo-in {
+  animation: hilo-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-fila-in {
+  animation: fila-in 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-msg-in,
+  .anim-linea-in,
+  .anim-hilo-in,
+  .anim-fila-in {
+    animation-duration: 1ms;
+  }
+}

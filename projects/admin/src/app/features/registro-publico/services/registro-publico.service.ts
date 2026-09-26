@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { PlanPublico, RespuestaPaginada } from '../models/plan-publico.model';
+import { ModuloPublico, PlanPublico, RespuestaPaginada } from '../models/plan-publico.model';
 import {
   EmpresaRegistrada,
   RegistroPublicoEmpresaPayload,
@@ -10,9 +10,10 @@ import {
 
 /**
  * Llamadas al backend de la página pública de registro/checkout (§5) —
- * ambos endpoints son públicos, sin `Authorization` (no pasan por
- * `authInterceptor`, no hace falta sesión): `GET /planes` (solo activos)
- * y `POST /empresas/registro-publico`.
+ * los tres endpoints son públicos, sin `Authorization` (no pasan por
+ * `authInterceptor`, no hace falta sesión): `GET /planes` (solo activos),
+ * `GET /modulos/publico` (§11.6, corrección 2026-09-26) y
+ * `POST /empresas/registro-publico`.
  *
  * Primer feature de `admin` que llama al backend real (login aparte, en
  * `core/auth`) — el resto de `features/` (products, customers, orders...)
@@ -21,6 +22,14 @@ import {
 @Injectable({ providedIn: 'root' })
 export class RegistroPublicoService {
   private readonly http = inject(HttpClient);
+
+  /** `GET /modulos/publico` — catálogo REAL de módulos activos
+   * (`codigo`/`nombre` nomás), no derivado de los planes (ver el
+   * comentario de `RegistroPublicoPageComponent.modulosExtraDisponibles`
+   * sobre por qué la unión de planes no alcanzaba). */
+  listarCatalogoModulos(): Observable<ModuloPublico[]> {
+    return this.http.get<ModuloPublico[]>(`${environment.apiUrl}/modulos/publico`);
+  }
 
   listarPlanes(): Observable<RespuestaPaginada<PlanPublico>> {
     const params = new HttpParams().set('pageSize', 100);

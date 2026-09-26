@@ -1,87 +1,148 @@
-<div class="pt-2 px-8 pb-8">
-  <app-cabecera-modulo titulo="Notificaciones" [periodo]="null" [total]="total() + ' en total'">
-    <tabler-icon icono [icon]="iconModulo" [size]="20" [stroke]="1.75" />
+<!-- projects/staff/src/app/features/notificaciones/pages/notificaciones-page/notificaciones-page.component.html -->
+<div class="p-6">
+  <app-cabecera-modulo
+    titulo="Notificaciones"
+    [periodo]="null"
+    [badge]="noLeidas().length ? noLeidas().length + ' sin leer' : 'al día'"
+    badgeTono="marca"
+    [metricas]="metricas()"
+    [activa]="metricaActiva()"
+    (metricaClick)="seleccionarMetrica($event)"
+  >
+    <tabler-icon icono [icon]="i.modulo" [size]="20" [stroke]="1.75" />
+    <ng-container acciones>
+      <button
+        type="button"
+        (click)="marcarTodas()"
+        [disabled]="!noLeidas().length"
+        class="flex items-center gap-1.5 rounded-lg bg-neutral-200 px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-[background-color,transform,opacity] duration-150 hover:bg-[#d4d4d4] active:scale-[0.97] disabled:opacity-50"
+      >
+        <tabler-icon [icon]="i.marcarTodas" [size]="15" [stroke]="2" />
+        Marcar todas como leídas
+      </button>
+    </ng-container>
     <ng-container lectura>
-      Todas tus notificaciones, con el detalle completo — la campanita solo muestra las últimas.
+      @if (accionables()) {
+        {{ accionables() }} {{ accionables() === 1 ? 'pide' : 'piden' }} que hagas algo: conversaciones sin tomar, altas nuevas o
+        pagos vencidos. El resto es para que estés al tanto.
+      } @else {
+        Nada pendiente de acción. Lo de abajo es para que estés al tanto.
+      }
     </ng-container>
   </app-cabecera-modulo>
 
   <app-pantalla-estado [estado]="estadoPantalla()" modulo="Notificaciones" (reintentar)="cargar()" (volver)="volver()">
-    <div esqueleto class="mt-[22px] flex animate-pulse flex-col gap-2.5">
-      <span class="h-16 w-full rounded-xl bg-gray-100"></span>
+    <div esqueleto class="mt-3.5 flex animate-pulse flex-col gap-2.5">
+      <span class="h-12 w-full rounded-xl bg-gray-100"></span>
       <span class="h-16 w-full rounded-xl bg-gray-100"></span>
       <span class="h-16 w-full rounded-xl bg-gray-100"></span>
     </div>
 
-    <div class="mt-[22px] flex items-center justify-between">
-      <button
-        type="button"
-        (click)="alternarSoloNoLeidas()"
-        class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors duration-150"
-        [class]="soloNoLeidas() ? 'bg-[#303030] text-white' : 'bg-neutral-100 text-gray-600 hover:bg-gray-200'"
-      >
-        {{ soloNoLeidas() ? 'Mostrando: no leídas' : 'Mostrando: todas' }}
-      </button>
-      <span class="text-xs text-gray-400">Página {{ page() }} de {{ totalPaginas() }}</span>
-    </div>
-
-    <div class="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-card-bg">
-      @if (!notificaciones().length) {
-        <p class="px-4 py-10 text-center text-sm text-gray-400">No hay notificaciones para mostrar.</p>
-      }
-      @for (n of notificaciones(); track n.id) {
-        <button
-          type="button"
-          (click)="marcarLeida(n)"
-          class="flex w-full items-start gap-3 border-b border-gray-100 px-4 py-3.5 text-left transition-colors duration-150 last:border-0 hover:bg-neutral-50"
-        >
-          <span
-            class="flex size-8 shrink-0 items-center justify-center rounded-full"
-            [class]="n.leidaEn ? 'bg-neutral-100 text-gray-400' : 'bg-sky-100 text-sky-700'"
-          >
-            <tabler-icon [icon]="catalogoTipo(n.tipo).icono" [size]="16" [stroke]="1.75" />
-          </span>
-          <span class="min-w-0 flex-1">
-            <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span class="text-[13px] font-semibold text-gray-900" [class.text-gray-500]="n.leidaEn">
-                {{ n.titulo }}
-              </span>
-              <span class="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
-                {{ catalogoTipo(n.tipo).etiqueta }}
-              </span>
-              @if (!n.leidaEn) {
-                <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600"></span>
-              }
-            </span>
-            <p class="mt-0.5 whitespace-pre-wrap text-xs text-gray-500">{{ n.cuerpo }}</p>
-            <p class="mt-1 text-[11px] text-gray-400">{{ fechaCompleta(n.creadoEn) }}</p>
-          </span>
-          @if (n.leidaEn) {
-            <tabler-icon [icon]="iconLeida" [size]="15" [stroke]="1.75" class="mt-1 shrink-0 text-emerald-500" />
+    <div class="mt-3.5 overflow-hidden rounded-xl bg-card-bg shadow-[0_1px_0_rgba(0,0,0,0.07),0_0_0_1px_rgba(0,0,0,0.05)]">
+      <!-- Barra: segmentado · búsqueda · chip de categoría -->
+      <div class="flex flex-wrap items-center gap-2.5 border-b border-[#f0f0f0] px-3 py-2.5">
+        <div class="flex rounded-[9px] bg-[#f1f1f1] p-0.5">
+          @for (sg of [{ v: false, t: 'Todas' }, { v: true, t: 'Sin leer' }]; track sg.t) {
+            <button
+              type="button"
+              (click)="soloNoLeidas.set(sg.v)"
+              class="rounded-[7px] px-[11px] py-[5px] text-xs font-medium transition-[background-color,color,box-shadow] duration-200"
+              [class]="soloNoLeidas() === sg.v ? 'bg-white text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)]' : 'text-gray-500'"
+            >
+              {{ sg.t }}
+            </button>
           }
-        </button>
+        </div>
+        <div class="flex min-w-[200px] flex-1 items-center gap-2">
+          <tabler-icon [icon]="i.buscar" [size]="15" [stroke]="2" class="text-gray-400" />
+          <input
+            type="text"
+            [ngModel]="busqueda()"
+            (ngModelChange)="busqueda.set($event)"
+            placeholder="Buscar por Empresa, cliente o texto"
+            class="min-w-0 flex-1 border-0 bg-transparent py-1 text-[13px] text-gray-900 outline-none placeholder:text-gray-400"
+          />
+        </div>
+        @if (categoria(); as c) {
+          <button
+            type="button"
+            (click)="categoria.set(null)"
+            class="inline-flex items-center gap-1.5 rounded-full bg-neutral-200 py-1 pl-[11px] pr-1.5 text-xs font-medium text-[#303030] transition-colors duration-150 hover:bg-[#d4d4d4]"
+          >
+            {{ c === 'soporte' ? 'Soporte' : c === 'empresas' ? 'Empresas' : 'Suscripciones' }}
+            <tabler-icon [icon]="i.x" [size]="12" [stroke]="2" />
+          </button>
+        }
+      </div>
+
+      @for (g of grupos(); track g.titulo) {
+        <div class="sticky top-0 z-[1] flex items-center gap-2 border-b border-[#f5f5f5] bg-[#fafafa]/95 px-4 py-[7px] backdrop-blur-[6px]">
+          <span class="text-[11.5px] font-semibold uppercase tracking-[0.03em] text-gray-500">{{ g.titulo }}</span>
+          <span class="text-[11.5px] text-[#b5b5b5]">{{ g.items.length }}</span>
+        </div>
+        @for (f of g.items; track f.n.id) {
+          <div
+            class="flex items-center gap-3.5 border-b border-[#f5f5f5] px-4 py-3 transition-colors duration-200 hover:bg-[#fafafa]"
+            [class]="f.leida ? 'bg-white' : 'bg-[#fbfcfd]'"
+          >
+            <button
+              type="button"
+              (click)="alternar(f.n)"
+              [title]="f.leida ? 'Marcar como no leída' : 'Marcar como leída'"
+              [attr.aria-label]="f.leida ? 'Marcar como no leída' : 'Marcar como leída'"
+              class="flex size-[18px] shrink-0 items-center justify-center rounded-full transition-colors duration-150 hover:bg-[#e6e6e6]"
+            >
+              <span
+                class="size-2 rounded-full transition-[background-color,transform,box-shadow] duration-200"
+                [class]="f.leida ? 'scale-[0.85] bg-transparent shadow-[inset_0_0_0_1.5px_#d4d4d4]' : 'bg-[#2be0d5] shadow-[0_0_0_3px_rgba(43,224,213,0.22)]'"
+              ></span>
+            </button>
+            <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px]" [style.background]="f.iconoFondo" [style.color]="f.iconoTinta">
+              <tabler-icon [icon]="f.icono" [size]="17" [stroke]="1.75" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span class="text-[13.5px]" [class]="f.leida ? 'font-medium text-gray-600' : 'font-semibold text-gray-900'">{{ f.n.titulo }}</span>
+                <span class="rounded-md bg-[#f1f1f1] px-1.5 py-px text-[11px] font-medium text-[#616161]">{{ f.etiqueta }}</span>
+              </div>
+              <p class="mt-0.5 text-[12.5px] leading-[18px] text-gray-500 text-pretty">{{ f.n.cuerpo }}</p>
+            </div>
+            <span [title]="fechaLarga(f.n.creadoEn)" class="shrink-0 text-xs tabular-nums text-gray-400">{{ horaCorta(f.n.creadoEn) }}</span>
+            <button
+              type="button"
+              (click)="abrir(f)"
+              class="flex shrink-0 items-center gap-[5px] rounded-lg border border-[#e3e3e3] bg-card-bg px-2.5 py-1.5 text-xs font-medium text-[#303030] transition-[background-color,border-color,transform] duration-150 hover:border-[#cfcfcf] hover:bg-[#f7f7f7] active:scale-[0.97]"
+            >
+              {{ f.accion }}
+              <tabler-icon [icon]="i.flecha" [size]="13" [stroke]="2" />
+            </button>
+          </div>
+        }
+      } @empty {
+        <div class="px-4 py-12 text-center">
+          <span class="inline-flex size-11 items-center justify-center rounded-xl bg-[#f1f1f1] text-gray-400">
+            <tabler-icon [icon]="i.vacio" [size]="22" [stroke]="1.75" />
+          </span>
+          <p class="mt-2.5 text-[13px] font-medium text-gray-700">{{ busqueda() ? 'Sin resultados' : 'Todo al día' }}</p>
+          <p class="mt-0.5 text-xs text-gray-400">
+            {{ busqueda() ? 'Nada coincide con “' + busqueda() + '”.' : 'No hay notificaciones acá.' }}
+          </p>
+        </div>
+      }
+
+      @if (hayMas()) {
+        <div class="flex justify-center p-3">
+          <button
+            type="button"
+            (click)="cargarAnteriores()"
+            [disabled]="cargandoMas()"
+            class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium text-gray-600 transition-colors duration-150 hover:bg-[#f1f1f1] disabled:opacity-50"
+          >
+            <tabler-icon [icon]="i.mas" [size]="14" [stroke]="2" [class.animate-bounce]="cargandoMas()" />
+            {{ cargandoMas() ? 'Cargando…' : 'Cargar anteriores' }}
+          </button>
+        </div>
       }
     </div>
-
-    @if (totalPaginas() > 1) {
-      <div class="mt-3 flex items-center justify-center gap-2">
-        <button
-          type="button"
-          [disabled]="page() <= 1"
-          (click)="paginaAnterior()"
-          class="rounded-lg border border-gray-200 bg-card-bg px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-canvas-bg disabled:opacity-40"
-        >
-          Anterior
-        </button>
-        <button
-          type="button"
-          [disabled]="page() >= totalPaginas()"
-          (click)="paginaSiguiente()"
-          class="rounded-lg border border-gray-200 bg-card-bg px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-canvas-bg disabled:opacity-40"
-        >
-          Siguiente
-        </button>
-      </div>
-    }
   </app-pantalla-estado>
 </div>

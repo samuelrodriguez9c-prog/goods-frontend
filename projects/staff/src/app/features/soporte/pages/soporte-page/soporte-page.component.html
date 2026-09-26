@@ -1,188 +1,290 @@
-<div class="pt-2 px-8 pb-8">
-  <!-- Sin `mx-auto max-w-[...]`: todo el módulo ocupa el ancho completo
-       del layout, igual que Empresas — mismo criterio que el resto del
-       sidebar (ver empresas-page.component.html). -->
+<!-- projects/staff/src/app/features/soporte/pages/soporte-page/soporte-page.component.html -->
+<div class="flex h-[calc(100vh-64px)] min-h-[640px] flex-col p-6">
+  <!-- Migrada a v2 (badge "En vivo" + lectura arriba) por LEEME.md §16,
+       2026-09-24 — usa el ejemplo literal del handoff (`badge="En vivo"
+       badgeTono="vivo"`) en vez del pill manual que había en [acciones],
+       que quedaba duplicando lo que el badge ya resuelve. -->
   <app-cabecera-modulo
     titulo="Soporte"
     [periodo]="null"
     [metricas]="metricasCabecera()"
     [activa]="filtro()"
-    [total]="abiertas().length + ' abiertas'"
-    (metricaClick)="seleccionarFiltro($event)"
+    badge="En vivo"
+    badgeTono="vivo"
+    (metricaClick)="seleccionarMetrica($event)"
   >
-    <tabler-icon icono [icon]="iconModulo" [size]="20" [stroke]="1.75" />
+    <tabler-icon icono [icon]="i.modulo" [size]="20" [stroke]="1.75" />
+    <ng-container acciones>
+      <div class="hidden items-center gap-2.5 text-xs text-gray-500 xl:flex">
+        @for (k of [{ t: 'J K', d: 'moverse' }, { t: 'R', d: 'responder' }, { t: 'A', d: 'asignarme' }, { t: '/', d: 'buscar' }]; track k.t) {
+          <span class="flex items-center gap-1">
+            @for (letra of k.t.split(' '); track letra) {
+              <kbd class="rounded-[5px] border border-b-2 border-[#d4d4d4] bg-card-bg px-[5px] font-sans text-[11px] text-[#303030]">{{ letra }}</kbd>
+            }
+            {{ k.d }}
+          </span>
+        }
+      </div>
+    </ng-container>
     <ng-container lectura>
-      Conversaciones de soporte con las Empresas clientes — bandeja compartida: cualquiera con acceso la ve, y se
-      asigna sola al primero que responde.
+      @if (masVieja(); as v) {
+        <span class="inline-flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          La más vieja sin asignar es de
+          <button
+            type="button"
+            (click)="abrirMasVieja()"
+            class="inline-flex items-center gap-1.5 rounded-full bg-card-bg py-0.5 pl-[3px] pr-2.5 text-[12.5px] font-semibold text-[#303030] shadow-[0_0_0_1px_rgba(0,0,0,0.07)] transition-[box-shadow,transform] duration-200 hover:-translate-y-px hover:shadow-[0_0_0_1px_rgba(0,0,0,0.14),0_2px_6px_-2px_rgba(0,0,0,0.12)] active:scale-[0.97]"
+          >
+            <span class="flex size-5 items-center justify-center rounded-full text-[9px] font-semibold" [style.background]="v.fondo" [style.color]="v.tinta">{{ v.iniciales }}</span>
+            {{ v.cliente }}
+            <tabler-icon [icon]="i.abrir" [size]="12" [stroke]="2" class="text-gray-400" />
+          </button>
+          <span
+            class="inline-flex items-center gap-1 rounded-full px-2 py-px text-xs font-medium tabular-nums"
+            [class]="v.larga ? 'bg-[#fde7d3] text-[#7c2d12]' : 'bg-[#fff1e3] text-[#9a3412]'"
+          >
+            <tabler-icon [icon]="i.reloj" [size]="12" [stroke]="2" />
+            {{ v.espera }}
+          </span>
+          · se asigna sola al primero que responde.
+        </span>
+      } @else {
+        <span class="inline-flex items-center gap-1.5">
+          <tabler-icon [icon]="i.ok" [size]="15" [stroke]="2" class="text-[#29845a]" />
+          Bandeja al día: nadie espera. Las nuevas se asignan solas al primero que responde.
+        </span>
+      }
     </ng-container>
   </app-cabecera-modulo>
 
-  <app-pantalla-estado [estado]="estadoPantalla()" modulo="Soporte" (reintentar)="cargarBandeja()">
-    <div esqueleto class="mt-6 flex gap-4">
-      <span class="h-[560px] w-[320px] shrink-0 rounded-xl bg-gray-200"></span>
-      <span class="h-[560px] flex-1 rounded-xl bg-gray-100"></span>
+  <app-pantalla-estado class="contents" [estado]="estadoPantalla()" modulo="Soporte" (reintentar)="cargarBandeja()">
+    <div esqueleto class="mt-4 flex flex-1 gap-4">
+      <span class="w-[320px] shrink-0 rounded-xl bg-gray-200"></span>
+      <span class="flex-1 rounded-xl bg-gray-100"></span>
     </div>
 
     <div
-      class="mt-6 flex overflow-hidden rounded-xl border border-gray-200 bg-card-bg"
-      style="height: calc(100vh - 260px); min-height: 480px"
+      class="mt-4 grid min-h-0 flex-1 grid-cols-[minmax(260px,320px)_minmax(0,1fr)] overflow-hidden rounded-xl bg-card-bg shadow-[0_1px_0_rgba(0,0,0,0.07),0_0_0_1px_rgba(0,0,0,0.05)]"
     >
-      <!-- Lista de conversaciones -->
-      <div class="flex w-[320px] shrink-0 flex-col border-r border-gray-100">
-        <div class="flex items-center gap-1.5 border-b border-gray-100 px-3 py-2.5">
-          @for (f of [{ id: 'todas', texto: 'Todas' }, { id: 'sin_asignar', texto: 'Sin asignar' }, { id: 'mias', texto: 'Mías' }]; track f.id) {
+      <!-- ─── Lista ─── -->
+      <div class="flex min-h-0 flex-col border-r border-[#ebebeb]">
+        <div class="flex items-center gap-2 border-b border-gray-100 px-3 py-2.5">
+          <tabler-icon [icon]="i.buscar" [size]="15" [stroke]="2" class="shrink-0 text-gray-400" />
+          <input
+            #buscador
+            type="text"
+            [ngModel]="busqueda()"
+            (ngModelChange)="busqueda.set($event)"
+            (keydown.enter)="enterEnBuscador()"
+            placeholder="Buscar cliente o mensaje"
+            class="min-w-0 flex-1 border-0 bg-transparent py-0.5 text-[13px] text-gray-900 outline-none placeholder:text-gray-400"
+          />
+          @if (busqueda()) {
             <button
               type="button"
-              (click)="seleccionarFiltro(f.id)"
-              class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors duration-150"
-              [class]="filtro() === f.id ? 'bg-[#303030] text-white' : 'bg-neutral-100 text-gray-600 hover:bg-gray-200'"
+              (click)="limpiarBusqueda()"
+              aria-label="Limpiar búsqueda"
+              class="flex rounded-full p-0.5 text-gray-400 transition-colors duration-150 hover:bg-[#f1f1f1] hover:text-gray-600"
             >
-              {{ f.texto }}
+              <tabler-icon [icon]="i.x" [size]="14" [stroke]="2" />
             </button>
           }
         </div>
 
-        <div class="flex-1 overflow-y-auto">
-          @for (c of visibles(); track c.id) {
-            <button
-              type="button"
-              (click)="seleccionar(c.id)"
-              class="flex w-full flex-col gap-1 border-b border-gray-100 px-3.5 py-3 text-left transition-colors duration-150 hover:bg-neutral-50"
-              [class]="seleccionadaId() === c.id ? 'bg-neutral-100' : 'bg-transparent'"
-            >
-              <div class="flex items-center gap-2">
-                <span
-                  class="inline-block size-[7px] shrink-0 rounded-full"
-                  [class]="c.estado === 'cerrada' ? 'bg-gray-300' : c.agenteAsignadoId ? 'bg-badge-success-solid' : 'bg-amber-500'"
-                ></span>
-                <span class="min-w-0 flex-1 truncate text-[13px] font-semibold text-gray-900">
-                  {{ nombreCliente(c) }}
+        <div class="min-h-0 flex-1 overflow-y-auto">
+          @for (g of grupos(); track g.id) {
+            <div>
+              <button
+                type="button"
+                (click)="alternarGrupo(g.id)"
+                [attr.aria-expanded]="g.abierto"
+                class="sticky top-0 z-[1] flex w-full items-center gap-[9px] border-b border-[#f0f0f0] bg-white/95 py-[9px] pl-2.5 pr-3 text-left backdrop-blur-[6px] transition-colors duration-200 hover:bg-[#fafafa]"
+              >
+                <span class="flex size-6 shrink-0 items-center justify-center rounded-[7px]" [style.background]="g.iconoFondo" [style.color]="g.iconoTinta">
+                  <tabler-icon [icon]="g.icono" [size]="14" [stroke]="2" />
                 </span>
-                <span class="shrink-0 text-[11px] text-gray-400">{{ tiempoRelativo(c.actualizadoEn) }}</span>
+                <span class="flex min-w-0 flex-1 flex-col">
+                  <span class="flex items-center gap-1.5">
+                    <span class="text-[12.5px] font-semibold text-gray-900">{{ g.titulo }}</span>
+                    <span
+                      class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums"
+                      [style.background]="g.cuentaFondo"
+                      [style.color]="g.cuentaTinta"
+                      >{{ g.items.length }}</span
+                    >
+                  </span>
+                  @if (g.meta) {
+                    <span class="truncate text-[11px] text-gray-400">{{ g.meta }}</span>
+                  }
+                </span>
+                <tabler-icon
+                  [icon]="i.chevron"
+                  [size]="14"
+                  [stroke]="2"
+                  class="text-gray-400 transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                  [class.-rotate-90]="!g.abierto"
+                />
+              </button>
+
+              <!-- Plegado suave: grid-rows 0fr ↔ 1fr -->
+              <div
+                class="grid transition-[grid-template-rows,opacity] duration-[340ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                [style.grid-template-rows]="g.abierto ? '1fr' : '0fr'"
+                [style.opacity]="g.abierto ? 1 : 0"
+              >
+                <div class="min-h-0 overflow-hidden">
+                  @for (f of g.items; track f.id) {
+                    <button
+                      type="button"
+                      (click)="seleccionar(f.id)"
+                      class="flex w-full gap-2.5 border-b border-[#f5f5f5] px-3 py-[9px] text-left transition-[background-color,box-shadow] duration-200 hover:bg-[#f7f7f7]"
+                      [class.anim-fila-in]="f.animar"
+                      [class]="seleccionadaId() === f.id ? 'bg-[#f1f1f1] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]' : f.nueva ? 'bg-[#f4f8fe]' : 'bg-card-bg'"
+                    >
+                      <span class="relative flex size-[30px] shrink-0 items-center justify-center rounded-full text-[11px] font-semibold" [style.background]="f.fondo" [style.color]="f.tinta">
+                        {{ f.iniciales }}
+                        @if (f.nueva) {
+                          <span class="absolute -right-px -top-px size-[9px] rounded-full bg-[#2c6ecb] shadow-[0_0_0_2px_#fff]"></span>
+                        }
+                      </span>
+                      <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span class="flex items-baseline gap-2">
+                          <span class="min-w-0 flex-1 truncate text-[13px] text-gray-900" [class]="f.nueva ? 'font-bold' : 'font-semibold'">{{ f.cliente }}</span>
+                          <span class="shrink-0 text-[11px] tabular-nums text-gray-400">{{ f.cuando }}</span>
+                        </span>
+                        <span class="truncate text-xs leading-[17px]" [class]="f.nueva ? 'text-[#303030]' : 'text-gray-500'">{{ f.preview }}</span>
+                        <span class="mt-0.5 flex">
+                          <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-px text-[11px] font-medium" [style.background]="f.chip.fondo" [style.color]="f.chip.tinta">
+                            <tabler-icon [icon]="f.chip.icono" [size]="12" [stroke]="2" />
+                            {{ f.chip.texto }}
+                          </span>
+                        </span>
+                      </span>
+                    </button>
+                  }
+                </div>
               </div>
-              <p class="truncate pl-[15px] text-xs text-gray-400">
-                {{ c.estado === 'cerrada' ? 'Cerrada' : nombreAgente(c) ? 'Con ' + nombreAgente(c) : 'Sin asignar' }}
-              </p>
-            </button>
+            </div>
           } @empty {
-            <div class="px-4 py-8 text-center">
-              <p class="text-[13px] font-medium text-gray-700">Nada acá.</p>
-              <p class="mt-1 text-xs text-gray-400">
-                {{ filtro() === 'sin_asignar' ? 'No hay conversaciones libres.' : filtro() === 'mias' ? 'No tenés conversaciones asignadas.' : 'Todavía no hay conversaciones.' }}
+            <div class="px-4 py-10 text-center">
+              <tabler-icon [icon]="i.vacio" [size]="22" [stroke]="1.5" class="text-[#d4d4d4]" />
+              <p class="mt-1.5 text-[13px] font-medium text-gray-700">{{ busqueda() ? 'Sin resultados' : 'Nada acá' }}</p>
+              <p class="mt-0.5 text-xs text-gray-400">
+                {{ busqueda() ? 'Nada coincide con “' + busqueda() + '”.' : 'No hay conversaciones en este grupo.' }}
               </p>
             </div>
           }
         </div>
       </div>
 
-      <!-- Hilo -->
-      <div class="flex min-w-0 flex-1 flex-col">
+      <!-- ─── Hilo ─── -->
+      <div class="flex min-h-0 min-w-0 flex-col">
         @if (seleccionada(); as c) {
-          <div class="flex flex-wrap items-center gap-3 border-b border-gray-100 px-4 py-3">
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-semibold text-gray-900">{{ nombreCliente(c) }}</p>
-              <p class="truncate text-xs text-gray-400">{{ c.usuario?.correo ?? ('Usuario #' + c.usuarioId) }}</p>
-            </div>
-            <app-status-badge
-              [label]="c.estado === 'cerrada' ? 'Cerrada' : 'Abierta'"
-              [tone]="c.estado === 'cerrada' ? 'neutral' : 'success'"
-              [dot]="'filled'"
-            />
-            <!-- El indicador "Asignada a [usuario]" que vivía acá se
-                 reemplazó por un mensaje de sistema dentro del propio hilo
-                 (ver MENSAJES_SISTEMA.ASIGNADA en el backend) — pedido
-                 explícito 2026-09-23, segunda vuelta: así queda en el
-                 historial CUÁNDO se asignó, no solo un estado fijo en el
-                 header. "Sin asignar" se deja igual: no es lo que pidieron
-                 reemplazar, y sigue siendo útil de un vistazo. -->
-            @if (!nombreAgente(c) && c.estado === 'abierta') {
-              <span class="whitespace-nowrap text-xs text-amber-700">Sin asignar</span>
-            }
-            @if (puedeGestionar() && c.estado === 'abierta') {
-              <!-- Tercera vuelta (2026-09-23): "Asignarme" ahora también
-                   aparece sobre una conversación ya asignada a OTRO agente
-                   (antes solo sobre una sin asignar) — es el botón que
-                   "toma" la conversación, pedido explícito del usuario en
-                   vez de dejar que admin/admin_goods escriban sin
-                   tomarla primero (ver `puedeEscribir()`/el bloqueo del
-                   input más abajo). -->
-              @if (puedeAsignarme()) {
-                <button
-                  type="button"
-                  [disabled]="asignando()"
-                  (click)="asignarme()"
-                  class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors duration-150 hover:bg-canvas-bg disabled:opacity-50"
-                >
-                  <tabler-icon [icon]="iconMias" [size]="14" [stroke]="2" />
-                  Asignarme
-                </button>
-              }
-              <!-- "Devolver a X" (tercera vuelta) — solo cuando YO tomé la
-                   conversación de otro agente y quedó el rastro de quién
-                   era. -->
-              @if (puedeDevolver()) {
-                <button
-                  type="button"
-                  [disabled]="asignando()"
-                  (click)="devolver()"
-                  class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors duration-150 hover:bg-canvas-bg disabled:opacity-50"
-                >
-                  <tabler-icon [icon]="iconReabrir" [size]="14" [stroke]="2" />
-                  Devolver a {{ nombreAgenteAnterior(c) }}
-                </button>
-              }
-              <!-- Selector "Asignar a otro" (tercera vuelta): admin/admin_goods
-                   puede reasignar a cualquier otro miembro del staff, no
-                   solo tomarla para sí. -->
-              @if (esAdminOAdminGoods()) {
-                <div class="relative shrink-0">
+          @if (cabeceraHilo(); as h) {
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2.5 border-b border-gray-100 px-4 py-3">
+              <span class="flex size-[34px] shrink-0 items-center justify-center rounded-full text-xs font-semibold" [style.background]="h.fondo" [style.color]="h.tinta">{{ h.iniciales }}</span>
+              <div class="min-w-[160px] flex-[1_1_200px]">
+                <p class="truncate text-sm font-semibold text-gray-900">{{ h.cliente }}</p>
+                <p class="truncate text-xs text-gray-500">{{ h.correo }} · abierta {{ h.desde }}</p>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <!-- Control único de asignación -->
+                <div data-menu-asignar class="relative">
                   <button
                     type="button"
-                    [disabled]="asignando()"
-                    (click)="mostrandoSelectorAsignar() ? cerrarSelectorAsignar() : abrirSelectorAsignar()"
-                    class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors duration-150 hover:bg-canvas-bg disabled:opacity-50"
+                    (click)="alternarMenu()"
+                    [disabled]="!menuHabilitado() || asignando()"
+                    class="flex items-center gap-[7px] rounded-lg border py-[5px] pl-1.5 pr-2 text-[12.5px] font-medium text-[#303030] transition-[background-color,border-color,transform,opacity] duration-200 hover:bg-[#f7f7f7] active:scale-[0.97] disabled:cursor-default disabled:hover:bg-card-bg"
+                    [class]="menuAbierto() ? 'border-[#b5b5b5] bg-[#f7f7f7]' : 'border-[#e3e3e3] bg-card-bg'"
+                    [class.opacity-60]="c.estado === 'cerrada'"
                   >
-                    <tabler-icon [icon]="iconAsignarOtro" [size]="14" [stroke]="2" />
-                    Asignar a otro
-                  </button>
-                  @if (mostrandoSelectorAsignar()) {
-                    <div class="absolute right-0 top-full z-10 mt-1 w-56 rounded-xl border border-gray-200 bg-card-bg py-1 shadow-lg">
-                      @if (cargandoStaffAsignable()) {
-                        <p class="px-3 py-2 text-xs text-gray-400">Cargando personal…</p>
-                      } @else if (!staffAsignable().length) {
-                        <p class="px-3 py-2 text-xs text-gray-400">No hay personal disponible.</p>
+                    <span
+                      class="flex size-5 items-center justify-center rounded-full text-[9.5px] font-semibold"
+                      [class]="!h.agente ? 'bg-[#fff1e3] text-[#b45309]' : h.esMia ? 'bg-[#303030] text-white' : 'bg-[#e3e3e3] text-gray-600'"
+                    >
+                      @if (h.agente) {
+                        {{ h.agenteIniciales }}
                       } @else {
-                        @for (u of staffAsignable(); track u.id) {
-                          <button
-                            type="button"
-                            [disabled]="asignando() || u.id === c.agenteAsignadoId"
-                            (click)="reasignarA(u.id)"
-                            class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs text-gray-700 transition-colors duration-150 hover:bg-canvas-bg disabled:cursor-default disabled:opacity-50"
-                          >
-                            <span class="truncate">{{ u.nombres }} {{ u.apellidos }}</span>
-                            @if (u.id === c.agenteAsignadoId) {
-                              <span class="shrink-0 text-[10px] uppercase text-gray-400">Actual</span>
-                            }
-                          </button>
-                        }
+                        <tabler-icon [icon]="i.sinAgente" [size]="12" [stroke]="2" />
                       }
-                    </div>
-                  }
-                </div>
-              }
-              <button
-                type="button"
-                [disabled]="cerrando()"
-                (click)="cerrarConversacion()"
-                class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors duration-150 hover:bg-canvas-bg disabled:opacity-50"
-              >
-                <tabler-icon [icon]="iconCerrar" [size]="14" [stroke]="2" />
-                Cerrar
-              </button>
-            }
-          </div>
+                    </span>
+                    <span class="whitespace-nowrap" [class]="h.agente ? '' : 'text-[#b45309]'">{{ h.agenteTexto }}</span>
+                    @if (menuHabilitado()) {
+                      <tabler-icon
+                        [icon]="i.chevron"
+                        [size]="13"
+                        [stroke]="2"
+                        class="text-gray-400 transition-transform duration-[260ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                        [class.rotate-180]="menuAbierto()"
+                      />
+                    }
+                  </button>
 
-          <div #hiloScroll class="flex-1 overflow-y-auto px-4 py-4">
+                  <!-- Siempre en el DOM: entra/sale con opacidad + escala -->
+                  <div
+                    class="absolute right-0 top-full z-20 mt-1.5 w-60 origin-top-right overflow-hidden rounded-xl bg-card-bg p-1 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_12px_28px_-6px_rgba(0,0,0,0.18)] transition-[opacity,transform,visibility] duration-[240ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                    [class]="menuAbierto() ? 'visible translate-y-0 scale-100 opacity-100' : 'pointer-events-none invisible -translate-y-1.5 scale-[0.97] opacity-0'"
+                  >
+                    @if (puedeAsignarme()) {
+                      <button type="button" (click)="asignarme()" class="flex w-full items-center gap-2 rounded-lg p-2 text-left text-[12.5px] font-medium text-gray-900 transition-colors duration-150 hover:bg-[#f1f1f1]">
+                        <tabler-icon [icon]="i.asignarme" [size]="15" [stroke]="2" class="text-gray-600" />
+                        <span class="flex-1">Asignarme</span>
+                        <kbd class="rounded border border-[#e3e3e3] px-1 font-sans text-[10.5px] text-gray-500">A</kbd>
+                      </button>
+                    }
+                    @if (puedeDevolver()) {
+                      <button type="button" (click)="devolver()" class="flex w-full items-center gap-2 rounded-lg p-2 text-left text-[12.5px] font-medium text-gray-900 transition-colors duration-150 hover:bg-[#f1f1f1]">
+                        <tabler-icon [icon]="i.devolver" [size]="15" [stroke]="2" class="text-gray-600" />
+                        Devolver a {{ nombreAgenteAnterior(c) }}
+                      </button>
+                    }
+                    <p class="mx-2 mb-1 mt-1.5 text-[11px] font-semibold uppercase tracking-[0.02em] text-gray-400">Asignar a</p>
+                    @if (cargandoStaffAsignable()) {
+                      <p class="px-2 py-2 text-xs text-gray-400">Cargando personal…</p>
+                    } @else {
+                      @for (u of staffConCarga(); track u.id) {
+                        <button
+                          type="button"
+                          (click)="reasignarA(u.id)"
+                          class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] text-[#303030] transition-colors duration-150 hover:bg-[#f1f1f1]"
+                        >
+                          <span class="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[#ebebeb] text-[9.5px] font-semibold text-gray-600">{{ u.iniciales }}</span>
+                          <span class="min-w-0 flex-1 truncate">{{ u.nombres }} {{ u.apellidos }}{{ u.esYo ? ' (vos)' : '' }}</span>
+                          <span class="text-[11px] text-gray-400">{{ u.carga }} abiertas</span>
+                          @if (u.id === c.agenteAsignadoId) {
+                            <tabler-icon [icon]="i.check" [size]="14" [stroke]="2" class="text-[#303030]" />
+                          }
+                        </button>
+                      } @empty {
+                        <p class="px-2 py-2 text-xs text-gray-400">No hay personal disponible.</p>
+                      }
+                    }
+                  </div>
+                </div>
+
+                @if (c.estado === 'abierta' && puedeGestionar()) {
+                  <button
+                    type="button"
+                    [disabled]="cerrando()"
+                    (click)="cerrarConversacion()"
+                    class="flex items-center gap-1.5 rounded-lg border border-[#e3e3e3] bg-card-bg px-2.5 py-1.5 text-[12.5px] font-medium text-[#303030] transition-[background-color,border-color,color,transform] duration-200 hover:border-[#b8dcc4] hover:bg-[#eaf4ec] hover:text-[#0c5132] active:scale-[0.97] disabled:opacity-50"
+                  >
+                    <tabler-icon [icon]="i.ok" [size]="15" [stroke]="2" />
+                    Resolver
+                  </button>
+                }
+                @if (c.estado === 'cerrada') {
+                  <span class="inline-flex items-center gap-1.5 rounded-lg bg-[#f1f1f1] px-2.5 py-[5px] text-xs font-medium text-[#616161]">
+                    <tabler-icon [icon]="i.candado" [size]="13" [stroke]="2" />
+                    Cerrada
+                  </span>
+                }
+              </div>
+            </div>
+          }
+
+          <div #hiloScroll class="min-h-0 flex-1 overflow-y-auto px-5 py-[18px]">
             @if (cargandoHilo()) {
               <div class="flex animate-pulse flex-col gap-2.5">
                 <span class="h-10 w-2/3 rounded-xl bg-gray-100"></span>
@@ -190,115 +292,175 @@
                 <span class="h-10 w-3/5 rounded-xl bg-gray-100"></span>
               </div>
             } @else {
-              <div class="flex flex-col gap-3">
-                @for (m of mensajes(); track m.id) {
-                  @if (m.esSistema) {
-                    <div class="flex justify-center py-1">
-                      <span class="max-w-[85%] rounded-full bg-neutral-100 px-3 py-1 text-center text-[11.5px] text-gray-500">
-                        {{ m.cuerpo }}
-                      </span>
-                    </div>
-                  } @else {
-                  <div class="group flex flex-col" [class]="esMio(m) ? 'items-end' : 'items-start'">
-                    <div class="flex items-end gap-1" [class]="esMio(m) ? 'flex-row-reverse' : 'flex-row'">
-                      <div
-                        class="max-w-[70%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-[13.5px] leading-[19px] text-pretty"
-                        [class]="esMio(m) ? 'rounded-br-sm bg-[#303030] text-white' : 'rounded-bl-sm bg-neutral-100 text-gray-900'"
-                      >
-                        @if (m.respondeA; as citado) {
-                          <div
-                            class="mb-1.5 rounded-lg border-l-2 px-2 py-1 text-[12px] leading-[16px]"
-                            [class]="esMio(m) ? 'border-white/40 bg-white/10 text-white/80' : 'border-gray-300 bg-white/70 text-gray-500'"
-                          >
-                            <p class="font-medium">{{ nombreDeAutor(citado.autor, citado.autorId) }}</p>
-                            <p class="truncate">{{ citado.cuerpo }}</p>
-                          </div>
-                        }
-                        {{ m.cuerpo }}
+              <!-- @for de un solo elemento: se recrea al cambiar de
+                   conversación y la animación de entrada vuelve a correr -->
+              @for (id of [seleccionadaId()]; track id) {
+                <div class="anim-hilo-in flex flex-col gap-2.5">
+                  @for (x of hilo(); track x.m.id) {
+                    @if (x.m.esSistema) {
+                      <div class="flex items-center gap-2.5 py-1.5" [class.anim-linea-in]="x.animar">
+                        <span class="h-px flex-1 bg-[#f0f0f0]"></span>
+                        <span class="inline-flex items-center gap-1.5 text-center text-[11.5px] text-gray-500">
+                          <tabler-icon [icon]="x.icono!" [size]="13" [stroke]="2" class="text-gray-400" />
+                          {{ x.m.cuerpo }}
+                          <span class="text-[#b5b5b5]">· {{ x.hora }}</span>
+                        </span>
+                        <span class="h-px flex-1 bg-[#f0f0f0]"></span>
                       </div>
-                      <button
-                        type="button"
-                        (click)="responderA(m)"
-                        aria-label="Responder a este mensaje"
-                        class="mb-1 shrink-0 rounded-full p-1.5 text-gray-400 opacity-0 transition-opacity duration-150 hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100"
+                    } @else {
+                      <div
+                        class="flex flex-col"
+                        [class]="(x.mio ? 'items-end origin-bottom-right' : 'items-start origin-bottom-left') + (x.agrupado ? ' -mt-1.5' : ' mt-1')"
+                        [class.anim-msg-in]="x.animar"
                       >
-                        <tabler-icon [icon]="iconResponder" [size]="14" [stroke]="2" />
-                      </button>
-                    </div>
-                    <span class="mt-1 px-1 text-[11px] text-gray-400">{{ horaCorta(m.creadoEn) }}</span>
-                  </div>
+                        @if (!x.agrupado) {
+                          <span class="mb-1 px-1 text-[11.5px] font-medium text-gray-500">{{ x.autor }}</span>
+                        }
+                        <div class="flex max-w-full items-center gap-1" [class]="x.mio ? 'flex-row-reverse' : 'flex-row'">
+                          <div
+                            class="max-w-[min(560px,72%)] px-[13px] py-2 text-[13.5px] leading-[19px] text-pretty"
+                            [class]="
+                              (x.mio ? (x.propio ? 'bg-[#303030] text-white ' : 'bg-[#4a4a4a] text-white ') : 'bg-[#f1f1f1] text-gray-900 ') +
+                              (x.mio
+                                ? x.agrupado ? 'rounded-[14px_4px_4px_14px]' : 'rounded-[14px_14px_4px_14px]'
+                                : x.agrupado ? 'rounded-[4px_14px_14px_4px]' : 'rounded-[14px_14px_14px_4px]')
+                            "
+                          >
+                            @if (x.m.respondeA; as citado) {
+                              <div class="mb-1.5 rounded-lg px-2 py-[5px] text-xs leading-4" [class]="x.mio ? 'bg-white/[0.12] text-white/85' : 'bg-white text-gray-600'">
+                                <p class="font-semibold">{{ nombreDeAutor(citado.autor, citado.autorId) }}</p>
+                                <p class="truncate">{{ citado.cuerpo }}</p>
+                              </div>
+                            }
+                            <span class="whitespace-pre-wrap">{{ x.m.cuerpo }}</span>
+                          </div>
+                          <button
+                            type="button"
+                            (click)="responderA(x.m)"
+                            aria-label="Citar este mensaje"
+                            title="Citar"
+                            class="flex shrink-0 rounded-full p-1.5 text-[#c4c4c4] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:-rotate-[8deg] hover:scale-110 hover:bg-[#f1f1f1] hover:text-[#303030] active:scale-90"
+                          >
+                            <tabler-icon [icon]="i.citar" [size]="14" [stroke]="2" />
+                          </button>
+                          <span class="shrink-0 text-[11px] tabular-nums text-[#b5b5b5]">{{ x.hora }}</span>
+                        </div>
+                      </div>
+                    }
+                  } @empty {
+                    <p class="py-8 text-center text-[13px] text-gray-400">Todavía no hay mensajes.</p>
                   }
-                } @empty {
-                  <p class="py-8 text-center text-[13px] text-gray-400">Todavía no hay mensajes.</p>
-                }
-              </div>
+                </div>
+              }
             }
           </div>
 
-          <div class="border-t border-gray-100">
-            @if (c.estado !== 'cerrada' && respondiendoA(); as citado) {
-              <div class="flex items-center gap-2 border-b border-gray-100 bg-neutral-50 px-3.5 py-2">
-                <tabler-icon [icon]="iconResponder" [size]="14" [stroke]="2" class="shrink-0 text-gray-400" />
-                <div class="min-w-0 flex-1">
-                  <p class="text-[11px] font-medium text-gray-500">
-                    Respondiendo a {{ nombreDeAutor(citado.autor, citado.autorId) }}
-                  </p>
-                  <p class="truncate text-[12px] text-gray-400">{{ citado.cuerpo }}</p>
-                </div>
-                <button
-                  type="button"
-                  (click)="cancelarRespuesta()"
-                  aria-label="Cancelar respuesta"
-                  class="shrink-0 rounded-full p-1 text-gray-400 transition-colors duration-150 hover:bg-gray-200 hover:text-gray-600"
+          <!-- ─── Composer ─── -->
+          <div class="px-3.5 pb-3.5 pt-2.5">
+            @if (c.estado === 'cerrada') {
+              <div class="flex items-center gap-2.5 rounded-[10px] bg-[#f7f7f7] px-3.5 py-3 text-[12.5px] text-gray-500">
+                <tabler-icon [icon]="i.candado" [size]="15" [stroke]="2" class="text-gray-400" />
+                Conversación resuelta. Si la Empresa vuelve a escribir, se abre una nueva.
+              </div>
+            } @else if (!puedeEscribir()) {
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[10px] bg-[#f7f7f7] py-2.5 pl-3.5 pr-2.5">
+                <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#e3e3e3] text-[10px] font-semibold text-gray-600">{{ cabeceraHilo()?.agenteIniciales }}</span>
+                <p class="min-w-[180px] flex-1 text-[12.5px] leading-[18px] text-gray-600">
+                  <strong class="font-semibold text-gray-900">{{ nombreAgente(c) }}</strong> está atendiendo esta conversación.
+                  {{ puedeAsignarme() ? 'Para responder, tomala.' : 'Solo quien la tiene asignada puede responder.' }}
+                </p>
+                @if (puedeAsignarme()) {
+                  <button
+                    type="button"
+                    [disabled]="asignando()"
+                    (click)="asignarme()"
+                    class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3 py-[7px] text-[12.5px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[background-color,transform] duration-200 hover:bg-[#1a1a1a] active:scale-[0.97] disabled:opacity-50"
+                  >
+                    <tabler-icon [icon]="i.tomar" [size]="14" [stroke]="2" />
+                    Tomar conversación
+                  </button>
+                }
+              </div>
+            } @else {
+              <div
+                class="overflow-hidden rounded-xl border bg-card-bg transition-[border-color,box-shadow] duration-150"
+                [class]="composerConFoco() ? 'border-[#8a8a8a] shadow-[0_0_0_3px_rgba(48,48,48,0.08)]' : 'border-[#e3e3e3]'"
+              >
+                <!-- Cita: se despliega/pliega con grid-rows + slide -->
+                <div
+                  class="grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                  [style.grid-template-rows]="respondiendoA() ? '1fr' : '0fr'"
+                  [style.opacity]="respondiendoA() ? 1 : 0"
                 >
-                  <tabler-icon [icon]="iconCancelarRespuesta" [size]="14" [stroke]="2" />
-                </button>
+                  <div class="min-h-0 overflow-hidden">
+                    <div
+                      class="flex items-center gap-2 border-b border-gray-100 bg-[#fafafa] py-[7px] pl-3 pr-2.5 transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                      [class]="respondiendoA() ? 'translate-y-0' : 'translate-y-2'"
+                    >
+                      <tabler-icon [icon]="i.citar" [size]="14" [stroke]="2" class="shrink-0 text-gray-400" />
+                      @if (citaVisible(); as cv) {
+                        <p class="min-w-0 flex-1 truncate text-xs text-gray-500">
+                          <strong class="font-semibold text-gray-700">{{ nombreDeAutor(cv.autor, cv.autorId) }}:</strong>
+                          {{ cv.cuerpo }}
+                        </p>
+                      }
+                      <button
+                        type="button"
+                        (click)="cancelarRespuesta()"
+                        aria-label="Quitar cita"
+                        class="flex rounded-full p-[3px] text-gray-400 transition-colors duration-150 hover:bg-[#ebebeb] hover:text-gray-600"
+                      >
+                        <tabler-icon [icon]="i.x" [size]="13" [stroke]="2" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <textarea
+                  #inputMensaje
+                  rows="1"
+                  [ngModel]="mensajeNuevo()"
+                  (ngModelChange)="mensajeNuevo.set($event); autoAltura(inputMensaje)"
+                  (keydown)="teclaComposer($event)"
+                  (focus)="composerConFoco.set(true)"
+                  (blur)="composerConFoco.set(false)"
+                  [placeholder]="'Responder a ' + (c.usuario?.nombres ?? 'la Empresa') + '…'"
+                  class="block w-full resize-none border-0 bg-transparent px-3.5 pb-1 pt-[11px] text-[13.5px] leading-5 text-gray-900 outline-none placeholder:text-gray-400"
+                ></textarea>
+                <div class="flex items-center gap-2.5 pb-2 pl-3.5 pr-2 pt-1.5">
+                  <span class="min-w-0 flex-1 truncate text-[11.5px]" [class]="c.agenteAsignadoId ? 'text-gray-400' : 'text-[#b45309]'">{{ notaComposer() }}</span>
+                  <button
+                    type="button"
+                    [disabled]="enviando() || !mensajeNuevo().trim()"
+                    (click)="enviar()"
+                    class="flex shrink-0 items-center gap-1.5 rounded-lg bg-primary-button px-3 py-1.5 text-[12.5px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[opacity,transform,background-color] duration-200 hover:bg-[#1a1a1a] active:scale-[0.96] disabled:opacity-40"
+                  >
+                    Enviar
+                    <tabler-icon [icon]="i.enviar" [size]="13" [stroke]="2" class="opacity-70" />
+                  </button>
+                </div>
               </div>
             }
-            <div class="flex items-center gap-2 px-3 py-2.5">
-              @if (c.estado === 'cerrada') {
-                <p class="flex-1 px-1 text-xs text-gray-400">
-                  Esta conversación está cerrada — no se pueden mandar más mensajes.
-                </p>
-              } @else if (!puedeEscribir()) {
-                <p class="flex-1 px-1 text-xs text-gray-400">
-                  Esta conversación ya está asignada a {{ nombreAgente(c) }} — no podés mandarle mensajes.
-                  <!-- Tercera vuelta: admin/admin_goods ya no tiene bypass
-                       acá — se les recuerda el botón "Asignarme" de arriba
-                       en vez de dejarlos escribir directo. -->
-                  @if (puedeAsignarme()) {
-                    Hacé click en "Asignarme" arriba para tomarla.
-                  }
-                </p>
-              } @else {
-                <input
-                  #inputMensaje
-                  type="text"
-                  [ngModel]="mensajeNuevo()"
-                  (ngModelChange)="mensajeNuevo.set($event)"
-                  (keydown.enter)="enviar()"
-                  placeholder="Escribí una respuesta…"
-                  class="min-w-0 flex-1 rounded-[9px] border border-gray-200 bg-card-bg px-3 py-2 text-[13.5px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400"
-                />
-                <button
-                  type="button"
-                  [disabled]="enviando() || !mensajeNuevo().trim()"
-                  (click)="enviar()"
-                  class="flex shrink-0 items-center gap-1.5 rounded-lg bg-primary-button px-3.5 py-2 text-[13px] font-medium text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-50"
-                >
-                  <tabler-icon [icon]="iconEnviar" [size]="15" [stroke]="2" />
-                  Enviar
-                </button>
-              }
-            </div>
           </div>
         } @else {
           <div class="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-            <tabler-icon [icon]="iconModulo" [size]="28" [stroke]="1.5" class="text-gray-300" />
+            <tabler-icon [icon]="i.modulo" [size]="28" [stroke]="1.5" class="text-gray-300" />
             <p class="text-[13px] font-medium text-gray-500">Elegí una conversación de la lista.</p>
           </div>
         }
       </div>
     </div>
   </app-pantalla-estado>
+
+  <!-- Aviso de mensaje entrante (siempre en el DOM para animar la salida) -->
+  <button
+    type="button"
+    (click)="abrirToast()"
+    class="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5 rounded-xl bg-[#1a1a1a] py-2.5 pl-3 pr-3.5 text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+    [class]="toast() ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-4 scale-[0.97] opacity-0'"
+  >
+    <tabler-icon [icon]="i.toast" [size]="16" [stroke]="2" class="text-[#cdfee1]" />
+    <span class="text-[13px]"><strong class="font-semibold">{{ ultimoToast()?.cliente }}</strong> {{ ultimoToast()?.texto }}</span>
+    <span class="border-l border-white/20 pl-2.5 text-[12.5px] font-medium text-[#cdfee1]">Abrir</span>
+  </button>
 </div>

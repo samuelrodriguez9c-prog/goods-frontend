@@ -1,9 +1,15 @@
 <!-- projects/staff/src/app/features/roles/pages/roles-page/roles-page.component.html -->
 
-<div class="pt-2 px-8 pb-24">
+<div class="p-6">
   <!-- `pt-2` (no `p-8` arriba): para alinear el título con el sidebar —
        ver el comentario equivalente en `empresas-page.component.html`. -->
-  <app-cabecera-modulo titulo="Roles y permisos" [periodo]="null" [metricas]="metricasCabecera()">
+  <!-- Migrada a v2 (badge + lectura arriba) por LEEME.md §16, 2026-09-24. -->
+  <app-cabecera-modulo
+    titulo="Roles y permisos"
+    [periodo]="null"
+    [metricas]="metricasCabecera()"
+    [badge]="roles().length + ' roles activos'"
+  >
     <tabler-icon icono [icon]="iconos.shieldLock" [size]="20" [stroke]="1.75" />
     <ng-container acciones>
       <button
