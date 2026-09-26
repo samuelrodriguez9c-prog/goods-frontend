@@ -12,26 +12,39 @@ import {
   IconArrowLeft,
   IconArrowRight,
   IconCheck,
+  IconDiscount,
   IconExclamationCircleFilled,
   IconInfoCircle,
+  IconLayoutDashboard,
   IconLoader2,
+  IconMessageCircle,
+  IconPackage,
   IconPlus,
-  IconX,
+  IconPuzzle,
+  IconReceipt,
+  IconUsers,
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { ModuloPublico, PlanPublico } from '../../models/plan-publico.model';
 import { RegistroPublicoService } from '../../services/registro-publico.service';
 
-// Ícono propio por plan, sobre el nombre en la tarjeta (pedido 2026-09-14,
-// capturas "ChatGPT Image" de Samuel) — mapeado por nombre porque `Plan`
-// no tiene un campo de ícono en el backend (agregar uno ahí sería más
-// trabajo que necesario para dos archivos estáticos). Un plan nuevo que
-// el staff cree sin entrada acá simplemente no muestra ícono (ver
-// `iconoDelPlan`), no rompe nada.
-const ICONOS_POR_PLAN: Record<string, string> = {
-  Base: '/plan-icons/base.png',
-  Plus: '/plan-icons/plus.png',
+// Ícono por módulo (rediseño 2026-09-26) — mapeado por `codigo` de
+// `Modulo`, mismos códigos que `navItems` del sidebar. Un módulo nuevo que
+// staff sume al catálogo sin entrada acá usa `IconPuzzle`, no rompe nada.
+const ICONOS_POR_MODULO: Record<string, typeof IconPuzzle> = {
+  dashboard: IconLayoutDashboard,
+  orders: IconReceipt,
+  products: IconPackage,
+  customers: IconUsers,
+  discounts: IconDiscount,
+  messages: IconMessageCircle,
 };
+
+/** Un módulo del catálogo visto desde un plan puntual — para el mapa de
+ * módulos de cada tarjeta y del resumen lateral. */
+export interface ModuloDelPlan extends ModuloPublico {
+  incluido: boolean;
+}
 
 // Precios en pesos colombianos (COP) — mercado decidido en
 // PIVOTE_SAAS_MULTITENANT.md §7.3. Sin decimales y con "." de miles
@@ -45,11 +58,6 @@ function formatCop(value: number): string {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Atajos de un toque para el campo "Rubro" (rediseño 2026-09-26) — solo
- * rellenan el input, que sigue siendo texto libre: el backend no tiene un
- * catálogo de rubros, es un `string` opcional sin validación extra. */
-const RUBROS_SUGERIDOS = ['Restaurante', 'Tienda de ropa', 'Minimarket', 'Cafetería', 'Belleza'];
 
 type PasoRegistro = 'plan' | 'formulario' | 'confirmacion';
 
@@ -117,9 +125,7 @@ export class RegistroPublicoPageComponent implements OnInit {
   protected readonly iconInfo = IconInfoCircle;
   protected readonly iconLoader = IconLoader2;
   protected readonly iconPlus = IconPlus;
-  protected readonly iconQuitar = IconX;
   protected readonly formatCop = formatCop;
-  protected readonly rubrosSugeridos = RUBROS_SUGERIDOS;
 
   protected readonly paso = signal<PasoRegistro>('plan');
 
@@ -289,9 +295,33 @@ export class RegistroPublicoPageComponent implements OnInit {
     });
   }
 
-  protected iconoDelPlan(plan: PlanPublico): string | null {
-    return ICONOS_POR_PLAN[plan.nombre] ?? null;
+  protected iconoDelModulo(codigo: string): typeof IconPuzzle {
+    return ICONOS_POR_MODULO[codigo] ?? IconPuzzle;
   }
+
+  /** El catálogo completo, marcado según lo que trae `plan` — en el MISMO
+   * orden para todos los planes, así las tarjetas se comparan casilla por
+   * casilla. Si `GET /modulos/publico` falló (catálogo vacío), cae a solo
+   * los módulos del plan, todos incluidos. */
+  protected readonly modulosPorPlan = computed(() => {
+    const catalogo = this.catalogoModulos();
+    const mapa = new Map<number, { modulos: ModuloDelPlan[]; incluidos: number }>();
+    for (const plan of this.planes()) {
+      const codigosDelPlan = new Set(plan.modulos.map((m) => m.codigo));
+      const modulos =
+        catalogo.length === 0
+          ? plan.modulos.map((m) => ({ ...m, incluido: true }))
+          : catalogo.map((m) => ({ ...m, incluido: codigosDelPlan.has(m.codigo) }));
+      mapa.set(plan.id, { modulos, incluidos: modulos.filter((m) => m.incluido).length });
+    }
+    return mapa;
+  });
+
+  /** Índice del plan elegido, para la píldora deslizante del selector del
+   * resumen lateral (paso 2). */
+  protected readonly indicePlanSeleccionado = computed(() =>
+    this.planes().findIndex((p) => p.id === this.planSeleccionado()?.id),
+  );
 
   /** "Incluye:" para el plan de entrada, "Todo lo de <entrada>, más:"
    * para el resto — ver el comentario en `planDeEntrada`. */
@@ -315,11 +345,6 @@ export class RegistroPublicoPageComponent implements OnInit {
       this.camposInvalidos.update((actual) => ({ ...actual, [campo]: false }));
     }
     this.errorEnvio.set(null);
-  }
-
-  /** Chip de rubro: un segundo toque sobre el mismo lo limpia. */
-  protected elegirRubro(rubro: string): void {
-    this.actualizarCampo('rubro', this.campos().rubro === rubro ? '' : rubro);
   }
 
   protected alternarOtroCorreoContacto(): void {

@@ -135,18 +135,11 @@
                   }
                 </span>
 
-                <div class="flex items-center gap-4 pr-10">
-                  @if (iconoDelPlan(plan); as icono) {
-                    <!-- `self-start` + ancho automático: los PNG son
-                         verticales (~0.7:1), sin esto se deforman. -->
-                    <img [src]="icono" alt="" class="h-16 w-auto shrink-0 self-start" />
+                <div class="pr-10">
+                  <p class="text-2xl font-bold text-gray-900">{{ plan.nombre }}</p>
+                  @if (plan.descripcion) {
+                    <p class="mt-1 text-sm text-gray-500">{{ plan.descripcion }}</p>
                   }
-                  <div class="min-w-0">
-                    <p class="text-2xl font-bold text-gray-900">{{ plan.nombre }}</p>
-                    @if (plan.descripcion) {
-                      <p class="mt-0.5 text-sm text-gray-500">{{ plan.descripcion }}</p>
-                    }
-                  </div>
                 </div>
 
                 <div class="mt-5 flex items-baseline gap-1.5">
@@ -160,21 +153,85 @@
                   }
                 </div>
 
-                @if (plan.modulos.length > 0) {
-                  <div class="mt-5">
-                    <p class="text-xs font-medium uppercase tracking-wide text-gray-400">
-                      Módulos incluidos
-                    </p>
-                    <div class="mt-2 flex flex-wrap gap-1.5">
-                      @for (modulo of plan.modulos; track modulo.codigo) {
-                        <span
-                          class="rounded-full bg-canvas-bg px-2.5 py-1 text-xs font-medium text-gray-700"
-                        >
-                          {{ modulo.nombre }}
-                        </span>
-                      }
+                <!-- Los descuentos de Goods son promociones que el staff
+                     asigna manualmente por cliente, no cupones que el
+                     visitante ingresa acá (PIVOTE_SAAS_MULTITENANT.md,
+                     pregunta 5) — esta caja lo deja claro en vez de
+                     insinuar un cupón de autoservicio que no existe. -->
+                <div
+                  class="mt-4 flex items-start gap-2 rounded-lg bg-canvas-bg p-3 text-xs text-gray-600"
+                >
+                  <tabler-icon
+                    [icon]="iconInfo"
+                    [size]="16"
+                    svgClass="mt-0.5 shrink-0 text-gray-400"
+                  />
+                  Los descuentos para tu plan los asigna nuestro equipo caso por caso, después de
+                  revisar tu registro — no hay cupones que ingresar acá.
+                </div>
+
+                <!-- Mapa de módulos (rediseño 2026-09-26): el catálogo
+                     COMPLETO en el mismo orden en todas las tarjetas, así
+                     se comparan casilla por casilla — lo incluido sólido,
+                     lo que no, punteado (se puede sumar como extra). Al
+                     pasar el mouse por la tarjeta los íconos suben en ola
+                     (`transition-delay` escalonado). -->
+                @if (modulosPorPlan().get(plan.id); as info) {
+                  @if (info.modulos.length > 0) {
+                    <div class="mt-5">
+                      <div class="flex items-baseline justify-between">
+                        <p class="text-sm font-medium text-gray-700">Módulos</p>
+                        <p class="text-xs tabular-nums text-gray-400">
+                          <span class="font-semibold text-gray-900">{{ info.incluidos }}</span>
+                          de {{ info.modulos.length }}
+                        </p>
+                      </div>
+                      <div class="mt-2 flex gap-1">
+                        @for (m of info.modulos; track m.codigo; let j = $index) {
+                          <span
+                            class="anim-crecer h-1 flex-1 origin-left rounded-full"
+                            [style.animation-delay.ms]="i * 70 + j * 60"
+                            [class.bg-primary-button]="m.incluido"
+                            [class.bg-gray-200]="!m.incluido"
+                          ></span>
+                        }
+                      </div>
+                      <div class="mt-3 grid grid-cols-3 gap-2">
+                        @for (m of info.modulos; track m.codigo; let j = $index) {
+                          <div
+                            class="anim-aparecer flex flex-col items-center gap-1.5 rounded-xl border px-1 py-2.5 text-center"
+                            [style.animation-delay.ms]="i * 70 + j * 40"
+                            [class.border-transparent]="m.incluido"
+                            [class.bg-canvas-bg]="m.incluido"
+                            [class.border-dashed]="!m.incluido"
+                            [class.border-gray-200]="!m.incluido"
+                          >
+                            <span
+                              class="flex size-8 items-center justify-center rounded-lg transition-transform duration-300 ease-out group-hover:-translate-y-0.5"
+                              [style.transition-delay.ms]="j * 35"
+                              [class.bg-primary-button]="m.incluido"
+                              [class.text-white]="m.incluido"
+                              [class.text-gray-300]="!m.incluido"
+                            >
+                              <tabler-icon
+                                [icon]="iconoDelModulo(m.codigo)"
+                                [size]="16"
+                                [stroke]="1.75"
+                                class="inline-flex"
+                              />
+                            </span>
+                            <span
+                              class="text-[11px] font-medium leading-tight"
+                              [class.text-gray-800]="m.incluido"
+                              [class.text-gray-400]="!m.incluido"
+                            >
+                              {{ m.nombre }}
+                            </span>
+                          </div>
+                        }
+                      </div>
                     </div>
-                  </div>
+                  }
                 }
 
                 @if (plan.caracteristicas && plan.caracteristicas.length > 0) {
@@ -298,15 +355,11 @@
             <p class="mt-6 text-center text-sm text-gray-500">Toca un plan para continuar.</p>
           }
 
-          <!-- Los descuentos de Goods son promociones que staff asigna a
-               mano por cliente (PIVOTE_SAAS_MULTITENANT.md, pregunta 5) —
-               una sola aclaración acá, en vez de repetirla en cada tarjeta. -->
-          <p
-            class="mx-auto mt-6 flex max-w-2xl items-start justify-center gap-1.5 text-center text-xs text-gray-500"
-          >
-            <tabler-icon [icon]="iconInfo" [size]="14" svgClass="mt-px shrink-0" />
-            Los descuentos los asigna nuestro equipo caso por caso al revisar tu registro — no hay
-            cupones. Precios y planes sujetos a cambios a discreción de Goods.
+          <!-- Pie directo sobre el fondo oscuro, fuera de las tarjetas (mismo
+               criterio que la página de precios de Claude). -->
+          <p class="mx-auto mt-6 max-w-4xl text-center text-xs text-gray-500">
+            *Los descuentos se asignan de forma manual, caso por caso. Los precios y planes están
+            sujetos a cambios a discreción de Goods.
           </p>
         }
       </div>
@@ -374,29 +427,11 @@
                 <input
                   id="rubro"
                   type="text"
-                  placeholder="Ej. Panadería"
+                  placeholder="Ej. Panadería, tienda de ropa, cafetería"
                   [value]="campos().rubro"
                   (input)="actualizarCampo('rubro', $any($event.target).value)"
                   class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 placeholder:text-gray-400 focus:ring-2 focus:ring-gray-400"
                 />
-                <div class="mt-2 flex flex-wrap gap-1.5">
-                  @for (rubro of rubrosSugeridos; track rubro) {
-                    @let activo = campos().rubro === rubro;
-                    <button
-                      type="button"
-                      [attr.aria-pressed]="activo"
-                      (click)="elegirRubro(rubro)"
-                      class="rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-200 active:scale-95"
-                      [class.bg-primary-button]="activo"
-                      [class.text-white]="activo"
-                      [class.bg-canvas-bg]="!activo"
-                      [class.text-gray-600]="!activo"
-                      [class.hover:bg-gray-200]="!activo"
-                    >
-                      {{ rubro }}
-                    </button>
-                  }
-                </div>
               </div>
             </fieldset>
 
@@ -610,88 +645,185 @@
           </form>
         </section>
 
-        <!-- Resumen lateral (arriba en móvil): el plan y los extras se
-             pueden ajustar desde acá mismo sin volver al paso 1. -->
+        <!-- Resumen lateral (arriba en móvil) — rediseño 2026-09-26: selector
+             de plan con píldora deslizante (se cambia de plan sin volver al
+             paso 1), mapa de módulos del catálogo con los extras como
+             interruptores (ámbar = "a confirmar", mismo color de estado
+             pendiente que el resto del admin) y un brillo que flota lento
+             detrás, para que la tarjeta no se sienta estática. -->
         @if (planSeleccionado(); as plan) {
           <aside class="order-first lg:sticky lg:top-8 lg:order-last">
-            <div class="rounded-2xl bg-white/[0.04] p-5 text-white ring-1 ring-white/10">
-              <div class="flex items-center justify-between">
+            <div
+              class="relative overflow-hidden rounded-2xl bg-[#141414] p-5 text-white ring-1 ring-white/10"
+            >
+              <span
+                aria-hidden="true"
+                class="anim-flotar pointer-events-none absolute -right-20 -top-20 size-56 rounded-full bg-white/[0.09] blur-3xl"
+              ></span>
+
+              <div class="relative">
                 <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Tu plan</p>
-                <button
-                  type="button"
-                  (click)="volverAPlanes()"
-                  class="text-xs font-medium text-gray-400 underline-offset-2 transition-colors duration-200 hover:text-white hover:underline"
-                >
-                  Cambiar
-                </button>
-              </div>
 
-              <div class="mt-3 flex items-center gap-3">
-                @if (iconoDelPlan(plan); as icono) {
-                  <span
-                    class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white"
+                @if (planes().length > 1) {
+                  <div
+                    role="radiogroup"
+                    aria-label="Cambiar de plan"
+                    class="relative mt-3 flex rounded-xl bg-white/[0.06] p-1"
                   >
-                    <img [src]="icono" alt="" class="h-8 w-auto" />
-                  </span>
-                }
-                <div class="min-w-0">
-                  <p class="text-lg font-bold">{{ plan.nombre }}</p>
-                  <p class="text-sm text-gray-400">
-                    @if (plan.precioMensual !== null) {
-                      {{ formatCop(plan.precioMensual) }} COP / mes
-                    } @else {
-                      Precio a confirmar
-                    }
-                  </p>
-                </div>
-              </div>
-
-              @if (plan.modulos.length > 0) {
-                <div class="mt-4 hidden lg:block">
-                  <p class="text-xs text-gray-400">Incluye</p>
-                  <div class="mt-1.5 flex flex-wrap gap-1.5">
-                    @for (modulo of plan.modulos; track modulo.codigo) {
-                      <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs text-gray-200">{{
-                        modulo.nombre
-                      }}</span>
-                    }
-                  </div>
-                </div>
-              }
-
-              @if (modulosExtraDisponibles().length > 0) {
-                <div class="mt-4 border-t border-white/10 pt-4">
-                  <p class="text-xs text-gray-400">
-                    Módulos extra <span class="text-gray-500">· a confirmar</span>
-                  </p>
-                  <div class="mt-1.5 flex flex-wrap gap-1.5">
-                    @for (modulo of modulosExtraDisponibles(); track modulo.codigo) {
-                      @let marcado = modulosExtraSeleccionados().has(modulo.codigo);
+                    <span
+                      aria-hidden="true"
+                      class="absolute inset-y-1 left-1 rounded-lg bg-white shadow transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                      [style.width]="'calc((100% - 0.5rem) / ' + planes().length + ')'"
+                      [style.transform]="'translateX(' + indicePlanSeleccionado() * 100 + '%)'"
+                    ></span>
+                    @for (opcion of planes(); track opcion.id) {
+                      @let activa = opcion.id === plan.id;
                       <button
                         type="button"
-                        [attr.aria-pressed]="marcado"
-                        (click)="alternarModuloExtra(modulo.codigo)"
-                        class="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-200 active:scale-95"
-                        [class.bg-white]="marcado"
-                        [class.text-gray-900]="marcado"
-                        [class.text-gray-400]="!marcado"
-                        [class.ring-1]="!marcado"
-                        [class.ring-white/20]="!marcado"
-                        [class.hover:text-white]="!marcado"
+                        role="radio"
+                        [attr.aria-checked]="activa"
+                        (click)="elegirPlan(opcion)"
+                        class="relative z-10 flex-1 rounded-lg py-1.5 text-sm font-semibold transition-colors duration-300"
+                        [class.text-gray-900]="activa"
+                        [class.text-gray-400]="!activa"
+                        [class.hover:text-white]="!activa"
                       >
-                        <tabler-icon
-                          [icon]="marcado ? iconCheck : iconPlus"
-                          [size]="12"
-                          [stroke]="2.5"
-                          class="inline-flex"
-                          [class.anim-pop]="marcado"
-                        />
-                        {{ modulo.nombre }}
+                        {{ opcion.nombre }}
                       </button>
                     }
                   </div>
+                }
+
+                <!-- `@for` de un solo elemento con `track` por id: al
+                     cambiar de plan el bloque se recrea y vuelve a entrar
+                     con `anim-paso-in`, en vez de cambiar el texto de golpe. -->
+                @for (actual of [plan]; track actual.id) {
+                  <div class="anim-paso-in mt-4">
+                    <p class="text-2xl font-bold tracking-tight">{{ actual.nombre }}</p>
+                    @if (actual.descripcion) {
+                      <p class="mt-0.5 text-sm text-gray-400">{{ actual.descripcion }}</p>
+                    }
+                  </div>
+                }
+
+                @if (modulosPorPlan().get(plan.id); as info) {
+                  @if (info.modulos.length > 0) {
+                    <div class="mt-5">
+                      <div class="flex items-baseline justify-between text-xs">
+                        <span class="text-gray-400">Módulos activos</span>
+                        <span class="tabular-nums text-gray-400">
+                          <span class="font-semibold text-white">{{
+                            info.incluidos + modulosExtraElegidos().length
+                          }}</span>
+                          de {{ info.modulos.length }}
+                        </span>
+                      </div>
+                      <div class="mt-2 flex gap-1">
+                        @for (m of info.modulos; track m.codigo) {
+                          <span
+                            class="h-1.5 flex-1 rounded-full transition-colors duration-300"
+                            [class.bg-white]="m.incluido"
+                            [class.bg-badge-warning-solid]="
+                              !m.incluido && modulosExtraSeleccionados().has(m.codigo)
+                            "
+                            [class.bg-white/10]="
+                              !m.incluido && !modulosExtraSeleccionados().has(m.codigo)
+                            "
+                          ></span>
+                        }
+                      </div>
+
+                      <ul class="mt-4 hidden space-y-0.5 lg:block">
+                        @for (m of info.modulos; track m.codigo; let j = $index) {
+                          <li class="anim-aparecer" [style.animation-delay.ms]="j * 40">
+                            @if (m.incluido) {
+                              <div class="flex items-center gap-3 rounded-lg px-2 py-1.5">
+                                <span
+                                  class="flex size-7 shrink-0 items-center justify-center rounded-md bg-white text-gray-900"
+                                >
+                                  <tabler-icon
+                                    [icon]="iconoDelModulo(m.codigo)"
+                                    [size]="15"
+                                    [stroke]="1.75"
+                                    class="inline-flex"
+                                  />
+                                </span>
+                                <span class="flex-1 text-sm text-gray-100">{{ m.nombre }}</span>
+                                <span class="text-[11px] text-gray-500">Incluido</span>
+                              </div>
+                            } @else {
+                              @let extra = modulosExtraSeleccionados().has(m.codigo);
+                              <button
+                                type="button"
+                                role="switch"
+                                [attr.aria-checked]="extra"
+                                (click)="alternarModuloExtra(m.codigo)"
+                                class="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors duration-200 hover:bg-white/5"
+                              >
+                                <span
+                                  class="flex size-7 shrink-0 items-center justify-center rounded-md border transition-all duration-300"
+                                  [class.border-transparent]="extra"
+                                  [class.bg-badge-warning-solid]="extra"
+                                  [class.text-gray-900]="extra"
+                                  [class.border-dashed]="!extra"
+                                  [class.border-white/25]="!extra"
+                                  [class.text-gray-500]="!extra"
+                                >
+                                  <tabler-icon
+                                    [icon]="iconoDelModulo(m.codigo)"
+                                    [size]="15"
+                                    [stroke]="1.75"
+                                    class="inline-flex"
+                                  />
+                                </span>
+                                <span
+                                  class="flex-1 text-sm transition-colors duration-200"
+                                  [class.text-white]="extra"
+                                  [class.text-gray-400]="!extra"
+                                >
+                                  {{ m.nombre }}
+                                </span>
+                                <span
+                                  class="relative h-4 w-7 shrink-0 rounded-full transition-colors duration-200"
+                                  [class.bg-badge-warning-solid]="extra"
+                                  [class.bg-white/15]="!extra"
+                                >
+                                  <span
+                                    class="absolute left-0.5 top-0.5 size-3 rounded-full bg-white shadow transition-transform duration-200 ease-out"
+                                    [class.translate-x-3]="extra"
+                                  ></span>
+                                </span>
+                              </button>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                }
+
+                <div class="mt-5 flex items-end justify-between border-t border-white/10 pt-4">
+                  <span class="text-xs text-gray-400">Total mensual</span>
+                  <div class="text-right">
+                    @for (actual of [plan]; track actual.id) {
+                      <p class="anim-paso-in text-xl font-bold tabular-nums">
+                        @if (actual.precioMensual !== null) {
+                          {{ formatCop(actual.precioMensual) }}
+                          <span class="text-xs font-normal text-gray-400">COP</span>
+                        } @else {
+                          A confirmar
+                        }
+                      </p>
+                    }
+                    @if (modulosExtraElegidos().length > 0) {
+                      <p class="anim-aparecer text-[11px] text-badge-warning-solid">
+                        + {{ modulosExtraElegidos().length }}
+                        {{ modulosExtraElegidos().length === 1 ? 'extra' : 'extras' }} a confirmar
+                      </p>
+                    }
+                  </div>
                 </div>
-              }
+              </div>
             </div>
           </aside>
         }

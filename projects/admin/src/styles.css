@@ -219,6 +219,37 @@
   }
 }
 
+/* `crecer` — los segmentos de la barra "N de M módulos" de cada tarjeta
+ * de plan, que se llenan de izquierda a derecha, escalonados. */
+@keyframes crecer {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* `flotar` — el brillo difuso detrás del resumen "Tu plan" (paso 2), que
+ * se mueve lento en loop para que la tarjeta no se sienta estática. */
+@keyframes flotar {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-40px, 30px) scale(1.15);
+  }
+  100% {
+    transform: translate(10px, 60px) scale(0.95);
+  }
+}
+
+.anim-crecer {
+  animation: crecer 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-flotar {
+  animation: flotar 12s ease-in-out infinite alternate;
+}
 .anim-paso-in {
   animation: paso-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -246,9 +277,11 @@
   .anim-pop,
   .anim-subir,
   .anim-sacudir-a,
-  .anim-sacudir-b {
+  .anim-sacudir-b,
+  .anim-crecer {
     animation-duration: 1ms;
   }
+  .anim-flotar,
   .anim-onda {
     animation: none;
     opacity: 0;
