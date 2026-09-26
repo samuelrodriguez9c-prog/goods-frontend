@@ -1,253 +1,419 @@
-<main class="relative flex min-h-screen flex-col items-center bg-login-bg p-6 py-12">
-  <!-- Wordmark (ícono + nombre) fijo arriba a la izquierda, no centrado
-       arriba de la tarjeta — pedido 2026-09-15, calcado de la captura
-       "Shopify Web 11" (logo+wordmark en la esquina superior izquierda,
-       fuera del flujo del contenido central). Wordmark en vez del ícono
-       solo del login: una página pública de cara a un visitante que
-       todavía no conoce la marca necesita el nombre a la vista, a
-       diferencia de /login donde quien llega ya sabe a qué app está
-       entrando. -->
+<main
+  class="relative flex min-h-screen flex-col items-center bg-login-bg px-4 pb-12 pt-20 sm:px-6 sm:pt-10"
+>
+  <!-- Wordmark fijo arriba a la izquierda (calcado de "Shopify Web 11"):
+       una página pública de cara a un visitante que todavía no conoce la
+       marca necesita el nombre a la vista, a diferencia de /login. -->
   <img
     src="/logo-goods-wordmark.png"
     alt="Goods"
-    class="absolute left-6 top-6 h-6 w-auto sm:left-8 sm:top-8 sm:h-7"
+    class="absolute left-4 top-6 h-6 w-auto sm:left-8 sm:top-8 sm:h-7"
   />
 
-  @if (paso() === 'plan') {
-    <!-- Sin tarjeta blanca envolvente (pedido 2026-09-15) — calcado de
-         "Shopify Web 11": ahí el título y las tarjetas de plan viven
-         directo sobre el fondo oscuro de la página, no adentro de un
-         contenedor blanco más grande. Las tarjetas individuales de cada
-         plan sí siguen siendo blancas (`bg-card-bg` explícito más abajo,
-         antes lo heredaban del contenedor que ahora ya no está) — mismo
-         efecto visual que la referencia: tarjetas blancas flotando sobre
-         fondo oscuro. -->
-    <div class="w-full max-w-4xl animate-[fade-in-up_0.25s_ease-out]">
-      <h1 class="text-3xl font-bold text-white">Elige tu plan</h1>
-      <p class="mb-6 text-sm text-gray-400">
-        Así empieza tu negocio en Goods — el plan lo puedes cambiar más adelante.
-      </p>
-
-      @if (cargandoPlanes()) {
-        <p class="py-6 text-center text-sm text-gray-400">Cargando planes…</p>
-      } @else if (errorPlanes(); as mensaje) {
-        <p
-          class="flex items-center gap-1.5 rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid"
-        >
-          <tabler-icon [icon]="iconError" [size]="16" svgClass="shrink-0" />
-          {{ mensaje }}
-        </p>
-      } @else if (planes().length === 0) {
-        <p class="py-6 text-center text-sm text-gray-400">
-          No hay planes disponibles por el momento.
-        </p>
-      } @else {
-        <!-- Estructura calcada de la página de precios de Claude
-             (captura aportada 2026-09-14): ícono propio arriba del
-             nombre, precio grande, caja informativa, botón de acción,
-             separador y lista de características debajo — la tarjeta
-             entera no es un solo botón, solo el CTA de abajo navega.
-
-             Hover sutil (pedido 2026-09-15): el borde pasa de
-             `border-gray-200` a `border-gray-400` con una transición
-             suave — mismo `transition-colors duration-200` que ya usa el
-             resto del admin (inputs, QuickAdjustPopoverComponent), no
-             una animación nueva de otro tipo. -->
-        <div class="grid gap-4 sm:grid-cols-2">
-          @for (plan of planes(); track plan.id) {
-            <div
-              class="flex flex-col rounded-xl border border-gray-200 bg-card-bg p-6 text-left transition-colors duration-200 hover:border-gray-400"
+  <!-- Indicador de pasos — la línea blanca crece con una transición de
+       ancho al avanzar; cada círculo pasa a "hecho" (tilde) o "activo"
+       (halo) con la misma transición. -->
+  <nav aria-label="Progreso del registro" class="mb-8 w-full max-w-sm">
+    <div class="relative">
+      <div class="absolute inset-x-3 top-3 h-px bg-white/15"></div>
+      <div
+        class="absolute left-3 top-3 h-px bg-white transition-[width] duration-500 ease-out"
+        [style.width]="'calc((100% - 1.5rem) * ' + progresoPasos() / 100 + ')'"
+      ></div>
+      <ol class="relative flex justify-between">
+        @for (p of pasos; track p.id; let i = $index) {
+          <li
+            class="flex flex-col items-center gap-1.5"
+            [attr.aria-current]="i === indicePaso() ? 'step' : null"
+          >
+            <span
+              class="flex size-6 items-center justify-center rounded-full text-xs font-semibold transition-all duration-300"
+              [class.bg-white]="i <= indicePaso()"
+              [class.text-gray-900]="i <= indicePaso()"
+              [class.ring-4]="i === indicePaso()"
+              [class.ring-white/15]="i === indicePaso()"
+              [class.bg-login-bg]="i > indicePaso()"
+              [class.text-gray-500]="i > indicePaso()"
+              [class.ring-1]="i > indicePaso()"
+              [class.ring-white/25]="i > indicePaso()"
             >
-              @if (iconoDelPlan(plan); as icono) {
-                <!-- Ícono más grande (pedido 2026-09-15: "muy pequeños")
-                     — de h-16 a h-24. Sin caja detrás: los PNG en
-                     plan-icons/ ya vienen procesados para esto (versión
-                     OSCURA del logo de Samuel, Gds_images/, invertido a
-                     negro para contrastar solo sobre la tarjeta blanca).
-                     Ancho automático a propósito: son verticales
-                     (~0.7:1), no cuadrados. `self-start`, si no: la
-                     tarjeta es `flex flex-col` (stretch por defecto en
-                     el eje cruzado) y sin esto `w-auto` no alcanza — la
-                     imagen se estira a lo ancho de la tarjeta entera y
-                     se deforma. Misma altura fija en las dos tarjetas,
-                     así "Base"/"Plus" arrancan alineados aunque un ícono
-                     sea más angosto que el otro — "sin que se corra el
-                     contenido" de abajo. -->
-                <img [src]="icono" alt="" class="h-24 w-auto self-start" />
+              @if (i < indicePaso()) {
+                <tabler-icon
+                  [icon]="iconCheck"
+                  [size]="14"
+                  [stroke]="2.5"
+                  class="inline-flex anim-pop"
+                />
+              } @else {
+                {{ i + 1 }}
               }
+            </span>
+            <span
+              class="text-xs transition-colors duration-300"
+              [class.text-white]="i <= indicePaso()"
+              [class.text-gray-500]="i > indicePaso()"
+            >
+              {{ p.etiqueta }}
+            </span>
+          </li>
+        }
+      </ol>
+    </div>
+  </nav>
 
-              <span class="mt-4 text-2xl font-bold text-gray-900">{{ plan.nombre }}</span>
-              @if (plan.descripcion) {
-                <p class="mt-1 text-sm text-gray-500">{{ plan.descripcion }}</p>
-              }
+  @switch (paso()) {
+    @case ('plan') {
+      <div class="anim-paso-in w-full max-w-4xl">
+        <div class="mb-6 text-center">
+          <h1 class="text-3xl font-bold text-white">Elige tu plan</h1>
+          <p class="mt-1 text-sm text-gray-400">
+            Puedes cambiarlo más adelante. Los módulos extra los confirmamos contigo.
+          </p>
+        </div>
 
-              <div class="mt-6">
-                @if (plan.precioMensual !== null) {
-                  <span class="text-4xl font-extrabold text-gray-900">
-                    {{ formatCop(plan.precioMensual) }}
-                  </span>
-                  <p class="mt-1 text-xs text-gray-500">COP / mes</p>
-                } @else {
-                  <span class="text-lg font-medium text-gray-500">Precio a confirmar</span>
+        @if (cargandoPlanes()) {
+          <div class="grid gap-4 sm:grid-cols-2" aria-busy="true" aria-label="Cargando planes">
+            @for (_ of [0, 1]; track $index) {
+              <div class="h-80 animate-pulse rounded-2xl bg-white/5"></div>
+            }
+          </div>
+        } @else if (errorPlanes(); as mensaje) {
+          <div
+            class="anim-aparecer mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl bg-white/5 p-6 text-center ring-1 ring-white/10"
+          >
+            <p class="flex items-center gap-1.5 text-sm text-red-300">
+              <tabler-icon [icon]="iconError" [size]="16" svgClass="shrink-0" />
+              {{ mensaje }}
+            </p>
+            <button
+              type="button"
+              (click)="cargarPlanes()"
+              class="rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-900 transition-colors duration-200 hover:bg-gray-100"
+            >
+              Reintentar
+            </button>
+          </div>
+        } @else if (planes().length === 0) {
+          <p class="py-6 text-center text-sm text-gray-400">
+            No hay planes disponibles por el momento.
+          </p>
+        } @else {
+          <!-- Tarjetas seleccionables (radiogroup): tocar una la marca, no
+               navega — así se ven los extras de ESE plan antes de seguir.
+               La elegida gana anillo blanco + tilde con `pop`; las demás
+               se atenúan apenas, y recuperan opacidad al pasar el mouse. -->
+          <div role="radiogroup" aria-label="Planes" class="grid gap-4 sm:grid-cols-2">
+            @for (plan of planes(); track plan.id; let i = $index) {
+              @let elegido = planSeleccionado()?.id === plan.id;
+              <div
+                role="radio"
+                tabindex="0"
+                [attr.aria-checked]="elegido"
+                (click)="elegirPlan(plan)"
+                (keydown.enter)="elegirPlan(plan)"
+                (keydown.space)="$event.preventDefault(); elegirPlan(plan)"
+                [style.animation-delay.ms]="i * 70"
+                class="anim-aparecer group relative flex cursor-pointer flex-col rounded-2xl bg-card-bg p-6 text-left outline-none ring-offset-login-bg transition-all duration-300 ease-out hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-4"
+                [class.ring-2]="elegido"
+                [class.ring-white]="elegido"
+                [class.ring-offset-4]="elegido"
+                [class.opacity-60]="!elegido && planSeleccionado() !== null"
+                [class.hover:opacity-100]="!elegido"
+              >
+                <!-- Marcador de selección: círculo vacío → tilde con `pop`. -->
+                <span class="absolute right-5 top-5">
+                  @if (elegido) {
+                    <span
+                      class="anim-pop flex size-7 items-center justify-center rounded-full bg-primary-button text-white"
+                    >
+                      <tabler-icon [icon]="iconCheck" [size]="16" [stroke]="2.5" />
+                    </span>
+                  } @else {
+                    <span
+                      class="block size-7 rounded-full border-2 border-gray-200 transition-colors duration-200 group-hover:border-gray-400"
+                    ></span>
+                  }
+                </span>
+
+                <div class="flex items-center gap-4 pr-10">
+                  @if (iconoDelPlan(plan); as icono) {
+                    <!-- `self-start` + ancho automático: los PNG son
+                         verticales (~0.7:1), sin esto se deforman. -->
+                    <img [src]="icono" alt="" class="h-16 w-auto shrink-0 self-start" />
+                  }
+                  <div class="min-w-0">
+                    <p class="text-2xl font-bold text-gray-900">{{ plan.nombre }}</p>
+                    @if (plan.descripcion) {
+                      <p class="mt-0.5 text-sm text-gray-500">{{ plan.descripcion }}</p>
+                    }
+                  </div>
+                </div>
+
+                <div class="mt-5 flex items-baseline gap-1.5">
+                  @if (plan.precioMensual !== null) {
+                    <span class="text-4xl font-extrabold tracking-tight text-gray-900">
+                      {{ formatCop(plan.precioMensual) }}
+                    </span>
+                    <span class="text-xs text-gray-500">COP / mes</span>
+                  } @else {
+                    <span class="text-lg font-medium text-gray-500">Precio a confirmar</span>
+                  }
+                </div>
+
+                @if (plan.modulos.length > 0) {
+                  <div class="mt-5">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-400">
+                      Módulos incluidos
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                      @for (modulo of plan.modulos; track modulo.codigo) {
+                        <span
+                          class="rounded-full bg-canvas-bg px-2.5 py-1 text-xs font-medium text-gray-700"
+                        >
+                          {{ modulo.nombre }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if (plan.caracteristicas && plan.caracteristicas.length > 0) {
+                  <div class="mt-5 border-t border-gray-100 pt-4">
+                    <p class="text-sm font-medium text-gray-700">
+                      {{ encabezadoCaracteristicas(plan) }}
+                    </p>
+                    <ul class="mt-2.5 space-y-1.5">
+                      @for (caracteristica of plan.caracteristicas; track caracteristica) {
+                        <li class="flex items-start gap-1.5 text-sm text-gray-700">
+                          <tabler-icon
+                            [icon]="iconCheck"
+                            [size]="16"
+                            [stroke]="2"
+                            svgClass="mt-0.5 shrink-0 text-gray-400"
+                          />
+                          {{ caracteristica }}
+                        </li>
+                      }
+                    </ul>
+                  </div>
                 }
               </div>
+            }
+          </div>
 
-              <!-- Los descuentos de Goods son promociones que el staff
-                   asigna manualmente por cliente, no cupones que el
-                   visitante ingresa acá (PIVOTE_SAAS_MULTITENANT.md,
-                   pregunta 5) — esta caja lo deja claro en vez de
-                   insinuar un cupón de autoservicio que no existe. -->
-              <div class="mt-4 flex items-start gap-2 rounded-lg bg-canvas-bg p-3 text-xs text-gray-600">
-                <tabler-icon [icon]="iconInfo" [size]="16" svgClass="mt-0.5 shrink-0 text-gray-400" />
-                Los descuentos para tu plan los asigna nuestro equipo caso por caso, después de
-                revisar tu registro — no hay cupones que ingresar acá.
+          <!-- Módulos extra: se despliegan (grid-rows 0fr↔1fr, mismo
+               recurso que la bandeja de soporte de `staff`) apenas hay un
+               plan elegido con algo que ofrecer. `inert` mientras está
+               plegado para que sus botones no reciban foco. -->
+          @let mostrarExtras = modulosExtraDisponibles().length > 0;
+          <div
+            class="grid transition-[grid-template-rows,opacity] duration-500 ease-out"
+            [style.grid-template-rows]="mostrarExtras ? '1fr' : '0fr'"
+            [class.opacity-0]="!mostrarExtras"
+            [attr.inert]="mostrarExtras ? null : ''"
+          >
+            <div class="overflow-hidden">
+              <div class="mt-4 rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
+                <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <p class="text-sm font-semibold text-white">
+                    Suma módulos a tu plan {{ planSeleccionado()?.nombre }}
+                  </p>
+                  <p class="text-xs text-gray-400">
+                    Opcional · los confirmamos contigo, no se cobran solos
+                  </p>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  @for (modulo of modulosExtraDisponibles(); track modulo.codigo) {
+                    @let marcado = modulosExtraSeleccionados().has(modulo.codigo);
+                    <button
+                      type="button"
+                      [attr.aria-pressed]="marcado"
+                      (click)="alternarModuloExtra(modulo.codigo)"
+                      class="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition-all duration-200 active:scale-95"
+                      [class.bg-white]="marcado"
+                      [class.text-gray-900]="marcado"
+                      [class.text-gray-300]="!marcado"
+                      [class.ring-1]="!marcado"
+                      [class.ring-white/20]="!marcado"
+                      [class.hover:text-white]="!marcado"
+                      [class.hover:ring-white/40]="!marcado"
+                    >
+                      <tabler-icon
+                        [icon]="marcado ? iconCheck : iconPlus"
+                        [size]="15"
+                        [stroke]="2.25"
+                        class="inline-flex"
+                        [class.anim-pop]="marcado"
+                      />
+                      {{ modulo.nombre }}
+                    </button>
+                  }
+                </div>
               </div>
+            </div>
+          </div>
 
+          <!-- Barra de avance anclada abajo: resume la elección y es el
+               único punto para seguir — aparece con `subir` al elegir. -->
+          @if (planSeleccionado(); as plan) {
+            <div
+              class="anim-subir sticky bottom-4 z-10 mt-6 flex items-center justify-between gap-4 rounded-2xl bg-white/10 p-2.5 pl-5 ring-1 ring-white/15 backdrop-blur-md"
+            >
+              <div class="min-w-0 text-white">
+                <p class="truncate text-sm font-semibold">
+                  Plan {{ plan.nombre }}
+                  @if (modulosExtraElegidos().length > 0) {
+                    <span class="font-normal text-gray-300">
+                      · +{{ modulosExtraElegidos().length }}
+                      {{ modulosExtraElegidos().length === 1 ? 'módulo extra' : 'módulos extra' }}
+                    </span>
+                  }
+                </p>
+                <p class="truncate text-xs text-gray-400">
+                  @if (plan.precioMensual !== null) {
+                    {{ formatCop(plan.precioMensual) }} COP / mes
+                  } @else {
+                    Precio a confirmar
+                  }
+                  @if (modulosExtraElegidos().length > 0) {
+                    · extras a confirmar
+                  }
+                </p>
+              </div>
               <button
                 type="button"
-                (click)="elegirPlan(plan)"
-                class="mt-4 w-full rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+                (click)="continuarAFormulario()"
+                class="group flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-colors duration-200 hover:bg-gray-100"
               >
-                Elegir plan {{ plan.nombre }}
+                Continuar
+                <tabler-icon
+                  [icon]="iconNext"
+                  [size]="16"
+                  [stroke]="2"
+                  class="inline-flex transition-transform duration-200 group-hover:translate-x-0.5"
+                />
               </button>
-
-              @if (plan.caracteristicas && plan.caracteristicas.length > 0) {
-                <div class="mt-6 border-t border-gray-100 pt-4">
-                  <p class="text-sm font-medium text-gray-700">
-                    {{ encabezadoCaracteristicas(plan) }}
-                  </p>
-                  <ul class="mt-3 space-y-1.5">
-                    @for (caracteristica of plan.caracteristicas; track caracteristica) {
-                      <li class="flex items-start gap-1.5 text-sm text-gray-700">
-                        <tabler-icon
-                          [icon]="iconCheck"
-                          [size]="16"
-                          [stroke]="2"
-                          svgClass="mt-0.5 shrink-0 text-gray-400"
-                        />
-                        {{ caracteristica }}
-                      </li>
-                    }
-                  </ul>
-                </div>
-              }
             </div>
+          } @else {
+            <p class="mt-6 text-center text-sm text-gray-500">Toca un plan para continuar.</p>
           }
-        </div>
-      }
-    </div>
 
-    <!-- Pie fuera de la tarjeta blanca — directo sobre el fondo oscuro de
-         la página, igual que el pie de "Se aplican límites de uso..." en
-         la página de precios de Claude, que tampoco vive dentro de la
-         tarjeta. Reemplaza esa frase (acá no hay límites de uso) por la
-         aclaración de descuentos manuales, que sí es real (ver la caja
-         de cada plan arriba). -->
-    @if (planes().length > 0) {
-      <p class="mt-6 max-w-4xl text-center text-xs text-gray-500">
-        *Los descuentos se asignan de forma manual, caso por caso. Los precios y planes están
-        sujetos a cambios a discreción de Goods.
-      </p>
+          <!-- Los descuentos de Goods son promociones que staff asigna a
+               mano por cliente (PIVOTE_SAAS_MULTITENANT.md, pregunta 5) —
+               una sola aclaración acá, en vez de repetirla en cada tarjeta. -->
+          <p
+            class="mx-auto mt-6 flex max-w-2xl items-start justify-center gap-1.5 text-center text-xs text-gray-500"
+          >
+            <tabler-icon [icon]="iconInfo" [size]="14" svgClass="mt-px shrink-0" />
+            Los descuentos los asigna nuestro equipo caso por caso al revisar tu registro — no hay
+            cupones. Precios y planes sujetos a cambios a discreción de Goods.
+          </p>
+        }
+      </div>
     }
-  } @else {
-    <div class="w-full max-w-2xl rounded-2xl bg-card-bg p-8 shadow-xl">
-      @if (paso() === 'formulario') {
-        <div class="animate-[fade-in-up_0.25s_ease-out]">
+
+    @case ('formulario') {
+      <div
+        class="anim-paso-in grid w-full max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start"
+      >
+        <section
+          class="rounded-2xl bg-card-bg p-6 shadow-xl sm:p-8"
+          [class.anim-sacudir-a]="sacudida() === 'a'"
+          [class.anim-sacudir-b]="sacudida() === 'b'"
+        >
           <button
             type="button"
             (click)="volverAPlanes()"
-            class="mb-4 flex items-center gap-1 text-sm font-medium text-gray-500 transition-colors duration-200 hover:text-gray-700"
+            class="group mb-4 flex items-center gap-1 text-sm font-medium text-gray-500 transition-colors duration-200 hover:text-gray-800"
           >
-            <tabler-icon [icon]="iconBack" [size]="16" [stroke]="2" />
-            Cambiar plan
+            <tabler-icon
+              [icon]="iconBack"
+              [size]="16"
+              [stroke]="2"
+              class="inline-flex transition-transform duration-200 group-hover:-translate-x-0.5"
+            />
+            Planes
           </button>
 
           <h1 class="text-3xl font-bold text-gray-900">Cuéntanos de tu negocio</h1>
-          <p class="mb-6 text-sm text-gray-600">
-            Plan elegido:
-            <span class="font-medium text-gray-900">{{ planSeleccionado()?.nombre }}</span>
-          </p>
+          <p class="mb-6 mt-1 text-sm text-gray-500">Te toma menos de un minuto.</p>
 
-          <form class="space-y-4" (submit)="$event.preventDefault(); enviar()">
-            <div>
-              <label for="nombre" class="mb-1 block text-sm font-medium text-gray-700">
-                Nombre del negocio
-              </label>
-              <input
-                id="nombre"
-                type="text"
-                autocomplete="organization"
-                autofocus
-                [value]="campos().nombre"
-                (input)="actualizarCampo('nombre', $any($event.target).value)"
-                [class.bg-field-error-bg]="camposInvalidos().nombre"
-                class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-              />
-              @if (camposInvalidos().nombre) {
-                <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa el nombre de tu negocio</p>
-              }
-            </div>
+          <form class="space-y-6" novalidate (submit)="$event.preventDefault(); enviar()">
+            <fieldset class="space-y-4">
+              <legend class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                El negocio
+              </legend>
 
-            <div>
-              <label for="rubro" class="mb-1 block text-sm font-medium text-gray-700">
-                Rubro <span class="font-normal text-gray-400">(opcional)</span>
-              </label>
-              <input
-                id="rubro"
-                type="text"
-                [value]="campos().rubro"
-                (input)="actualizarCampo('rubro', $any($event.target).value)"
-                class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-              />
-            </div>
-
-            <div class="grid gap-4 sm:grid-cols-2">
               <div>
-                <label for="correoContacto" class="mb-1 block text-sm font-medium text-gray-700">
-                  Correo de contacto
-                </label>
+                <label for="nombre" class="mb-1 block text-sm font-medium text-gray-700"
+                  >Nombre del negocio</label
+                >
                 <input
-                  id="correoContacto"
-                  type="email"
-                  autocomplete="email"
-                  [value]="campos().correoContacto"
-                  (input)="actualizarCampo('correoContacto', $any($event.target).value)"
-                  [class.bg-field-error-bg]="camposInvalidos().correoContacto"
+                  id="nombre"
+                  type="text"
+                  autocomplete="organization"
+                  autofocus
+                  [value]="campos().nombre"
+                  (input)="actualizarCampo('nombre', $any($event.target).value)"
+                  [class.bg-field-error-bg]="camposInvalidos().nombre"
                   class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
                 />
-                @if (camposInvalidos().correoContacto) {
-                  <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa un correo válido</p>
+                @if (camposInvalidos().nombre) {
+                  <p
+                    class="mt-1.5 animate-[fade-in-up_0.2s_ease-out] text-sm text-badge-error-solid"
+                  >
+                    Ingresa el nombre de tu negocio
+                  </p>
                 }
               </div>
 
               <div>
-                <label for="telefonoContacto" class="mb-1 block text-sm font-medium text-gray-700">
-                  Teléfono <span class="font-normal text-gray-400">(opcional)</span>
+                <label for="rubro" class="mb-1 block text-sm font-medium text-gray-700">
+                  Rubro <span class="font-normal text-gray-400">(opcional)</span>
                 </label>
                 <input
-                  id="telefonoContacto"
-                  type="tel"
-                  autocomplete="tel"
-                  [value]="campos().telefonoContacto"
-                  (input)="actualizarCampo('telefonoContacto', $any($event.target).value)"
-                  class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                  id="rubro"
+                  type="text"
+                  placeholder="Ej. Panadería"
+                  [value]="campos().rubro"
+                  (input)="actualizarCampo('rubro', $any($event.target).value)"
+                  class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 placeholder:text-gray-400 focus:ring-2 focus:ring-gray-400"
                 />
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                  @for (rubro of rubrosSugeridos; track rubro) {
+                    @let activo = campos().rubro === rubro;
+                    <button
+                      type="button"
+                      [attr.aria-pressed]="activo"
+                      (click)="elegirRubro(rubro)"
+                      class="rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-200 active:scale-95"
+                      [class.bg-primary-button]="activo"
+                      [class.text-white]="activo"
+                      [class.bg-canvas-bg]="!activo"
+                      [class.text-gray-600]="!activo"
+                      [class.hover:bg-gray-200]="!activo"
+                    >
+                      {{ rubro }}
+                    </button>
+                  }
+                </div>
               </div>
-            </div>
+            </fieldset>
 
-            <!-- Datos de quien va a terminar logueándose como dueño una
-                 vez activada la Empresa — pueden ser la misma persona de
-                 arriba o no (ver el comentario en
-                 RegistroPublicoEmpresaDto del backend: ej. quien llena
-                 el formulario de ventas vs. quien va a operar la cuenta
-                 día a día). -->
-            <div class="border-t border-gray-100 pt-4">
-              <p class="mb-3 text-sm font-medium text-gray-700">Datos de la persona dueña</p>
+            <!-- Quien llena el formulario suele ser quien va a operar la
+                 cuenta — por eso el correo de contacto del negocio sale,
+                 por defecto, de acá (ver `usarOtroCorreoContacto`). -->
+            <fieldset class="space-y-4 border-t border-gray-100 pt-6">
+              <legend class="sr-only">Persona dueña</legend>
+              <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Persona dueña de la cuenta
+              </p>
+
               <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label for="duenoNombres" class="mb-1 block text-sm font-medium text-gray-700">
-                    Nombres
-                  </label>
+                  <label for="duenoNombres" class="mb-1 block text-sm font-medium text-gray-700"
+                    >Nombres</label
+                  >
                   <input
                     id="duenoNombres"
                     type="text"
@@ -258,14 +424,18 @@
                     class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
                   />
                   @if (camposInvalidos().duenoNombres) {
-                    <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa los nombres</p>
+                    <p
+                      class="mt-1.5 animate-[fade-in-up_0.2s_ease-out] text-sm text-badge-error-solid"
+                    >
+                      Ingresa los nombres
+                    </p>
                   }
                 </div>
 
                 <div>
-                  <label for="duenoApellidos" class="mb-1 block text-sm font-medium text-gray-700">
-                    Apellidos
-                  </label>
+                  <label for="duenoApellidos" class="mb-1 block text-sm font-medium text-gray-700"
+                    >Apellidos</label
+                  >
                   <input
                     id="duenoApellidos"
                     type="text"
@@ -276,59 +446,124 @@
                     class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
                   />
                   @if (camposInvalidos().duenoApellidos) {
-                    <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa los apellidos</p>
-                  }
-                </div>
-              </div>
-
-              <div class="mt-4">
-                <label for="duenoCorreo" class="mb-1 block text-sm font-medium text-gray-700">
-                  Correo de la persona dueña
-                </label>
-                <input
-                  id="duenoCorreo"
-                  type="email"
-                  autocomplete="email"
-                  [value]="campos().duenoCorreo"
-                  (input)="actualizarCampo('duenoCorreo', $any($event.target).value)"
-                  [class.bg-field-error-bg]="camposInvalidos().duenoCorreo"
-                  class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
-                />
-                @if (camposInvalidos().duenoCorreo) {
-                  <p class="mt-1.5 text-sm text-badge-error-solid">Ingresa un correo válido</p>
-                }
-                <p class="mt-1.5 text-xs text-gray-500">
-                  Con este correo va a iniciar sesión una vez que activemos tu cuenta.
-                </p>
-              </div>
-            </div>
-
-            @if (modulosExtraDisponibles().length > 0) {
-              <div class="border-t border-gray-100 pt-4">
-                <p class="text-sm font-medium text-gray-700">
-                  Módulos extra <span class="font-normal text-gray-400">(opcional)</span>
-                </p>
-                <p class="mb-3 mt-1 text-xs text-gray-500">
-                  Tu plan {{ planSeleccionado()?.nombre }} no los trae de por sí — márcalos y nuestro equipo los
-                  confirma con vos cuando te contactemos, no se cobran solos.
-                </p>
-                <div class="flex flex-col gap-2">
-                  @for (modulo of modulosExtraDisponibles(); track modulo.codigo) {
-                    <label
-                      class="flex cursor-pointer items-center gap-2.5 rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-700 transition-colors duration-150 hover:bg-gray-100"
+                    <p
+                      class="mt-1.5 animate-[fade-in-up_0.2s_ease-out] text-sm text-badge-error-solid"
                     >
-                      <input
-                        type="checkbox"
-                        [checked]="modulosExtraSeleccionados().has(modulo.codigo)"
-                        (change)="alternarModuloExtra(modulo.codigo)"
-                        class="size-4 rounded border-gray-300"
-                      />
-                      {{ modulo.nombre }}
-                    </label>
+                      Ingresa los apellidos
+                    </p>
                   }
                 </div>
+
+                <div>
+                  <label for="duenoCorreo" class="mb-1 block text-sm font-medium text-gray-700"
+                    >Correo</label
+                  >
+                  <input
+                    id="duenoCorreo"
+                    type="email"
+                    autocomplete="email"
+                    [value]="campos().duenoCorreo"
+                    (input)="actualizarCampo('duenoCorreo', $any($event.target).value)"
+                    [class.bg-field-error-bg]="camposInvalidos().duenoCorreo"
+                    class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                  />
+                  @if (camposInvalidos().duenoCorreo) {
+                    <p
+                      class="mt-1.5 animate-[fade-in-up_0.2s_ease-out] text-sm text-badge-error-solid"
+                    >
+                      Ingresa un correo válido
+                    </p>
+                  } @else {
+                    <p class="mt-1.5 text-xs text-gray-500">Con este correo inicias sesión.</p>
+                  }
+                </div>
+
+                <div>
+                  <label
+                    for="telefonoContacto"
+                    class="mb-1 block text-sm font-medium text-gray-700"
+                  >
+                    Teléfono <span class="font-normal text-gray-400">(opcional)</span>
+                  </label>
+                  <input
+                    id="telefonoContacto"
+                    type="tel"
+                    autocomplete="tel"
+                    [value]="campos().telefonoContacto"
+                    (input)="actualizarCampo('telefonoContacto', $any($event.target).value)"
+                    class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
+                  />
+                  <p class="mt-1.5 text-xs text-gray-500">
+                    Te llamamos aquí para activar tu cuenta.
+                  </p>
+                </div>
               </div>
-            }
+
+              <!-- Interruptor: correo de contacto del negocio distinto al
+                   de la persona dueña. El campo se despliega con la misma
+                   transición de grid-rows que los módulos extra. -->
+              <div class="rounded-xl bg-canvas-bg p-3">
+                <button
+                  type="button"
+                  role="switch"
+                  [attr.aria-checked]="usarOtroCorreoContacto()"
+                  (click)="alternarOtroCorreoContacto()"
+                  class="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <span>
+                    <span class="block text-sm font-medium text-gray-800"
+                      >El negocio usa otro correo de contacto</span
+                    >
+                    <span class="block text-xs text-gray-500"
+                      >Si no, te escribimos al correo de arriba.</span
+                    >
+                  </span>
+                  <span
+                    class="relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200"
+                    [class.bg-primary-button]="usarOtroCorreoContacto()"
+                    [class.bg-gray-300]="!usarOtroCorreoContacto()"
+                  >
+                    <span
+                      class="absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow transition-transform duration-200 ease-out"
+                      [class.translate-x-4]="usarOtroCorreoContacto()"
+                    ></span>
+                  </span>
+                </button>
+
+                <div
+                  class="grid transition-[grid-template-rows,opacity] duration-300 ease-out"
+                  [style.grid-template-rows]="usarOtroCorreoContacto() ? '1fr' : '0fr'"
+                  [class.opacity-0]="!usarOtroCorreoContacto()"
+                  [attr.inert]="usarOtroCorreoContacto() ? null : ''"
+                >
+                  <div class="overflow-hidden">
+                    <div class="pt-3">
+                      <label for="correoContacto" class="sr-only"
+                        >Correo de contacto del negocio</label
+                      >
+                      <input
+                        id="correoContacto"
+                        type="email"
+                        autocomplete="off"
+                        placeholder="contacto@tunegocio.com"
+                        [value]="campos().correoContacto"
+                        (input)="actualizarCampo('correoContacto', $any($event.target).value)"
+                        [class.bg-field-error-bg]="camposInvalidos().correoContacto"
+                        [class.bg-card-bg]="!camposInvalidos().correoContacto"
+                        class="w-full rounded-lg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-gray-200 transition-colors duration-200 placeholder:text-gray-400 focus:ring-2 focus:ring-gray-400"
+                      />
+                      @if (camposInvalidos().correoContacto) {
+                        <p
+                          class="mt-1.5 animate-[fade-in-up_0.2s_ease-out] text-sm text-badge-error-solid"
+                        >
+                          Ingresa un correo válido
+                        </p>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
 
             @if (errorEnvio(); as mensaje) {
               <p
@@ -339,33 +574,220 @@
               </p>
             }
 
-            <button
-              type="submit"
-              [disabled]="enviando()"
-              class="w-full rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:bg-gray-300 disabled:text-gray-500"
-            >
-              {{ enviando() ? 'Enviando…' : 'Enviar registro' }}
-            </button>
+            <div class="space-y-3">
+              <!-- Avance de obligatorios: una barra fina en vez de validar
+                   en vivo campo por campo (se valida al enviar). -->
+              <div class="flex items-center gap-3 text-xs text-gray-500">
+                <div class="h-1 flex-1 overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    class="h-full rounded-full bg-primary-button transition-[width] duration-500 ease-out"
+                    [style.width.%]="(obligatorios().completos / obligatorios().total) * 100"
+                  ></div>
+                </div>
+                <span class="tabular-nums"
+                  >{{ obligatorios().completos }}/{{ obligatorios().total }} obligatorios</span
+                >
+              </div>
+
+              <button
+                type="submit"
+                [disabled]="enviando()"
+                class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-70"
+              >
+                @if (enviando()) {
+                  <tabler-icon
+                    [icon]="iconLoader"
+                    [size]="16"
+                    [stroke]="2"
+                    class="inline-flex animate-spin"
+                  />
+                  Enviando…
+                } @else {
+                  Enviar registro
+                }
+              </button>
+            </div>
           </form>
-        </div>
-      } @else {
-        <div class="animate-[fade-in-up_0.25s_ease-out] flex flex-col items-center py-6 text-center">
-          <tabler-icon [icon]="iconConfirmado" [size]="56" svgClass="text-emerald-500" />
-          <h1 class="mt-4 text-2xl font-bold text-gray-900">¡Registro recibido!</h1>
+        </section>
+
+        <!-- Resumen lateral (arriba en móvil): el plan y los extras se
+             pueden ajustar desde acá mismo sin volver al paso 1. -->
+        @if (planSeleccionado(); as plan) {
+          <aside class="order-first lg:sticky lg:top-8 lg:order-last">
+            <div class="rounded-2xl bg-white/[0.04] p-5 text-white ring-1 ring-white/10">
+              <div class="flex items-center justify-between">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Tu plan</p>
+                <button
+                  type="button"
+                  (click)="volverAPlanes()"
+                  class="text-xs font-medium text-gray-400 underline-offset-2 transition-colors duration-200 hover:text-white hover:underline"
+                >
+                  Cambiar
+                </button>
+              </div>
+
+              <div class="mt-3 flex items-center gap-3">
+                @if (iconoDelPlan(plan); as icono) {
+                  <span
+                    class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white"
+                  >
+                    <img [src]="icono" alt="" class="h-8 w-auto" />
+                  </span>
+                }
+                <div class="min-w-0">
+                  <p class="text-lg font-bold">{{ plan.nombre }}</p>
+                  <p class="text-sm text-gray-400">
+                    @if (plan.precioMensual !== null) {
+                      {{ formatCop(plan.precioMensual) }} COP / mes
+                    } @else {
+                      Precio a confirmar
+                    }
+                  </p>
+                </div>
+              </div>
+
+              @if (plan.modulos.length > 0) {
+                <div class="mt-4 hidden lg:block">
+                  <p class="text-xs text-gray-400">Incluye</p>
+                  <div class="mt-1.5 flex flex-wrap gap-1.5">
+                    @for (modulo of plan.modulos; track modulo.codigo) {
+                      <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs text-gray-200">{{
+                        modulo.nombre
+                      }}</span>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (modulosExtraDisponibles().length > 0) {
+                <div class="mt-4 border-t border-white/10 pt-4">
+                  <p class="text-xs text-gray-400">
+                    Módulos extra <span class="text-gray-500">· a confirmar</span>
+                  </p>
+                  <div class="mt-1.5 flex flex-wrap gap-1.5">
+                    @for (modulo of modulosExtraDisponibles(); track modulo.codigo) {
+                      @let marcado = modulosExtraSeleccionados().has(modulo.codigo);
+                      <button
+                        type="button"
+                        [attr.aria-pressed]="marcado"
+                        (click)="alternarModuloExtra(modulo.codigo)"
+                        class="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-200 active:scale-95"
+                        [class.bg-white]="marcado"
+                        [class.text-gray-900]="marcado"
+                        [class.text-gray-400]="!marcado"
+                        [class.ring-1]="!marcado"
+                        [class.ring-white/20]="!marcado"
+                        [class.hover:text-white]="!marcado"
+                      >
+                        <tabler-icon
+                          [icon]="marcado ? iconCheck : iconPlus"
+                          [size]="12"
+                          [stroke]="2.5"
+                          class="inline-flex"
+                          [class.anim-pop]="marcado"
+                        />
+                        {{ modulo.nombre }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </aside>
+        }
+      </div>
+    }
+
+    @case ('confirmacion') {
+      <div class="anim-paso-in w-full max-w-lg rounded-2xl bg-card-bg p-8 shadow-xl">
+        <div class="flex flex-col items-center text-center">
+          <div class="relative size-16">
+            <span class="anim-onda absolute inset-0 rounded-full bg-success-solid/40"></span>
+            <span
+              class="anim-pop relative flex size-16 items-center justify-center rounded-full bg-success-solid text-white"
+            >
+              <tabler-icon [icon]="iconCheck" [size]="30" [stroke]="2.5" />
+            </span>
+          </div>
+          <h1 class="mt-5 text-2xl font-bold text-gray-900">¡Registro recibido!</h1>
           <p class="mt-2 max-w-sm text-sm text-gray-600">
-            Ya anotamos <span class="font-medium text-gray-900">{{ nombreEmpresaRegistrada() }}</span>
-            — nuestro equipo va a revisar tu solicitud y te vamos a contactar apenas quede activa
-            tu cuenta.
+            Ya anotamos
+            <span class="font-medium text-gray-900">{{ nombreEmpresaRegistrada() }}</span
+            >. Te escribimos a
+            <span class="font-medium text-gray-900">{{ correoConfirmacion() }}</span> con cada
+            avance.
           </p>
-          <button
-            type="button"
-            (click)="irALogin()"
-            class="mt-6 rounded-lg bg-primary-button px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-          >
-            Ir a iniciar sesión
-          </button>
         </div>
-      }
-    </div>
+
+        @if (planSeleccionado(); as plan) {
+          <div
+            class="anim-aparecer mt-6 rounded-xl bg-canvas-bg p-4"
+            style="animation-delay: 120ms"
+          >
+            <div class="flex items-center justify-between text-sm">
+              <span class="font-medium text-gray-900">Plan {{ plan.nombre }}</span>
+              <span class="text-gray-600">
+                @if (plan.precioMensual !== null) {
+                  {{ formatCop(plan.precioMensual) }} COP / mes
+                } @else {
+                  Precio a confirmar
+                }
+              </span>
+            </div>
+            @if (modulosExtraElegidos().length > 0) {
+              <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                <span class="text-xs text-gray-500">Extras solicitados:</span>
+                @for (modulo of modulosExtraElegidos(); track modulo.codigo) {
+                  <span
+                    class="rounded-full bg-card-bg px-2.5 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-200"
+                  >
+                    {{ modulo.nombre }}
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Próximos pasos reales del alta asistida: staff revisa, llama
+             (`confirmarLlamada`, donde también confirma los extras) y el
+             cliente activa la cuenta al crear su contraseña. -->
+        <ol class="mt-6 space-y-4">
+          @for (
+            etapa of [
+              { titulo: 'Revisamos tu solicitud', detalle: 'Nuestro equipo valida los datos de tu negocio.' },
+              { titulo: 'Te llamamos', detalle: 'Confirmamos tu plan y los módulos extra que marcaste.' },
+              { titulo: 'Activas tu cuenta', detalle: 'Te llega un enlace para crear tu contraseña y entrar.' },
+            ];
+            track etapa.titulo;
+            let i = $index, primero = $first
+          ) {
+            <li class="anim-aparecer flex gap-3" [style.animation-delay.ms]="220 + i * 90">
+              <span
+                class="flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                [class.bg-primary-button]="primero"
+                [class.text-white]="primero"
+                [class.bg-canvas-bg]="!primero"
+                [class.text-gray-500]="!primero"
+              >
+                {{ i + 1 }}
+              </span>
+              <div>
+                <p class="text-sm font-medium text-gray-900">{{ etapa.titulo }}</p>
+                <p class="text-xs text-gray-500">{{ etapa.detalle }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+
+        <button
+          type="button"
+          (click)="irALogin()"
+          class="mt-8 w-full rounded-lg bg-primary-button px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+        >
+          Ir a iniciar sesión
+        </button>
+      </div>
+    }
   }
 </main>

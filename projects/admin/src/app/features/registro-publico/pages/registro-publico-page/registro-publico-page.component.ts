@@ -1,12 +1,22 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   IconArrowLeft,
+  IconArrowRight,
   IconCheck,
-  IconCircleCheckFilled,
   IconExclamationCircleFilled,
   IconInfoCircle,
+  IconLoader2,
+  IconPlus,
+  IconX,
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { ModuloPublico, PlanPublico } from '../../models/plan-publico.model';
@@ -35,6 +45,11 @@ function formatCop(value: number): string {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Atajos de un toque para el campo "Rubro" (rediseño 2026-09-26) — solo
+ * rellenan el input, que sigue siendo texto libre: el backend no tiene un
+ * catálogo de rubros, es un `string` opcional sin validación extra. */
+const RUBROS_SUGERIDOS = ['Restaurante', 'Tienda de ropa', 'Minimarket', 'Cafetería', 'Belleza'];
 
 type PasoRegistro = 'plan' | 'formulario' | 'confirmacion';
 
@@ -65,25 +80,24 @@ const FORMULARIO_VACIO: CamposFormulario = {
  * `authGuard`, mismo criterio que `/login`: sin sidebar/topbar, ocupa
  * toda la pantalla.
  *
- * Flujo en pasos (mismo patrón que `LoginComponent`: signal `paso` +
- * inputs nativos con signals a mano, sin Angular Forms):
- * 1. `plan` — trae el catálogo público (`GET /planes`, siempre solo
- *    `activo: true`) y el visitante elige uno.
- * 2. `formulario` — datos del negocio + datos de quien va a terminar
- *    logueándose como dueño (pueden ser la misma persona que
- *    `correoContacto` o no — ver el comentario en
- *    `RegistroPublicoEmpresaDto` del backend).
- * 3. `confirmacion` — el registro queda `pendiente` de revisión del
- *    staff (`POST /empresas/registro-publico`, ver `EmpresaService`
- *    .registrarPublico); NO crea sesión ni loguea a nadie — recién hay
- *    `Usuario` dueño cuando el staff activa la Empresa desde "Altas
- *    pendientes" (`PATCH /empresas/:id/activar`), así que esta pantalla
- *    no redirige a `/login`, se queda mostrando el estado.
+ * Flujo en pasos (signal `paso` + inputs nativos con signals a mano, sin
+ * Angular Forms, mismo patrón que `LoginComponent`), rediseñado
+ * 2026-09-26 para integrar los módulos extra (§11.6 de
+ * PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md) en vez de sumarlos al final del
+ * formulario:
+ * 1. `plan` — tarjetas seleccionables (no navegan solas) con los módulos
+ *    que trae cada plan; al elegir uno se despliega debajo la selección de
+ *    módulos extra, y una barra fija resume la elección antes de seguir.
+ * 2. `formulario` — datos del negocio y de la persona dueña, con un
+ *    resumen lateral del plan + extras que se puede editar sin volver.
+ *    Por defecto el correo de contacto del negocio ES el de la persona
+ *    dueña (el caso común); se puede separar con un interruptor.
+ * 3. `confirmacion` — el registro queda `solicitud_recibida`
+ *    (`POST /empresas/registro-publico`); NO crea sesión ni loguea a
+ *    nadie, así que la pantalla explica los próximos pasos reales del alta
+ *    asistida en vez de redirigir a `/login`.
  *
- * No lleva `authInterceptor` en juego (no hay token todavía) ni
- * `TenantContextInterceptor` del lado del backend (`Empresa`/`Plan` son
- * tablas "de arriba", ver `plan.entity.ts`) — ambos endpoints que usa
- * esta pantalla son explícitamente públicos.
+ * Ambos endpoints de lectura y el de registro son públicos (sin token).
  */
 @Component({
   selector: 'app-registro-publico-page',
@@ -97,13 +111,29 @@ export class RegistroPublicoPageComponent implements OnInit {
   private readonly router = inject(Router);
 
   protected readonly iconBack = IconArrowLeft;
+  protected readonly iconNext = IconArrowRight;
   protected readonly iconCheck = IconCheck;
-  protected readonly iconConfirmado = IconCircleCheckFilled;
   protected readonly iconError = IconExclamationCircleFilled;
   protected readonly iconInfo = IconInfoCircle;
+  protected readonly iconLoader = IconLoader2;
+  protected readonly iconPlus = IconPlus;
+  protected readonly iconQuitar = IconX;
   protected readonly formatCop = formatCop;
+  protected readonly rubrosSugeridos = RUBROS_SUGERIDOS;
 
   protected readonly paso = signal<PasoRegistro>('plan');
+
+  /** Pasos del indicador de arriba — el índice del activo mueve la barra
+   * de progreso (`progresoPasos`) con una transición de ancho. */
+  protected readonly pasos: { id: PasoRegistro; etiqueta: string }[] = [
+    { id: 'plan', etiqueta: 'Plan' },
+    { id: 'formulario', etiqueta: 'Tu negocio' },
+    { id: 'confirmacion', etiqueta: 'Listo' },
+  ];
+  protected readonly indicePaso = computed(() => this.pasos.findIndex((p) => p.id === this.paso()));
+  protected readonly progresoPasos = computed(
+    () => (this.indicePaso() / (this.pasos.length - 1)) * 100,
+  );
 
   // Paso 1: catálogo de planes.
   protected readonly planes = signal<PlanPublico[]>([]);
@@ -126,14 +156,6 @@ export class RegistroPublicoPageComponent implements OnInit {
     );
   });
 
-  // Paso 2: formulario.
-  protected readonly campos = signal<CamposFormulario>({ ...FORMULARIO_VACIO });
-  protected readonly camposInvalidos = signal<Partial<Record<keyof CamposFormulario, boolean>>>(
-    {},
-  );
-  protected readonly enviando = signal(false);
-  protected readonly errorEnvio = signal<string | null>(null);
-
   // Módulos extra (Fase 2 de PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md,
   // §11.6) — códigos que el visitante marcó como "extra", entre los que
   // el plan elegido NO trae de por sí (ver `modulosExtraDisponibles`).
@@ -141,17 +163,14 @@ export class RegistroPublicoPageComponent implements OnInit {
   // activación (§11.7) antes de que se vuelva un acceso real.
   protected readonly modulosExtraSeleccionados = signal<Set<string>>(new Set());
 
-  /** Catálogo REAL de módulos activos (`GET /modulos/publico`, §11.6,
-   * corrección 2026-09-26) — reemplaza el intento inicial de derivar este
-   * universo como unión de `plan.modulos` de todos los planes activos:
-   * ese enfoque fallaba apenas un módulo no estaba vinculado a NINGÚN
-   * plan todavía (el caso real de `discounts`/`messages` recién
-   * sembrados, encontrado probando el flujo de punta a punta), que es
-   * justo el caso que el checkout necesita poder ofrecer como extra. */
+  /** Catálogo REAL de módulos activos (`GET /modulos/publico`, §11.6) —
+   * no la unión de `plan.modulos` de todos los planes: ese enfoque no
+   * puede ofrecer un módulo que no esté en ningún plan todavía (el caso
+   * real de `discounts`/`messages`), que es justo lo que hace falta acá. */
   protected readonly catalogoModulos = signal<ModuloPublico[]>([]);
 
   /** Los módulos que el plan elegido NO trae — se ofrecen como "extra, a
-   * confirmar con nuestro equipo" (checkboxes → `modulosSolicitados`). */
+   * confirmar con nuestro equipo" (→ `modulosSolicitados`). */
   protected readonly modulosExtraDisponibles = computed(() => {
     const plan = this.planSeleccionado();
     if (!plan) {
@@ -161,26 +180,59 @@ export class RegistroPublicoPageComponent implements OnInit {
     return this.catalogoModulos().filter((m) => !codigosDelPlan.has(m.codigo));
   });
 
+  /** Los extras marcados, en el orden del catálogo (el `Set` guarda el
+   * orden de clic) — para los chips del resumen lateral y la confirmación. */
+  protected readonly modulosExtraElegidos = computed(() => {
+    const seleccion = this.modulosExtraSeleccionados();
+    return this.modulosExtraDisponibles().filter((m) => seleccion.has(m.codigo));
+  });
+
+  // Paso 2: formulario.
+  protected readonly campos = signal<CamposFormulario>({ ...FORMULARIO_VACIO });
+  protected readonly camposInvalidos = signal<Partial<Record<keyof CamposFormulario, boolean>>>({});
+  /** `false` (por defecto) = el correo de contacto del negocio es el mismo
+   * de la persona dueña, y el campo aparte ni se muestra. El DTO del
+   * backend sigue recibiendo los dos correos igual (`correoContacto` y
+   * `duenoCorreo`), ver `correoContactoEfectivo`. */
+  protected readonly usarOtroCorreoContacto = signal(false);
+  protected readonly enviando = signal(false);
+  protected readonly errorEnvio = signal<string | null>(null);
+  /** Alterna entre `anim-sacudir-a`/`-b` en cada envío inválido — mismo
+   * truco que `otpSacudon` de Settings en `staff`: reasignar la misma
+   * animación no la vuelve a disparar. `null` = sin sacudida. */
+  protected readonly sacudida = signal<'a' | 'b' | null>(null);
+
+  private readonly correoContactoEfectivo = computed(() => {
+    const c = this.campos();
+    return (this.usarOtroCorreoContacto() ? c.correoContacto : c.duenoCorreo).trim();
+  });
+
+  /** Obligatorios completos, para el contador sobre el botón de envío —
+   * da una señal de avance sin tener que validar campo por campo en vivo. */
+  protected readonly obligatorios = computed(() => {
+    const c = this.campos();
+    const checks = [
+      c.nombre.trim().length > 0,
+      c.duenoNombres.trim().length > 0,
+      c.duenoApellidos.trim().length > 0,
+      EMAIL_RE.test(c.duenoCorreo.trim()),
+    ];
+    if (this.usarOtroCorreoContacto()) {
+      checks.push(EMAIL_RE.test(c.correoContacto.trim()));
+    }
+    return { completos: checks.filter(Boolean).length, total: checks.length };
+  });
+
   // Paso 3: confirmación.
   protected readonly nombreEmpresaRegistrada = signal('');
-
-  protected readonly formularioValido = computed(() => {
-    const c = this.campos();
-    return (
-      c.nombre.trim().length > 0 &&
-      EMAIL_RE.test(c.correoContacto.trim()) &&
-      c.duenoNombres.trim().length > 0 &&
-      c.duenoApellidos.trim().length > 0 &&
-      EMAIL_RE.test(c.duenoCorreo.trim())
-    );
-  });
+  protected readonly correoConfirmacion = signal('');
 
   ngOnInit(): void {
     this.cargarPlanes();
     this.cargarCatalogoModulos();
   }
 
-  private cargarPlanes(): void {
+  protected cargarPlanes(): void {
     this.cargandoPlanes.set(true);
     this.errorPlanes.set(null);
     this.registroPublicoService.listarPlanes().subscribe({
@@ -198,23 +250,35 @@ export class RegistroPublicoPageComponent implements OnInit {
   /** Independiente de `cargarPlanes()` a propósito: si `GET
    * /modulos/publico` fallara, la selección de plan (lo único
    * obligatorio del paso 1) sigue funcionando igual — la sección de
-   * "módulos extra" simplemente no aparece (`modulosExtraDisponibles`
-   * queda vacía), en vez de tirar abajo toda la pantalla de planes. */
+   * "módulos extra" simplemente no aparece. */
   private cargarCatalogoModulos(): void {
     this.registroPublicoService.listarCatalogoModulos().subscribe({
       next: (catalogo) => this.catalogoModulos.set(catalogo),
-      // Silencioso: es una mejora opcional del checkout, no un dato
-      // obligatorio para poder registrarse (ver el comentario de arriba).
       error: () => undefined,
     });
   }
 
+  /** Solo selecciona — ya no navega al formulario (antes el botón de cada
+   * tarjeta saltaba directo): así el visitante ve los extras de ESE plan
+   * antes de seguir, y puede comparar sin ir y volver. */
   protected elegirPlan(plan: PlanPublico): void {
+    if (this.planSeleccionado()?.id === plan.id) {
+      return;
+    }
     this.planSeleccionado.set(plan);
-    // Limpia la selección de módulos extra: lo que era "extra" para un
-    // plan puede ya venir incluido en otro (ver `modulosExtraDisponibles`).
-    this.modulosExtraSeleccionados.set(new Set());
-    this.paso.set('formulario');
+    // Conserva solo los extras que siguen siendo "extra" en el plan nuevo
+    // — lo que ya viene incluido en este plan deja de tener sentido pedirlo.
+    const codigosDelPlan = new Set(plan.modulos.map((m) => m.codigo));
+    this.modulosExtraSeleccionados.update(
+      (actual) => new Set([...actual].filter((c) => !codigosDelPlan.has(c))),
+    );
+  }
+
+  protected continuarAFormulario(): void {
+    if (!this.planSeleccionado()) {
+      return;
+    }
+    this.irAPaso('formulario');
   }
 
   protected alternarModuloExtra(codigo: string): void {
@@ -240,11 +304,9 @@ export class RegistroPublicoPageComponent implements OnInit {
   }
 
   /** Vuelve a la selección de plan sin perder lo ya tipeado en el
-   * formulario — a diferencia de "Cambiar correo" en el login, acá no
-   * tiene sentido limpiar nada: el visitante puede volver solo para
-   * comparar planes. */
+   * formulario ni el plan/extras elegidos — solo para comparar. */
   protected volverAPlanes(): void {
-    this.paso.set('plan');
+    this.irAPaso('plan');
   }
 
   protected actualizarCampo(campo: keyof CamposFormulario, valor: string): void {
@@ -253,6 +315,16 @@ export class RegistroPublicoPageComponent implements OnInit {
       this.camposInvalidos.update((actual) => ({ ...actual, [campo]: false }));
     }
     this.errorEnvio.set(null);
+  }
+
+  /** Chip de rubro: un segundo toque sobre el mismo lo limpia. */
+  protected elegirRubro(rubro: string): void {
+    this.actualizarCampo('rubro', this.campos().rubro === rubro ? '' : rubro);
+  }
+
+  protected alternarOtroCorreoContacto(): void {
+    this.usarOtroCorreoContacto.update((v) => !v);
+    this.camposInvalidos.update((actual) => ({ ...actual, correoContacto: false }));
   }
 
   protected enviar(): void {
@@ -264,26 +336,28 @@ export class RegistroPublicoPageComponent implements OnInit {
     const c = this.campos();
     const invalidos: Partial<Record<keyof CamposFormulario, boolean>> = {
       nombre: c.nombre.trim().length === 0,
-      correoContacto: !EMAIL_RE.test(c.correoContacto.trim()),
       duenoNombres: c.duenoNombres.trim().length === 0,
       duenoApellidos: c.duenoApellidos.trim().length === 0,
       duenoCorreo: !EMAIL_RE.test(c.duenoCorreo.trim()),
+      correoContacto: this.usarOtroCorreoContacto() && !EMAIL_RE.test(c.correoContacto.trim()),
     };
     this.camposInvalidos.set(invalidos);
     if (Object.values(invalidos).some(Boolean)) {
+      this.sacudida.update((s) => (s === 'a' ? 'b' : 'a'));
       return;
     }
 
     this.enviando.set(true);
     this.errorEnvio.set(null);
 
-    const modulosSolicitados = [...this.modulosExtraSeleccionados()];
+    const modulosSolicitados = this.modulosExtraElegidos().map((m) => m.codigo);
+    const correoContacto = this.correoContactoEfectivo();
 
     this.registroPublicoService
       .registrar({
         nombre: c.nombre.trim(),
         rubro: c.rubro.trim() || undefined,
-        correoContacto: c.correoContacto.trim(),
+        correoContacto,
         telefonoContacto: c.telefonoContacto.trim() || undefined,
         duenoNombres: c.duenoNombres.trim(),
         duenoApellidos: c.duenoApellidos.trim(),
@@ -295,7 +369,8 @@ export class RegistroPublicoPageComponent implements OnInit {
         next: (empresa) => {
           this.enviando.set(false);
           this.nombreEmpresaRegistrada.set(empresa.nombre);
-          this.paso.set('confirmacion');
+          this.correoConfirmacion.set(correoContacto);
+          this.irAPaso('confirmacion');
         },
         error: (err: unknown) => {
           this.enviando.set(false);
@@ -308,6 +383,13 @@ export class RegistroPublicoPageComponent implements OnInit {
 
   protected irALogin(): void {
     this.router.navigateByUrl('/login');
+  }
+
+  /** Cambia de paso y sube al inicio — cada paso entra con su propia
+   * animación (`anim-paso-in` en el template) al insertarse en el DOM. */
+  private irAPaso(paso: PasoRegistro): void {
+    this.paso.set(paso);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // Mismo criterio que LoginComponent.mensajeDeError: el backend devuelve
