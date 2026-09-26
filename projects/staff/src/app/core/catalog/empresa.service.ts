@@ -4,6 +4,15 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Empresa, EmpresaConDueno, EstadoEmpresa, RespuestaPaginada } from './models/empresa.model';
 
+/** Una decisión de staff sobre un módulo puntual, del cuerpo de `PATCH
+ * /empresas/:id/llamada-finalizada` (§11.7 de
+ * PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md) — espejo de `ModuloFinalDto`
+ * del backend, sin `motivo` (acá no hace falta justificar cada línea). */
+export interface ModuloFinalPayload {
+  moduloId: number;
+  tipo: 'concedido' | 'revocado';
+}
+
 /** Campos editables desde el panel de detalle en cualquier estado (§3.2 /
  * `UpdateEmpresaDto` del backend) — a propósito sin `nombre`, ver
  * `corregirNombre`. */
@@ -118,9 +127,16 @@ export class EmpresaService {
 
   /** El paso central del asistente (§4 paso 1 → paso 2): crea el Usuario
    * dueño sin contraseña, pasa a `informacion_corroborada` y manda el
-   * enlace de confirmación — todo en esta única llamada. */
-  llamadaFinalizada(id: number): Observable<Empresa> {
-    return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/llamada-finalizada`, {});
+   * enlace de confirmación — todo en esta única llamada.
+   *
+   * `modulosFinales` (§11.7, Fase 2 paso 5): la lista final de excepciones
+   * de módulo que arma `ActivarEmpresaWizardComponent`, pre-cargada con
+   * `GestionAlta.modulosSolicitados` pero editable por staff — se crean
+   * como `EmpresaModulo` reales en esta misma llamada. */
+  llamadaFinalizada(id: number, modulosFinales?: ModuloFinalPayload[]): Observable<Empresa> {
+    return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/llamada-finalizada`, {
+      modulosFinales,
+    });
   }
 
   /** Botón "Reenviar enlace" del paso 2 del asistente — mismo mecanismo,

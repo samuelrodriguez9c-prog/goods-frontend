@@ -238,18 +238,25 @@ export class EmpresasPageComponent {
     return d === 1 ? '1 día' : `${d} días`;
   });
 
-  /** Cabecera compartida (LEEME.md §14) — reemplaza pills + embudo. Un
-   *  tile por cada etapa del embudo que reemplaza, en el mismo orden y con
-   *  los mismos colores: gris para "solicitud sin tocar", ámbar para "el
-   *  staff tiene que llamar" (`pendiente` — el handoff original se
-   *  olvidaba de este estado, igual que el anterior se había olvidado de
-   *  incluirlo en sus tarjetas de métricas), `info` para "ya se llamó,
-   *  esperando al cliente", verde para activa — más "Inactivas" y "Espera
-   *  máxima". `alternarEtapa`/`alternarInactivas` de antes pasan a
-   *  `alternarMetrica(id)` más abajo. */
+  /** Cabecera compartida (LEEME.md §14, migrada a v2 —badge + líneas—
+   *  por LEEME.md §16, 2026-09-24). Un tile por cada etapa del embudo que
+   *  reemplaza, en el mismo orden y con los mismos colores: gris para
+   *  "solicitud sin tocar", ámbar para "el staff tiene que llamar"
+   *  (`pendiente` — el handoff original se olvidaba de este estado, igual
+   *  que el anterior se había olvidado de incluirlo en sus tarjetas de
+   *  métricas), `info` para "ya se llamó, esperando al cliente", verde
+   *  para activa — más "Inactivas" y "Espera máxima". `alternarEtapa`/
+   *  `alternarInactivas` de antes pasan a `alternarMetrica(id)` más abajo.
+   *  `trazo` en Solicitudes/Activas: colores puntuales de la tabla del
+   *  §16, ver el comentario de `porEstado`. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const todas = this.filas();
-    const porEstado = (estado: EstadoEmpresa, etiqueta: string, tono: MetricaCabecera['tono']) => {
+    // `trazo` opcional: LEEME.md §16 pide colores puntuales para
+    // Solicitudes/Activas que no salen del `tono` (Solicitudes va en
+    // ámbar oscuro y no en el gris de `tono: 'neutro'`; Activas va en un
+    // verde más oscuro que el `exito` por defecto) — el resto de las
+    // etapas ya coincide con el trazo por defecto de su tono.
+    const porEstado = (estado: EstadoEmpresa, etiqueta: string, tono: MetricaCabecera['tono'], trazo?: string) => {
       const fechas = todas.filter((f) => f.estado === estado).map((f) => f.creadoEn);
       const n = recientes(fechas);
       return {
@@ -257,6 +264,7 @@ export class EmpresasPageComponent {
         etiqueta,
         valor: fechas.length,
         tono,
+        trazo,
         serie: serieAcumulada(fechas),
         delta: n ? `+${n} esta semana` : null,
       };
@@ -270,10 +278,10 @@ export class EmpresasPageComponent {
     // espera máxima sigue visible en la lectura de abajo (`esperaMaximaTexto`)
     // y en el botón "Por urgencia" del listado — no se pierde información.
     return [
-      porEstado('solicitud_recibida', 'Solicitudes', 'neutro'),
+      porEstado('solicitud_recibida', 'Solicitudes', 'neutro', '#78350f'),
       porEstado('pendiente', 'Pendientes', 'aviso'),
       porEstado('informacion_corroborada', 'Corroboradas', 'info'),
-      porEstado('activa', 'Activas', 'exito'),
+      porEstado('activa', 'Activas', 'exito', '#064e3b'),
       {
         id: 'inactivas',
         etiqueta: 'Inactivas',

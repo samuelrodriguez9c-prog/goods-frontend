@@ -1,33 +1,43 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
+// projects/staff/src/app/layout/topbar/topbar.component.ts
+import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { IconBell, IconChevronRight, IconTrash, TablerIconComponent } from '@tabler/icons-angular';
+import {
+  IconArrowRight,
+  IconArrowUpRight,
+  IconArrowsDiagonal,
+  IconBell,
+  IconBellCheck,
+  IconChecks,
+  IconCrown,
+  IconEraser,
+  IconPower,
+  TablerIconComponent,
+} from '@tabler/icons-angular';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { Notificacion } from '../../core/notificaciones/models/notificacion.model';
 import { NotificacionService } from '../../core/notificaciones/notificacion.service';
+import {
+  CATEGORIAS,
+  CategoriaNotificacion,
+  agruparPorDia,
+  defTipo,
+  filaNotificacion,
+} from '../../core/notificaciones/notificacion-catalogo';
 import { RealtimeService } from '../../core/realtime/realtime.service';
+import { PistaService } from '../../core/ui/pista.service';
+
+type Pestana = 'todas' | Exclude<CategoriaNotificacion, 'otras'>;
+const MS_HOLD = 900;
 
 /**
- * Barra superior del shell de staff — versión reducida de
- * `admin/layout/topbar/`: mismo wordmark izquierda + avatar/nombre/logout
- * derecha, sin buscador central (eso sigue sin aplicar a este panel).
+ * Topbar de staff — rediseño (LEEME §17, 2026-09-24): campanita con
+ * pestañas por categoría, agrupación por día y acción directa; menú de
+ * cuenta en el avatar/nombre (Mi perfil · Configuración · Cerrar sesión
+ * manteniendo). El botón "Salir" suelto desaparece.
  *
- * La campanita de notificaciones SÍ es real ahora (2026-09-23, pedido de
- * gerencia de separar notificaciones de cliente vs staff) — antes el
- * comentario de acá decía explícitamente que no había "ningún plan
- * concreto" detrás de un ícono así; ahora sí lo hay (ver
- * `NotificacionService`/`NotificacionController.listarStaff` del
- * backend). Consume `GET /notificaciones/staff`, con push en vivo por el
- * mismo socket que ya abre `RealtimeService` (evento `notificacion:nueva`,
- * `RealtimeGateway.emitirAUsuario` del backend).
- *
- * El aviso de acceso especial ya no es una píldora ámbar suelta a la
- * izquierda del avatar (rediseño del handoff, 2026-09-22): es una segunda
- * línea dentro del propio bloque de usuario ("Superadmin | Acceso
- * especial"), porque el dato es *sobre esa cuenta*, no un estado suelto
- * de la aplicación. El `title` con la explicación completa se movió del
- * badge viejo al bloque de usuario. En sesión normal el bloque queda
- * exactamente como antes (avatar + nombre en una línea).
+ * Misma lógica de datos que antes: `GET /notificaciones/staff` + socket
+ * `notificacion:nueva`, `marcarLeida`, `marcarTodasLeidas`, `ocultarTodas`.
  */
 @Component({
   selector: 'app-topbar',
@@ -41,163 +51,252 @@ export class TopbarComponent implements OnDestroy {
   private readonly router = inject(Router);
   private readonly notificacionService = inject(NotificacionService);
   private readonly realtimeService = inject(RealtimeService);
+  private readonly pista = inject(PistaService);
 
-  protected readonly iconBell = IconBell;
-  protected readonly iconBorrar = IconTrash;
-  protected readonly iconVerTodas = IconChevronRight;
+  protected readonly i = {
+    campana: IconBell,
+    marcarTodas: IconChecks,
+    expandir: IconArrowsDiagonal,
+    flecha: IconArrowRight,
+    flechaDiag: IconArrowUpRight,
+    limpiar: IconEraser,
+    vacio: IconBellCheck,
+    corona: IconCrown,
+    apagar: IconPower,
+  };
 
   protected readonly currentUser = this.authService.currentUser;
 
+  // ── Notificaciones ──────────────────────────────────────────────────────
   protected readonly notificaciones = signal<Notificacion[]>([]);
-  // "Borrar todas" (pedido explícito 2026-09-23, segunda vuelta; ajustado
-  // en la tercera el mismo día): las filas NUNCA se borran ni se marcan
-  // leídas — solo se ocultan de este dropdown. La segunda vuelta lo hacía
-  // solo en memoria (por pedido explícito del usuario de no usar
-  // localStorage) pero eso las hacía reaparecer al recargar, que es
-  // justo lo que la tercera vuelta pide evitar: ahora `borrarTodas()`
-  // también llama a `NotificacionService.ocultarTodas()`, que persiste el
-  // ocultamiento en el backend (columna `oculta_en_bandeja_en`, nunca en
-  // el navegador) — `cargar()` ya no vuelve a traerlas después de eso, sin
-  // necesidad de `incluirOcultas`. Este set sigue existiendo solo para el
-  // feedback visual INSTANTÁNEO (sacarlas de la vista sin esperar la
-  // respuesta del PATCH).
   private readonly idsOcultos = signal<Set<number>>(new Set());
-  protected readonly notificacionesVisibles = computed(() =>
-    this.notificaciones().filter((n) => !this.idsOcultos().has(n.id)),
-  );
-  protected readonly noLeidas = computed(
-    () => this.notificacionesVisibles().filter((n) => !n.leidaEn).length,
-  );
+  protected readonly visibles = computed(() => this.notificaciones().filter((n) => !this.idsOcultos().has(n.id)));
+  protected readonly noLeidas = computed(() => this.visibles().filter((n) => !n.leidaEn).length);
   protected readonly panelAbierto = signal(false);
+  protected readonly pestana = signal<Pestana>('todas');
+  /** Sube con cada notificación en vivo: re-dispara la sacudida y el pop. */
+  protected readonly timbre = signal(0);
+  /** ids que llegaron en vivo — animan su entrada 1,6 s. */
+  private readonly recientes = signal<ReadonlySet<number>>(new Set());
+
+  protected readonly pestanas = computed(() => {
+    const nl = this.visibles().filter((n) => !n.leidaEn);
+    const def: { id: Pestana; texto: string }[] = [
+      { id: 'todas', texto: 'Todas' },
+      { id: 'soporte', texto: CATEGORIAS.soporte.texto },
+      { id: 'empresas', texto: CATEGORIAS.empresas.texto },
+      { id: 'suscripciones', texto: CATEGORIAS.suscripciones.texto },
+    ];
+    return def.map((p) => ({
+      ...p,
+      cuenta: nl.filter((n) => p.id === 'todas' || defTipo(n.tipo).cat === p.id).length,
+    }));
+  });
+
+  protected readonly grupos = computed(() => {
+    const p = this.pestana();
+    const rec = this.recientes();
+    const filas = this.visibles()
+      .filter((n) => p === 'todas' || defTipo(n.tipo).cat === p)
+      .slice(0, 12)
+      .map((n) => ({ ...filaNotificacion(n), nueva: rec.has(n.id) }));
+    return agruparPorDia(filas);
+  });
+
+  // ── Menú de cuenta ──────────────────────────────────────────────────────
+  protected readonly menuAbierto = signal(false);
+  protected readonly hoverCuenta = signal(false);
+  /** Índice resaltado en el menú (-1 = ninguno) — mueve la píldora gris. */
+  protected readonly resaltado = signal(-1);
+  /** `false` | `'manteniendo'` | `'listo'` — "Cerrar sesión" se mantiene. */
+  protected readonly hold = signal<false | 'manteniendo' | 'listo'>(false);
+  protected readonly opciones = [
+    { texto: 'Mi perfil', seccion: 'perfil', destino: 'Settings · Perfil' },
+    { texto: 'Configuración', seccion: 'seguridad', destino: 'Settings · Seguridad' },
+  ];
 
   private notifSub: Subscription | undefined;
+  private holdTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    // Solo si hay sesión: este componente se monta siempre (ShellComponent
-    // lo incluye), pero el primer render puede pasar antes de que
-    // AuthService termine de resolver `GET /auth/me` — mismo cuidado que
-    // `ShellComponent.ngOnInit` con `isAuthenticated()`.
     if (this.authService.isAuthenticated()) {
       this.cargar();
     }
-    this.notifSub = this.realtimeService
-      .escuchar<Notificacion>('notificacion:nueva')
-      .subscribe(() => this.cargar());
+    this.notifSub = this.realtimeService.escuchar<Notificacion>('notificacion:nueva').subscribe((n) => {
+      this.cargar(n?.id);
+      this.timbre.update((v) => v + 1);
+    });
   }
 
   ngOnDestroy(): void {
     this.notifSub?.unsubscribe();
+    clearTimeout(this.holdTimer);
   }
 
-  private cargar(): void {
+  @HostListener('document:mousedown', ['$event'])
+  protected clicAfuera(e: MouseEvent): void {
+    const t = e.target as HTMLElement;
+    if (this.panelAbierto() && !t.closest('[data-panel="campana"]')) this.panelAbierto.set(false);
+    if (this.menuAbierto() && !t.closest('[data-panel="cuenta"]')) this.cerrarMenu();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  protected teclado(e: KeyboardEvent): void {
+    if (e.key === 'Escape') {
+      this.panelAbierto.set(false);
+      this.cerrarMenu();
+      return;
+    }
+    const tag = (e.target as HTMLElement).tagName;
+    if (this.menuAbierto() && /^[1-9]$/.test(e.key) && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      const o = this.opciones[+e.key - 1];
+      if (o) this.irA(o);
+    }
+  }
+
+  private cargar(nuevaId?: number): void {
     this.notificacionService.listar().subscribe({
-      next: (respuesta) => this.notificaciones.set(respuesta.data),
+      next: (r) => {
+        this.notificaciones.set(r.data);
+        if (nuevaId) {
+          this.recientes.update((s) => new Set(s).add(nuevaId));
+          setTimeout(() => this.recientes.update((s) => { const x = new Set(s); x.delete(nuevaId); return x; }), 1_600);
+        }
+      },
       error: () => undefined,
     });
   }
 
+  // ── Campanita ───────────────────────────────────────────────────────────
   protected togglePanel(): void {
-    this.panelAbierto.update((abierto) => !abierto);
+    this.panelAbierto.update((v) => !v);
+    this.cerrarMenu();
   }
 
-  protected cerrarPanel(): void {
+  protected abrir(f: ReturnType<typeof filaNotificacion>): void {
+    this.marcar(f.n, true);
     this.panelAbierto.set(false);
+    this.pista.navegar(f.destino.destino);
+    this.router.navigate([f.destino.url], { queryParams: f.destino.query });
   }
 
-  protected marcarLeida(notificacion: Notificacion): void {
-    if (notificacion.leidaEn) {
-      return;
-    }
-    this.notificacionService.marcarLeida(notificacion.id).subscribe(() => {
-      this.notificaciones.update((actual) =>
-        actual.map((n) =>
-          n.id === notificacion.id ? { ...n, leidaEn: new Date().toISOString() } : n,
-        ),
-      );
-    });
+  /** El punto de la derecha: alterna leída ↔ no leída. */
+  protected alternar(n: Notificacion): void {
+    this.marcar(n, !n.leidaEn);
+  }
+
+  private marcar(n: Notificacion, leida: boolean): void {
+    if (!!n.leidaEn === leida) return;
+    const antes = n.leidaEn;
+    this.notificaciones.update((a) => a.map((x) => (x.id === n.id ? { ...x, leidaEn: leida ? new Date().toISOString() : null } : x)));
+    const req = leida ? this.notificacionService.marcarLeida(n.id) : this.notificacionService.marcarNoLeida(n.id);
+    req.subscribe({ error: () => this.notificaciones.update((a) => a.map((x) => (x.id === n.id ? { ...x, leidaEn: antes } : x))) });
   }
 
   protected marcarTodasLeidas(): void {
-    if (!this.noLeidas()) {
-      return;
-    }
-    this.notificacionService.marcarTodasLeidas().subscribe(() => {
-      const ahora = new Date().toISOString();
-      this.notificaciones.update((actual) =>
-        actual.map((n) => (n.leidaEn ? n : { ...n, leidaEn: ahora })),
-      );
-    });
+    const n = this.noLeidas();
+    if (!n) return;
+    const antes = this.notificaciones();
+    const ahora = new Date().toISOString();
+    this.notificaciones.update((a) => a.map((x) => (x.leidaEn ? x : { ...x, leidaEn: ahora })));
+    this.notificacionService.marcarTodasLeidas().subscribe({ error: () => this.notificaciones.set(antes) });
+    this.pista.hecho(`${n} ${n === 1 ? 'marcada' : 'marcadas'} como ${n === 1 ? 'leída' : 'leídas'}`);
   }
 
-  /** Oculta todas de este dropdown, ahora persistido (ver el comentario
-   * de `idsOcultos` arriba) — nunca borra filas ni las marca leídas. El
-   * ocultamiento local es optimista (no espera la respuesta del PATCH);
-   * si el PATCH fallara, la próxima recarga las trae de vuelta, que es un
-   * fallback razonable para una acción puramente visual. */
-  protected borrarTodas(): void {
-    if (!this.notificacionesVisibles().length) {
-      return;
-    }
-    this.idsOcultos.update((actual) => {
-      const nuevo = new Set(actual);
-      for (const n of this.notificaciones()) {
-        nuevo.add(n.id);
-      }
-      return nuevo;
+  protected limpiar(): void {
+    if (!this.visibles().length) return;
+    this.idsOcultos.update((s) => {
+      const x = new Set(s);
+      this.notificaciones().forEach((n) => x.add(n.id));
+      return x;
     });
     this.notificacionService.ocultarTodas().subscribe({ error: () => undefined });
+    this.pista.hecho('Campanita limpia · siguen en Notificaciones');
   }
 
-  /** "Ver todas" — cierra el panel y navega a la página con el detalle
-   * completo (`NotificacionesPageComponent`), pedido explícito
-   * 2026-09-23, segunda vuelta. */
   protected verTodas(): void {
-    this.cerrarPanel();
+    this.panelAbierto.set(false);
+    this.pista.navegar('Notificaciones');
     this.router.navigateByUrl('/notificaciones');
   }
 
-  protected tiempoRelativo(iso: string): string {
-    const diff = Date.now() - Date.parse(iso);
-    const MS_MINUTO = 60_000;
-    const MS_HORA = 3_600_000;
-    if (diff < MS_MINUTO) {
-      return 'ahora';
+  protected tiempoCorto(iso: string): string {
+    const m = Math.floor((Date.now() - Date.parse(iso)) / 60_000);
+    if (m < 1) return 'ahora';
+    if (m < 60) return `${m} min`;
+    if (m < 1440) return `${Math.floor(m / 60)} h`;
+    const d = Math.floor(m / 1440);
+    return d === 1 ? 'ayer' : `${d} d`;
+  }
+
+  // ── Menú de cuenta ──────────────────────────────────────────────────────
+  protected toggleMenu(): void {
+    this.menuAbierto.update((v) => !v);
+    this.panelAbierto.set(false);
+    this.resaltado.set(-1);
+    this.hold.set(false);
+  }
+
+  private cerrarMenu(): void {
+    this.menuAbierto.set(false);
+    this.resaltado.set(-1);
+    if (this.hold() === 'manteniendo') this.cancelarHold();
+  }
+
+  protected irA(o: { seccion: string; destino: string }): void {
+    this.cerrarMenu();
+    this.pista.navegar(o.destino);
+    this.router.navigate(['/settings'], { queryParams: { seccion: o.seccion } });
+  }
+
+  protected empezarHold(e?: Event): void {
+    if (e instanceof MouseEvent && e.button > 0) return;
+    if (e instanceof KeyboardEvent) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
     }
-    if (diff < MS_HORA) {
-      return `hace ${Math.floor(diff / MS_MINUTO)} min`;
-    }
-    if (diff < MS_HORA * 24) {
-      return `hace ${Math.floor(diff / MS_HORA)} h`;
-    }
-    const dias = Math.floor(diff / (MS_HORA * 24));
-    return dias === 1 ? 'ayer' : `hace ${dias} días`;
+    if (this.hold()) return;
+    this.hold.set('manteniendo');
+    clearTimeout(this.holdTimer);
+    this.holdTimer = setTimeout(() => {
+      this.hold.set('listo');
+      this.pista.hecho('Cerrando sesión…');
+      setTimeout(() => this.logout(), 500);
+    }, MS_HOLD);
+  }
+
+  protected cancelarHold(): void {
+    if (this.hold() !== 'manteniendo') return;
+    clearTimeout(this.holdTimer);
+    this.hold.set(false);
   }
 
   protected readonly initials = computed(() => {
-    const usuario = this.currentUser();
-    if (!usuario) {
-      return '…';
-    }
-    const inicial = (texto: string) => texto.trim().charAt(0).toUpperCase();
-    return `${inicial(usuario.nombres)}${inicial(usuario.apellidos)}` || '?';
+    const u = this.currentUser();
+    if (!u) return '…';
+    const ini = (t: string) => t.trim().charAt(0).toUpperCase();
+    return `${ini(u.nombres)}${ini(u.apellidos)}` || '?';
   });
-
-  protected readonly displayName = computed(() => {
-    const usuario = this.currentUser();
-    return usuario ? usuario.nombres : '…';
+  protected readonly displayName = computed(() => this.currentUser()?.nombres ?? '…');
+  protected readonly nombreCompleto = computed(() => {
+    const u = this.currentUser();
+    return u ? `${u.nombres} ${u.apellidos}`.trim() : '…';
   });
-
-  // Fase 7 de PROPUESTA_ROLES_Y_ACCESOS.md (§5.5) — "lo que más impacto
-  // tiene en seguridad" según la propia propuesta: quien esté usando el
-  // acceso especial de superadmin tiene que verlo escrito en pantalla en
-  // TODO momento dentro del panel de staff, no solo enterarse por lo que
-  // pueda o no hacer. `esSesionCrossPanelStaff` viaja en la sesión (JWT +
-  // GET /auth/me), nunca hace falta volver a pedirlo.
-  protected readonly esCrossPanelStaff = computed(
-    () => this.currentUser()?.esSesionCrossPanelStaff ?? false,
+  protected readonly correo = computed(() => this.currentUser()?.correo ?? '');
+  protected readonly esCrossPanelStaff = computed(() => this.currentUser()?.esSesionCrossPanelStaff ?? false);
+  /** Corona junto al nombre en el menú. El handoff proponía
+   *  `['superadmin', 'admin'].includes(rol.nombre)`, pero este proyecto no
+   *  tiene ningún rol llamado así (ver `ROL_*` en
+   *  `modules/rol/rol.service.ts` del backend): el rol más alto DENTRO del
+   *  panel de staff es `admin_goods`. El acceso especial de superadmin
+   *  (`esSesionCrossPanelStaff`) ya se cubre aparte. */
+  protected readonly esSuperadmin = computed(
+    () => this.esCrossPanelStaff() || this.currentUser()?.rol?.nombre === 'admin_goods',
   );
 
   protected logout(): void {
+    this.menuAbierto.set(false);
+    this.hold.set(false);
     this.authService.logout();
     this.router.navigateByUrl('/login');
   }

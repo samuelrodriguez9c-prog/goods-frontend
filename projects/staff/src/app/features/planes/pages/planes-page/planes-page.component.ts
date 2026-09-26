@@ -22,8 +22,10 @@ import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/p
 import {
   CabeceraModuloComponent,
   MetricaCabecera,
+  serieAcumulada,
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { Plan } from '../../../../core/catalog/models/plan.model';
+import { Suscripcion } from '../../../../core/catalog/models/suscripcion.model';
 
 /** Un plan en edición. `id` negativo = plan nuevo que todavía no existe en
  * el backend (se crea al publicar). */
@@ -134,6 +136,10 @@ export class PlanesPageComponent {
   /** Union de características, en el orden en que se muestran las filas. */
   private readonly caracteristicas = signal<string[]>([]);
   protected readonly suscripcionesPorPlan = signal<Map<number, number>>(new Map());
+  /** `creadoEn` de las suscripciones activas — solo para la línea de
+   * "Empresas suscritas" de la cabecera (LEEME.md §16); el conteo por
+   * plan de arriba no necesita la fecha. */
+  private readonly suscripcionesActivasCreadas = signal<string[]>([]);
 
   private proximoIdTemporal = -1;
 
@@ -157,15 +163,26 @@ export class PlanesPageComponent {
     return `${total} ${total === 1 ? 'plan' : 'planes'} · ${activos} a la venta`;
   });
 
-  /** Cabecera compartida (LEEME.md §14). Sin período: no hay una noción de
+  /** Cabecera compartida (LEEME.md §14, migrada a v2 —badge + líneas—
+   *  por LEEME.md §16, 2026-09-24). Sin período: no hay una noción de
    *  "hoy" acá, es el catálogo tal como está ahora. "Empresas suscritas"
    *  y "Más elegido" solo aparecen si `mostrarSuscripciones` está
-   *  prendido (mismo criterio que el resto de la pantalla). */
+   *  prendido (mismo criterio que el resto de la pantalla).
+   *
+   *  Series (tabla del §16): "A la venta"/"Inactivos" son un conteo del
+   *  catálogo tal como está ahora, no una serie temporal real — se les
+   *  pasa una línea CONSTANTE con la cifra actual (`Array(8).fill(n)`,
+   *  tal como pide la tabla), no una acumulada. "Empresas suscritas" sí
+   *  tiene fecha real (`creadoEn` de cada Suscripción activa) y usa
+   *  `serieAcumulada`. "Más elegido" no lleva serie: su valor es el
+   *  nombre de un plan, no un número. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const planes = this.planes();
+    const nVenta = planes.filter((p) => p.activo).length;
+    const nInactivos = planes.filter((p) => !p.activo).length;
     const metricas: MetricaCabecera[] = [
-      { id: 'venta', etiqueta: 'A la venta', valor: planes.filter((p) => p.activo).length, tono: 'exito' },
-      { id: 'inactivos', etiqueta: 'Inactivos', valor: planes.filter((p) => !p.activo).length, tono: 'apagado' },
+      { id: 'venta', etiqueta: 'A la venta', valor: nVenta, tono: 'exito', serie: Array(8).fill(nVenta) },
+      { id: 'inactivos', etiqueta: 'Inactivos', valor: nInactivos, tono: 'apagado', serie: Array(8).fill(nInactivos) },
     ];
     if (this.mostrarSuscripciones) {
       const conteo = this.suscripcionesPorPlan();
@@ -177,7 +194,13 @@ export class PlanesPageComponent {
           masElegido = { plan, n };
         }
       }
-      metricas.push({ id: 'suscritas', etiqueta: 'Empresas suscritas', valor: total, tono: 'info' });
+      metricas.push({
+        id: 'suscritas',
+        etiqueta: 'Empresas suscritas',
+        valor: total,
+        tono: 'info',
+        serie: serieAcumulada(this.suscripcionesActivasCreadas()),
+      });
       metricas.push({
         id: 'elegido',
         etiqueta: 'Más elegido',
@@ -282,7 +305,7 @@ export class PlanesPageComponent {
       : forkJoin({ planes: this.planService.listarTodos() });
 
     peticiones.subscribe({
-      next: (respuesta: { planes: { data: Plan[] }; suscripciones?: { data: { planId: number }[] } }) => {
+      next: (respuesta: { planes: { data: Plan[] }; suscripciones?: { data: Suscripcion[] } }) => {
         const planes = respuesta.planes.data;
         this.borrador.set(planes.map((p) => ({ ...p, caracteristicas: [...(p.caracteristicas ?? [])] })));
         this.publicadoSnapshot.set(JSON.stringify(this.borrador()));
@@ -294,6 +317,9 @@ export class PlanesPageComponent {
             conteo.set(s.planId, (conteo.get(s.planId) ?? 0) + 1);
           }
           this.suscripcionesPorPlan.set(conteo);
+          // Solo para la línea de "Empresas suscritas" (LEEME.md §16) —
+          // el conteo por plan de arriba no necesita la fecha.
+          this.suscripcionesActivasCreadas.set(respuesta.suscripciones.data.map((s) => s.creadoEn));
         }
         this.cargando.set(false);
       },
@@ -415,6 +441,10 @@ export class PlanesPageComponent {
         precioMensual: null,
         caracteristicas: [],
         activo: false,
+        // Un plan recién creado en el borrador todavía no existe en el
+        // backend, así que no tiene módulos asignados — se cargan después
+        // desde el catálogo, esta pantalla no los edita (§11.6).
+        modulos: [],
       } as PlanBorrador,
     ]);
   }

@@ -11,7 +11,9 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import {
   IconAddressBook,
   IconArrowRight,
@@ -176,6 +178,12 @@ export class SettingsPageComponent {
   private readonly usuarios = inject(UsuarioService);
   private readonly upload = inject(UploadService);
   private readonly alertas = inject(AlertaService);
+  private readonly route = inject(ActivatedRoute);
+  /** `?seccion=` — el menú de cuenta del topbar navega acá con la sección
+   *  pedida (LEEME §17, 2026-09-24). Reactivo (no `snapshot`): si ya
+   *  estás en Settings y clicás "Configuración" en el menú, Angular
+   *  reutiliza este componente en vez de recrearlo. */
+  private readonly seccionUrl = toSignal(this.route.queryParamMap, { initialValue: null });
 
   protected readonly i = {
     user: IconUser,
@@ -310,7 +318,19 @@ export class SettingsPageComponent {
    *  métrica "Puntos" (`p.puntos`) — no existe ese campo en `MiPerfil`
    *  real, así que se cae (nota de la propia LEEME: "ajustá `p.puntos`…
    *  a los nombres reales de tu componente"). Sin `serie`: no hay
-   *  historial de accesos ni de antigüedad día a día. */
+   *  historial de accesos ni de antigüedad día a día.
+   *
+   *  Migrada a v2 (badge) por LEEME.md §16, 2026-09-24 — el badge lo pone
+   *  el HTML (`rolTexto() + ' · ID ' + idCredencial()`, mismo texto que ya
+   *  traía el `[total]` de v1). §16 sugiere un `serieConteo` para "Último
+   *  acceso" armado con `GET /auditoria?usuarioId=yo` — pero esta pantalla
+   *  no carga auditoría propia (el comentario de arriba ya lo dice: "todo
+   *  sale de `perfil()`"), y su propio texto lo deja condicionado a "si
+   *  esa pantalla ya lo carga". Agregar ese fetch nuevo se sale de esta
+   *  migración de cabeceras; además `valor` acá es un texto ("Hoy, 14:32"),
+   *  no una cifra, así que una serie tampoco tendría con qué compararse.
+   *  "Correo" y "Miembro desde" siguen sin serie por lo que ya decía §16:
+   *  "solo la base punteada, como en el diseño". */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const p = this.perfil();
     if (!p) {
@@ -412,6 +432,12 @@ export class SettingsPageComponent {
       }
       this.cargaIniciada = true;
       this.cargar(id);
+    });
+    effect(() => {
+      const s = this.seccionUrl()?.get('seccion');
+      if (s === 'perfil' || s === 'contacto' || s === 'seguridad' || s === 'cuenta') {
+        this.seccion.set(s);
+      }
     });
     inject(DestroyRef).onDestroy(() => {
       clearInterval(this.timerOtp);

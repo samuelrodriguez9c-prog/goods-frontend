@@ -29,6 +29,7 @@ import { CrearUsuarioPanelComponent } from '../crear-usuario-panel/crear-usuario
 import {
   CabeceraModuloComponent,
   MetricaCabecera,
+  serieConteo,
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 
 /** Payload real de `RealtimeGateway.EVENTO_PRESENCIA_CAMBIO` (backend,
@@ -284,6 +285,14 @@ export class UsuariosPageComponent implements OnDestroy {
   protected readonly usuarios = signal<UsuarioGoods[]>([]);
   protected readonly roles = signal<Rol[]>([]);
   protected readonly accesos = signal<Map<number, Acceso>>(new Map());
+  /** Fechas sueltas (`creadoEn`) de los mismos eventos de login que arma
+   * `reconstruirAccesos`, sin agregar por usuario — `accesos()` ya reduce
+   * todo a un resumen por persona (`dias`/`accesos30`/`fallidos`) y pierde
+   * las fechas individuales, pero la cabecera v2 (LEEME.md §16) necesita
+   * un `serieConteo` de actividad global para las métricas "Con acceso" e
+   * "Intentos fallidos". Se pueblan junto con `accesos` en `cargar()`. */
+  private readonly accesosExitososFechas = signal<string[]>([]);
+  private readonly fallidosFechas = signal<string[]>([]);
   /** Quién está conectado AHORA — la carga inicial sale de `GET
    * /usuarios/en-linea` (foto del momento), y `escucharPresencia()` la
    * mantiene al día en vivo con `EVENTO_PRESENCIA_CAMBIO` mientras la
@@ -326,6 +335,9 @@ export class UsuariosPageComponent implements OnDestroy {
         this.usuarios.set(usuarios.data);
         this.roles.set(roles);
         this.accesos.set(this.reconstruirAccesos(auditoria.data));
+        const eventosLogin = auditoria.data.filter((a) => a.usuarioId !== null && RUTA_LOGIN.test(a.ruta));
+        this.accesosExitososFechas.set(eventosLogin.filter((a) => a.exitoso).map((a) => a.creadoEn));
+        this.fallidosFechas.set(eventosLogin.filter((a) => !a.exitoso).map((a) => a.creadoEn));
         this.enLineaIds.set(new Set(enLinea.ids));
         this.cargando.set(false);
       },
@@ -583,10 +595,27 @@ export class UsuariosPageComponent implements OnDestroy {
 
   /** Cabecera compartida (LEEME.md §14). "Intentos fallidos" solo aparece
    *  si hubo alguno — `accesos()` ya trae `fallidos` por usuario (ver el
-   *  Map poblado en `cargar()`). */
+   *  Map poblado en `cargar()`).
+   *
+   *  Migrada a v2 (badge + serie) por LEEME.md §16, 2026-09-24. La tabla del
+   *  handoff sugiere `serieConteo(accesos.map(a => a.creadoEn), 8, 24)` para
+   *  las tiles de acceso, pero esta pantalla no tiene tiles "Sin entrar" ni
+   *  "Invitaciones" — son "Sin estrenar" y "Dormidos", que leen el ESTADO
+   *  actual de cada cuenta (`estadoDe()`), no una lista de eventos con
+   *  fecha, así que no tienen una serie real que armarles (mismo criterio
+   *  que "sin serie: no hay historia" de Roles en §14). Donde sí hay
+   *  eventos con fecha — logins exitosos y fallidos — se usa `serieConteo`
+   *  sobre `accesosExitososFechas`/`fallidosFechas` (ver el comentario en su
+   *  declaración). */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const metricas: MetricaCabecera[] = [
-      { id: 'con-acceso', etiqueta: 'Con acceso', valor: this.conAcceso(), tono: 'exito' },
+      {
+        id: 'con-acceso',
+        etiqueta: 'Con acceso',
+        valor: this.conAcceso(),
+        tono: 'exito',
+        serie: serieConteo(this.accesosExitososFechas(), 8, 24),
+      },
       {
         id: 'sin-estrenar',
         etiqueta: 'Sin estrenar',
@@ -602,7 +631,13 @@ export class UsuariosPageComponent implements OnDestroy {
     ];
     const fallidos = [...this.accesos().values()].reduce((total, a) => total + a.fallidos, 0);
     if (fallidos > 0) {
-      metricas.push({ id: 'fallidos', etiqueta: 'Intentos fallidos', valor: fallidos, tono: 'peligro' });
+      metricas.push({
+        id: 'fallidos',
+        etiqueta: 'Intentos fallidos',
+        valor: fallidos,
+        tono: 'peligro',
+        serie: serieConteo(this.fallidosFechas(), 8, 24),
+      });
     }
     return metricas;
   });

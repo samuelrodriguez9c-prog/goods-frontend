@@ -560,6 +560,36 @@
           }
         </div>
 
+        @if (hayModulosCandidatos()) {
+          <div class="mt-3.5 rounded-lg border border-gray-200 px-3.5 py-3">
+            <p class="mb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">
+              Módulos <span class="font-normal normal-case tracking-normal text-gray-400">(opcional)</span>
+            </p>
+            <p class="mb-2.5 text-xs leading-[18px] text-gray-500 text-pretty">
+              El plan {{ nombrePlanElegido() }} no los trae de por sí. Tildá los que quedaron acordados con el
+              dueño — se suman como excepción de esta Empresa al confirmar.
+            </p>
+            <div class="flex flex-col gap-1.5">
+              @for (modulo of modulosCandidatos(); track modulo.codigo) {
+                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] text-gray-700 transition-colors duration-150 hover:bg-neutral-100">
+                  <input
+                    type="checkbox"
+                    [checked]="modulosSeleccionados().has(modulo.codigo)"
+                    (change)="alternarModuloCandidato(modulo.codigo)"
+                    class="size-4 rounded border-gray-300"
+                  />
+                  <span class="flex-1">{{ modulo.nombre }}</span>
+                  @if (modulo.pedidoEnCheckout) {
+                    <span class="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                      Pedido en el checkout
+                    </span>
+                  }
+                </label>
+              }
+            </div>
+          </div>
+        }
+
         <div class="mt-3.5 rounded-lg bg-neutral-100 px-3.5 py-3">
           <p class="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">
             Qué pasa al confirmar

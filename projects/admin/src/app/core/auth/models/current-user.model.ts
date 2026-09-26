@@ -24,4 +24,11 @@ export interface CurrentUser {
     esRolStaff: boolean;
   };
   permisos: string[];
+  /** Códigos de `Modulo` (§10.2 de PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md)
+   * que el plan activo de la Empresa incluye — lo usa
+   * `SidebarComponent.navItemsVisibles` para ocultar del menú lo que la
+   * Empresa no contrató (fuente de verdad real: `ModuloGuard` en el
+   * backend, esto es solo UX — ocultar un link no es lo que impide el
+   * acceso). Vacío si la Empresa no tiene una suscripción activa. */
+  modulosDisponibles: string[];
 }

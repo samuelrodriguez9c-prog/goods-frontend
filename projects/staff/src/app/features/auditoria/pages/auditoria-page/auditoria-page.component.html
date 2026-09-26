@@ -1,12 +1,13 @@
-<div class="pt-2 px-8 pb-8">
+<div class="p-6">
   <!-- Sin `mx-auto max-w-[...]`: todo el módulo ocupa el ancho completo
        del layout, igual que Empresas — pedido explícito 2026-09-23. -->
+  <!-- Migrada a v2 (badge + lectura arriba) por LEEME.md §16, 2026-09-24. -->
   <app-cabecera-modulo
     titulo="Auditoría"
     periodo="Últimas 48 h"
     [metricas]="metricasCabecera()"
     [activa]="metricaActivaCabecera()"
-    [total]="total() + ' acciones registradas'"
+    [badge]="total() + ' acciones registradas'"
     (metricaClick)="metricaCabeceraClick($event)"
   >
     <tabler-icon icono [icon]="iconModulo" [size]="20" [stroke]="1.75" />

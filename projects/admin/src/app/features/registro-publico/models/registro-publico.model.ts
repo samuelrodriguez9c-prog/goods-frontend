@@ -10,6 +10,11 @@ export interface RegistroPublicoEmpresaPayload {
   duenoApellidos: string;
   duenoCorreo: string;
   planId: number;
+  /** Códigos de módulo marcados como "extra" (§11.6 de
+   * PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md) — los que el plan elegido NO
+   * trae de por sí. Sugerencia, no confirmación: staff la corrobora en el
+   * asistente de activación antes de que se vuelva un acceso real. */
+  modulosSolicitados?: string[];
 }
 
 /** Respuesta de `POST /empresas/registro-publico` — la `Empresa` recién

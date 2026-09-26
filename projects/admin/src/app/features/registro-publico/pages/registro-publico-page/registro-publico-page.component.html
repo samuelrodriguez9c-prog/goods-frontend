@@ -73,7 +73,7 @@
                      así "Base"/"Plus" arrancan alineados aunque un ícono
                      sea más angosto que el otro — "sin que se corra el
                      contenido" de abajo. -->
-                <!-- <img [src]="icono" alt="" class="h-40 w-auto self-start" /> -->
+                <img [src]="icono" alt="" class="h-24 w-auto self-start" />
               }
 
               <span class="mt-4 text-2xl font-bold text-gray-900">{{ plan.nombre }}</span>
@@ -283,7 +283,7 @@
 
               <div class="mt-4">
                 <label for="duenoCorreo" class="mb-1 block text-sm font-medium text-gray-700">
-                  Correo de la persona dueño/a
+                  Correo de la persona dueña
                 </label>
                 <input
                   id="duenoCorreo"
@@ -302,6 +302,33 @@
                 </p>
               </div>
             </div>
+
+            @if (modulosExtraDisponibles().length > 0) {
+              <div class="border-t border-gray-100 pt-4">
+                <p class="text-sm font-medium text-gray-700">
+                  Módulos extra <span class="font-normal text-gray-400">(opcional)</span>
+                </p>
+                <p class="mb-3 mt-1 text-xs text-gray-500">
+                  Tu plan {{ planSeleccionado()?.nombre }} no los trae de por sí — márcalos y nuestro equipo los
+                  confirma con vos cuando te contactemos, no se cobran solos.
+                </p>
+                <div class="flex flex-col gap-2">
+                  @for (modulo of modulosExtraDisponibles(); track modulo.codigo) {
+                    <label
+                      class="flex cursor-pointer items-center gap-2.5 rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-700 transition-colors duration-150 hover:bg-gray-100"
+                    >
+                      <input
+                        type="checkbox"
+                        [checked]="modulosExtraSeleccionados().has(modulo.codigo)"
+                        (change)="alternarModuloExtra(modulo.codigo)"
+                        class="size-4 rounded border-gray-300"
+                      />
+                      {{ modulo.nombre }}
+                    </label>
+                  }
+                </div>
+              </div>
+            }
 
             @if (errorEnvio(); as mensaje) {
               <p

@@ -51,6 +51,15 @@ export interface Empresa {
    * recargar la página o al cerrar el asistente (bug real reportado por
    * el cliente, 2026-09-22). */
   llamadaProgramadaPara: string | null;
+  /** Códigos de `Modulo` que el visitante marcó como "extra" en el
+   * checkout público (Fase 2 de PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md,
+   * §11.6) — vive en `GestionAlta.modulosSolicitados` del backend, no en
+   * la fila de Empresa, pero `findOne` ya lo trae acá (mismo criterio que
+   * `motivoRechazo`/`llamadaProgramadaPara` de arriba). Una SUGERENCIA,
+   * todavía no un acceso real: `null` si el checkout no pidió nada extra.
+   * `ActivarEmpresaWizardComponent` lo usa para pre-cargar la sección de
+   * módulos del paso 1, antes de "Llamada finalizada" (§11.7). */
+  modulosSolicitados: string[] | null;
   creadoEn: string;
   actualizadoEn: string;
 }

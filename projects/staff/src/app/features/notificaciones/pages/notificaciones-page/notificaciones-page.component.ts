@@ -1,81 +1,128 @@
+// projects/staff/src/app/features/notificaciones/pages/notificaciones-page/notificaciones-page.component.ts
 import { Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import {
+  IconArrowRight,
+  IconBellCheck,
   IconBellRinging,
-  IconBuildingStore,
-  IconCircleCheck,
-  IconCircleX,
-  IconClockHour4,
-  IconCreditCardOff,
-  IconHeadset,
-  IconMessage,
+  IconChecks,
+  IconChevronDown,
+  IconSearch,
+  IconX,
   TablerIconComponent,
 } from '@tabler/icons-angular';
-import { CabeceraModuloComponent } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
-import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
-import { Notificacion, TipoNotificacion } from '../../../../core/notificaciones/models/notificacion.model';
+import { Notificacion } from '../../../../core/notificaciones/models/notificacion.model';
 import { NotificacionService } from '../../../../core/notificaciones/notificacion.service';
+import {
+  CATEGORIAS,
+  CategoriaNotificacion,
+  agruparPorDia,
+  defTipo,
+  filaNotificacion,
+  tituloDia,
+} from '../../../../core/notificaciones/notificacion-catalogo';
+import { PistaService } from '../../../../core/ui/pista.service';
+import { CabeceraModuloComponent, MetricaCabecera, serieConteo } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
+import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 
-/** Ícono + etiqueta legible por tipo — la campanita del topbar no lo
- * necesita (solo muestra título/cuerpo), pero una página dedicada de
- * "todas las notificaciones" sí se beneficia de poder distinguir de un
- * vistazo qué tipo es cada una, sin tener que leer el cuerpo entero. */
-const CATALOGO_TIPO: Record<TipoNotificacion, { etiqueta: string; icono: typeof IconMessage }> = {
-  pedido_estado: { etiqueta: 'Pedido', icono: IconMessage },
-  pago_estado: { etiqueta: 'Pago', icono: IconCreditCardOff },
-  stock_bajo: { etiqueta: 'Stock bajo', icono: IconMessage },
-  mensaje_chat: { etiqueta: 'Mensaje de chat', icono: IconMessage },
-  empresa_registrada: { etiqueta: 'Empresa registrada', icono: IconBuildingStore },
-  empresa_estado_cambio: { etiqueta: 'Cambio de estado de Empresa', icono: IconBuildingStore },
-  conversacion_solicitada: { etiqueta: 'Conversación solicitada', icono: IconHeadset },
-  conversacion_sin_asignar: { etiqueta: 'Conversación sin asignar', icono: IconHeadset },
-  conversacion_asignada: { etiqueta: 'Conversación asignada', icono: IconHeadset },
-  conversacion_cerrada: { etiqueta: 'Conversación cerrada', icono: IconCircleX },
-  plan_por_vencer: { etiqueta: 'Plan por vencer', icono: IconClockHour4 },
-  plan_pago_vencido: { etiqueta: 'Pago de plan vencido', icono: IconCreditCardOff },
-};
+type Cat = Exclude<CategoriaNotificacion, 'otras'>;
+const PAGE_SIZE = 30;
 
 /**
- * "Ver todas las notificaciones" — pedido explícito 2026-09-23, segunda
- * vuelta: el dropdown de la campanita (`TopbarComponent`) queda acotado a
- * las últimas 20 sin más detalle que título/cuerpo/tiempo relativo; esta
- * pantalla es el destino de su botón "Ver todas" — mismo servicio
- * (`NotificacionService`, ya soportaba paginación real vía `page`, no hizo
- * falta tocar el backend) pero con fecha exacta, tipo legible, y
- * paginación de verdad en vez de una lista corta.
- *
- * No comparte estado con `TopbarComponent` (cada uno pide su propia
- * página al backend) — "marcar leída" acá actualiza esta lista; la
- * próxima vez que el topbar recargue (evento de socket o F5) va a
- * reflejar el mismo cambio, porque ambos leen la misma tabla.
+ * "Ver todas" — rediseño (LEEME §17, 2026-09-24). Carga por páginas y va
+ * ACUMULANDO ("Cargar anteriores") en vez de paginar con anterior/
+ * siguiente. Filtros: métrica de la cabecera (Sin leer / categoría),
+ * selector Todas · Sin leer y búsqueda, todo en el cliente sobre lo
+ * cargado (ver el punto 3 de "A revisar al integrar" del LEEME).
  */
 @Component({
   selector: 'app-notificaciones-page',
   standalone: true,
-  imports: [TablerIconComponent, CabeceraModuloComponent, PantallaEstadoComponent],
+  imports: [FormsModule, TablerIconComponent, CabeceraModuloComponent, PantallaEstadoComponent],
   templateUrl: './notificaciones-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotificacionesPageComponent {
   private readonly notificacionService = inject(NotificacionService);
   private readonly location = inject(Location);
+  private readonly router = inject(Router);
+  private readonly pista = inject(PistaService);
 
-  protected readonly iconModulo = IconBellRinging;
-  protected readonly iconLeida = IconCircleCheck;
-
-  protected readonly PAGE_SIZE = 20;
+  protected readonly i = {
+    modulo: IconBellRinging,
+    marcarTodas: IconChecks,
+    buscar: IconSearch,
+    x: IconX,
+    flecha: IconArrowRight,
+    mas: IconChevronDown,
+    vacio: IconBellCheck,
+  };
 
   protected readonly notificaciones = signal<Notificacion[]>([]);
   protected readonly page = signal(1);
   protected readonly totalPaginas = signal(1);
   protected readonly total = signal(0);
   protected readonly soloNoLeidas = signal(false);
+  protected readonly categoria = signal<Cat | null>(null);
+  protected readonly busqueda = signal('');
 
   protected readonly cargando = signal(true);
+  protected readonly cargandoMas = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
     this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
   );
+
+  protected readonly noLeidas = computed(() => this.notificaciones().filter((n) => !n.leidaEn));
+
+  protected readonly metricas = computed<MetricaCabecera[]>(() => {
+    const todas = this.notificaciones();
+    const hoy = todas.filter((n) => tituloDia(n.creadoEn) === 'Hoy').length;
+    const cats: Cat[] = ['soporte', 'empresas', 'suscripciones'];
+    return [
+      {
+        id: 'sin_leer',
+        etiqueta: 'Sin leer',
+        valor: this.noLeidas().length,
+        delta: hoy ? `${hoy} hoy` : null,
+        deltaTono: 'info',
+        trazo: '#00a39b',
+        serie: serieConteo(this.noLeidas().map((n) => n.creadoEn), 8, 24),
+      },
+      ...cats.map((c) => {
+        const lista = todas.filter((n) => defTipo(n.tipo).cat === c);
+        const nl = lista.filter((n) => !n.leidaEn).length;
+        return {
+          id: c,
+          etiqueta: CATEGORIAS[c].texto,
+          valor: lista.length,
+          delta: nl ? `${nl} sin leer` : 'al día',
+          trazo: CATEGORIAS[c].trazo,
+          serie: serieConteo(lista.map((n) => n.creadoEn), 8, 24),
+        } satisfies MetricaCabecera;
+      }),
+    ];
+  });
+
+  protected readonly metricaActiva = computed(() => this.categoria() ?? (this.soloNoLeidas() ? 'sin_leer' : null));
+
+  protected readonly accionables = computed(
+    () => this.noLeidas().filter((n) => defTipo(n.tipo).accionable).length,
+  );
+
+  protected readonly grupos = computed(() => {
+    const q = this.busqueda().trim().toLowerCase();
+    const cat = this.categoria();
+    const filas = this.notificaciones()
+      .filter((n) => (!this.soloNoLeidas() || !n.leidaEn) && (!cat || defTipo(n.tipo).cat === cat))
+      .filter((n) => !q || `${n.titulo} ${n.cuerpo}`.toLowerCase().includes(q))
+      .map((n) => filaNotificacion(n));
+    return agruparPorDia(filas);
+  });
+
+  protected readonly hayMas = computed(() => this.page() < this.totalPaginas());
 
   constructor() {
     this.cargar();
@@ -84,74 +131,82 @@ export class NotificacionesPageComponent {
   protected cargar(): void {
     this.cargando.set(true);
     this.error.set(null);
-    // incluirOcultas=true (tercera vuelta, 2026-09-23): esta es
-    // justamente la pantalla donde SÍ tienen que seguir apareciendo las
-    // que el usuario ya "borró" del dropdown de la campanita.
-    this.notificacionService
-      .listar(this.soloNoLeidas(), this.PAGE_SIZE, this.page(), true)
-      .subscribe({
-        next: (respuesta) => {
-          this.notificaciones.set(respuesta.data);
-          this.totalPaginas.set(Math.max(1, respuesta.totalPaginas));
-          this.total.set(respuesta.total);
-          this.cargando.set(false);
-        },
-        error: () => {
-          this.error.set('No se pudieron cargar las notificaciones. Intentá de nuevo.');
-          this.cargando.set(false);
-        },
-      });
-  }
-
-  protected alternarSoloNoLeidas(): void {
-    this.soloNoLeidas.update((actual) => !actual);
     this.page.set(1);
-    this.cargar();
+    this.pedir(1, false);
   }
 
-  protected paginaAnterior(): void {
-    if (this.page() > 1) {
-      this.page.update((p) => p - 1);
-      this.cargar();
-    }
+  protected cargarAnteriores(): void {
+    if (!this.hayMas() || this.cargandoMas()) return;
+    this.cargandoMas.set(true);
+    this.pedir(this.page() + 1, true);
   }
 
-  protected paginaSiguiente(): void {
-    if (this.page() < this.totalPaginas()) {
-      this.page.update((p) => p + 1);
-      this.cargar();
-    }
-  }
-
-  protected marcarLeida(n: Notificacion): void {
-    if (n.leidaEn) {
-      return;
-    }
-    this.notificacionService.marcarLeida(n.id).subscribe(() => {
-      this.notificaciones.update((actual) =>
-        actual.map((x) => (x.id === n.id ? { ...x, leidaEn: new Date().toISOString() } : x)),
-      );
+  private pedir(page: number, acumular: boolean): void {
+    // Filtros en el cliente sobre lo cargado: así cambiar de pestaña o de
+    // métrica no vuelve a pedir nada (ver LEEME §17, punto 3).
+    this.notificacionService.listar(false, PAGE_SIZE, page, true).subscribe({
+      next: (r) => {
+        this.notificaciones.update((a) => (acumular ? [...a, ...r.data] : r.data));
+        this.page.set(page);
+        this.totalPaginas.set(Math.max(1, r.totalPaginas));
+        this.total.set(r.total);
+        this.cargando.set(false);
+        this.cargandoMas.set(false);
+      },
+      error: () => {
+        if (!acumular) this.error.set('No se pudieron cargar las notificaciones. Intentá de nuevo.');
+        this.cargando.set(false);
+        this.cargandoMas.set(false);
+      },
     });
   }
 
-  protected catalogoTipo(tipo: TipoNotificacion): { etiqueta: string; icono: typeof IconMessage } {
-    return CATALOGO_TIPO[tipo] ?? { etiqueta: tipo, icono: IconMessage };
+  protected seleccionarMetrica(id: string): void {
+    if (id === 'sin_leer') {
+      const activo = this.metricaActiva() === 'sin_leer';
+      this.categoria.set(null);
+      this.soloNoLeidas.set(!activo);
+    } else {
+      const c = id as Cat;
+      const activo = this.categoria() === c;
+      this.categoria.set(activo ? null : c);
+      if (!activo) this.pista.filtro(CATEGORIAS[c].texto, () => this.categoria.set(null));
+    }
   }
 
-  protected fechaCompleta(iso: string): string {
-    return new Date(iso).toLocaleString('es-CO', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+  protected alternar(n: Notificacion): void {
+    const leida = !n.leidaEn;
+    const antes = n.leidaEn;
+    this.notificaciones.update((a) => a.map((x) => (x.id === n.id ? { ...x, leidaEn: leida ? new Date().toISOString() : null } : x)));
+    (leida ? this.notificacionService.marcarLeida(n.id) : this.notificacionService.marcarNoLeida(n.id)).subscribe({
+      error: () => this.notificaciones.update((a) => a.map((x) => (x.id === n.id ? { ...x, leidaEn: antes } : x))),
     });
   }
 
-  /** "Volver" — a esta pantalla se llega desde cualquier lado (el botón
-   * "Ver todas" del dropdown de la campanita, disponible en todo el panel),
-   * así que tiene más sentido volver a lo que se estaba mirando antes que
-   * mandar a una ruta fija. */
+  protected abrir(f: ReturnType<typeof filaNotificacion>): void {
+    if (!f.leida) this.alternar(f.n);
+    this.pista.navegar(f.destino.destino);
+    this.router.navigate([f.destino.url], { queryParams: f.destino.query });
+  }
+
+  protected marcarTodas(): void {
+    const n = this.noLeidas().length;
+    if (!n) return;
+    const antes = this.notificaciones();
+    const ahora = new Date().toISOString();
+    this.notificaciones.update((a) => a.map((x) => (x.leidaEn ? x : { ...x, leidaEn: ahora })));
+    this.notificacionService.marcarTodasLeidas().subscribe({ error: () => this.notificaciones.set(antes) });
+    this.pista.hecho(`${n} ${n === 1 ? 'marcada' : 'marcadas'} como ${n === 1 ? 'leída' : 'leídas'}`);
+  }
+
+  protected horaCorta(iso: string): string {
+    return new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  protected fechaLarga(iso: string): string {
+    return new Date(iso).toLocaleString('es-CO', { dateStyle: 'full', timeStyle: 'short' });
+  }
+
   protected volver(): void {
     this.location.back();
   }

@@ -18,7 +18,10 @@ import { StatusBadgeComponent, StatusBadgeTone } from 'shared-ui';
 import { AlertaService } from '../../../../core/ui/alerta.service';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { DatosEditablesEmpresa, EmpresaService } from '../../../../core/catalog/empresa.service';
+import { ModuloService } from '../../../../core/catalog/modulo.service';
 import { Empresa, EmpresaConDueno, EstadoEmpresa } from '../../../../core/catalog/models/empresa.model';
+import { DesgloseModuloEmpresa } from '../../../../core/catalog/models/modulo.model';
+import { GestionarModulosPanelComponent } from '../../../suscripciones/pages/gestionar-modulos-panel/gestionar-modulos-panel.component';
 
 /** Mismo mapa de tonos que `EmpresasPageComponent.TONO_POR_ESTADO` — se
  * repite acá porque ese es `protected` del otro componente (no exportado)
@@ -77,6 +80,15 @@ const ETIQUETA_POR_ESTADO: Record<EstadoEmpresa, string> = {
  *
  * La barra inferior solo aparece cuando hay algo que decir (cambios sin
  * guardar, guardando, guardado, o un error) — no ocupa lugar mientras se lee.
+ *
+ * 4. Sección "Módulos" (§11.5 de PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md,
+ *    Fase 2 paso 4, 2026-09-26): un resumen de solo lectura del desglose
+ *    de módulos de esta Empresa (mismo `GET /empresas/:id/modulos` que
+ *    usa `GestionarModulosPanelComponent`), con un botón "Gestionar
+ *    módulos" que abre ESE MISMO panel apilado encima de este —mismo
+ *    patrón ya usado por `ActivarEmpresaWizardComponent` para apilarse
+ *    encima de este panel—, en vez de duplicar el desglose en un
+ *    componente de edición aparte.
  */
 @Component({
   selector: 'app-empresa-detalle-panel',
@@ -88,12 +100,14 @@ const ETIQUETA_POR_ESTADO: Record<EstadoEmpresa, string> = {
     TablerIconComponent,
     StatusBadgeComponent,
     PantallaEstadoComponent,
+    GestionarModulosPanelComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './empresa-detalle-panel.component.html',
 })
 export class EmpresaDetallePanelComponent {
   private readonly empresaService = inject(EmpresaService);
+  private readonly moduloService = inject(ModuloService);
   private readonly alertas = inject(AlertaService);
 
   readonly empresaId = input.required<number>();
@@ -121,6 +135,14 @@ export class EmpresaDetallePanelComponent {
   protected readonly guardando = signal(false);
   protected readonly guardado = signal(false);
   protected readonly errorGuardar = signal<string | null>(null);
+
+  // Sección "Módulos" (§11.5) — de solo lectura acá, la edición vive en
+  // `GestionarModulosPanelComponent` (ver `modulosGestionando` más abajo).
+  protected readonly modulosCargando = signal(true);
+  protected readonly modulosError = signal<string | null>(null);
+  protected readonly modulos = signal<DesgloseModuloEmpresa[]>([]);
+  /** `true` = el panel de edición de módulos está apilado encima de este. */
+  protected readonly modulosGestionando = signal(false);
 
   private readonly original = computed(() => {
     const e = this.empresa();
@@ -209,7 +231,9 @@ export class EmpresaDetallePanelComponent {
 
   constructor() {
     effect(() => {
-      this.cargar(this.empresaId());
+      const id = this.empresaId();
+      this.cargar(id);
+      this.cargarModulos(id);
     });
   }
 
@@ -231,6 +255,56 @@ export class EmpresaDetallePanelComponent {
         this.cargando.set(false);
       },
     });
+  }
+
+  /** Independiente de `cargar()`/`estadoPantalla()` a propósito: si este
+   * pedido falla, no tiene sentido tumbar todo el panel (rubro/correo/
+   * teléfono/Personas siguen siendo útiles) — la sección "Módulos" solo
+   * muestra su propio error, acotado. */
+  private cargarModulos(id: number): void {
+    this.modulosCargando.set(true);
+    this.modulosError.set(null);
+    this.moduloService.listarDesglose(id).subscribe({
+      next: (modulos) => {
+        this.modulos.set(modulos);
+        this.modulosCargando.set(false);
+      },
+      error: () => {
+        this.modulosError.set('No se pudieron cargar los módulos.');
+        this.modulosCargando.set(false);
+      },
+    });
+  }
+
+  protected reintentarModulos(): void {
+    this.cargarModulos(this.empresaId());
+  }
+
+  protected abrirGestionarModulos(): void {
+    this.modulosGestionando.set(true);
+  }
+
+  protected cerrarGestionarModulos(): void {
+    this.modulosGestionando.set(false);
+  }
+
+  /** `(actualizada)` de `GestionarModulosPanelComponent` — se emite por
+   * cada cambio aplicado ahí adentro; acá solo hace falta refrescar el
+   * resumen de solo lectura, el panel de edición se queda abierto (lo
+   * cierra el propio usuario). */
+  protected onModulosActualizados(): void {
+    this.cargarModulos(this.empresaId());
+  }
+
+  /** Texto corto para el resumen de solo lectura de una fila. */
+  protected resumenModulo(modulo: DesgloseModuloEmpresa): string {
+    if (modulo.override?.tipo === 'concedido') {
+      return modulo.desdePlan ? 'Extra concedido (ya en tu plan)' : 'Extra concedido';
+    }
+    if (modulo.override?.tipo === 'revocado') {
+      return modulo.desdePlan ? 'Revocado (el plan lo incluye)' : 'Revocado';
+    }
+    return modulo.desdePlan ? 'Incluido en el plan' : 'No incluido';
   }
 
   /** `(reintentar)` de `app-pantalla-estado` — vuelve a pedir el mismo id. */

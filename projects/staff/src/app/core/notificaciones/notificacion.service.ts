@@ -49,6 +49,17 @@ export class NotificacionService {
     );
   }
 
+  /** Inverso de `marcarLeida` — LEEME §17 (2026-09-24): el punto de la
+   * campanita y el toggle de "Ver todas" alternan leída ↔ no leída.
+   * `PATCH /notificaciones/:id/no-leida`, mismo chequeo de dueño que
+   * `/leida` (ver `NotificacionService.marcarNoLeida` del backend). */
+  marcarNoLeida(id: number): Observable<Notificacion> {
+    return this.http.patch<Notificacion>(
+      `${environment.apiUrl}/notificaciones/${id}/no-leida`,
+      {},
+    );
+  }
+
   marcarTodasLeidas(): Observable<void> {
     return this.http.patch<void>(`${environment.apiUrl}/notificaciones/leidas`, {});
   }

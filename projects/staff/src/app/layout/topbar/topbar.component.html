@@ -1,151 +1,281 @@
-<header class="flex h-15 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
-  <div class="flex items-center gap-3">
+<!-- projects/staff/src/app/layout/topbar/topbar.component.html -->
+<header class="relative z-40 flex h-15 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
+  <!-- <div class="flex items-center gap-3">
     <img src="/logo-goods-wordmark.png" alt="Goods" class="h-12 w-auto" />
     <span class="h-[22px] w-px bg-topbar-badge-border"></span>
     <span class="text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">Staff</span>
-  </div>
+  </div> -->
 
   <div class="flex-1"></div>
 
-  <div class="flex shrink-0 items-center gap-1">
-    <!-- Campanita de notificaciones (2026-09-23) — ver el comentario de
-         la clase. `relative` acá es el ancla del panel desplegable de
-         abajo (`absolute right-0`). -->
-    <div class="relative">
+  <div class="flex shrink-0 items-center gap-1.5">
+    <!-- ─── Campanita ─── -->
+    <div data-panel="campana" class="relative">
       <button
         type="button"
         (click)="togglePanel()"
         aria-label="Notificaciones"
-        class="relative rounded-md p-1.5 text-neutral-300 hover:bg-white/10 hover:text-white"
+        [attr.aria-expanded]="panelAbierto()"
+        class="relative flex rounded-lg p-[7px] transition-[background-color,color,transform] duration-200 hover:bg-white/10 hover:text-white active:scale-[0.92]"
+        [class]="panelAbierto() ? 'bg-white/[0.12] text-white' : 'text-neutral-300'"
       >
-        <tabler-icon [icon]="iconBell" [size]="20" [stroke]="1.75" />
-        @if (noLeidas() > 0) {
-          <span
-            class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white"
-          >
-            {{ noLeidas() > 9 ? '9+' : noLeidas() }}
+        @for (t of [timbre()]; track t) {
+          <span class="flex origin-[50%_2px]" [class.anim-campana]="t > 0">
+            <tabler-icon [icon]="i.campana" [size]="20" [stroke]="1.75" />
           </span>
+        }
+        @if (noLeidas() > 0) {
+          @for (t of [timbre()]; track t) {
+            <span
+              class="absolute right-px top-px flex h-4 min-w-4 items-center justify-center rounded-full bg-[#2be0d5] px-1 text-[10px] font-bold leading-none text-[#003331] shadow-[0_0_0_2px_var(--color-topbar,#0a0a0a)]"
+              [class.anim-pop]="t > 0"
+              >{{ noLeidas() > 9 ? '9+' : noLeidas() }}</span
+            >
+          }
         }
       </button>
 
-      @if (panelAbierto()) {
-        <!-- Backdrop invisible para cerrar al clickear afuera — mismo
-             criterio que un modal, sin necesitar una librería de
-             overlay para algo tan chico. -->
-        <div class="fixed inset-0 z-40" (click)="cerrarPanel()"></div>
-
-        <div
-          class="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-neutral-200 bg-white text-neutral-900 shadow-lg"
-        >
-          <div class="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
-            <span class="text-sm font-semibold">Notificaciones</span>
-            @if (noLeidas() > 0) {
-              <button
-                type="button"
-                (click)="marcarTodasLeidas()"
-                class="text-xs font-medium text-blue-600 hover:underline"
-              >
-                Marcar todas como leídas
-              </button>
-            }
-          </div>
-
-          <div class="max-h-96 overflow-y-auto">
-            @if (!notificacionesVisibles().length) {
-              <p class="px-3 py-6 text-center text-sm text-neutral-400">
-                No tenés notificaciones todavía.
-              </p>
-            }
-            @for (n of notificacionesVisibles(); track n.id) {
-              <button
-                type="button"
-                (click)="marcarLeida(n)"
-                class="flex w-full flex-col items-start gap-0.5 border-b border-neutral-50 px-3 py-2.5 text-left last:border-0 hover:bg-neutral-50"
-              >
-                <span class="flex w-full items-center gap-1.5">
-                  @if (!n.leidaEn) {
-                    <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600"></span>
-                  }
-                  <span class="truncate text-[13px] font-medium" [class.text-neutral-500]="n.leidaEn">
-                    {{ n.titulo }}
-                  </span>
-                </span>
-                <span class="line-clamp-2 text-xs text-neutral-500">{{ n.cuerpo }}</span>
-                <span class="text-[11px] text-neutral-400">{{ tiempoRelativo(n.creadoEn) }}</span>
-              </button>
-            }
-          </div>
-
-          <!-- Pie del panel — pedido explícito 2026-09-23, segunda vuelta:
-               "borrar todas" (solo visual, ver el comentario de
-               `idsOcultos` en el componente) y "ver todas" (a la página de
-               detalle completo). -->
-          <div class="flex items-center justify-between border-t border-neutral-100 px-3 py-2">
-            <button
-              type="button"
-              [disabled]="!notificacionesVisibles().length"
-              (click)="borrarTodas()"
-              class="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 disabled:opacity-40"
-            >
-              <tabler-icon [icon]="iconBorrar" [size]="13" [stroke]="1.75" />
-              Borrar todas
-            </button>
-            <button
-              type="button"
-              (click)="verTodas()"
-              class="flex items-center gap-0.5 text-xs font-medium text-blue-600 hover:underline"
-            >
-              Ver todas
-              <tabler-icon [icon]="iconVerTodas" [size]="13" [stroke]="2" />
-            </button>
-          </div>
+      <div
+        class="absolute -right-2 top-full z-50 mt-2.5 w-[392px] origin-top-right overflow-hidden rounded-[14px] bg-white text-gray-900 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_20px_40px_-12px_rgba(0,0,0,0.35)] transition-[opacity,transform,visibility] duration-[260ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+        [class]="panelAbierto() ? 'visible translate-y-0 scale-100 opacity-100' : 'pointer-events-none invisible -translate-y-1.5 scale-[0.97] opacity-0'"
+      >
+        <div class="flex items-center gap-2 pb-2.5 pl-4 pr-3 pt-3">
+          <span class="text-sm font-semibold">Notificaciones</span>
+          @if (noLeidas() > 0) {
+            <span class="rounded-full bg-[#e0f7f5] px-[7px] py-px text-[11px] font-semibold tabular-nums text-[#00605b]">
+              {{ noLeidas() }} {{ noLeidas() === 1 ? 'nueva' : 'nuevas' }}
+            </span>
+          }
+          <span class="flex-1"></span>
+          <button
+            type="button"
+            (click)="marcarTodasLeidas()"
+            title="Marcar todas como leídas"
+            aria-label="Marcar todas como leídas"
+            class="flex rounded-lg p-1.5 transition-colors duration-150 hover:bg-[#f1f1f1] hover:text-gray-900"
+            [class]="noLeidas() ? 'text-[#303030]' : 'text-[#c4c4c4]'"
+          >
+            <tabler-icon [icon]="i.marcarTodas" [size]="17" [stroke]="2" />
+          </button>
+          <button
+            type="button"
+            (click)="verTodas()"
+            title="Abrir página de notificaciones"
+            aria-label="Abrir página de notificaciones"
+            class="flex rounded-lg p-1.5 text-gray-500 transition-colors duration-150 hover:bg-[#f1f1f1] hover:text-gray-900"
+          >
+            <tabler-icon [icon]="i.expandir" [size]="16" [stroke]="2" />
+          </button>
         </div>
-      }
+
+        <div class="flex gap-1 border-b border-[#f0f0f0] px-3 pb-2.5">
+          @for (p of pestanas(); track p.id) {
+            <button
+              type="button"
+              (click)="pestana.set(p.id)"
+              class="flex items-center gap-[5px] rounded-lg px-[9px] py-[5px] text-xs font-medium transition-colors duration-200"
+              [class]="pestana() === p.id ? 'bg-[#303030] text-white' : 'text-gray-600 hover:bg-[#f1f1f1]'"
+            >
+              {{ p.texto }}
+              @if (p.cuenta) {
+                <span class="text-[11px] tabular-nums" [class]="pestana() === p.id ? 'text-[#2be0d5]' : 'text-gray-400'">{{ p.cuenta }}</span>
+              }
+            </button>
+          }
+        </div>
+
+        <div class="max-h-[420px] overflow-y-auto pb-1.5">
+          @for (g of grupos(); track g.titulo) {
+            <p class="sticky top-0 z-[1] m-0 bg-white/95 px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.03em] text-gray-400 backdrop-blur-[6px]">
+              {{ g.titulo }}
+            </p>
+            @for (f of g.items; track f.n.id) {
+              <div
+                class="relative mx-1.5 flex gap-[11px] rounded-[10px] p-2.5 transition-colors duration-200 hover:bg-[#f5f5f5]"
+                [class]="f.leida ? 'bg-white' : 'bg-[#fbfcfd]'"
+                [class.anim-entra]="f.nueva"
+              >
+                <span class="flex size-8 shrink-0 items-center justify-center rounded-[9px]" [style.background]="f.iconoFondo" [style.color]="f.iconoTinta">
+                  <tabler-icon [icon]="f.icono" [size]="16" [stroke]="1.75" />
+                </span>
+                <button type="button" (click)="abrir(f)" class="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
+                  <span class="flex items-baseline gap-2">
+                    <span class="min-w-0 flex-1 truncate text-[13px]" [class]="f.leida ? 'font-medium text-gray-600' : 'font-semibold text-gray-900'">{{ f.n.titulo }}</span>
+                    <span class="shrink-0 text-[11px] tabular-nums text-gray-400">{{ tiempoCorto(f.n.creadoEn) }}</span>
+                  </span>
+                  <span class="line-clamp-2 text-xs leading-[17px] text-gray-500">{{ f.n.cuerpo }}</span>
+                  <span class="mt-[3px] inline-flex items-center gap-[3px] text-xs font-medium text-[#303030]">
+                    {{ f.accion }}
+                    <tabler-icon [icon]="i.flecha" [size]="12" [stroke]="2" />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  (click)="alternar(f.n)"
+                  [title]="f.leida ? 'Marcar como no leída' : 'Marcar como leída'"
+                  [attr.aria-label]="f.leida ? 'Marcar como no leída' : 'Marcar como leída'"
+                  class="flex size-5 shrink-0 items-center justify-center self-center rounded-full transition-colors duration-150 hover:bg-[#e6e6e6]"
+                >
+                  <span
+                    class="size-2 rounded-full transition-[background-color,transform,box-shadow] duration-200"
+                    [class]="f.leida ? 'scale-[0.85] bg-transparent shadow-[inset_0_0_0_1.5px_#d4d4d4]' : 'bg-[#2be0d5] shadow-[0_0_0_3px_rgba(43,224,213,0.22)]'"
+                  ></span>
+                </button>
+              </div>
+            }
+          } @empty {
+            <div class="px-4 py-9 text-center">
+              <span class="inline-flex size-10 items-center justify-center rounded-xl bg-[#f1f1f1] text-gray-400">
+                <tabler-icon [icon]="i.vacio" [size]="20" [stroke]="1.75" />
+              </span>
+              <p class="mt-2.5 text-[13px] font-medium text-gray-700">Todo al día</p>
+              <p class="mt-0.5 text-xs text-gray-400">No hay notificaciones acá.</p>
+            </div>
+          }
+        </div>
+
+        <div class="flex items-center justify-between border-t border-[#f0f0f0] py-2 pl-3 pr-2">
+          <button
+            type="button"
+            (click)="limpiar()"
+            [disabled]="!visibles().length"
+            class="flex items-center gap-[5px] rounded-lg px-2 py-[5px] text-xs font-medium text-gray-500 transition-colors duration-150 hover:bg-[#f1f1f1] hover:text-gray-900 disabled:opacity-40"
+          >
+            <tabler-icon [icon]="i.limpiar" [size]="14" [stroke]="2" />
+            Limpiar
+          </button>
+          <button
+            type="button"
+            (click)="verTodas()"
+            class="flex items-center gap-1 rounded-lg bg-primary-button px-[11px] py-1.5 text-xs font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[background-color,transform] duration-150 hover:bg-[#1a1a1a] active:scale-[0.97]"
+          >
+            Ver todas
+            <tabler-icon [icon]="i.flecha" [size]="13" [stroke]="2" />
+          </button>
+        </div>
+      </div>
     </div>
 
-    <span
-      class="flex items-center gap-2 rounded-md p-1"
-      [title]="
-        esCrossPanelStaff()
-          ? 'Estás viendo el panel de staff con tu acceso especial de superadmin — tu cuenta real y tu Empresa no cambiaron, y esta sesión queda auditada.'
-          : null
-      "
-    >
-      <span
-        class="flex h-7 w-7 items-center justify-center rounded-md bg-topbar-avatar-bg text-xs font-semibold text-topbar-avatar-text"
+    <!-- ─── Cuenta ─── -->
+    <div data-panel="cuenta" class="relative">
+      <button
+        type="button"
+        (click)="toggleMenu()"
+        (mouseenter)="hoverCuenta.set(true)"
+        (mouseleave)="hoverCuenta.set(false)"
+        aria-label="Menú de cuenta"
+        [attr.aria-expanded]="menuAbierto()"
+        [title]="esCrossPanelStaff() ? 'Estás viendo el panel de staff con tu acceso especial de superadmin — tu cuenta real y tu Empresa no cambiaron, y esta sesión queda auditada.' : null"
+        class="flex items-center gap-2 rounded-lg p-1"
       >
-        {{ initials() }}
-      </span>
-
-      @if (esCrossPanelStaff()) {
-        <span class="flex flex-col items-start gap-0.5">
-          <span class="text-sm font-medium leading-4">{{ displayName() }}</span>
-          <span class="flex items-center gap-[7px]">
-            <span class="flex items-center gap-[5px]">
-              <span class="h-[5px] w-[5px] rounded-full bg-topbar-avatar-bg"></span>
-              <span
-                class="text-[10px] font-medium uppercase tracking-[0.06em] text-topbar-avatar-bg"
-              >
-                Superadmin
-              </span>
-            </span>
-            <span class="h-[10px] w-px bg-topbar-badge-border"></span>
-            <span class="text-[10px] font-medium tracking-[0.04em] text-neutral-400">
-              Acceso especial
-            </span>
-          </span>
+        <span
+          class="flex size-7 items-center justify-center rounded-md bg-topbar-avatar-bg text-xs font-semibold text-topbar-avatar-text transition-transform duration-[320ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          [class]="menuAbierto() || hoverCuenta() ? '-rotate-[8deg] scale-[1.06]' : 'rotate-0 scale-100'"
+        >
+          {{ initials() }}
         </span>
-      } @else {
-        <span class="text-sm font-medium">{{ displayName() }}</span>
-      }
-    </span>
+        <span
+          class="flex flex-col items-start gap-0.5 transition-transform duration-[320ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          [class]="menuAbierto() || hoverCuenta() ? 'translate-x-[3px]' : 'translate-x-0'"
+        >
+          <span class="text-sm font-medium leading-4">{{ nombreCompleto() }}</span>
+          @if (esCrossPanelStaff()) {
+            <span class="flex items-center gap-[7px]">
+              <span class="flex items-center gap-[5px]">
+                <span class="size-[5px] rounded-full bg-topbar-avatar-bg"></span>
+                <span class="text-[10px] font-medium uppercase tracking-[0.06em] text-topbar-avatar-bg">Superadmin</span>
+              </span>
+              <span class="h-2.5 w-px bg-topbar-badge-border"></span>
+              <span class="text-[10px] font-medium tracking-[0.04em] text-neutral-400">Acceso especial</span>
+            </span>
+          }
+        </span>
+      </button>
 
-    <button
-      type="button"
-      (click)="logout()"
-      class="ml-1 rounded-md px-2 py-1 text-xs font-medium text-neutral-300 hover:bg-white/10 hover:text-white"
-    >
-      Salir
-    </button>
+      <div
+        class="absolute right-0 top-full z-50 mt-2.5 w-64 origin-top-right overflow-hidden rounded-[14px] bg-white text-gray-900 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_20px_40px_-12px_rgba(0,0,0,0.35)] transition-[opacity,transform,visibility] duration-[260ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+        [class]="menuAbierto() ? 'visible translate-y-0 scale-100 opacity-100' : 'pointer-events-none invisible -translate-y-1.5 scale-[0.97] opacity-0'"
+      >
+        <div class="flex items-center gap-3 px-4 pb-3.5 pt-4">
+          <span
+            class="flex size-10 shrink-0 items-center justify-center rounded-[11px] bg-topbar-avatar-bg font-display text-[15px] font-semibold text-topbar-avatar-text transition-transform delay-[60ms] duration-[520ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+            [class]="menuAbierto() ? 'rotate-0 scale-100' : '-rotate-[10deg] scale-90'"
+          >
+            {{ initials() }}
+          </span>
+          <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span class="flex items-center gap-1.5">
+              <span class="truncate font-display text-[15px] font-semibold tracking-[-0.01em] text-gray-900">{{ nombreCompleto() }}</span>
+              @if (esSuperadmin()) {
+                <tabler-icon [icon]="i.corona" [size]="13" [stroke]="2" class="shrink-0 text-[#00a39b]" title="Superadmin" />
+              }
+            </span>
+            <span class="truncate text-xs text-gray-400">{{ correo() }}</span>
+          </span>
+        </div>
+
+        <div class="relative px-1.5 pb-1.5" (mouseleave)="resaltado.set(-1)">
+          <!-- Píldora que se desliza entre opciones -->
+          <span
+            class="pointer-events-none absolute inset-x-1.5 h-[38px] rounded-[9px] bg-[#f3f3f3] transition-[top,opacity] duration-[240ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+            [style.top.px]="resaltado() >= 0 ? resaltado() * 38 : 0"
+            [style.opacity]="resaltado() >= 0 ? 1 : 0"
+          ></span>
+          @for (o of opciones; track o.seccion; let idx = $index) {
+            <button
+              type="button"
+              (click)="irA(o)"
+              (mouseenter)="resaltado.set(idx)"
+              (focus)="resaltado.set(idx)"
+              class="relative flex h-[38px] w-full items-center gap-3 px-2.5 text-left transition-[opacity,transform] duration-[360ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+              [class]="menuAbierto() ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0'"
+              [style.transition-delay.ms]="menuAbierto() ? 60 + idx * 50 : 0"
+            >
+              <span class="w-4 text-[11px] font-medium tabular-nums transition-colors duration-200" [class]="resaltado() === idx ? 'text-[#303030]' : 'text-[#c4c4c4]'">0{{ idx + 1 }}</span>
+              <span class="flex-1 text-[13.5px] font-medium text-gray-900 transition-transform duration-[240ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]" [class]="resaltado() === idx ? 'translate-x-[3px]' : 'translate-x-0'">{{ o.texto }}</span>
+              <tabler-icon
+                [icon]="i.flechaDiag"
+                [size]="14"
+                [stroke]="2"
+                class="text-[#303030] transition-[opacity,transform] duration-[240ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                [class]="resaltado() === idx ? 'translate-x-0 translate-y-0 opacity-100' : '-translate-x-1 translate-y-1 opacity-0'"
+              />
+            </button>
+          }
+        </div>
+
+        <div class="px-1.5 pb-1.5">
+          <button
+            type="button"
+            (mousedown)="empezarHold($event)"
+            (mouseup)="cancelarHold()"
+            (mouseleave)="cancelarHold()"
+            (touchstart)="empezarHold($event)"
+            (touchend)="cancelarHold()"
+            (keydown)="empezarHold($event)"
+            (keyup)="cancelarHold()"
+            aria-label="Mantené presionado para cerrar sesión"
+            class="relative flex h-10 w-full select-none items-center gap-3 overflow-hidden rounded-[9px] bg-[#f7f7f7] px-2.5 text-left transition-[opacity,transform] delay-[140ms] duration-[360ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+            [class]="menuAbierto() ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0'"
+          >
+            <span
+              class="absolute inset-y-0 left-0 bg-[#fbe3d6]"
+              [class]="hold() === 'manteniendo' ? 'w-full transition-[width] duration-[900ms] ease-linear' : hold() === 'listo' ? 'w-full' : 'w-0 transition-[width] duration-[260ms] ease-out'"
+            ></span>
+            <tabler-icon
+              [icon]="i.apagar"
+              [size]="14"
+              [stroke]="2"
+              class="relative w-4 text-[#9a3412]"
+              [class]="hold() === 'manteniendo' ? 'transition-transform duration-[900ms] ease-linear' : hold() === 'listo' ? 'transition-transform duration-500' : 'rotate-0 transition-transform duration-[260ms]'"
+            />
+            <span class="relative flex-1 text-[13.5px] font-medium text-[#9a3412]">Cerrar sesión</span>
+            <span class="relative text-[11px] transition-colors duration-200" [class]="hold() ? 'text-[#9a3412]' : 'text-[#b5b5b5]'">
+              {{ hold() === 'listo' ? 'Saliendo…' : hold() ? 'soltá para cancelar' : 'mantené' }}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </header>

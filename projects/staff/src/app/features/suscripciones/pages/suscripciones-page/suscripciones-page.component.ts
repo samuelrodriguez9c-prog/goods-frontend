@@ -9,9 +9,11 @@ import { Suscripcion } from '../../../../core/catalog/models/suscripcion.model';
 import { Plan } from '../../../../core/catalog/models/plan.model';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { GestionarSuscripcionPanelComponent } from '../gestionar-suscripcion-panel/gestionar-suscripcion-panel.component';
+import { GestionarModulosPanelComponent } from '../gestionar-modulos-panel/gestionar-modulos-panel.component';
 import {
   CabeceraModuloComponent,
   MetricaCabecera,
+  serieAcumulada,
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 
 /** Mismo formato que `formatCop` de Planes / `admin` — repetido a propósito
@@ -111,7 +113,13 @@ const ESTADO_UI: Record<string, { texto: string; punto: string; tinta: string }>
 @Component({
   selector: 'app-suscripciones-page',
   standalone: true,
-  imports: [TablerIconComponent, GestionarSuscripcionPanelComponent, PantallaEstadoComponent, CabeceraModuloComponent],
+  imports: [
+    TablerIconComponent,
+    GestionarSuscripcionPanelComponent,
+    GestionarModulosPanelComponent,
+    PantallaEstadoComponent,
+    CabeceraModuloComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './suscripciones-page.component.html',
 })
@@ -146,6 +154,11 @@ export class SuscripcionesPageComponent {
    * `GestionarSuscripcionPanelComponent`, que carga el resto por su
    * cuenta (ver el docstring de la clase). */
   protected readonly empresaGestionandoId = signal<number | null>(null);
+
+  /** Id de la Empresa cuyos módulos extra se están gestionando (§11.5) —
+   * panel aparte de `empresaGestionandoId` de arriba: se puede abrir uno
+   * sin el otro, y no comparten estado. */
+  protected readonly empresaModulosId = signal<number | null>(null);
 
   /** Una entrada por Empresa: la suscripción vigente (activa/pendiente si
    * existe, si no la más reciente) y el resto como historial. */
@@ -246,11 +259,27 @@ export class SuscripcionesPageComponent {
     return null;
   });
 
-  /** Cabecera compartida (LEEME.md §14) — se lleva el bloque "Facturación
+  /** Cabecera compartida (LEEME.md §14, migrada a v2 —badge + líneas—
+   *  por LEEME.md §16, 2026-09-24) — se lleva el bloque "Facturación
    *  mensual" y el aviso ámbar de abajo: los dos quedan dentro de la
    *  tira de tiles. El filtro de chips (`filtros()`/`filtro`) sigue
-   *  aparte, es una dimensión distinta (estado de la fila, no facturación). */
+   *  aparte, es una dimensión distinta (estado de la fila, no facturación).
+   *
+   *  Series (tabla del §16): "Facturación mensual" y cada plan usan
+   *  `serieAcumulada` de `fechaInicio` de las filas que cobran — `filas()`
+   *  ya es una fila por Empresa con la Suscripción VIGENTE al frente
+   *  (ver el docstring de la clase), así que es la misma granularidad
+   *  que ya usa `mrrTotal()`/`desglosePorPlan()`, no hace falta volver a
+   *  la lista cruda. Para "Vencidas"/"Sin cobrar aún" la tabla pide la
+   *  fecha de las pendientes, pero una pendiente típicamente no tiene
+   *  `fechaInicio` (todavía no arrancó) ni una vencida `fechaInicio`
+   *  siempre — se usa `fechaFin ?? fechaInicio` para que la serie tenga
+   *  con qué construirse en ambos casos. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
+    const cobrando = this.filas().filter((f) => f.cobra);
+    const fechaInicioDe = (lista: FilaEmpresa[]) =>
+      lista.map((f) => f.fechaInicio).filter((f): f is string => !!f);
+
     const metricas: MetricaCabecera[] = [
       {
         id: 'mrr',
@@ -259,6 +288,7 @@ export class SuscripcionesPageComponent {
         tono: 'exito',
         delta: this.notaMrr(),
         deltaTono: 'apagado',
+        serie: serieAcumulada(fechaInicioDe(cobrando)),
       },
     ];
     if (this.mostrarDesglose) {
@@ -269,12 +299,15 @@ export class SuscripcionesPageComponent {
           valor: formatCop(linea.monto),
           delta: linea.textoConteo,
           deltaTono: 'apagado',
+          serie: serieAcumulada(fechaInicioDe(cobrando.filter((f) => f.planId === linea.planId))),
         });
       }
     }
     const aviso = this.atencion();
     if (aviso) {
       const vencidas = aviso.titulo.includes('vencida');
+      const filasAviso = this.filas().filter((f) => f.estado === (vencidas ? 'vencida' : 'pendiente'));
+      const fechas = filasAviso.map((f) => f.fechaFin ?? f.fechaInicio).filter((f): f is string => !!f);
       metricas.push({
         id: 'atencion',
         etiqueta: vencidas ? 'Vencidas' : 'Sin cobrar aún',
@@ -282,6 +315,7 @@ export class SuscripcionesPageComponent {
         tono: vencidas ? 'peligro' : 'aviso',
         delta: aviso.nota.includes('activ') ? 'esperan activación' : 'siguen con acceso',
         deltaTono: vencidas ? 'peligro' : 'aviso',
+        serie: serieAcumulada(fechas),
       });
     }
     return metricas;
@@ -400,6 +434,14 @@ export class SuscripcionesPageComponent {
 
   protected cerrarGestionar(): void {
     this.empresaGestionandoId.set(null);
+  }
+
+  protected abrirModulosExtra(empresaId: number): void {
+    this.empresaModulosId.set(empresaId);
+  }
+
+  protected cerrarModulosExtra(): void {
+    this.empresaModulosId.set(null);
   }
 
   /** El panel ya aplicó el cambio, mostró su propio aviso de éxito

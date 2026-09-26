@@ -204,6 +204,46 @@
           </div>
         </section>
 
+        <!-- Módulos: resumen de solo lectura, edición en el panel apilado -->
+        <section>
+          <div class="mb-2.5 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+              <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Módulos</h3>
+            </div>
+            <button
+              type="button"
+              (click)="abrirGestionarModulos()"
+              class="text-[12px] font-medium text-primary-button hover:underline"
+            >
+              Gestionar módulos
+            </button>
+          </div>
+
+          @if (modulosError(); as mensaje) {
+            <div class="flex items-center justify-between gap-2 rounded-lg bg-field-error-bg px-3 py-2.5 text-[13px] text-badge-error-solid">
+              <span>{{ mensaje }}</span>
+              <button type="button" (click)="reintentarModulos()" class="font-medium underline">Reintentar</button>
+            </div>
+          } @else if (modulosCargando()) {
+            <div class="flex animate-pulse flex-col gap-1.5">
+              <span class="h-8 w-full rounded-lg bg-gray-100"></span>
+              <span class="h-8 w-full rounded-lg bg-gray-100"></span>
+            </div>
+          } @else {
+            <div class="flex flex-col overflow-hidden rounded-lg border border-gray-200">
+              @for (modulo of modulos(); track modulo.codigo) {
+                <div class="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-2.5 last:border-b-0">
+                  <span class="text-[13px] font-medium text-gray-900">{{ modulo.nombre }}</span>
+                  <span class="text-xs text-gray-500">{{ resumenModulo(modulo) }}</span>
+                </div>
+              } @empty {
+                <p class="px-4 py-3 text-[13px] text-gray-400">No hay módulos activos en el catálogo.</p>
+              }
+            </div>
+          }
+        </section>
+
         <!-- Actividad -->
         <section>
           <div class="mb-2.5 flex items-center gap-2">
@@ -266,3 +306,13 @@
     </app-pantalla-estado>
   </div>
 </div>
+
+<!-- Apilado encima de este panel — mismo criterio que
+     `ActivarEmpresaWizardComponent` (ver el docstring de la clase, punto 4) -->
+@if (modulosGestionando()) {
+  <app-gestionar-modulos-panel
+    [empresaId]="empresaId()"
+    (cerrar)="cerrarGestionarModulos()"
+    (actualizada)="onModulosActualizados()"
+  />
+}

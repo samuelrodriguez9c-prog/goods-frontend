@@ -9,7 +9,7 @@ import {
   IconInfoCircle,
   TablerIconComponent,
 } from '@tabler/icons-angular';
-import { PlanPublico } from '../../models/plan-publico.model';
+import { ModuloPublico, PlanPublico } from '../../models/plan-publico.model';
 import { RegistroPublicoService } from '../../services/registro-publico.service';
 
 // Ícono propio por plan, sobre el nombre en la tarjeta (pedido 2026-09-14,
@@ -134,6 +134,33 @@ export class RegistroPublicoPageComponent implements OnInit {
   protected readonly enviando = signal(false);
   protected readonly errorEnvio = signal<string | null>(null);
 
+  // Módulos extra (Fase 2 de PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md,
+  // §11.6) — códigos que el visitante marcó como "extra", entre los que
+  // el plan elegido NO trae de por sí (ver `modulosExtraDisponibles`).
+  // Sugerencia, no confirmación: staff la corrobora en el asistente de
+  // activación (§11.7) antes de que se vuelva un acceso real.
+  protected readonly modulosExtraSeleccionados = signal<Set<string>>(new Set());
+
+  /** Catálogo REAL de módulos activos (`GET /modulos/publico`, §11.6,
+   * corrección 2026-09-26) — reemplaza el intento inicial de derivar este
+   * universo como unión de `plan.modulos` de todos los planes activos:
+   * ese enfoque fallaba apenas un módulo no estaba vinculado a NINGÚN
+   * plan todavía (el caso real de `discounts`/`messages` recién
+   * sembrados, encontrado probando el flujo de punta a punta), que es
+   * justo el caso que el checkout necesita poder ofrecer como extra. */
+  protected readonly catalogoModulos = signal<ModuloPublico[]>([]);
+
+  /** Los módulos que el plan elegido NO trae — se ofrecen como "extra, a
+   * confirmar con nuestro equipo" (checkboxes → `modulosSolicitados`). */
+  protected readonly modulosExtraDisponibles = computed(() => {
+    const plan = this.planSeleccionado();
+    if (!plan) {
+      return [];
+    }
+    const codigosDelPlan = new Set(plan.modulos.map((m) => m.codigo));
+    return this.catalogoModulos().filter((m) => !codigosDelPlan.has(m.codigo));
+  });
+
   // Paso 3: confirmación.
   protected readonly nombreEmpresaRegistrada = signal('');
 
@@ -150,6 +177,7 @@ export class RegistroPublicoPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarPlanes();
+    this.cargarCatalogoModulos();
   }
 
   private cargarPlanes(): void {
@@ -167,9 +195,34 @@ export class RegistroPublicoPageComponent implements OnInit {
     });
   }
 
+  /** Independiente de `cargarPlanes()` a propósito: si `GET
+   * /modulos/publico` fallara, la selección de plan (lo único
+   * obligatorio del paso 1) sigue funcionando igual — la sección de
+   * "módulos extra" simplemente no aparece (`modulosExtraDisponibles`
+   * queda vacía), en vez de tirar abajo toda la pantalla de planes. */
+  private cargarCatalogoModulos(): void {
+    this.registroPublicoService.listarCatalogoModulos().subscribe({
+      next: (catalogo) => this.catalogoModulos.set(catalogo),
+      // Silencioso: es una mejora opcional del checkout, no un dato
+      // obligatorio para poder registrarse (ver el comentario de arriba).
+      error: () => undefined,
+    });
+  }
+
   protected elegirPlan(plan: PlanPublico): void {
     this.planSeleccionado.set(plan);
+    // Limpia la selección de módulos extra: lo que era "extra" para un
+    // plan puede ya venir incluido en otro (ver `modulosExtraDisponibles`).
+    this.modulosExtraSeleccionados.set(new Set());
     this.paso.set('formulario');
+  }
+
+  protected alternarModuloExtra(codigo: string): void {
+    this.modulosExtraSeleccionados.update((actual) => {
+      const copia = new Set(actual);
+      copia.has(codigo) ? copia.delete(codigo) : copia.add(codigo);
+      return copia;
+    });
   }
 
   protected iconoDelPlan(plan: PlanPublico): string | null {
@@ -224,6 +277,8 @@ export class RegistroPublicoPageComponent implements OnInit {
     this.enviando.set(true);
     this.errorEnvio.set(null);
 
+    const modulosSolicitados = [...this.modulosExtraSeleccionados()];
+
     this.registroPublicoService
       .registrar({
         nombre: c.nombre.trim(),
@@ -234,6 +289,7 @@ export class RegistroPublicoPageComponent implements OnInit {
         duenoApellidos: c.duenoApellidos.trim(),
         duenoCorreo: c.duenoCorreo.trim(),
         planId: plan.id,
+        modulosSolicitados: modulosSolicitados.length ? modulosSolicitados : undefined,
       })
       .subscribe({
         next: (empresa) => {

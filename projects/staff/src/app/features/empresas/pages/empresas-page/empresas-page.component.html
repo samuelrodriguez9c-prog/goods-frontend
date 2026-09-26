@@ -1,16 +1,18 @@
-<div class="pt-2 px-8 pb-8">
+<div class="p-6">
   <!-- `pt-2` (no `p-8` arriba): para que el título de la cabecera quede a
        la par del primer ítem del sidebar (Empresas) — pedido explícito
        2026-09-23, ajustado a ojo con Playwright contra la posición real
        del link del sidebar. -->
   <!-- Cabecera (componente compartido — LEEME.md §14, reemplaza las pills +
        el embudo de abajo: cada tile es ahora una etapa clicable, igual que
-       antes lo eran los tramos de la barra). -->
+       antes lo eran los tramos de la barra). Migrada a v2 (badge + lectura
+       arriba) por LEEME.md §16, 2026-09-24 — `[badge]` reemplaza a
+       `[total]`, que el componente ya ignora en cuanto hay `[badge]`. -->
   <app-cabecera-modulo
     titulo="Empresas"
     [metricas]="metricasCabecera()"
     [activa]="metricaActivaCabecera()"
-    [total]="'de ' + totalEmpresas() + ' clientes de Goods'"
+    [badge]="totalEmpresas() + ' clientes'"
     [periodoTitulo]="(hoy | date: 'EEEE d \'de\' MMMM') ?? ''"
     (metricaClick)="alternarMetrica($event)"
   >

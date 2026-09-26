@@ -1,0 +1,171 @@
+<div
+  class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-50 flex justify-end bg-black/50"
+  (click)="onBackdropClick($event)"
+>
+  <div
+    class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[560px] flex-col bg-card-bg shadow-xl"
+  >
+    <app-pantalla-estado
+      class="contents"
+      [estado]="estadoPantalla()"
+      modulo="los módulos de la Empresa"
+      (reintentar)="reintentar()"
+      (volver)="cerrar.emit()"
+    >
+      <div esqueleto class="flex flex-1 animate-pulse flex-col gap-5 p-6">
+        <span class="h-6 w-64 rounded bg-gray-200"></span>
+        <span class="h-4 w-40 rounded bg-gray-100"></span>
+        @for (n of [0, 1, 2, 3, 4]; track n) {
+          <span class="h-14 w-full rounded-lg bg-gray-100"></span>
+        }
+      </div>
+
+      <div class="shrink-0 border-b border-gray-200 px-6 pb-4 pt-5">
+        <div class="flex items-start gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400">Módulos extra</p>
+            <h2
+              class="mt-[5px] font-display text-[23px] font-semibold leading-[29px] tracking-[-0.015em] text-gray-900"
+            >
+              {{ empresaNombre() || 'Empresa' }}
+            </h2>
+            <p class="mt-1.5 text-[13px] leading-[19px] text-gray-500 text-pretty">
+              Conceder da acceso aunque el plan no lo incluya. Revocar se lo saca aunque el plan sí lo incluya.
+            </p>
+          </div>
+          <button
+            type="button"
+            (click)="cerrar.emit()"
+            aria-label="Cerrar"
+            class="shrink-0 rounded-lg p-[5px] text-gray-400 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-600"
+          >
+            <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-1 flex-col gap-2 overflow-y-auto p-6">
+        @for (fila of filas(); track fila.codigo) {
+          <div class="overflow-hidden rounded-[10px] border border-gray-200 bg-card-bg">
+            <div class="flex flex-wrap items-center gap-3 px-4 py-3">
+              <div class="min-w-[140px] flex-1">
+                <p class="text-sm font-semibold text-gray-900">{{ fila.nombre }}</p>
+                <p class="mt-0.5 flex items-center gap-1.5 text-xs" [class]="fila.estadoTinta">
+                  <span class="inline-block size-[6px] shrink-0 rounded-full" [class]="fila.estadoPunto"></span>
+                  {{ fila.estadoTexto }}
+                </p>
+                @if (fila.override?.motivo) {
+                  <p class="mt-1 text-[11px] leading-[16px] text-gray-400 text-pretty">
+                    "{{ fila.override?.motivo }}" · {{ fila.override?.creadoEn | date: 'd MMM y' }}
+                  </p>
+                }
+              </div>
+
+              <div class="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  [disabled]="!!guardandoCodigo()"
+                  (click)="iniciarConceder(fila)"
+                  class="rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 disabled:opacity-40"
+                  [class]="
+                    fila.override?.tipo === 'concedido'
+                      ? 'border-badge-success-bg bg-badge-success-bg text-emerald-900'
+                      : 'border-gray-200 bg-card-bg text-gray-600 hover:bg-canvas-bg'
+                  "
+                >
+                  Conceder
+                </button>
+                <button
+                  type="button"
+                  [disabled]="!!guardandoCodigo()"
+                  (click)="iniciarRevocar(fila)"
+                  class="rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 disabled:opacity-40"
+                  [class]="
+                    fila.override?.tipo === 'revocado'
+                      ? 'border-badge-error-solid/30 bg-badge-error-solid/15 text-badge-error-solid'
+                      : 'border-gray-200 bg-card-bg text-gray-600 hover:bg-canvas-bg'
+                  "
+                >
+                  Revocar
+                </button>
+                @if (fila.override) {
+                  <button
+                    type="button"
+                    [disabled]="guardandoCodigo() === fila.codigo"
+                    (click)="quitarExcepcion(fila)"
+                    aria-label="Quitar excepción, volver al default del plan"
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors duration-150 hover:bg-canvas-bg hover:text-gray-600 disabled:opacity-40"
+                  >
+                    <tabler-icon [icon]="iconQuitar" [size]="16" [stroke]="2" />
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Formulario de motivo (opcional) al tocar Conceder/Revocar -->
+            @if (editandoCodigo() === fila.codigo) {
+              <div class="animate-[fade-in-up_0.15s_ease-out] border-t border-gray-100 bg-neutral-50 px-4 py-3">
+                <label class="block">
+                  <span class="text-[11px] font-medium text-gray-500">Motivo (opcional)</span>
+                  <input
+                    type="text"
+                    [ngModel]="motivoEnEdicion()"
+                    (ngModelChange)="motivoEnEdicion.set($event)"
+                    placeholder="ej. Piloto pagado aparte, cortesía mientras se resuelve un pago"
+                    class="mt-1 w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-primary-button"
+                  />
+                </label>
+                @if (errorFila(); as mensaje) {
+                  <p class="mt-2 text-xs text-badge-error-solid">{{ mensaje }}</p>
+                }
+                <div class="mt-2.5 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    (click)="cancelarEdicion()"
+                    class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    [disabled]="guardandoCodigo() === fila.codigo"
+                    (click)="confirmarEdicion()"
+                    class="flex items-center gap-1.5 rounded-lg bg-primary-button px-2.5 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                  >
+                    <tabler-icon
+                      [icon]="tipoEnEdicion() === 'concedido' ? iconConceder : iconRevocar"
+                      [size]="14"
+                      [stroke]="2"
+                    />
+                    {{
+                      guardandoCodigo() === fila.codigo
+                        ? 'Aplicando…'
+                        : tipoEnEdicion() === 'concedido'
+                          ? 'Conceder'
+                          : 'Revocar'
+                    }}
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        } @empty {
+          <p class="px-1 py-4 text-sm text-gray-400">No hay módulos activos en el catálogo.</p>
+        }
+      </div>
+
+      <div class="flex shrink-0 items-center justify-between gap-3 border-t border-gray-200 bg-neutral-50 px-6 py-3">
+        <p class="text-[11px] leading-4 text-gray-400 text-pretty">
+          Cada cambio se aplica al toque — no hace falta "Guardar" al final.
+        </p>
+        <button
+          type="button"
+          (click)="cerrar.emit()"
+          class="shrink-0 rounded-lg bg-card-bg px-3 py-2 text-[13px] font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-200 transition-colors duration-200 hover:bg-canvas-bg"
+        >
+          Cerrar
+        </button>
+      </div>
+    </app-pantalla-estado>
+  </div>
+</div>

@@ -22,6 +22,7 @@ import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/p
 import {
   CabeceraModuloComponent,
   MetricaCabecera,
+  serieConteo,
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { ActivarEmpresaWizardComponent } from '../activar-empresa-wizard/activar-empresa-wizard.component';
 
@@ -225,24 +226,46 @@ export class AltasPendientesPageComponent {
     return partes.length ? partes.join(' · ') + '.' : 'Ninguna alta esperando. La cola quedó vacía.';
   });
 
-  /** Cabecera compartida (LEEME.md §14). "Reintentos" sale de `insistir`
-   *  en `esperando()` — la LEEME asumía un campo `reintento` de una señal
+  /** Cabecera compartida (LEEME.md §14, migrada a v2 —badge + líneas—
+   *  por LEEME.md §16, 2026-09-24). "Reintentos" sale de `insistir` en
+   *  `esperando()` — la LEEME asumía un campo `reintento` de una señal
    *  `agenda()` que ya no existe en esta página (era código muerto, ver
    *  el comentario de la clase). Sin período propio a filtrar: los tiles
-   *  son solo lectura, la cola ya está ordenada por antigüedad. */
+   *  son solo lectura, la cola ya está ordenada por antigüedad.
+   *
+   *  La tabla del §16 pedía la serie de una `agenda()` que tampoco
+   *  existe: se arma con las fechas reales de esta página en su lugar
+   *  (`creadoEn` de `llamadas()`, `actualizadoEn` de `esperando()` — es
+   *  lo más cercano a "cuándo se hizo la llamada" que hay hoy, mismo
+   *  criterio que ya usa `esperando()` más arriba), agrupadas en 8 cubos
+   *  de 24 h como pide la tabla. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const llamadas = this.llamadas();
     const esperando = this.esperando();
-    const reintentos = esperando.filter((f) => f.insistir).length;
+    const reintentando = esperando.filter((f) => f.insistir);
+    const serieLlamadas = serieConteo(llamadas.map((f) => f.creadoEn), 8, 24);
     const metricas: MetricaCabecera[] = [
-      { id: 'llamar', etiqueta: 'Te toca llamar', valor: llamadas.length, tono: llamadas.length ? 'aviso' : 'exito' },
+      {
+        id: 'llamar',
+        etiqueta: 'Te toca llamar',
+        valor: llamadas.length,
+        tono: llamadas.length ? 'aviso' : 'exito',
+        serie: serieLlamadas,
+      },
       {
         id: 'reintentos',
         etiqueta: 'Reintentos',
-        valor: reintentos,
-        tono: reintentos ? 'aviso' : 'neutro',
+        valor: reintentando.length,
+        tono: reintentando.length ? 'aviso' : 'neutro',
+        serie: serieConteo(reintentando.map((f) => f.actualizadoEn), 8, 24),
       },
-      { id: 'esperando', etiqueta: 'Esperando contraseña', valor: esperando.length, tono: 'info' },
+      {
+        id: 'esperando',
+        etiqueta: 'Esperando contraseña',
+        valor: esperando.length,
+        tono: 'info',
+        serie: serieConteo(esperando.map((f) => f.actualizadoEn), 8, 24),
+      },
     ];
     if (llamadas.length) {
       const peor = llamadas[0];
@@ -253,6 +276,10 @@ export class AltasPendientesPageComponent {
         tono: peor.urgente ? 'peligro' : 'neutro',
         delta: peor.urgente ? `supera ${this.umbralUrgente} días` : null,
         deltaTono: 'peligro',
+        // Reusa la misma serie que "Te toca llamar": la cifra en sí no es
+        // una serie propia (es un máximo puntual, no un conteo), pero la
+        // línea de actividad de la cola es igual de relevante acá.
+        serie: serieLlamadas,
       });
     }
     return metricas;
