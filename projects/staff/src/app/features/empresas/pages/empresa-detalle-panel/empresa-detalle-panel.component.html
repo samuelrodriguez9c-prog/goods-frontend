@@ -25,36 +25,82 @@
       </div>
 
       @if (empresa(); as e) {
-        <!-- Cabecera fija -->
-      <div class="flex shrink-0 items-start gap-3 border-b border-gray-200 px-6 py-5">
-        <span
-          class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-badge-neutral-bg text-sm font-semibold text-gray-700"
-        >
-          {{ iniciales(e.nombre) }}
-        </span>
-        <div class="min-w-0 flex-1">
-          <h2
-            class="font-display text-xl font-semibold leading-[26px] tracking-[-0.01em] text-gray-900"
+        <!-- Cabecera fija: ceja + ID copiable, identidad, franja de datos -->
+      <div class="shrink-0 border-b border-gray-200 px-6 pt-4">
+        <div class="flex items-center gap-2">
+          <span class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+            <span class="size-1.5 rounded-full" [class]="puntoEstado(e.estado)"></span>Empresa
+          </span>
+          <button
+            type="button"
+            (click)="copiarId(e.id)"
+            title="Copiar ID"
+            class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] tabular-nums text-gray-400 transition-colors duration-150 hover:bg-canvas-bg hover:text-gray-700"
           >
-            {{ e.nombre }}
-          </h2>
-          <div class="mt-1.5 flex flex-wrap items-center gap-2">
-            <app-status-badge [label]="etiquetaEstado(e.estado)" [tone]="tonoEstado(e.estado)" dot="filled" />
-            <span class="text-xs text-gray-500">Alta {{ e.creadoEn | date: 'd MMM y' }}</span>
+            #{{ e.id }}
+            <tabler-icon [icon]="iconCopiar" [size]="12" [stroke]="2" />
+          </button>
+          <button
+            type="button"
+            (click)="cerrar.emit()"
+            aria-label="Cerrar"
+            class="ml-auto rounded-lg p-[5px] text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+          >
+            <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
+          </button>
+        </div>
+
+        <div class="mt-2.5 flex items-center gap-3.5">
+          <span
+            class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-button font-display text-base font-semibold text-white transition-transform duration-200 ease-out hover:-rotate-6 hover:scale-105"
+          >
+            {{ iniciales(e.nombre) }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <h2 class="truncate font-display text-[22px] font-semibold leading-7 tracking-[-0.015em] text-gray-900">
+              {{ e.nombre }}
+            </h2>
+            <p class="mt-0.5 truncate text-xs text-gray-500">{{ e.rubro || 'Sin rubro' }} · {{ e.correoContacto }}</p>
           </div>
         </div>
-        <button
-          type="button"
-          (click)="cerrar.emit()"
-          aria-label="Cerrar"
-          class="shrink-0 rounded-lg p-1 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
-        >
-          <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
-        </button>
+
+        <div class="-mx-6 mt-4 grid grid-cols-3 border-t border-gray-100">
+          <div class="flex flex-col gap-1.5 px-6 pb-3 pt-2.5">
+            <span class="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-400">Estado</span>
+            <app-status-badge [label]="etiquetaEstado(e.estado)" [tone]="tonoEstado(e.estado)" dot="filled" />
+          </div>
+          <div class="flex flex-col gap-1 border-l border-gray-100 px-4 pb-3 pt-2.5">
+            <span class="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-400">Alta</span>
+            <span class="text-sm font-semibold tabular-nums text-gray-900">{{ e.creadoEn | date: 'd MMM y' }}</span>
+          </div>
+          <button
+            type="button"
+            (click)="irAModulos()"
+            class="flex flex-col gap-1 border-l border-gray-100 px-4 pb-3 pt-2.5 text-left transition-colors duration-150 hover:bg-neutral-50"
+          >
+            <span class="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-400">Módulos</span>
+            <span class="flex items-center gap-2 text-sm font-semibold tabular-nums text-gray-900">
+              @if (modulosCargando()) {
+                <span class="h-4 w-14 animate-pulse rounded bg-gray-100"></span>
+              } @else {
+                {{ resumenMods().conAcceso }}/{{ resumenMods().total }}
+                <span class="flex h-4 items-end gap-0.5" aria-hidden="true">
+                  @for (f of filasModulos(); track f.codigo) {
+                    <span
+                      [title]="f.nombre + ' · ' + f.ui.texto"
+                      class="w-[5px] rounded-sm transition-all duration-200"
+                      [class]="f.ui.huella + (f.override ? ' h-4' : ' h-3')"
+                    ></span>
+                  }
+                </span>
+              }
+            </span>
+          </button>
+        </div>
       </div>
 
       <!-- Cuerpo scrolleable -->
-      <div class="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+      <div #cuerpo class="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
         <!-- Nombre del negocio (solo lectura) -->
         <section>
           <div class="mb-2.5 flex items-center gap-2">
@@ -204,8 +250,8 @@
           </div>
         </section>
 
-        <!-- Módulos: resumen de solo lectura, edición en el panel apilado -->
-        <section>
+        <!-- Módulos: composición + interruptor por módulo, edición completa en el panel apilado -->
+        <section #seccionModulos>
           <div class="mb-2.5 flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <span class="h-px w-4 shrink-0 bg-gray-300"></span>
@@ -214,9 +260,10 @@
             <button
               type="button"
               (click)="abrirGestionarModulos()"
-              class="text-[12px] font-medium text-primary-button hover:underline"
+              class="flex items-center gap-1.5 text-[12px] font-medium text-primary-button hover:underline"
             >
-              Gestionar módulos
+              <tabler-icon [icon]="iconGestionar" [size]="14" [stroke]="2" />
+              Gestión completa
             </button>
           </div>
 
@@ -227,20 +274,113 @@
             </div>
           } @else if (modulosCargando()) {
             <div class="flex animate-pulse flex-col gap-1.5">
-              <span class="h-8 w-full rounded-lg bg-gray-100"></span>
-              <span class="h-8 w-full rounded-lg bg-gray-100"></span>
+              <span class="h-20 w-full rounded-lg bg-gray-100"></span>
+              <span class="h-10 w-full rounded-lg bg-gray-100"></span>
+              <span class="h-10 w-full rounded-lg bg-gray-100"></span>
             </div>
           } @else {
-            <div class="flex flex-col overflow-hidden rounded-lg border border-gray-200">
-              @for (modulo of modulos(); track modulo.codigo) {
-                <div class="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-2.5 last:border-b-0">
-                  <span class="text-[13px] font-medium text-gray-900">{{ modulo.nombre }}</span>
-                  <span class="text-xs text-gray-500">{{ resumenModulo(modulo) }}</span>
+            <!-- Composición -->
+            <div class="mb-3 flex flex-col gap-2.5 rounded-[10px] border border-gray-200 px-4 py-3.5">
+              <div class="flex items-baseline gap-2">
+                <span class="font-display text-[22px] font-semibold tabular-nums text-gray-900">{{ resumenMods().conAcceso }}</span>
+                <span class="text-[13px] text-gray-500">de {{ resumenMods().total }} módulos con acceso</span>
+              </div>
+              <div class="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-canvas-bg">
+                @for (s of resumenMods().barra; track $index) {
+                  <span class="h-full transition-[width] duration-300 ease-out" [class]="s.clase" [style.width]="s.ancho"></span>
+                }
+              </div>
+              <div class="flex flex-wrap gap-3.5 text-xs text-gray-600">
+                <span class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-primary-button"></span>{{ resumenMods().delPlan }} del plan</span>
+                <span class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-success-solid"></span>{{ resumenMods().extras }} extra</span>
+                <span class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-badge-error-solid"></span>{{ resumenMods().revocados }} revocados</span>
+                <span class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-gray-200"></span>{{ resumenMods().sinAcceso }} sin acceso</span>
+              </div>
+            </div>
+
+            <!-- Lista con interruptor -->
+            <div class="flex flex-col overflow-hidden rounded-[10px] border border-gray-200">
+              @for (f of filasModulos(); track f.codigo) {
+                <div class="border-b border-gray-100 last:border-b-0">
+                  <div
+                    class="flex items-center gap-3 px-3.5 py-2.5 transition-colors duration-200"
+                    [class]="modEditando() === f.codigo ? 'bg-neutral-50' : 'bg-card-bg'"
+                  >
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-[13px] font-medium" [class]="f.efectivo ? 'text-gray-900' : 'text-gray-400'">{{ f.nombre }}</p>
+                      @if (f.override?.motivo) {
+                        <p class="mt-0.5 truncate text-[11px] text-gray-400">
+                          “{{ f.override?.motivo }}” · {{ f.override?.creadoEn | date: 'd MMM y' }}
+                        </p>
+                      }
+                    </div>
+                    <span class="shrink-0 rounded-full px-2 py-[3px] text-[11px] font-medium" [class]="f.ui.tagClase">{{ f.ui.tag }}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      [attr.aria-checked]="f.efectivo"
+                      [attr.aria-label]="(f.efectivo ? 'Quitar acceso a ' : 'Dar acceso a ') + f.nombre"
+                      [disabled]="modGuardando() === f.codigo"
+                      (click)="alternarModulo(f)"
+                      class="relative h-5 w-[34px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-50"
+                      [class]="f.efectivo ? 'bg-primary-button' : 'bg-badge-neutral-bg'"
+                    >
+                      <span
+                        class="absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-[left] duration-200 ease-out motion-reduce:transition-none"
+                        [class]="f.efectivo ? 'left-4' : 'left-0.5'"
+                      ></span>
+                    </button>
+                  </div>
+
+                  @if (modEditando() === f.codigo) {
+                    <div class="animate-[fade-in-up_0.15s_ease-out] flex flex-col gap-2.5 border-t border-gray-100 bg-neutral-50 px-3.5 py-3">
+                      <p class="text-xs font-medium text-gray-700">
+                        {{ modTipo() === 'concedido' ? 'Dar acceso fuera del plan — ¿por qué?' : 'Quitar acceso aunque el plan lo incluya — ¿por qué?' }}
+                      </p>
+                      <div class="flex flex-wrap gap-1.5">
+                        @for (m of modMotivosRapidos(); track m) {
+                          <button
+                            type="button"
+                            (click)="modMotivo.set(m)"
+                            class="rounded-full border bg-card-bg px-2.5 py-1 text-[11px] text-gray-700"
+                            [class]="modMotivo() === m ? 'border-primary-button' : 'border-gray-200 hover:border-gray-300'"
+                          >
+                            {{ m }}
+                          </button>
+                        }
+                      </div>
+                      <input
+                        type="text"
+                        [ngModel]="modMotivo()"
+                        (ngModelChange)="modMotivo.set($event)"
+                        (keydown.enter)="confirmarModulo()"
+                        (keydown.escape)="cancelarModulo()"
+                        placeholder="Motivo (opcional)"
+                        class="w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-primary-button"
+                      />
+                      <div class="flex justify-end gap-2">
+                        <button type="button" (click)="cancelarModulo()" class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200">
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          [disabled]="!!modGuardando()"
+                          (click)="confirmarModulo()"
+                          class="rounded-lg bg-primary-button px-2.5 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                        >
+                          {{ modGuardando() ? 'Aplicando…' : modTipo() === 'concedido' ? 'Conceder' : 'Revocar' }}
+                        </button>
+                      </div>
+                    </div>
+                  }
                 </div>
               } @empty {
                 <p class="px-4 py-3 text-[13px] text-gray-400">No hay módulos activos en el catálogo.</p>
               }
             </div>
+            <p class="mt-2 text-[11px] leading-4 text-gray-400 text-pretty">
+              El interruptor muestra el acceso real. Moverlo fuera de lo que da el plan crea una excepción; devolverlo la quita.
+            </p>
           }
         </section>
 

@@ -1,4 +1,4 @@
-<header class="flex h-16 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
+<header class="flex h-14 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
   <!-- Izquierda: logo + badge de versión. Calcado de la esquina superior
        izquierda de Shopify (ícono + wordmark "shopify" + badge "Spring
        '26") — ver ADMIN_DISENO.md > "Topbar". Wordmark rasterizado real
@@ -6,8 +6,8 @@
        Gds_images/"...12_41_46") — reemplaza el span de texto que había
        antes (era un placeholder hecho a mano en italic/bold mientras no
        había material de marca con el nombre incluido). -->
-  <div class="flex items-center gap-1">
-    <img src="/logo-goods-wordmark.png" alt="Goods" class="h-15 w-auto" />
+  <div class="flex items-center gap-3">
+    <img src="/logo-goods-wordmark.png" alt="Goods" class="h-6 w-auto" />
     <span
       class="rounded-full border border-topbar-badge-border px-3 py-1 text-xs italic leading-none text-topbar-badge-text"
     >
@@ -49,13 +49,16 @@
        sin lógica real; avatar/nombre ya salen de `AuthService` y el
        botón de logout es funcional (ver core/auth). -->
   <div class="flex shrink-0 items-center gap-1">
-    <button
-      type="button"
-      aria-label="Asistente IA"
-      class="rounded-md p-1.5 text-neutral-300 hover:bg-white/10 hover:text-white"
-    >
-      <tabler-icon [icon]="iconBot" [size]="20" [stroke]="1.75" />
-    </button>
+    @if (tieneAsistenteIa()) {
+      <button
+        type="button"
+        (click)="abrirAsistente()"
+        aria-label="Asistente IA"
+        class="rounded-md p-1.5 text-neutral-300 hover:bg-white/10 hover:text-white"
+      >
+        <tabler-icon [icon]="iconBot" [size]="20" [stroke]="1.75" />
+      </button>
+    }
     <button
       type="button"
       aria-label="Notificaciones"

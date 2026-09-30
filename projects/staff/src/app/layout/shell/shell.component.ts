@@ -5,6 +5,7 @@ import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AlertaOverlayComponent } from '../../shared/ui/alerta-overlay/alerta-overlay.component';
 import { AlertaPilaComponent } from '../../shared/ui/alerta-pila/alerta-pila.component';
 import { PistaComponent } from '../../shared/ui/pista/pista.component';
+import { AsistenteStaffPanelComponent } from '../asistente-panel/asistente-panel.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
 
@@ -36,7 +37,15 @@ import { TopbarComponent } from '../topbar/topbar.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent, AlertaPilaComponent, AlertaOverlayComponent, PistaComponent],
+  imports: [
+    RouterOutlet,
+    SidebarComponent,
+    TopbarComponent,
+    AlertaPilaComponent,
+    AlertaOverlayComponent,
+    PistaComponent,
+    AsistenteStaffPanelComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.component.html',
 })

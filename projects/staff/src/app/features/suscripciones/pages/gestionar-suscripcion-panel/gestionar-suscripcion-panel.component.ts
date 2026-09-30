@@ -4,14 +4,18 @@ import {
   IconCheck,
   IconCircleOff,
   IconClockX,
+  IconCopy,
   IconFilePlus,
   IconHistory,
+  IconLockOpen,
+  IconPlayerPlay,
+  IconPuzzle,
   IconTrendingDown,
   IconTrendingUp,
   IconX,
   TablerIconComponent,
 } from '@tabler/icons-angular';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of, switchMap } from 'rxjs';
 import {
   EstadoAsignableSuscripcion,
   SuscripcionService,
@@ -19,6 +23,8 @@ import {
 import { EmpresaService } from '../../../../core/catalog/empresa.service';
 import { PlanService } from '../../../../core/catalog/plan.service';
 import { AlertaService } from '../../../../core/ui/alerta.service';
+import { PistaService } from '../../../../core/ui/pista.service';
+import { ModuloService } from '../../../../core/catalog/modulo.service';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { Plan } from '../../../../core/catalog/models/plan.model';
 
@@ -53,6 +59,7 @@ interface FilaGestion {
   estado: string;
   cobra: boolean;
   fechaInicio: string | null;
+  fechaFin: string | null;
   estadoTexto: string;
 }
 
@@ -84,6 +91,14 @@ interface FilaGestion {
  * panel directo con `AlertaService.seguir()` (misma pila que el resto del
  * staff), así que `actualizada` volvió a ser un evento vacío — la página
  * solo lo usa para recargar su lista.
+ *
+ * Rediseño 2026-09-27 — reactivar: si la Suscripción vigente está
+ * `vencida` o `cancelada`, el mismo selector de planes pasa a ser
+ * "Reactivar con un plan" (preseleccionado el último), con aviso arriba,
+ * delta de cobro y consecuencias propias. Mismo plan →
+ * `cambiarEstado(id, 'activa')`; otro plan → reactiva y después
+ * `cambiarPlan()` (ver LEEME §19: conviene un `POST /reactivar` atómico).
+ * La cabecera suma ID copiable y franja Estado · Plan · Cobro/Sin acceso.
  */
 @Component({
   selector: 'app-gestionar-suscripcion-panel',
@@ -97,6 +112,8 @@ export class GestionarSuscripcionPanelComponent {
   private readonly empresaService = inject(EmpresaService);
   private readonly planService = inject(PlanService);
   private readonly alertas = inject(AlertaService);
+  private readonly pista = inject(PistaService);
+  private readonly moduloService = inject(ModuloService);
 
   readonly empresaId = input.required<number>();
   readonly mrrTotal = input.required<number>();
@@ -106,6 +123,8 @@ export class GestionarSuscripcionPanelComponent {
   protected readonly formatCop = formatCop;
   protected readonly iconCerrar = IconX;
   protected readonly iconTilde = IconCheck;
+  protected readonly iconCopiar = IconCopy;
+  protected readonly iconReactivar = IconPlayerPlay;
 
   protected readonly opcionesEstado: {
     estado: EstadoAsignableSuscripcion;
@@ -128,6 +147,49 @@ export class GestionarSuscripcionPanelComponent {
 
   protected readonly fila = signal<FilaGestion | null>(null);
   private readonly planesPorId = signal<Map<number, Plan>>(new Map());
+  /** Cantidad de excepciones de módulos — solo para la consecuencia de reactivar. */
+  private readonly excepciones = signal(0);
+
+  protected readonly inactiva = computed(() => {
+    const e = this.fila()?.estado;
+    return e === 'vencida' || e === 'cancelada';
+  });
+
+  protected readonly estadosDisponibles = computed(() =>
+    this.opcionesEstado.filter((o) => o.estado !== this.fila()?.estado),
+  );
+
+  /** Aviso de la cabecera del cuerpo cuando está vencida/cancelada. */
+  protected readonly aviso = computed(() => {
+    const fila = this.fila();
+    if (!fila || !this.inactiva()) {
+      return null;
+    }
+    const fecha = this.fechaCorta(fila.fechaFin);
+    return fila.estado === 'vencida'
+      ? { titulo: fecha ? `Vencida desde el ${fecha}` : 'Vencida', icono: IconClockX, caja: 'border-badge-warning-bg bg-[#fffdf2]', tinta: 'text-amber-800' }
+      : { titulo: fecha ? `Cancelada el ${fecha}` : 'Cancelada', icono: IconCircleOff, caja: 'border-gray-200 bg-neutral-100', tinta: 'text-gray-600' };
+  });
+
+  /** Franja de datos de la cabecera. */
+  protected readonly celdas = computed(() => {
+    const fila = this.fila();
+    if (!fila) {
+      return [];
+    }
+    if (this.inactiva()) {
+      return [
+        { etiqueta: 'Estado', valor: fila.estadoTexto },
+        { etiqueta: 'Último plan', valor: fila.planNombre },
+        { etiqueta: 'Sin acceso', valor: this.haceCuanto(fila.fechaFin) },
+      ];
+    }
+    return [
+      { etiqueta: 'Estado', valor: fila.estadoTexto },
+      { etiqueta: 'Plan', valor: fila.planNombre },
+      { etiqueta: 'Mensual', valor: formatCop(fila.precioMensual) },
+    ];
+  });
 
   protected readonly subtituloPanel = computed(() => {
     const fila = this.fila();
@@ -143,11 +205,30 @@ export class GestionarSuscripcionPanelComponent {
   protected readonly delta = computed(() => {
     const fila = this.fila();
     const nuevoId = this.nuevoPlanId();
-    if (!fila || !nuevoId || nuevoId === fila.planId) {
+    if (!fila || !nuevoId) {
       return null;
     }
     const nuevo = this.planesPorId().get(nuevoId);
     if (!nuevo) {
+      return null;
+    }
+    if (this.inactiva()) {
+      const dif = (nuevo.precioMensual ?? 0) - fila.precioMensual;
+      return {
+        titulo: `Vuelve a cobrar ${formatCop(nuevo.precioMensual ?? 0)}/mes`,
+        nota:
+          dif === 0
+            ? `Mismo plan que tenía. Arranca hoy; la facturación de Goods pasa a ${formatCop(this.mrrTotal() + (nuevo.precioMensual ?? 0))}.`
+            : `${dif > 0 ? '+' : '−'}${formatCop(Math.abs(dif)).slice(1)} frente al último plan (${fila.planNombre}). Arranca hoy.`,
+        icono: IconPlayerPlay,
+        caja: 'border-badge-success-bg bg-emerald-50',
+        tinta: 'text-emerald-900',
+        notaTinta: 'text-emerald-800',
+        nuevoNombre: nuevo.nombre,
+        sube: true,
+      };
+    }
+    if (nuevoId === fila.planId) {
       return null;
     }
     const diferencia = (nuevo.precioMensual ?? 0) - fila.precioMensual;
@@ -170,6 +251,14 @@ export class GestionarSuscripcionPanelComponent {
   protected readonly consecuencias = computed(() => {
     const fila = this.fila();
     const nuevo = this.nuevoPlanId() ? this.planesPorId().get(this.nuevoPlanId()!) : null;
+    if (this.inactiva()) {
+      const n = this.excepciones();
+      return [
+        { icono: IconLockOpen, texto: 'El cliente recupera el acceso al instante, con los mismos usuarios y datos.' },
+        { icono: IconHistory, texto: `Queda activa a ${nuevo?.nombre ?? ''} desde hoy; la ${fila?.estado ?? ''} sigue en el historial.` },
+        { icono: IconPuzzle, texto: n ? `Se mantienen sus ${n} excepciones de módulos.` : 'No tiene excepciones de módulos.' },
+      ];
+    }
     return [
       { icono: IconCircleOff, texto: `Se cierra la suscripción a ${fila?.planNombre ?? ''} con fecha de hoy.` },
       { icono: IconFilePlus, texto: `Se abre una nueva a ${nuevo?.nombre ?? ''}, vigente desde hoy.` },
@@ -182,6 +271,9 @@ export class GestionarSuscripcionPanelComponent {
       return 'Aplicando…';
     }
     const d = this.delta();
+    if (this.inactiva()) {
+      return d ? `Reactivar con ${d.nuevoNombre}` : 'Reactivar';
+    }
     return d ? `${d.sube ? 'Subir a ' : 'Bajar a '}${d.nuevoNombre}` : 'Aplicar el cambio';
   });
 
@@ -199,8 +291,10 @@ export class GestionarSuscripcionPanelComponent {
       suscripciones: this.suscripcionService.listar(undefined, id),
       empresa: this.empresaService.obtenerUno(id),
       planes: this.planService.listarTodos(),
+      modulos: this.moduloService.listarDesglose(id),
     }).subscribe({
-      next: ({ suscripciones, empresa, planes }) => {
+      next: ({ suscripciones, empresa, planes, modulos }) => {
+        this.excepciones.set(modulos.filter((m) => !!m.override).length);
         const planesPorId = new Map(planes.data.map((p) => [p.id, p]));
         this.planesPorId.set(planesPorId);
         this.planesActivos.set(planes.data.filter((p) => p.activo));
@@ -227,6 +321,7 @@ export class GestionarSuscripcionPanelComponent {
           estado: vigente.estado,
           cobra: vigente.estado === 'activa',
           fechaInicio: vigente.fechaInicio,
+          fechaFin: vigente.fechaFin,
           estadoTexto: ui.texto,
         };
         this.fila.set(nueva);
@@ -251,6 +346,53 @@ export class GestionarSuscripcionPanelComponent {
       return plan.descripcion ?? 'Sin características cargadas';
     }
     return cs.length <= 3 ? cs.join(' · ') : `${cs.slice(0, 2).join(' · ')} y ${cs.length - 2} más`;
+  }
+
+  /** Botón principal: reactiva si está vencida/cancelada, si no cambia de plan. */
+  protected aplicar(): void {
+    if (this.inactiva()) {
+      this.confirmarReactivar();
+    } else {
+      this.confirmarCambioPlan();
+    }
+  }
+
+  protected confirmarReactivar(): void {
+    const fila = this.fila();
+    const planId = this.nuevoPlanId();
+    const d = this.delta();
+    if (!fila || !planId || !d || this.guardando()) {
+      return;
+    }
+    const peticion = this.suscripcionService
+      .cambiarEstado(fila.suscripcionId, 'activa')
+      .pipe(switchMap((s) => (planId === fila.planId ? of(s) : this.suscripcionService.cambiarPlan(fila.empresaId, planId))));
+
+    this.guardando.set(true);
+    this.errorGestionar.set(null);
+    this.alertas
+      .seguir(peticion, {
+        titulo: 'Reactivando la suscripción',
+        texto: fila.empresaNombre,
+        exito: { titulo: `${fila.empresaNombre} reactivada con ${d.nuevoNombre}` },
+        error: { titulo: 'No se pudo reactivar', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.guardando.set(false);
+          this.actualizada.emit();
+        },
+        error: (err: unknown) => {
+          this.guardando.set(false);
+          this.errorGestionar.set(this.mensajeDeError(err));
+        },
+      });
+  }
+
+  protected copiarId(): void {
+    const id = this.empresaId();
+    navigator.clipboard?.writeText(String(id));
+    this.pista.hecho(`ID #${id} copiado`);
   }
 
   protected confirmarCambioPlan(): void {
@@ -315,6 +457,22 @@ export class GestionarSuscripcionPanelComponent {
     if (event.target === event.currentTarget) {
       this.cerrar.emit();
     }
+  }
+
+  private fechaCorta(fechaIso: string | null): string {
+    return fechaIso
+      ? new Date(fechaIso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })
+      : '';
+  }
+
+  private haceCuanto(fechaIso: string | null): string {
+    if (!fechaIso) {
+      return '—';
+    }
+    const dias = Math.max(0, Math.floor((Date.now() - new Date(fechaIso).getTime()) / 86_400_000));
+    if (dias === 0) return 'desde hoy';
+    if (dias < 60) return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
+    return `hace ${Math.floor(dias / 30)} meses`;
   }
 
   private antiguedad(fechaIso: string | null): string {

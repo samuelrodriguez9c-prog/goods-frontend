@@ -1,13 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { InputTextModule } from 'primeng/inputtext';
 import {
+  IconAdjustmentsHorizontal,
   IconAlertTriangle,
   IconCheck,
   IconCircleCheck,
   IconCircleDashed,
+  IconCopy,
   IconExclamationCircle,
   IconLoader2,
   IconPointFilled,
@@ -16,6 +18,8 @@ import {
 } from '@tabler/icons-angular';
 import { StatusBadgeComponent, StatusBadgeTone } from 'shared-ui';
 import { AlertaService } from '../../../../core/ui/alerta.service';
+import { PistaService } from '../../../../core/ui/pista.service';
+import { MOTIVOS_RAPIDOS, estadoModulo, resumenModulos } from '../../../../shared/ui/modulos/modulo-ui';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { DatosEditablesEmpresa, EmpresaService } from '../../../../core/catalog/empresa.service';
 import { ModuloService } from '../../../../core/catalog/modulo.service';
@@ -50,6 +54,14 @@ const ETIQUETA_POR_ESTADO: Record<EstadoEmpresa, string> = {
   rechazada: 'Rechazada',
   suspendida: 'Suspendida',
   cancelada: 'Cancelada',
+};
+
+/** Punto de color de la ceja de la cabecera — mismo tono que el badge. */
+const PUNTO_POR_TONO: Partial<Record<StatusBadgeTone, string>> = {
+  success: 'bg-success-solid',
+  warning: 'bg-badge-warning-solid',
+  critical: 'bg-badge-error-solid',
+  neutral: 'bg-gray-400',
 };
 
 /**
@@ -89,6 +101,13 @@ const ETIQUETA_POR_ESTADO: Record<EstadoEmpresa, string> = {
  *    patrón ya usado por `ActivarEmpresaWizardComponent` para apilarse
  *    encima de este panel—, en vez de duplicar el desglose en un
  *    componente de edición aparte.
+ *
+ * 5. Rediseño 2026-09-27: cabecera con ID copiable y franja de datos
+ *    (Estado · Alta · Módulos con "huella"); la sección Módulos pasa de
+ *    solo lectura a interactiva — barra de composición + un interruptor
+ *    por módulo. Salirse de lo que da el plan abre el motivo inline;
+ *    volver al plan quita la excepción con "Deshacer" en la Pista.
+ *    "Gestión completa" sigue abriendo `GestionarModulosPanelComponent`.
  */
 @Component({
   selector: 'app-empresa-detalle-panel',
@@ -109,6 +128,7 @@ export class EmpresaDetallePanelComponent {
   private readonly empresaService = inject(EmpresaService);
   private readonly moduloService = inject(ModuloService);
   private readonly alertas = inject(AlertaService);
+  private readonly pista = inject(PistaService);
 
   readonly empresaId = input.required<number>();
   readonly cerrar = output<void>();
@@ -120,6 +140,11 @@ export class EmpresaDetallePanelComponent {
   protected readonly iconCerrar = IconX;
   protected readonly iconGuardar = IconCheck;
   protected readonly iconError = IconExclamationCircle;
+  protected readonly iconCopiar = IconCopy;
+  protected readonly iconGestionar = IconAdjustmentsHorizontal;
+
+  private readonly seccionModulos = viewChild<ElementRef<HTMLElement>>('seccionModulos');
+  private readonly cuerpo = viewChild<ElementRef<HTMLElement>>('cuerpo');
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -143,6 +168,15 @@ export class EmpresaDetallePanelComponent {
   protected readonly modulos = signal<DesgloseModuloEmpresa[]>([]);
   /** `true` = el panel de edición de módulos está apilado encima de este. */
   protected readonly modulosGestionando = signal(false);
+
+  protected readonly filasModulos = computed(() => this.modulos().map((m) => ({ ...m, ui: estadoModulo(m) })));
+  protected readonly resumenMods = computed(() => resumenModulos(this.modulos()));
+  /** Edición inline desde el interruptor (conceder/revocar con motivo). */
+  protected readonly modEditando = signal<string | null>(null);
+  protected readonly modTipo = signal<'concedido' | 'revocado'>('concedido');
+  protected readonly modMotivo = signal('');
+  protected readonly modGuardando = signal<string | null>(null);
+  protected readonly modMotivosRapidos = computed(() => MOTIVOS_RAPIDOS[this.modTipo()]);
 
   private readonly original = computed(() => {
     const e = this.empresa();
@@ -294,6 +328,93 @@ export class EmpresaDetallePanelComponent {
    * cierra el propio usuario). */
   protected onModulosActualizados(): void {
     this.cargarModulos(this.empresaId());
+  }
+
+  /** Interruptor de una fila: si tiene excepción la quita (vuelve al plan);
+   * si no, abre el motivo para crear la excepción contraria al plan. */
+  protected alternarModulo(m: DesgloseModuloEmpresa): void {
+    if (this.modGuardando()) {
+      return;
+    }
+    if (m.override) {
+      this.quitarModulo(m);
+      return;
+    }
+    this.modEditando.set(m.codigo);
+    this.modTipo.set(m.desdePlan ? 'revocado' : 'concedido');
+    this.modMotivo.set('');
+  }
+
+  protected cancelarModulo(): void {
+    this.modEditando.set(null);
+    this.modMotivo.set('');
+  }
+
+  protected confirmarModulo(): void {
+    const m = this.modulos().find((x) => x.codigo === this.modEditando());
+    if (!m) {
+      return;
+    }
+    this.aplicarModulo(m, this.modTipo(), this.modMotivo().trim() || undefined);
+  }
+
+  private aplicarModulo(m: DesgloseModuloEmpresa, tipo: 'concedido' | 'revocado', motivo?: string): void {
+    this.modGuardando.set(m.codigo);
+    this.alertas
+      .seguir(this.moduloService.gestionar(this.empresaId(), { moduloId: m.id, tipo, motivo }), {
+        titulo: tipo === 'concedido' ? 'Concediendo el módulo' : 'Revocando el módulo',
+        texto: m.nombre,
+        exito: { titulo: tipo === 'concedido' ? 'Módulo concedido' : 'Módulo revocado' },
+        error: { titulo: 'No se pudo aplicar el cambio', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.modGuardando.set(null);
+          this.cancelarModulo();
+          this.cargarModulos(this.empresaId());
+        },
+        error: () => this.modGuardando.set(null),
+      });
+  }
+
+  private quitarModulo(m: DesgloseModuloEmpresa): void {
+    const previa = m.override!;
+    this.modGuardando.set(m.codigo);
+    this.alertas
+      .seguir(this.moduloService.quitar(this.empresaId(), m.id), {
+        titulo: 'Quitando la excepción',
+        texto: m.nombre,
+        exito: { titulo: 'Vuelve al default del plan' },
+        error: { titulo: 'No se pudo quitar', texto: 'Intenta de nuevo.' },
+      })
+      .subscribe({
+        next: () => {
+          this.modGuardando.set(null);
+          this.cargarModulos(this.empresaId());
+          this.pista.hecho(`${m.nombre} vuelve al plan`, () =>
+            this.aplicarModulo(m, previa.tipo, previa.motivo ?? undefined),
+          );
+        },
+        error: () => this.modGuardando.set(null),
+      });
+  }
+
+  /** Celda "Módulos" de la cabecera — baja el cuerpo hasta la sección. */
+  protected irAModulos(): void {
+    const cuerpo = this.cuerpo()?.nativeElement;
+    const seccion = this.seccionModulos()?.nativeElement;
+    if (cuerpo && seccion) {
+      cuerpo.scrollTo({ top: seccion.offsetTop - 16, behavior: 'smooth' });
+    }
+  }
+
+  protected copiarId(id: number): void {
+    navigator.clipboard?.writeText(String(id));
+    this.pista.hecho(`ID #${id} copiado`);
+  }
+
+  protected puntoEstado(estado: EstadoEmpresa): string {
+    return PUNTO_POR_TONO[this.tonoEstado(estado)] ?? 'bg-gray-400';
   }
 
   /** Texto corto para el resumen de solo lectura de una fila. */

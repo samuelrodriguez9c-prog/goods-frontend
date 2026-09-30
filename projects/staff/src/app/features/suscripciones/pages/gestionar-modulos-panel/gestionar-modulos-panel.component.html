@@ -2,9 +2,7 @@
   class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-50 flex justify-end bg-black/50"
   (click)="onBackdropClick($event)"
 >
-  <div
-    class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[560px] flex-col bg-card-bg shadow-xl"
-  >
+  <div class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[580px] flex-col bg-card-bg shadow-xl">
     <app-pantalla-estado
       class="contents"
       [estado]="estadoPantalla()"
@@ -20,105 +18,166 @@
         }
       </div>
 
-      <div class="shrink-0 border-b border-gray-200 px-6 pb-4 pt-5">
-        <div class="flex items-start gap-3">
-          <div class="min-w-0 flex-1">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400">Módulos extra</p>
-            <h2
-              class="mt-[5px] font-display text-[23px] font-semibold leading-[29px] tracking-[-0.015em] text-gray-900"
-            >
-              {{ empresaNombre() || 'Empresa' }}
-            </h2>
-            <p class="mt-1.5 text-[13px] leading-[19px] text-gray-500 text-pretty">
-              Conceder da acceso aunque el plan no lo incluya. Revocar se lo saca aunque el plan sí lo incluya.
-            </p>
-          </div>
+      <!-- Cabecera: ceja + ID copiable, identidad + huella, celdas-filtro -->
+      <div class="shrink-0 border-b border-gray-200 px-6 pt-4">
+        <div class="flex items-center gap-2">
+          <span class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+            <span class="size-1.5 rounded-full bg-primary-button"></span>Módulos extra
+          </span>
+          <button
+            type="button"
+            (click)="copiarId()"
+            title="Copiar ID"
+            class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] tabular-nums text-gray-400 transition-colors duration-150 hover:bg-canvas-bg hover:text-gray-700"
+          >
+            #{{ empresaId() }}
+            <tabler-icon [icon]="iconCopiar" [size]="12" [stroke]="2" />
+          </button>
           <button
             type="button"
             (click)="cerrar.emit()"
             aria-label="Cerrar"
-            class="shrink-0 rounded-lg p-[5px] text-gray-400 transition-all duration-200 hover:bg-canvas-bg hover:text-gray-600"
+            class="ml-auto rounded-lg p-[5px] text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
           >
             <tabler-icon [icon]="iconCerrar" [size]="18" [stroke]="2" />
           </button>
         </div>
+
+        <div class="mt-2.5 flex items-center gap-3.5">
+          <span
+            class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-canvas-bg text-primary-button transition-transform duration-200 ease-out hover:-rotate-6 hover:scale-105"
+          >
+            <tabler-icon [icon]="iconModulos" [size]="22" [stroke]="1.75" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <h2 class="truncate font-display text-[22px] font-semibold leading-7 tracking-[-0.015em] text-gray-900">
+              {{ empresaNombre() || 'Empresa' }}
+            </h2>
+            <p class="mt-0.5 text-xs text-gray-500">
+              {{ resumen().conAcceso }} de {{ resumen().total }} módulos con acceso
+            </p>
+          </div>
+          <span class="flex h-[22px] shrink-0 items-end gap-[3px]" aria-hidden="true">
+            @for (f of filas(); track f.codigo) {
+              <span
+                [title]="f.nombre + ' · ' + f.ui.texto"
+                class="w-1.5 rounded-sm transition-all duration-200"
+                [class]="f.ui.huella + (f.override ? ' h-4' : ' h-3')"
+              ></span>
+            }
+          </span>
+        </div>
+
+        <div class="-mx-6 mt-4 grid grid-cols-4 border-t border-gray-100 px-3">
+          @for (c of celdas(); track c.clave) {
+            <button
+              type="button"
+              (click)="filtro.set(c.clave)"
+              class="flex flex-col gap-1 border-b-2 px-3 pb-[11px] pt-2.5 text-left transition-colors duration-150 hover:bg-neutral-50"
+              [class]="filtro() === c.clave ? 'border-primary-button bg-neutral-50' : 'border-transparent'"
+            >
+              <span class="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-400">{{ c.texto }}</span>
+              <span class="font-display text-lg font-semibold tabular-nums text-gray-900">{{ c.n }}</span>
+            </button>
+          }
+        </div>
       </div>
 
-      <div class="flex flex-1 flex-col gap-2 overflow-y-auto p-6">
-        @for (fila of filas(); track fila.codigo) {
-          <div class="overflow-hidden rounded-[10px] border border-gray-200 bg-card-bg">
-            <div class="flex flex-wrap items-center gap-3 px-4 py-3">
-              <div class="min-w-[140px] flex-1">
-                <p class="text-sm font-semibold text-gray-900">{{ fila.nombre }}</p>
-                <p class="mt-0.5 flex items-center gap-1.5 text-xs" [class]="fila.estadoTinta">
-                  <span class="inline-block size-[6px] shrink-0 rounded-full" [class]="fila.estadoPunto"></span>
-                  {{ fila.estadoTexto }}
+      <!-- Filas -->
+      <div class="flex flex-1 flex-col overflow-y-auto px-6 pb-4 pt-2">
+        @for (fila of filasVisibles(); track fila.codigo) {
+          <div class="border-b border-gray-100 last:border-b-0">
+            <div class="flex items-center gap-3 py-3">
+              <span
+                class="flex size-[34px] shrink-0 items-center justify-center rounded-[9px] transition-colors duration-200"
+                [class]="fila.efectivo ? 'bg-canvas-bg text-primary-button' : 'bg-neutral-50 text-gray-300'"
+              >
+                <span class="font-display text-[13px] font-semibold">{{ fila.nombre.charAt(0) }}</span>
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-[13px] font-semibold text-gray-900">{{ fila.nombre }}</p>
+                <p class="mt-0.5 flex items-center gap-[5px] text-[11px]" [class]="fila.ui.tinta">
+                  <span class="size-1.5 shrink-0 rounded-full" [class]="fila.ui.punto"></span>
+                  {{ fila.ui.texto }}
                 </p>
-                @if (fila.override?.motivo) {
-                  <p class="mt-1 text-[11px] leading-[16px] text-gray-400 text-pretty">
-                    "{{ fila.override?.motivo }}" · {{ fila.override?.creadoEn | date: 'd MMM y' }}
-                  </p>
-                }
               </div>
 
-              <div class="flex shrink-0 items-center gap-1.5">
-                <button
-                  type="button"
-                  [disabled]="!!guardandoCodigo()"
-                  (click)="iniciarConceder(fila)"
-                  class="rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 disabled:opacity-40"
-                  [class]="
-                    fila.override?.tipo === 'concedido'
-                      ? 'border-badge-success-bg bg-badge-success-bg text-emerald-900'
-                      : 'border-gray-200 bg-card-bg text-gray-600 hover:bg-canvas-bg'
-                  "
-                >
-                  Conceder
-                </button>
-                <button
-                  type="button"
-                  [disabled]="!!guardandoCodigo()"
-                  (click)="iniciarRevocar(fila)"
-                  class="rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 disabled:opacity-40"
-                  [class]="
-                    fila.override?.tipo === 'revocado'
-                      ? 'border-badge-error-solid/30 bg-badge-error-solid/15 text-badge-error-solid'
-                      : 'border-gray-200 bg-card-bg text-gray-600 hover:bg-canvas-bg'
-                  "
-                >
-                  Revocar
-                </button>
-                @if (fila.override) {
+              <!-- Selector de tres posiciones: Quitar · Plan · Dar -->
+              <div
+                class="relative grid h-[30px] shrink-0 grid-cols-[repeat(3,74px)] rounded-lg bg-canvas-bg p-[3px]"
+                [class.opacity-50]="guardandoCodigo() === fila.codigo"
+                role="radiogroup"
+                [attr.aria-label]="'Acceso a ' + fila.nombre"
+              >
+                <span
+                  class="absolute bottom-[3px] top-[3px] w-[74px] rounded-md shadow-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
+                  [style.left.px]="3 + fila.posicion * 74"
+                  [class]="indicadorClase[fila.posicion]"
+                ></span>
+                @for (seg of segmentos; track seg.posicion) {
                   <button
                     type="button"
-                    [disabled]="guardandoCodigo() === fila.codigo"
-                    (click)="quitarExcepcion(fila)"
-                    aria-label="Quitar excepción, volver al default del plan"
-                    class="rounded-lg p-1.5 text-gray-400 transition-colors duration-150 hover:bg-canvas-bg hover:text-gray-600 disabled:opacity-40"
+                    role="radio"
+                    [attr.aria-checked]="fila.posicion === seg.posicion"
+                    [disabled]="!!guardandoCodigo()"
+                    (click)="elegirPosicion(fila, seg.posicion)"
+                    [title]="seg.posicion === 1 ? (fila.desdePlan ? 'Según plan: incluido' : 'Según plan: no incluido') : seg.titulo"
+                    class="relative z-[1] flex items-center justify-center gap-1 text-[11px] font-medium transition-colors duration-200"
+                    [class]="fila.posicion === seg.posicion ? tintaActiva[seg.posicion] : 'text-gray-500 hover:text-gray-700'"
                   >
-                    <tabler-icon [icon]="iconQuitar" [size]="16" [stroke]="2" />
+                    <tabler-icon
+                      [icon]="seg.posicion === 1 ? (fila.desdePlan ? iconPlanSi : iconPlanNo) : seg.icono"
+                      [size]="13"
+                      [stroke]="2"
+                    />
+                    {{ seg.texto }}
                   </button>
                 }
               </div>
             </div>
 
-            <!-- Formulario de motivo (opcional) al tocar Conceder/Revocar -->
+            @if (fila.override?.motivo && editandoCodigo() !== fila.codigo) {
+              <p class="-mt-1 mb-3 ml-[46px] text-[11px] leading-4 text-gray-400 text-pretty">
+                “{{ fila.override?.motivo }}” · {{ fila.override?.creadoEn | date: 'd MMM y' }}
+              </p>
+            }
+
             @if (editandoCodigo() === fila.codigo) {
-              <div class="animate-[fade-in-up_0.15s_ease-out] border-t border-gray-100 bg-neutral-50 px-4 py-3">
-                <label class="block">
-                  <span class="text-[11px] font-medium text-gray-500">Motivo (opcional)</span>
-                  <input
-                    type="text"
-                    [ngModel]="motivoEnEdicion()"
-                    (ngModelChange)="motivoEnEdicion.set($event)"
-                    placeholder="ej. Piloto pagado aparte, cortesía mientras se resuelve un pago"
-                    class="mt-1 w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-primary-button"
-                  />
-                </label>
+              <div
+                class="animate-[fade-in-up_0.15s_ease-out] mb-3 ml-[46px] flex flex-col gap-2.5 rounded-[9px] border border-gray-100 bg-neutral-50 p-3"
+              >
+                <p class="text-xs font-medium text-gray-700">
+                  {{
+                    tipoEnEdicion() === 'concedido'
+                      ? 'Dar acceso fuera del plan — ¿por qué?'
+                      : 'Quitar acceso aunque el plan lo incluya — ¿por qué?'
+                  }}
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  @for (m of motivosRapidos(); track m) {
+                    <button
+                      type="button"
+                      (click)="motivoEnEdicion.set(m)"
+                      class="rounded-full border bg-card-bg px-2.5 py-1 text-[11px] text-gray-700 transition-colors duration-150"
+                      [class]="motivoEnEdicion() === m ? 'border-primary-button' : 'border-gray-200 hover:border-gray-300'"
+                    >
+                      {{ m }}
+                    </button>
+                  }
+                </div>
+                <input
+                  type="text"
+                  [ngModel]="motivoEnEdicion()"
+                  (ngModelChange)="motivoEnEdicion.set($event)"
+                  (keydown.enter)="confirmarEdicion()"
+                  (keydown.escape)="cancelarEdicion()"
+                  placeholder="Motivo (opcional)"
+                  class="w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-primary-button"
+                />
                 @if (errorFila(); as mensaje) {
-                  <p class="mt-2 text-xs text-badge-error-solid">{{ mensaje }}</p>
+                  <p class="text-xs text-badge-error-solid">{{ mensaje }}</p>
                 }
-                <div class="mt-2.5 flex items-center justify-end gap-2">
+                <div class="flex items-center justify-end gap-2">
                   <button
                     type="button"
                     (click)="cancelarEdicion()"
@@ -150,13 +209,15 @@
             }
           </div>
         } @empty {
-          <p class="px-1 py-4 text-sm text-gray-400">No hay módulos activos en el catálogo.</p>
+          <p class="py-5 text-[13px] text-gray-400">
+            {{ filas().length ? 'Ningún módulo en este filtro.' : 'No hay módulos activos en el catálogo.' }}
+          </p>
         }
       </div>
 
       <div class="flex shrink-0 items-center justify-between gap-3 border-t border-gray-200 bg-neutral-50 px-6 py-3">
         <p class="text-[11px] leading-4 text-gray-400 text-pretty">
-          Cada cambio se aplica al toque — no hace falta "Guardar" al final.
+          Cada cambio se aplica al toque. “Plan” quita la excepción.
         </p>
         <button
           type="button"

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { AsistentePanelComponent } from '../asistente-panel/asistente-panel.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
 
@@ -23,7 +24,7 @@ import { TopbarComponent } from '../topbar/topbar.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent, AsistentePanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.component.html',
 })
