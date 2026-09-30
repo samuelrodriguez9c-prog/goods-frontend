@@ -1,0 +1,341 @@
+@if (asistenteService.abierto()) {
+  <div
+    class="fixed inset-0 z-50 flex justify-end bg-black/50 animate-[fade-in-up_0.15s_ease-out]"
+    (click)="onBackdropClick($event)"
+  >
+    <div
+      class="flex h-full w-full max-w-md flex-col overflow-hidden bg-card-bg shadow-xl animate-[slide-in-right_0.2s_ease-out]"
+    >
+      <!-- Input de archivo oculto (§5.5) — siempre montado (no solo en modo
+           documento) para que el ViewChild nunca sea `undefined` cuando el
+           clip lo dispara desde el chat. -->
+      <input
+        #inputArchivoFactura
+        type="file"
+        [accept]="acceptArchivoFactura"
+        (change)="onArchivoSeleccionado($event)"
+        hidden
+      />
+
+      <!-- Encabezado -->
+      <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+        <div class="flex min-w-0 items-center gap-2">
+          <tabler-icon [icon]="iconBot" [size]="18" [stroke]="1.75" class="shrink-0 text-gray-500" />
+          <h2 class="truncate text-sm font-semibold text-gray-900">
+            {{ modo() === 'documento' ? 'Nueva compra desde factura' : 'Asistente de IA' }}
+          </h2>
+        </div>
+        <div class="flex shrink-0 items-center gap-1">
+          @if (modo() === 'chat') {
+            <button
+              type="button"
+              (click)="nuevaConversacion()"
+              aria-label="Nueva conversación"
+              class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+            >
+              <tabler-icon [icon]="iconNueva" [size]="17" [stroke]="2" />
+            </button>
+          }
+          <button
+            type="button"
+            (click)="cerrar()"
+            aria-label="Cerrar"
+            class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+          >
+            <tabler-icon [icon]="iconCerrar" [size]="17" [stroke]="2" />
+          </button>
+        </div>
+      </div>
+
+      @if (modo() === 'chat') {
+        <!-- Selector de conversaciones anteriores (§5.1 paso 10) -->
+        @if (conversaciones().length > 1) {
+          <div class="border-b border-gray-100 px-3 py-2">
+            <select
+              [ngModel]="conversacionActivaId()"
+              (ngModelChange)="seleccionar($event)"
+              class="w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-xs text-gray-700 outline-none focus:border-gray-400"
+            >
+              @for (c of conversaciones(); track c.id) {
+                <option [value]="c.id">{{ tituloConversacion(c) }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        <!-- Hilo -->
+        <div #hiloScroll class="flex-1 overflow-y-auto px-4 py-4">
+          @if (cargandoConversaciones() || cargandoHilo()) {
+            <div class="flex animate-pulse flex-col gap-2.5">
+              <span class="h-10 w-2/3 rounded-xl bg-gray-100"></span>
+              <span class="ml-auto h-10 w-1/2 rounded-xl bg-gray-100"></span>
+              <span class="h-10 w-3/5 rounded-xl bg-gray-100"></span>
+            </div>
+          } @else if (error() && !mensajes().length) {
+            <div class="flex flex-col items-center gap-2 pt-10 text-center">
+              <p class="text-[13px] text-red-500">{{ error() }}</p>
+              <button
+                type="button"
+                (click)="cargarConversaciones()"
+                class="text-xs font-medium text-gray-600 underline decoration-gray-300 underline-offset-2 hover:text-gray-900"
+              >
+                Reintentar
+              </button>
+            </div>
+          } @else if (!mensajes().length) {
+            <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
+              <tabler-icon [icon]="iconBot" [size]="28" [stroke]="1.5" class="text-gray-300" />
+              <p class="text-[13px] font-medium text-gray-500">Preguntame por tu stock, tus ventas o tus productos.</p>
+              <p class="text-[12px] text-gray-400">O adjuntá una factura de proveedor con el clip de abajo.</p>
+            </div>
+          } @else {
+            <div class="flex flex-col gap-3">
+              @for (m of mensajes(); track m.id) {
+                <div class="flex flex-col" [class]="m.rol === 'usuario' ? 'items-end' : 'items-start'">
+                  <div
+                    class="max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-[13.5px] leading-[19px] text-pretty"
+                    [class]="
+                      m.rol === 'usuario'
+                        ? 'rounded-br-sm bg-[#303030] text-white'
+                        : 'rounded-bl-sm bg-neutral-100 text-gray-900'
+                    "
+                  >
+                    {{ m.cuerpo }}
+                  </div>
+                  @if (herramientasTexto(m); as texto) {
+                    <span class="mt-1 px-1 text-[11px] text-gray-400">{{ texto }}</span>
+                  }
+                  <span class="mt-0.5 px-1 text-[11px] text-gray-400">{{ horaCorta(m.creadoEn) }}</span>
+                </div>
+              }
+              @if (enviando()) {
+                <div class="flex items-start">
+                  <div class="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-neutral-100 px-3.5 py-2.5">
+                    <span class="size-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]"></span>
+                    <span class="size-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.15s]"></span>
+                    <span class="size-1.5 animate-bounce rounded-full bg-gray-400"></span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        @if (error() && mensajes().length) {
+          <p class="border-t border-red-100 bg-red-50 px-4 py-2 text-[12px] text-red-600">{{ error() }}</p>
+        }
+
+        <!-- Input -->
+        <div class="flex items-center gap-2 border-t border-gray-100 px-3 py-2.5">
+          <button
+            type="button"
+            (click)="elegirArchivoFactura()"
+            aria-label="Adjuntar factura de proveedor"
+            title="Adjuntar factura de proveedor"
+            class="shrink-0 rounded-lg p-2 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+          >
+            <tabler-icon [icon]="iconClip" [size]="18" [stroke]="1.75" />
+          </button>
+          <input
+            #inputMensaje
+            type="text"
+            [ngModel]="texto()"
+            (ngModelChange)="texto.set($event)"
+            (keydown.enter)="enviar()"
+            [disabled]="enviando()"
+            placeholder="Escribí tu pregunta…"
+            class="min-w-0 flex-1 rounded-[9px] border border-gray-200 bg-card-bg px-3 py-2 text-[13.5px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400 disabled:opacity-60"
+          />
+          <button
+            type="button"
+            [disabled]="enviando() || !texto().trim()"
+            (click)="enviar()"
+            class="flex shrink-0 items-center gap-1.5 rounded-lg bg-gray-900 px-3.5 py-2 text-[13px] font-medium text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-50"
+          >
+            <tabler-icon [icon]="iconEnviar" [size]="15" [stroke]="2" />
+          </button>
+        </div>
+      } @else {
+        <!-- Modo documento (§5.5): factura de proveedor → Compra nueva -->
+        <div class="flex-1 overflow-y-auto px-4 py-4">
+          @if (estadoDocumento() === 'extrayendo') {
+            <div class="flex h-full flex-col items-center justify-center gap-3 text-center">
+              <tabler-icon [icon]="iconCargando" [size]="26" [stroke]="1.75" class="animate-spin text-gray-400" />
+              <p class="text-[13px] font-medium text-gray-500">Leyendo la factura…</p>
+            </div>
+          } @else {
+            <div class="flex flex-col gap-3">
+              <!-- Proveedor -->
+              <div class="flex flex-col gap-1">
+                <label class="text-[11px] font-medium text-gray-500">Proveedor</label>
+                <select
+                  [ngModel]="proveedorIdDraft()"
+                  (ngModelChange)="proveedorIdDraft.set($event)"
+                  [disabled]="estadoDocumento() === 'guardando'"
+                  class="w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-[13px] text-gray-900 outline-none focus:border-gray-400 disabled:opacity-60"
+                >
+                  <option [ngValue]="null">+ Crear proveedor nuevo…</option>
+                  @for (p of proveedores(); track p.id) {
+                    <option [ngValue]="p.id">{{ p.nombre }}</option>
+                  }
+                </select>
+                @if (proveedorIdDraft() === null) {
+                  <input
+                    type="text"
+                    [ngModel]="proveedorNombreDraft()"
+                    (ngModelChange)="proveedorNombreDraft.set($event)"
+                    [disabled]="estadoDocumento() === 'guardando'"
+                    placeholder="Nombre del proveedor nuevo"
+                    class="w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-[13px] text-gray-900 outline-none focus:border-gray-400 disabled:opacity-60"
+                  />
+                }
+              </div>
+
+              <!-- N° de factura + fecha -->
+              <div class="grid grid-cols-2 gap-2">
+                <div class="flex flex-col gap-1">
+                  <label class="text-[11px] font-medium text-gray-500">N° de factura</label>
+                  <input
+                    type="text"
+                    [ngModel]="numeroFacturaDraft()"
+                    (ngModelChange)="numeroFacturaDraft.set($event)"
+                    [disabled]="estadoDocumento() === 'guardando'"
+                    class="w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-[13px] text-gray-900 outline-none focus:border-gray-400 disabled:opacity-60"
+                  />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[11px] font-medium text-gray-500">Fecha</label>
+                  <input
+                    type="date"
+                    [ngModel]="fechaDraft()"
+                    (ngModelChange)="fechaDraft.set($event)"
+                    [disabled]="estadoDocumento() === 'guardando'"
+                    class="w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-[13px] text-gray-900 outline-none focus:border-gray-400 disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              <!-- Productos -->
+              <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                  <label class="text-[11px] font-medium text-gray-500">Productos</label>
+                  <button
+                    type="button"
+                    (click)="agregarItemDraft()"
+                    [disabled]="estadoDocumento() === 'guardando'"
+                    class="flex items-center gap-1 text-[11px] font-medium text-gray-600 hover:text-gray-900 disabled:opacity-60"
+                  >
+                    <tabler-icon [icon]="iconAgregar" [size]="13" [stroke]="2" />
+                    Agregar
+                  </button>
+                </div>
+                @for (item of itemsDraft(); track $index) {
+                  <div class="flex flex-col gap-1.5 rounded-lg border border-gray-200 p-2.5">
+                    <div class="flex items-start justify-between gap-2">
+                      <select
+                        [ngModel]="item.productoId"
+                        (ngModelChange)="actualizarItemDraft($index, 'productoId', $event)"
+                        [disabled]="estadoDocumento() === 'guardando'"
+                        class="min-w-0 flex-1 rounded-lg border border-gray-200 bg-card-bg px-2 py-1 text-[12.5px] text-gray-900 outline-none focus:border-gray-400 disabled:opacity-60"
+                      >
+                        <option [ngValue]="null">{{ item.nombre || 'Elegí un producto…' }}</option>
+                        @for (p of productos(); track p.id) {
+                          <option [ngValue]="p.id">{{ p.nombre }}</option>
+                        }
+                      </select>
+                      <button
+                        type="button"
+                        (click)="quitarItemDraft($index)"
+                        [disabled]="estadoDocumento() === 'guardando'"
+                        aria-label="Quitar producto"
+                        class="shrink-0 rounded-lg p-1 text-gray-400 hover:bg-canvas-bg hover:text-red-500 disabled:opacity-60"
+                      >
+                        <tabler-icon [icon]="iconQuitar" [size]="14" [stroke]="2" />
+                      </button>
+                    </div>
+                    @if (item.nombre && !item.productoId) {
+                      <p class="px-0.5 text-[11px] text-amber-600">
+                        Detectado como "{{ item.nombre }}" — no encontré un producto igual en tu catálogo.
+                      </p>
+                    }
+                    <div class="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        [ngModel]="item.cantidad"
+                        (ngModelChange)="actualizarItemDraft($index, 'cantidad', $event)"
+                        [disabled]="estadoDocumento() === 'guardando'"
+                        placeholder="Cantidad"
+                        class="w-full rounded-lg border border-gray-200 bg-card-bg px-2 py-1 text-[12.5px] text-gray-900 outline-none focus:border-gray-400 disabled:opacity-60"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        [ngModel]="item.precioUnitario"
+                        (ngModelChange)="actualizarItemDraft($index, 'precioUnitario', $event)"
+                        [disabled]="estadoDocumento() === 'guardando'"
+                        placeholder="Precio unitario"
+                        class="w-full rounded-lg border border-gray-200 bg-card-bg px-2 py-1 text-[12.5px] text-gray-900 outline-none focus:border-gray-400 disabled:opacity-60"
+                      />
+                    </div>
+                  </div>
+                }
+                @if (!itemsDraft().length) {
+                  <p class="text-[12px] text-gray-400">No hay productos — agregá al menos uno.</p>
+                }
+              </div>
+
+              <!-- Notas -->
+              <div class="flex flex-col gap-1">
+                <label class="text-[11px] font-medium text-gray-500">Notas</label>
+                <textarea
+                  [ngModel]="notasDraft()"
+                  (ngModelChange)="notasDraft.set($event)"
+                  [disabled]="estadoDocumento() === 'guardando'"
+                  rows="2"
+                  class="w-full resize-none rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-[13px] text-gray-900 outline-none focus:border-gray-400 disabled:opacity-60"
+                ></textarea>
+              </div>
+
+              <div class="flex items-center justify-between border-t border-gray-100 pt-2 text-[13px] font-medium text-gray-700">
+                <span>Total</span>
+                <span>{{ totalDraft() }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (errorDocumento()) {
+          <p class="border-t border-red-100 bg-red-50 px-4 py-2 text-[12px] text-red-600">{{ errorDocumento() }}</p>
+        }
+
+        @if (estadoDocumento() === 'revisando' || estadoDocumento() === 'guardando') {
+          <div class="flex items-center gap-2 border-t border-gray-100 px-3 py-2.5">
+            <button
+              type="button"
+              (click)="cancelarDocumento()"
+              [disabled]="estadoDocumento() === 'guardando'"
+              class="flex-1 rounded-lg border border-gray-200 px-3.5 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-150 hover:bg-canvas-bg disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              (click)="confirmarDocumento()"
+              [disabled]="estadoDocumento() === 'guardando'"
+              class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-gray-900 px-3.5 py-2 text-[13px] font-medium text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-50"
+            >
+              @if (estadoDocumento() === 'guardando') {
+                <tabler-icon [icon]="iconCargando" [size]="15" [stroke]="2" class="animate-spin" />
+              } @else {
+                <tabler-icon [icon]="iconConfirmar" [size]="15" [stroke]="2" />
+              }
+              Confirmar y guardar
+            </button>
+          </div>
+        }
+      }
+    </div>
+  </div>
+}

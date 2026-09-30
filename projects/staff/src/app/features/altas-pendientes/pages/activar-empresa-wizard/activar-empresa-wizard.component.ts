@@ -21,6 +21,7 @@ import {
   IconCalendarClock,
   IconCalendarPlus,
   IconCheck,
+  IconChevronRight,
   IconCircleCheck,
   IconClock,
   IconDeviceFloppy,
@@ -34,8 +35,11 @@ import {
   IconPhone,
   IconPhoneCheck,
   IconPhoneOff,
+  IconPlus,
   IconPointFilled,
+  IconPuzzle,
   IconSend,
+  IconShoppingCart,
   IconX,
   TablerIconComponent,
 } from '@tabler/icons-angular';
@@ -390,6 +394,41 @@ export class ActivarEmpresaWizardComponent {
 
   protected readonly hayModulosCandidatos = computed(() => this.modulosCandidatos().length > 0);
 
+  // Rediseño 2026-09-27 del bloque de módulos del modal: lo pedido en el
+  // checkout como tarjetas arriba, el resto del catálogo plegado en chips.
+  protected readonly iconCheckout = IconShoppingCart;
+  protected readonly iconChevron = IconChevronRight;
+  protected readonly iconSumar = IconPlus;
+  protected readonly verMasModulos = signal(false);
+  protected readonly modulosPedidos = computed(() => this.modulosCandidatos().filter((m) => m.pedidoEnCheckout));
+  protected readonly modulosResto = computed(() => this.modulosCandidatos().filter((m) => !m.pedidoEnCheckout));
+  protected readonly modulosElegidos = computed(() =>
+    this.modulosCandidatos().filter((m) => this.modulosSeleccionados().has(m.codigo)),
+  );
+  /** `true` si lo tildado es exactamente lo pedido en el checkout. */
+  protected readonly soloLoPedido = computed(() => {
+    const pedidos = this.modulosPedidos();
+    const elegidos = this.modulosElegidos();
+    return pedidos.length > 0 && elegidos.length === pedidos.length && elegidos.every((m) => m.pedidoEnCheckout);
+  });
+  protected readonly resumenResto = computed(() => {
+    const n = this.modulosResto().filter((m) => this.modulosSeleccionados().has(m.codigo)).length;
+    return n ? `· ${n} tildado${n === 1 ? '' : 's'}` : `· ${this.modulosResto().length} más`;
+  });
+  protected readonly textoConfirmarLlamada = computed(() => {
+    if (this.confirmandoLlamada()) {
+      return 'Confirmando…';
+    }
+    const n = this.modulosElegidos().length;
+    return n ? `Confirmar con ${n} extra${n === 1 ? '' : 's'}` : 'Confirmar y mandar el enlace';
+  });
+
+  protected alternarLoPedido(): void {
+    this.modulosSeleccionados.set(
+      this.soloLoPedido() ? new Set() : new Set(this.modulosPedidos().map((m) => m.codigo)),
+    );
+  }
+
   protected readonly consecuencias = computed(() => {
     const e = this.empresa();
     const correo = e?.duenoCorreo ?? e?.correoContacto ?? '';
@@ -397,6 +436,9 @@ export class ActivarEmpresaWizardComponent {
       { icono: IconMail, texto: `Se le manda un enlace a ${correo} para que defina su contraseña.` },
       { icono: IconClock, texto: 'La Empresa pasa a “información corroborada” y baja a la lista de espera de la hoja.' },
       { icono: IconCircleCheck, texto: 'Cuando el cliente abra el enlace se activa sola y arranca la facturación del plan.' },
+      this.modulosElegidos().length
+        ? { icono: IconPuzzle, texto: `Se suman como excepción: ${this.modulosElegidos().map((m) => m.nombre).join(', ')}.` }
+        : { icono: IconPuzzle, texto: `Sin módulos extra — queda solo lo del plan ${this.nombrePlanElegido()}.` },
     ];
   });
 

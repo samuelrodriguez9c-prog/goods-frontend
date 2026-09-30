@@ -11,9 +11,11 @@ import {
   IconCrown,
   IconEraser,
   IconPower,
+  IconRobot,
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { Subscription } from 'rxjs';
+import { AsistenteStaffService } from '../../core/asistente-staff/asistente-staff.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Notificacion } from '../../core/notificaciones/models/notificacion.model';
 import { NotificacionService } from '../../core/notificaciones/notificacion.service';
@@ -52,6 +54,7 @@ export class TopbarComponent implements OnDestroy {
   private readonly notificacionService = inject(NotificacionService);
   private readonly realtimeService = inject(RealtimeService);
   private readonly pista = inject(PistaService);
+  protected readonly asistenteService = inject(AsistenteStaffService);
 
   protected readonly i = {
     campana: IconBell,
@@ -63,9 +66,19 @@ export class TopbarComponent implements OnDestroy {
     vacio: IconBellCheck,
     corona: IconCrown,
     apagar: IconPower,
+    bot: IconRobot,
   };
 
   protected readonly currentUser = this.authService.currentUser;
+
+  /** Ícono del Asistente de IA para staff (§5.4 de
+   *  `PROPUESTA_ASISTENTE_IA_RAG.md`) — gateado por el permiso
+   *  `asistente_staff.usar`, mismo criterio de `permisos.includes(...)`
+   *  que ya usa `SidebarComponent.navItems` (no por `modulosDisponibles`,
+   *  que es para features de plan de una Empresa — esto no lo es). */
+  protected readonly tieneAsistenteIa = computed(() =>
+    (this.currentUser()?.permisos ?? []).includes('asistente_staff.usar'),
+  );
 
   // ── Notificaciones ──────────────────────────────────────────────────────
   protected readonly notificaciones = signal<Notificacion[]>([]);
@@ -299,5 +312,9 @@ export class TopbarComponent implements OnDestroy {
     this.hold.set(false);
     this.authService.logout();
     this.router.navigateByUrl('/login');
+  }
+
+  protected abrirAsistenteIa(): void {
+    this.asistenteService.abrirPanel();
   }
 }

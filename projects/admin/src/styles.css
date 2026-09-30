@@ -118,3 +118,54 @@
     transform: translateY(0);
   }
 }
+
+/* `slide-in-right` — entrada del panel lateral del Asistente de IA
+ * (`layout/asistente-panel/`, PROPUESTA_ASISTENTE_IA_RAG.md §4.6/§5.1
+ * paso 10) — copiado tal cual de `staff/src/styles.css` (mismo patrón
+ * que usa `SidePanelComponent` ahí): mismo criterio que `fade-in-up`
+ * arriba, pero deslizando desde la derecha, acorde a un panel anclado al
+ * borde derecho de la pantalla. */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Registro público (rediseño 2026-09-27) ──────────────────────────────
+ * Agregar al final de projects/admin/src/styles.css.
+ * `fade-in-up` ya existe; estos son los nuevos. */
+
+@keyframes linea-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes latido {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(164 255 182 / 0.5); }
+  50% { box-shadow: 0 0 0 6px rgb(164 255 182 / 0); }
+}
+
+/* Sello "RECIBIDA": cruza el ticket de abajo-izquierda a arriba-derecha. */
+@keyframes sello {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-52deg) scale(1.9); }
+  55% { opacity: 1; transform: translate(-50%, -50%) rotate(-52deg) scale(0.95); }
+  100% { opacity: 1; transform: translate(-50%, -50%) rotate(-52deg) scale(1); }
+}
+.sello {
+  animation: sello 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Borde inferior dentado del ticket (recorta también el sello). */
+.ticket {
+  -webkit-mask: radial-gradient(circle 7px at 50% calc(100% + 1px), transparent 6.5px, #000 7px) bottom / 18px 100% repeat-x;
+  mask: radial-gradient(circle 7px at 50% calc(100% + 1px), transparent 6.5px, #000 7px) bottom / 18px 100% repeat-x;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sello { animation: none; transform: translate(-50%, -50%) rotate(-52deg); }
+}

@@ -3,7 +3,11 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { RespuestaPaginada } from './models/empresa.model';
-import { Suscripcion } from './models/suscripcion.model';
+import {
+  RegistrarPagoSuscripcionPayload,
+  Suscripcion,
+  SuscripcionPago,
+} from './models/suscripcion.model';
 
 /** 'activa' | 'cancelada' | 'vencida' — 'pendiente' no es asignable a
  * mano (ver `CambiarEstadoSuscripcionDto` del backend: solo lo asigna el
@@ -60,5 +64,14 @@ export class SuscripcionService {
     return this.http.patch<Suscripcion>(`${environment.apiUrl}/suscripciones/${id}/estado`, {
       estado,
     });
+  }
+
+  /** `POST /suscripciones/pagos` (§5.5, 2026-09-29) — paso "Confirmar y
+   * guardar" del modo documento del Asistente de IA de staff. Registra
+   * el pago Y renueva la suscripción activa/vencida de esa Empresa en el
+   * mismo paso (ver `SuscripcionService.registrarPagoManual`, backend) —
+   * acá no hace falta un segundo llamado para eso. */
+  registrarPago(payload: RegistrarPagoSuscripcionPayload): Observable<SuscripcionPago> {
+    return this.http.post<SuscripcionPago>(`${environment.apiUrl}/suscripciones/pagos`, payload);
   }
 }

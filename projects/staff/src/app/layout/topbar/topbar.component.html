@@ -1,14 +1,26 @@
 <!-- projects/staff/src/app/layout/topbar/topbar.component.html -->
 <header class="relative z-40 flex h-15 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
-  <!-- <div class="flex items-center gap-3">
+  <div class="flex items-center gap-3">
     <img src="/logo-goods-wordmark.png" alt="Goods" class="h-12 w-auto" />
     <span class="h-[22px] w-px bg-topbar-badge-border"></span>
     <span class="text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">Staff</span>
-  </div> -->
+  </div>
 
   <div class="flex-1"></div>
 
   <div class="flex shrink-0 items-center gap-1.5">
+    <!-- ─── Asistente de IA (§5.4) ─── -->
+    @if (tieneAsistenteIa()) {
+      <button
+        type="button"
+        (click)="abrirAsistenteIa()"
+        aria-label="Asistente de IA"
+        class="flex rounded-lg p-[7px] text-neutral-300 transition-[background-color,color,transform] duration-200 hover:bg-white/10 hover:text-white active:scale-[0.92]"
+      >
+        <tabler-icon [icon]="i.bot" [size]="20" [stroke]="1.75" />
+      </button>
+    }
+
     <!-- ─── Campanita ─── -->
     <div data-panel="campana" class="relative">
       <button
@@ -178,7 +190,7 @@
           class="flex flex-col items-start gap-0.5 transition-transform duration-[320ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
           [class]="menuAbierto() || hoverCuenta() ? 'translate-x-[3px]' : 'translate-x-0'"
         >
-          <span class="text-sm font-medium leading-4">{{ nombreCompleto() }}</span>
+          <span class="text-sm font-medium leading-4">{{ displayName() }}</span>
           @if (esCrossPanelStaff()) {
             <span class="flex items-center gap-[7px]">
               <span class="flex items-center gap-[5px]">
@@ -267,7 +279,7 @@
               [size]="14"
               [stroke]="2"
               class="relative w-4 text-[#9a3412]"
-              [class]="hold() === 'manteniendo' ? 'transition-transform duration-[900ms] ease-linear' : hold() === 'listo' ? 'transition-transform duration-500' : 'rotate-0 transition-transform duration-[260ms]'"
+              [class]="hold() === 'manteniendo' ? 'rotate-180 transition-transform duration-[900ms] ease-linear' : hold() === 'listo' ? 'rotate-[360deg] transition-transform duration-500' : 'rotate-0 transition-transform duration-[260ms]'"
             />
             <span class="relative flex-1 text-[13.5px] font-medium text-[#9a3412]">Cerrar sesión</span>
             <span class="relative text-[11px] transition-colors duration-200" [class]="hold() ? 'text-[#9a3412]' : 'text-[#b5b5b5]'">

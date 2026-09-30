@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IconBell, IconRobot, IconSearch, TablerIconComponent } from '@tabler/icons-angular';
+import { AsistenteService } from '../../core/asistente/asistente.service';
 import { AuthService } from '../../core/auth/auth.service';
 
 /**
@@ -24,6 +25,14 @@ import { AuthService } from '../../core/auth/auth.service';
  * los de Home/Products/Customers del sidebar van rellenos—, así que se
  * pasan por referencia de objeto (`[icon]="iconSearch"`) sin necesidad
  * de `provideTablerIcons`, igual de "solo lo que se usa" que antes.
+ *
+ * Ícono de asistente IA (`iconBot`): dejó de ser inerte con
+ * `PROPUESTA_ASISTENTE_IA_RAG.md` (§5.1 pasos 11-12, 2026-09-29) — abre
+ * `AsistentePanelComponent` (montado en `ShellComponent`) vía
+ * `AsistenteService.abrirPanel()`, y se oculta si la Empresa no tiene el
+ * módulo `asistente_ia` en su plan (mismo criterio de gating por
+ * `modulosDisponibles` que ya usa `SidebarComponent.navItemsVisibles`
+ * para Discounts/Messages, no uno nuevo).
  */
 @Component({
   selector: 'app-topbar',
@@ -35,12 +44,17 @@ import { AuthService } from '../../core/auth/auth.service';
 export class TopbarComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  protected readonly asistenteService = inject(AsistenteService);
 
   protected readonly iconSearch = IconSearch;
   protected readonly iconBot = IconRobot;
   protected readonly iconBell = IconBell;
 
   protected readonly currentUser = this.authService.currentUser;
+
+  protected readonly tieneAsistenteIa = computed(() =>
+    (this.currentUser()?.modulosDisponibles ?? []).includes('asistente_ia'),
+  );
 
   // Iniciales para el avatar (ej. "Julián Ríos" -> "JR"). Si por lo que
   // sea currentUser todavía no cargó (instante entre navegar al shell y
@@ -58,6 +72,10 @@ export class TopbarComponent {
     const usuario = this.currentUser();
     return usuario ? usuario.nombres : '…';
   });
+
+  protected abrirAsistente(): void {
+    this.asistenteService.abrirPanel();
+  }
 
   protected logout(): void {
     this.authService.logout();
