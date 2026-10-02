@@ -27,6 +27,11 @@
     </ng-container>
   </app-cabecera-modulo>
 
+  <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
+  @if (hayCambiosEnVivo()) {
+    <app-aviso-datos-nuevos (actualizar)="actualizarPorCambioEnVivo()" />
+  }
+
   <app-pantalla-estado [estado]="estadoPantalla()" modulo="Roles y permisos" (reintentar)="reintentar()" (volver)="volver()">
     <div esqueleto class="mt-6 flex animate-pulse flex-col gap-3">
       <span class="h-10 w-full rounded-[10px] bg-gray-200"></span>

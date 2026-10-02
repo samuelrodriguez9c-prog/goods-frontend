@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { IconChevronDown, IconChevronRight, IconRepeat, TablerIconComponent } from '@tabler/icons-angular';
 import { forkJoin } from 'rxjs';
@@ -15,6 +16,8 @@ import {
   MetricaCabecera,
   serieAcumulada,
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
+import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
+import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
 
 /** Mismo formato que `formatCop` de Planes / `admin` — repetido a propósito
  * (ver el criterio ya documentado en `PlanesPageComponent`). */
@@ -119,6 +122,7 @@ const ESTADO_UI: Record<string, { texto: string; punto: string; tinta: string }>
     GestionarModulosPanelComponent,
     PantallaEstadoComponent,
     CabeceraModuloComponent,
+    AvisoDatosNuevosComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './suscripciones-page.component.html',
@@ -128,6 +132,7 @@ export class SuscripcionesPageComponent {
   private readonly empresaService = inject(EmpresaService);
   private readonly planService = inject(PlanService);
   private readonly router = inject(Router);
+  private readonly cambiosEnVivoService = inject(CambiosEnVivoService);
 
   protected readonly formatCop = formatCop;
   protected readonly mostrarDesglose = true;
@@ -139,6 +144,8 @@ export class SuscripcionesPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
+  protected readonly hayCambiosEnVivo = signal(false);
   protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
     this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
   );
@@ -222,6 +229,29 @@ export class SuscripcionesPageComponent {
     const cobrando = this.filas().filter((f) => f.cobra).length;
     const promedio = cobrando ? Math.round(this.mrrTotal() / cobrando) : 0;
     return `promedio ${formatCop(promedio)} por Empresa`;
+  });
+
+  /** Subtítulo de la cabecera (slot `[lectura]`) — esta pantalla nunca
+   *  había tenido uno (2026-10-02, pedido explícito: todos los módulos
+   *  deben mostrar algo informativo acá). Primera oración: cuánto se
+   *  factura y cuántas Empresas cobran hoy. Segunda oración: lo que
+   *  necesita atención (`atencion()`, ya calculado para el tile ámbar/
+   *  rojo de la cabecera) o la confirmación de que no hay nada pendiente. */
+  protected readonly lectura = computed(() => {
+    const cobrando = this.filas().filter((f) => f.cobra).length;
+    const total = this.filas().length;
+    const mrr = this.mrrTotal();
+
+    const foto = cobrando
+      ? `${cobrando} de ${total} ${total === 1 ? 'Empresa factura' : 'Empresas facturan'} hoy, por ${formatCop(mrr)} al mes en total (${this.notaMrr()}).`
+      : `Ninguna de las ${total} ${total === 1 ? 'Empresa está facturando' : 'Empresas está facturando'} todavía.`;
+
+    const aviso = this.atencion();
+    const estadoAtencion = aviso
+      ? ` ${aviso.titulo}: ${aviso.nota}`
+      : ' Ninguna está vencida ni esperando activación en este momento.';
+
+    return foto + estadoAtencion;
   });
 
   protected readonly desglosePorPlan = computed(() => {
@@ -354,6 +384,15 @@ export class SuscripcionesPageComponent {
   });
 
   constructor() {
+    this.cargar();
+    this.cambiosEnVivoService
+      .huboCambio(['suscripcion', 'empresa', 'plan'])
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.hayCambiosEnVivo.set(true));
+  }
+
+  protected actualizarPorCambioEnVivo(): void {
+    this.hayCambiosEnVivo.set(false);
     this.cargar();
   }
 

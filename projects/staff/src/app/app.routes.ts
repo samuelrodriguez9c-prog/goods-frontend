@@ -11,6 +11,23 @@ export const routes: Routes = [
       import('./core/auth/pages/login/login.component').then((m) => m.LoginComponent),
   },
   {
+    // Rediseño del Asistente de IA (2026-09-30, ver
+    // handoff-asistente-ia/LEEME.md) — fuera del Shell a propósito: esta
+    // pantalla (y su hermana `documentos`, sumada 2026-10-02, ver
+    // `asistente.routes.ts`) trae su propia topbar con "Volver al panel",
+    // no la de `ShellComponent`/`SidebarComponent`. El gating real es el
+    // permiso `asistente_staff.usar` que ya exige el backend; acá no hay
+    // todavía un guard de permiso para rutas (ningún otro módulo lo usa,
+    // ver `AsistenteDockComponent`, que sí oculta el botón sin ese
+    // permiso) — mismo criterio para `documentos`.
+    //
+    // `icon: 'ia'` del hijo por defecto es un sentinel para
+    // `BreadcrumbTrailComponent` — no es un ícono Tabler, le dice que
+    // pinte `app-ia-marca` en su lugar (ver `NavigationTrailService`).
+    path: 'asistente',
+    loadChildren: () => import('./features/asistente/asistente.routes').then((m) => m.ASISTENTE_ROUTES),
+  },
+  {
     path: '',
     component: ShellComponent,
     canActivate: [authGuard],

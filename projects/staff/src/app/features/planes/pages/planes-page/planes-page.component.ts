@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
@@ -24,6 +25,8 @@ import {
   MetricaCabecera,
   serieAcumulada,
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
+import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
+import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
 import { Plan } from '../../../../core/catalog/models/plan.model';
 import { Suscripcion } from '../../../../core/catalog/models/suscripcion.model';
 
@@ -96,7 +99,7 @@ interface FilaMatriz {
 @Component({
   selector: 'app-planes-page',
   standalone: true,
-  imports: [FormsModule, InputTextModule, TablerIconComponent, PantallaEstadoComponent, CabeceraModuloComponent],
+  imports: [FormsModule, InputTextModule, TablerIconComponent, PantallaEstadoComponent, CabeceraModuloComponent, AvisoDatosNuevosComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './planes-page.component.html',
 })
@@ -105,6 +108,7 @@ export class PlanesPageComponent {
   private readonly suscripcionService = inject(SuscripcionService);
   private readonly alertas = inject(AlertaService);
   private readonly router = inject(Router);
+  private readonly cambiosEnVivoService = inject(CambiosEnVivoService);
 
   /** Mostrar cuántas Empresas hay en cada plan. Requiere
    * `SuscripcionService.listar()` — apagalo si el endpoint no está. */
@@ -121,6 +125,8 @@ export class PlanesPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
+  protected readonly hayCambiosEnVivo = signal(false);
   protected readonly publicando = signal(false);
   protected readonly accionandoId = signal<number | null>(null);
   protected readonly nuevaCaracteristica = signal('');
@@ -292,6 +298,15 @@ export class PlanesPageComponent {
   });
 
   constructor() {
+    this.cargar();
+    this.cambiosEnVivoService
+      .huboCambio(['plan', 'suscripcion'])
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.hayCambiosEnVivo.set(true));
+  }
+
+  protected actualizarPorCambioEnVivo(): void {
+    this.hayCambiosEnVivo.set(false);
     this.cargar();
   }
 

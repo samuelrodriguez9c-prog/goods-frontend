@@ -23,6 +23,7 @@
     "@fontsource/inter": "^5.3.0",
     "@primeuix/themes": "^2.0.2",
     "@tabler/icons-angular": "^3.46.0",
+    "marked": "^16.4.2",
     "primeng": "^21.1.10",
     "rxjs": "~7.8.0",
     "socket.io-client": "^4.8.3",

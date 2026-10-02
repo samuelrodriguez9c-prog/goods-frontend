@@ -1,6 +1,7 @@
 // projects/staff/src/app/features/roles/pages/roles-page/roles-page.component.ts
 
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import {
   IconBuildingStore,
@@ -20,6 +21,8 @@ import {
   CabeceraModuloComponent,
   MetricaCabecera,
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
+import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
+import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
 
 type Preset = 'nada' | 'lectura' | 'total';
 
@@ -204,7 +207,7 @@ const BORRADOR_VACIO: Borrador = { nombre: '', descripcion: '', baseId: null };
 @Component({
   selector: 'app-roles-page',
   standalone: true,
-  imports: [TablerIconComponent, RolPanelComponent, PantallaEstadoComponent, CabeceraModuloComponent],
+  imports: [TablerIconComponent, RolPanelComponent, PantallaEstadoComponent, CabeceraModuloComponent, AvisoDatosNuevosComponent],
   templateUrl: './roles-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -212,6 +215,7 @@ export class RolesPageComponent {
   private readonly rolService = inject(RolService);
   private readonly alertas = inject(AlertaService);
   private readonly router = inject(Router);
+  private readonly cambiosEnVivoService = inject(CambiosEnVivoService);
 
   protected readonly iconos = {
     buildingStore: IconBuildingStore,
@@ -223,6 +227,8 @@ export class RolesPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
+  protected readonly hayCambiosEnVivo = signal(false);
   protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
     this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
   );
@@ -243,6 +249,15 @@ export class RolesPageComponent {
   protected readonly borrador = signal<Borrador>({ ...BORRADOR_VACIO });
 
   constructor() {
+    this.cargar();
+    this.cambiosEnVivoService
+      .huboCambio(['rol', 'permiso'])
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.hayCambiosEnVivo.set(true));
+  }
+
+  protected actualizarPorCambioEnVivo(): void {
+    this.hayCambiosEnVivo.set(false);
     this.cargar();
   }
 

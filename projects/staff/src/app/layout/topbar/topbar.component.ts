@@ -1,7 +1,9 @@
 // projects/staff/src/app/layout/topbar/topbar.component.ts
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router } from '@angular/router';
 import {
+  IconArrowLeft,
   IconArrowRight,
   IconArrowUpRight,
   IconArrowsDiagonal,
@@ -11,11 +13,12 @@ import {
   IconCrown,
   IconEraser,
   IconPower,
-  IconRobot,
   TablerIconComponent,
 } from '@tabler/icons-angular';
-import { Subscription } from 'rxjs';
+import { Subscription, filter, map } from 'rxjs';
 import { AsistenteStaffService } from '../../core/asistente-staff/asistente-staff.service';
+import { BreadcrumbTrailComponent } from '../../shared/ui/breadcrumb-trail/breadcrumb-trail.component';
+import { IaMarcaComponent } from '../../shared/ui/ia-marca/ia-marca.component';
 import { AuthService } from '../../core/auth/auth.service';
 import { Notificacion } from '../../core/notificaciones/models/notificacion.model';
 import { NotificacionService } from '../../core/notificaciones/notificacion.service';
@@ -44,7 +47,7 @@ const MS_HOLD = 900;
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [TablerIconComponent],
+  imports: [TablerIconComponent, IaMarcaComponent, BreadcrumbTrailComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './topbar.component.html',
 })
@@ -66,7 +69,7 @@ export class TopbarComponent implements OnDestroy {
     vacio: IconBellCheck,
     corona: IconCrown,
     apagar: IconPower,
-    bot: IconRobot,
+    volver: IconArrowLeft,
   };
 
   protected readonly currentUser = this.authService.currentUser;
@@ -78,6 +81,18 @@ export class TopbarComponent implements OnDestroy {
    *  que es para features de plan de una Empresa — esto no lo es). */
   protected readonly tieneAsistenteIa = computed(() =>
     (this.currentUser()?.permisos ?? []).includes('asistente_staff.usar'),
+  );
+
+  /** Breadcrumb + "Volver al panel" del topbar compartido, SOLO en la
+   *  pantalla completa del asistente (`/asistente`, fuera del Shell —
+   *  rediseño 2026-10-01, ver `PROPUESTA_ASISTENTE_IA_RAG.md` §5.4.4).
+   *  Mismo patrón `toSignal` que `SettingsPageComponent.seccionUrl`. */
+  protected readonly enAsistente = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects.startsWith('/asistente')),
+    ),
+    { initialValue: this.router.url.startsWith('/asistente') },
   );
 
   // ── Notificaciones ──────────────────────────────────────────────────────
@@ -132,6 +147,20 @@ export class TopbarComponent implements OnDestroy {
   private holdTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
+    // Carga el perfil (`GET /auth/me`) si todavía no está en memoria —
+    // `currentUser` no se persiste, solo el `accessToken` (ver
+    // `AuthService`), así que tras un F5 hace falta volver a pedirlo antes
+    // de que el topbar tenga algo real que mostrar (nombre/iniciales en
+    // vez de "…"). Esto antes solo vivía en `ShellComponent.ngOnInit` (el
+    // layout raíz), pero `/asistente` (§5.4.4, 2026-10-01) es una ruta de
+    // nivel superior FUERA del Shell que también monta este mismo
+    // `TopbarComponent` — al recargar directo ahí, `ShellComponent` nunca
+    // se instanciaba y el perfil quedaba sin pedirse nunca (bug: el "…"
+    // quedaba fijo en vez de mostrar el nombre real). Centralizado acá,
+    // con un solo punto de verdad, cubre los dos casos.
+    if (this.authService.isAuthenticated() && !this.authService.currentUser()) {
+      this.authService.cargarPerfil().subscribe({ error: () => undefined });
+    }
     if (this.authService.isAuthenticated()) {
       this.cargar();
     }
@@ -316,5 +345,13 @@ export class TopbarComponent implements OnDestroy {
 
   protected abrirAsistenteIa(): void {
     this.asistenteService.abrirPanel();
+  }
+
+  /** Mismo criterio que `AsistentePageComponent.volver()` (ese método
+   *  se mantiene ahí, propio, para el atajo Esc de esa página — acá es
+   *  solo para el click del botón "Volver al panel" visible en este
+   *  topbar compartido cuando `enAsistente()`). */
+  protected volver(): void {
+    history.length > 1 ? history.back() : this.router.navigate(['/']);
   }
 }

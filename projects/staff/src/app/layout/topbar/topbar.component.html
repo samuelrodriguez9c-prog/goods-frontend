@@ -1,14 +1,28 @@
 <!-- projects/staff/src/app/layout/topbar/topbar.component.html -->
 <header class="relative z-40 flex h-15 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
-  <div class="flex items-center gap-3">
-    <img src="/logo-goods-wordmark.png" alt="Goods" class="h-12 w-auto" />
-    <span class="h-[22px] w-px bg-topbar-badge-border"></span>
-    <span class="text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">Staff</span>
+  <div class="flex min-w-0 items-center gap-3">
+    <!-- <img src="/logo-goods-wordmark.png" alt="Goods" class="h-12 w-auto shrink-0" />
+    <span class="h-[22px] w-px shrink-0 bg-topbar-badge-border"></span>
+    <span class="shrink-0 text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">Staff</span> -->
+    <!-- ─── Rastro de navegación (§5.4.4, 2026-10-02) ─── -->
+    <app-breadcrumb-trail />
   </div>
 
   <div class="flex-1"></div>
 
   <div class="flex shrink-0 items-center gap-1.5">
+    <!-- ─── Volver al panel (solo en /asistente, §5.4.4) ─── -->
+    @if (enAsistente()) {
+      <button
+        type="button"
+        (click)="volver()"
+        class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-[#a3a3a3] transition-colors duration-200 hover:bg-white/[0.08] hover:text-white"
+      >
+        <tabler-icon [icon]="i.volver" [size]="15" />Volver al panel
+        <span class="rounded-[5px] border border-[#333] px-[5px] text-[10.5px] text-[#737373]">Esc</span>
+      </button>
+    }
+
     <!-- ─── Asistente de IA (§5.4) ─── -->
     @if (tieneAsistenteIa()) {
       <button
@@ -17,7 +31,7 @@
         aria-label="Asistente de IA"
         class="flex rounded-lg p-[7px] text-neutral-300 transition-[background-color,color,transform] duration-200 hover:bg-white/10 hover:text-white active:scale-[0.92]"
       >
-        <tabler-icon [icon]="i.bot" [size]="20" [stroke]="1.75" />
+        <app-ia-marca [size]="18" />
       </button>
     }
 
@@ -190,7 +204,7 @@
           class="flex flex-col items-start gap-0.5 transition-transform duration-[320ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
           [class]="menuAbierto() || hoverCuenta() ? 'translate-x-[3px]' : 'translate-x-0'"
         >
-          <span class="text-sm font-medium leading-4">{{ displayName() }}</span>
+          <span class="text-sm font-medium leading-4">{{ nombreCompleto() }}</span>
           @if (esCrossPanelStaff()) {
             <span class="flex items-center gap-[7px]">
               <span class="flex items-center gap-[5px]">

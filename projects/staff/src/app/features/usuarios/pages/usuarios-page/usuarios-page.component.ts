@@ -18,11 +18,13 @@ import {
 import { Subscription, forkJoin } from 'rxjs';
 import { AuditoriaService } from '../../../../core/auditoria/auditoria.service';
 import { AuditoriaAccion } from '../../../../core/auditoria/models/auditoria-accion.model';
+import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { Rol } from '../../../../core/roles/models/rol.model';
 import { RolService } from '../../../../core/roles/rol.service';
 import { UsuarioGoods } from '../../../../core/usuarios/models/usuario.model';
 import { UsuarioService } from '../../../../core/usuarios/usuario.service';
+import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { FichaUsuarioPanelComponent } from '../ficha-usuario-panel/ficha-usuario-panel.component';
 import { CrearUsuarioPanelComponent } from '../crear-usuario-panel/crear-usuario-panel.component';
@@ -262,6 +264,7 @@ export function etiquetaRolTexto(nombre: string): string {
     CrearUsuarioPanelComponent,
     PantallaEstadoComponent,
     CabeceraModuloComponent,
+    AvisoDatosNuevosComponent,
   ],
   templateUrl: './usuarios-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -271,6 +274,7 @@ export class UsuariosPageComponent implements OnDestroy {
   private readonly rolService = inject(RolService);
   private readonly auditoriaService = inject(AuditoriaService);
   private readonly realtimeService = inject(RealtimeService);
+  private readonly cambiosEnVivoService = inject(CambiosEnVivoService);
   private readonly router = inject(Router);
 
   protected readonly iconModulo = IconUsers;
@@ -300,11 +304,14 @@ export class UsuariosPageComponent implements OnDestroy {
   protected readonly enLineaIds = signal<Set<number>>(new Set());
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
+  protected readonly hayCambiosEnVivo = signal(false);
   protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
     this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
   );
 
   private presenciaSub: Subscription | undefined;
+  private cambiosEnVivoSub: Subscription | undefined;
 
   protected readonly busqueda = signal('');
   protected readonly modo = signal<ModoPanel>(null);
@@ -317,10 +324,17 @@ export class UsuariosPageComponent implements OnDestroy {
   constructor() {
     this.cargar();
     this.escucharPresencia();
+    this.escucharCambiosEnVivo();
   }
 
   ngOnDestroy(): void {
     this.presenciaSub?.unsubscribe();
+    this.cambiosEnVivoSub?.unsubscribe();
+  }
+
+  protected actualizarPorCambioEnVivo(): void {
+    this.hayCambiosEnVivo.set(false);
+    this.cargar();
   }
 
   private cargar(): void {
@@ -353,6 +367,16 @@ export class UsuariosPageComponent implements OnDestroy {
    * volver a pedir la lista entera. Se suscribe una sola vez (constructor),
    * no en cada `cargar()` — un re-fetch de usuarios no debería reabrir el
    * socket. */
+  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver
+   *  `CambiosEnVivoService`. Mismo patrón (`Subscription` propia +
+   *  `ngOnDestroy`) que `escucharPresencia()`, no `takeUntilDestroyed`:
+   *  esta clase ya maneja sus suscripciones así. */
+  private escucharCambiosEnVivo(): void {
+    this.cambiosEnVivoSub = this.cambiosEnVivoService
+      .huboCambio(['usuario', 'rol'])
+      .subscribe(() => this.hayCambiosEnVivo.set(true));
+  }
+
   private escucharPresencia(): void {
     this.presenciaSub = this.realtimeService
       .escuchar<EventoPresenciaCambio>('presencia:cambio')

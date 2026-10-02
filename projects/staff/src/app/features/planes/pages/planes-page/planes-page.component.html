@@ -8,6 +8,11 @@
     <ng-container lectura>{{ lectura() }}</ng-container>
   </app-cabecera-modulo>
 
+  <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
+  @if (hayCambiosEnVivo()) {
+    <app-aviso-datos-nuevos (actualizar)="actualizarPorCambioEnVivo()" />
+  }
+
   <app-pantalla-estado [estado]="estadoPantalla()" modulo="Planes" (reintentar)="reintentar()" (volver)="volver()">
       <div esqueleto class="mt-7 flex animate-pulse gap-2.5">
         @for (s of skeletons; track $index) {

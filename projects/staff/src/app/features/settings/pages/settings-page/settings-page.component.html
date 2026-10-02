@@ -10,7 +10,7 @@
     (metricaClick)="irA($event)"
   >
     <tabler-icon icono [icon]="i.ajustes" [size]="20" [stroke]="1.75" />
-    <ng-container lectura>Tu perfil como cuenta de staff. Solo vos lo ves y solo vos lo editás.</ng-container>
+    <ng-container lectura>{{ lectura() }}</ng-container>
   </app-cabecera-modulo>
 
   @if (cargando()) {
