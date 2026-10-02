@@ -534,3 +534,104 @@
     animation-duration: 1ms;
   }
 }
+
+/* ─── Asistente de IA (rediseño 2026-09-30) ─────────────────────────────
+   Pegar al final de projects/staff/src/styles.css.
+   Todo lleva prefijo `ia-` porque styles.css ya tiene `latido`, `pop`,
+   `brillo` y `msg-in` con otras curvas. */
+
+@keyframes ia-girar { to { transform: rotate(360deg); } }
+@keyframes ia-latido { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .55; transform: scale(.7); } }
+@keyframes ia-ping { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes ia-palabra { from { opacity: 0; filter: blur(8px); transform: translateY(8px); } to { opacity: 1; filter: blur(0); transform: none; } }
+@keyframes ia-letra { from { opacity: 0; filter: blur(12px); transform: translateY(.45em) rotate(8deg) scale(.9); } to { opacity: 1; filter: blur(0); transform: none; } }
+@keyframes ia-brillo { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+@keyframes ia-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes ia-caret { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+@keyframes ia-msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ia-user-in { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes ia-card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes ia-paso-in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes ia-chip-in { from { opacity: 0; transform: scale(.92) translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes ia-menu-in { from { opacity: 0; transform: scale(.95) translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes ia-menu-up { from { opacity: 0; transform: scale(.95) translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes ia-toast-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes ia-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes ia-scan { 0% { transform: translateY(-40px); } 100% { transform: translateY(200px); } }
+@keyframes ia-relleno { 0% { background: #bff3ee; } 100% { background: rgba(224, 247, 245, 0); } }
+@keyframes ia-flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes ia-puntos { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+@keyframes ia-mini-in { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: none; } }
+@keyframes ia-saluda { 0% { transform: rotate(0); } 25% { transform: rotate(-14deg) scale(1.08); } 55% { transform: rotate(10deg) scale(1.08); } 80% { transform: rotate(-4deg); } 100% { transform: rotate(0); } }
+@keyframes ia-anillo { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.45); opacity: 0; } }
+
+.ia-latido { animation: ia-latido 2.4s ease-in-out infinite; }
+.ia-palabra { animation: ia-palabra 720ms cubic-bezier(.2, .8, .2, 1) both; }
+.ia-letra { animation: ia-letra 900ms cubic-bezier(.2, .8, .2, 1) both; }
+.ia-msg-in { animation: ia-msg-in 380ms cubic-bezier(.2, .8, .2, 1); }
+.ia-user-in { animation: ia-user-in 380ms cubic-bezier(.2, .8, .2, 1); transform-origin: bottom right; }
+.ia-card-in { animation: ia-card-in 440ms cubic-bezier(.2, .8, .2, 1) both; }
+.ia-paso-in { animation: ia-paso-in 340ms cubic-bezier(.2, .8, .2, 1); }
+.ia-chip-in { animation: ia-chip-in 300ms cubic-bezier(.2, .8, .2, 1); }
+.ia-pop { animation: ia-pop 360ms cubic-bezier(.2, .8, .2, 1) both; }
+.ia-caret { display: inline-block; width: 7px; height: 15px; margin-left: 2px; border-radius: 2px; background: #111827; vertical-align: -2px; animation: ia-caret 900ms steps(1) infinite; }
+
+/* Markdown del Asistente de IA (`MarkdownLigeroPipe`) — reglas mínimas a
+   mano en vez de un plugin de "prose" (Tailwind v4 acá no tiene
+   @tailwindcss/typography instalado): solo lo que el modelo realmente usa
+   (negrita, listas, código inline, enlaces, párrafos), con los mismos
+   tonos/espaciados que ya usa el resto del chat. Sin estilos para
+   bloques de código con lenguaje/resaltado — no hacía falta todavía. */
+.ia-markdown { display: flex; flex-direction: column; gap: 10px; }
+.ia-markdown p { margin: 0; }
+.ia-markdown strong { font-weight: 600; color: #111827; }
+.ia-markdown em { font-style: italic; }
+.ia-markdown ul, .ia-markdown ol { margin: 0; padding-left: 1.25em; display: flex; flex-direction: column; gap: 4px; }
+.ia-markdown ul { list-style: disc; }
+.ia-markdown ol { list-style: decimal; }
+.ia-markdown li::marker { color: #9ca3af; }
+.ia-markdown a { color: #00807a; text-decoration: underline; text-underline-offset: 2px; }
+.ia-markdown a:hover { color: #00605b; }
+.ia-markdown code { background: #f1f1f1; color: #b43d00; border-radius: 4px; padding: 1px 5px; font-size: 0.92em; font-family: ui-monospace, monospace; }
+.ia-markdown pre { background: #f4f4f4; border-radius: 10px; padding: 10px 12px; overflow-x: auto; }
+.ia-markdown pre code { background: transparent; padding: 0; color: #111827; }
+.ia-markdown blockquote { margin: 0; padding-left: 10px; border-left: 2px solid #e5e5e5; color: #6b7280; }
+.ia-markdown h1, .ia-markdown h2, .ia-markdown h3 { margin: 2px 0 0; font-weight: 600; color: #111827; }
+.ia-markdown h1 { font-size: 1.05em; }
+.ia-markdown h2 { font-size: 1em; }
+.ia-markdown h3 { font-size: 0.97em; }
+.ia-markdown hr { border: none; border-top: 1px solid #ececec; margin: 2px 0; }
+.ia-markdown table { border-collapse: collapse; font-size: 0.95em; }
+.ia-markdown th, .ia-markdown td { border: 1px solid #e5e5e5; padding: 4px 8px; text-align: left; }
+.ia-markdown th { background: #fafafa; font-weight: 600; }
+
+/* Nombre del usuario: degradé gris→negro con brillo lento. */
+.ia-degrade-nombre {
+  background: linear-gradient(100deg, #0a0a0a 0%, #303030 28%, #8a8a8a 52%, #303030 76%, #0a0a0a 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: ia-palabra 740ms cubic-bezier(.2, .8, .2, 1) both, ia-brillo 5s ease-in-out 1.4s infinite alternate;
+}
+/* Letras de "Goods": el degradé es continuo entre letras (900 % de ancho,
+   cada letra corrida 12,5 %) y su posición la mueve el cursor. */
+.ia-degrade-goods {
+  background-image: linear-gradient(100deg, #0a0a0a 0%, #262626 22%, #5c5c5c 45%, #a3a3a3 55%, #5c5c5c 65%, #262626 80%, #0a0a0a 100%);
+  background-size: 900% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* Texto "Pensando…" / "Consultando …" con barrido. */
+.ia-shimmer-texto {
+  background: linear-gradient(90deg, #a3a3a3 0%, #a3a3a3 35%, #111827 50%, #a3a3a3 65%, #a3a3a3 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: ia-shimmer 1.8s linear infinite;
+}
+.ia-skeleton {
+  background: linear-gradient(90deg, #f3f3f3 0%, #f3f3f3 35%, #e7e7e7 50%, #f3f3f3 65%, #f3f3f3 100%);
+  background-size: 200% 100%;
+  animation: ia-shimmer 1.3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*='ia-'], [class*='ia-'] * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}

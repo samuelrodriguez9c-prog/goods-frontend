@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { NavigationTrailService } from '../navigation/navigation-trail.service';
 import { CurrentUser } from './models/current-user.model';
 
 const CLAVE_ACCESS_TOKEN = 'goods.staff.accessToken';
@@ -43,6 +44,7 @@ interface RespuestaTokens {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly navigationTrailService = inject(NavigationTrailService);
 
   private readonly _accessToken = signal<string | null>(
     localStorage.getItem(CLAVE_ACCESS_TOKEN),
@@ -131,6 +133,10 @@ export class AuthService {
     this._accessToken.set(null);
     this._refreshToken.set(null);
     this._currentUser.set(null);
+    // Rastro de navegación del topbar (§5.4.4, 2026-10-02) — se vacía acá
+    // para que una sesión de otra cuenta en la misma pestaña no herede el
+    // rastro de la anterior (ver `NavigationTrailService`).
+    this.navigationTrailService.reiniciar();
   }
 
   private guardarTokens(tokens: RespuestaTokens): void {

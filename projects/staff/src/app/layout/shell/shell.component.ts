@@ -5,24 +5,27 @@ import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AlertaOverlayComponent } from '../../shared/ui/alerta-overlay/alerta-overlay.component';
 import { AlertaPilaComponent } from '../../shared/ui/alerta-pila/alerta-pila.component';
 import { PistaComponent } from '../../shared/ui/pista/pista.component';
-import { AsistenteStaffPanelComponent } from '../asistente-panel/asistente-panel.component';
+import { AsistenteDockComponent } from '../asistente-dock/asistente-dock.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
 
 /**
- * Layout raíz del panel de staff — copia del patrón de
- * `admin/layout/shell/shell.component.ts` (mismo motivo para el
- * `ngOnInit`: `currentUser` no se persiste, solo el accessToken, así que
- * tras un F5 hay que volver a pedir `GET /auth/me` antes de que el
- * topbar tenga algo real que mostrar).
+ * Layout raíz del panel de staff.
+ *
+ * La carga de perfil tras un F5 (`currentUser` no se persiste, solo el
+ * accessToken, así que hay que volver a pedir `GET /auth/me`) YA NO vive
+ * acá — se movió al constructor de `TopbarComponent` (§5.4.4, 2026-10-01)
+ * porque `/asistente` es una ruta de nivel superior FUERA de este Shell
+ * que también monta ese mismo topbar, y necesitaba el mismo bootstrap al
+ * recargar directo ahí. Ver el comentario de ese constructor.
  *
  * También abre acá el socket de `RealtimeService` (ver
- * `RealtimeService.mantenerConectado`) — es el único lugar que se monta
- * para TODA sesión de staff autenticada, sin importar en qué pantalla
- * esté: la presencia ("¿quién está en línea ahora?" en la matriz de
- * Usuarios) necesita eso, no que la sesión además tenga abierta una
- * pantalla puntual que escuche algo (Usuarios, el asistente de
- * activación).
+ * `RealtimeService.mantenerConectado`) para que la presencia ("¿quién
+ * está en línea ahora?" en la matriz de Usuarios) quede activa desde que
+ * alguien entra al panel — en la práctica, `TopbarComponent.escuchar(...)`
+ * ya abre ese mismo socket apenas se monta (en cualquiera de las dos
+ * rutas de nivel superior), así que esta llamada queda como refuerzo
+ * explícito, no como la única vía.
  *
  * `AlertaPilaComponent`/`AlertaOverlayComponent` (LEEME.md §12, integrado
  * 2026-09-22) van acá — una sola vez para toda la sesión — porque el
@@ -44,7 +47,7 @@ import { TopbarComponent } from '../topbar/topbar.component';
     AlertaPilaComponent,
     AlertaOverlayComponent,
     PistaComponent,
-    AsistenteStaffPanelComponent,
+    AsistenteDockComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.component.html',
@@ -54,9 +57,6 @@ export class ShellComponent implements OnInit {
   private readonly realtimeService = inject(RealtimeService);
 
   ngOnInit(): void {
-    if (this.authService.isAuthenticated() && !this.authService.currentUser()) {
-      this.authService.cargarPerfil().subscribe({ error: () => undefined });
-    }
     if (this.authService.isAuthenticated()) {
       this.realtimeService.mantenerConectado();
     }

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import {
@@ -25,6 +26,8 @@ import {
   serieConteo,
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { ActivarEmpresaWizardComponent } from '../activar-empresa-wizard/activar-empresa-wizard.component';
+import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
+import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
 
 /** Días de espera desde los que una alta pasa a estar "pasada de rosca".
  * Mismo umbral ya confirmado con el cliente para `EmpresasPageComponent`
@@ -114,6 +117,7 @@ interface FilaEsperando extends Empresa {
     ActivarEmpresaWizardComponent,
     PantallaEstadoComponent,
     CabeceraModuloComponent,
+    AvisoDatosNuevosComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './altas-pendientes-page.component.html',
@@ -123,6 +127,7 @@ export class AltasPendientesPageComponent {
   private readonly suscripcionService = inject(SuscripcionService);
   private readonly planService = inject(PlanService);
   private readonly router = inject(Router);
+  private readonly cambiosEnVivoService = inject(CambiosEnVivoService);
 
   protected readonly hoy = new Date();
   protected readonly umbralUrgente = UMBRAL_URGENTE;
@@ -139,6 +144,8 @@ export class AltasPendientesPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
+  protected readonly hayCambiosEnVivo = signal(false);
   protected readonly empresaSeleccionadaWizard = signal<number | null>(null);
 
   protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
@@ -293,6 +300,15 @@ export class AltasPendientesPageComponent {
   });
 
   constructor() {
+    this.cargar();
+    this.cambiosEnVivoService
+      .huboCambio(['empresa', 'suscripcion'])
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.hayCambiosEnVivo.set(true));
+  }
+
+  protected actualizarPorCambioEnVivo(): void {
+    this.hayCambiosEnVivo.set(false);
     this.cargar();
   }
 

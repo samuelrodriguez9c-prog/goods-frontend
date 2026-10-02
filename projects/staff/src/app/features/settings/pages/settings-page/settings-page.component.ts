@@ -302,6 +302,26 @@ export class SettingsPageComponent {
     const txtM = m ? `${m} ${m === 1 ? 'mes' : 'meses'}` : '';
     return [txtA, txtM].filter(Boolean).join(' y ');
   });
+
+  /** Subtítulo de la cabecera (slot `[lectura]`) — antes era un texto fijo
+   *  de una sola oración; se amplía (2026-10-02, pedido explícito: todos
+   *  los módulos deben mostrar algo largo e informativo acá) usando datos
+   *  que esta misma pantalla ya calculaba para otra cosa (`rolTexto`,
+   *  `miembroDesdeCompleto`, `antiguedad`) en vez de inventar texto nuevo
+   *  sin respaldo en datos reales. */
+  protected readonly lectura = computed(() => {
+    const p = this.perfil();
+    if (!p) {
+      return 'Tu perfil como cuenta de staff — solo vos lo ves y solo vos lo editás.';
+    }
+    const antiguedad = this.antiguedad();
+    return (
+      `Tu perfil como cuenta de staff — solo vos lo ves y solo vos lo editás. ` +
+      `Entrás como ${this.rolTexto()} desde ${this.miembroDesdeCompleto()}` +
+      `${antiguedad ? ` (${antiguedad})` : ''}. ` +
+      `Los cambios de nombre, foto o datos de contacto quedan guardados apenas los confirmás, sin que nadie más del equipo pueda tocarlos.`
+    );
+  });
   protected readonly ultimoAccesoCorto = computed(() => {
     const iso = this.perfil()?.ultimoAcceso;
     if (!iso) {

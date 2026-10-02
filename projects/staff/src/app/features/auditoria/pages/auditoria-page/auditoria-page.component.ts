@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -27,6 +28,8 @@ import {
 import { forkJoin } from 'rxjs';
 import { AuditoriaService } from '../../../../core/auditoria/auditoria.service';
 import { AuditoriaAccion } from '../../../../core/auditoria/models/auditoria-accion.model';
+import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
+import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
 import { UsuarioService } from '../../../../core/usuarios/usuario.service';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { AccionDetallePanelComponent } from '../accion-detalle-panel/accion-detalle-panel.component';
@@ -304,6 +307,7 @@ const HORA_HASTA = 21;
     AccionDetallePanelComponent,
     PantallaEstadoComponent,
     CabeceraModuloComponent,
+    AvisoDatosNuevosComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './auditoria-page.component.html',
@@ -312,6 +316,7 @@ export class AuditoriaPageComponent {
   private readonly auditoriaService = inject(AuditoriaService);
   private readonly usuarioService = inject(UsuarioService);
   private readonly router = inject(Router);
+  private readonly cambiosEnVivoService = inject(CambiosEnVivoService);
 
   protected readonly iconModulo = IconHistory;
   protected readonly iconBuscar = IconSearch;
@@ -322,6 +327,10 @@ export class AuditoriaPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. Sin
+   *  filtro de entidad: CUALQUIER escritura exitosa en cualquier parte de
+   *  la app ya generó una fila nueva acá. */
+  protected readonly hayCambiosEnVivo = signal(false);
   protected readonly total = signal(0);
 
   protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
@@ -578,6 +587,15 @@ export class AuditoriaPageComponent {
   });
 
   constructor() {
+    this.cargar();
+    this.cambiosEnVivoService
+      .huboCambio()
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.hayCambiosEnVivo.set(true));
+  }
+
+  protected actualizarPorCambioEnVivo(): void {
+    this.hayCambiosEnVivo.set(false);
     this.cargar();
   }
 

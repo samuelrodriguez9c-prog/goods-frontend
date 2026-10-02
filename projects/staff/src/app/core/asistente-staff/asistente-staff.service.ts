@@ -19,9 +19,10 @@ import {
  * (ver `TopbarComponent`) si la cuenta no tiene ese permiso.
  *
  * `abierto` (signal): mismo motivo que en `admin` — quien ABRE el panel
- * es `TopbarComponent` y quien lo RENDERIZA es `ShellComponent`
- * (`AsistenteStaffPanelComponent`), dos hermanos sin relación
- * padre/hijo directa.
+ * es `TopbarComponent` y quien lo RENDERIZA es `ShellComponent`. Desde el
+ * rediseño (2026-09-30) significa "mini chat abierto"
+ * (`AsistenteDockComponent`, antes `AsistenteStaffPanelComponent`), dos
+ * hermanos sin relación padre/hijo directa.
  */
 @Injectable({ providedIn: 'root' })
 export class AsistenteStaffService {
@@ -92,5 +93,20 @@ export class AsistenteStaffService {
       `${this.base}/comprobantes-pago/extraer`,
       formData,
     );
+  }
+
+  /** Rediseño (2026-09-30), `PATCH /asistente-staff/conversaciones/:id` —
+   * endpoint PENDIENTE en el backend (`modules/asistente-staff/`). Hasta
+   * que exista, `AsistenteChatStore.renombrar` revierte el cambio
+   * optimista si esta llamada falla. */
+  renombrarConversacion(id: number, titulo: string): Observable<AsistenteStaffConversacion> {
+    return this.http.patch<AsistenteStaffConversacion>(`${this.base}/conversaciones/${id}`, { titulo });
+  }
+
+  /** Rediseño (2026-09-30), `DELETE /asistente-staff/conversaciones/:id` —
+   * mismo criterio que `renombrarConversacion`: endpoint pendiente, el
+   * store revierte si falla. */
+  eliminarConversacion(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/conversaciones/${id}`);
   }
 }

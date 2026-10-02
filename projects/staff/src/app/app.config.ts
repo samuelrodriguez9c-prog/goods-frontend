@@ -4,7 +4,9 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import {
+  IconBell,
   IconBuilding,
+  IconFileText,
   IconHeadset,
   IconHistory,
   IconReceipt2,
@@ -51,8 +53,17 @@ export const appConfig: ApplicationConfig = {
     // `IconSettings`) sumado 2026-09-22 junto con `settingsItem` — misma
     // variante que ya usa `admin` para el mismo ítem, ver el comentario
     // de ese `app.config.ts`.
+    // `IconBell` sumado 2026-10-02 junto con el rastro de navegación
+    // global del topbar (`BreadcrumbTrailComponent`/`NavigationTrailService`)
+    // — hace falta para resolver el ícono de "Notificaciones" por nombre
+    // de string (`data.icon: 'bell'` en `notificaciones.routes.ts`), igual
+    // que el resto de los íconos de acá abajo. `IconFileText` sumado el
+    // mismo día junto con `/asistente/documentos` (`data.icon: 'file-text'`
+    // en `asistente.routes.ts`).
     provideTablerIcons({
+      IconBell,
       IconBuilding,
+      IconFileText,
       IconUserPlus,
       IconStack2,
       IconRepeat,

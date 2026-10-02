@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Select } from 'primeng/select';
@@ -39,6 +40,8 @@ import { construirMapaPlanPorEmpresa } from '../../../../core/catalog/plan-looku
 import { Empresa, EstadoEmpresa } from '../../../../core/catalog/models/empresa.model';
 import { EmpresaDetallePanelComponent } from '../empresa-detalle-panel/empresa-detalle-panel.component';
 import { ActivarEmpresaWizardComponent } from '../../../altas-pendientes/pages/activar-empresa-wizard/activar-empresa-wizard.component';
+import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
+import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
 
 /** Los 7 estados reales (ver `EstadoEmpresa`), en el mismo orden en que
  * recorre el flujo de alta asistida (§1/§5.1 de
@@ -166,6 +169,7 @@ type Orden = 'urgencia' | 'desc' | 'asc';
     ActivarEmpresaWizardComponent,
     PantallaEstadoComponent,
     CabeceraModuloComponent,
+    AvisoDatosNuevosComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './empresas-page.component.html',
@@ -176,6 +180,7 @@ export class EmpresasPageComponent {
   private readonly planService = inject(PlanService);
   private readonly alertas = inject(AlertaService);
   private readonly router = inject(Router);
+  private readonly cambiosEnVivoService = inject(CambiosEnVivoService);
 
   protected readonly selectPt = filterSelectPt();
   protected readonly paginatorPt = paginatorPt();
@@ -198,6 +203,8 @@ export class EmpresasPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
+  protected readonly hayCambiosEnVivo = signal(false);
   protected readonly filas = signal<FilaEmpresa[]>([]);
   protected readonly skeletons = [1, 2, 3, 4, 5, 6];
 
@@ -236,6 +243,32 @@ export class EmpresasPageComponent {
   protected readonly esperaMaximaTexto = computed(() => {
     const d = this.esperaMaximaDias();
     return d === 1 ? '1 día' : `${d} días`;
+  });
+
+  /** Subtítulo de la cabecera (slot `[lectura]`) — SIEMPRE tiene contenido,
+   *  a diferencia de la versión anterior que solo aparecía si había algo
+   *  esperando en el embudo de alta (2026-10-02, pedido explícito: todos
+   *  los módulos deben mostrar algo informativo acá, no quedar en blanco).
+   *  Primera oración: la foto completa (cuántas en cada macro-estado).
+   *  Segunda oración: lo urgente, si lo hay — la espera máxima del embudo
+   *  de alta — o la confirmación de que no hay nada pendiente. */
+  protected readonly lectura = computed(() => {
+    const total = this.totalEmpresas();
+    const activas = this.conteoActivas();
+    const enAlta = this.conteoEnAlta();
+    const inactivas = this.conteoInactivas();
+
+    const foto =
+      `${total} ${total === 1 ? 'empresa registrada en total' : 'empresas registradas en total'}: ` +
+      `${activas} ${activas === 1 ? 'activa' : 'activas'}, ` +
+      `${enAlta} ${enAlta === 1 ? 'en proceso de alta' : 'en proceso de alta'}, ` +
+      `${inactivas} ${inactivas === 1 ? 'inactiva' : 'inactivas'} (suspendida, rechazada o cancelada).`;
+
+    const urgencia = enAlta
+      ? ` La más vieja de las que están en alta lleva ${this.esperaMaximaTexto()} esperando — conviene revisarla antes que las demás.`
+      : ' Ninguna está esperando el alta en este momento.';
+
+    return foto + urgencia;
   });
 
   /** Cabecera compartida (LEEME.md §14, migrada a v2 —badge + líneas—
@@ -408,6 +441,15 @@ export class EmpresasPageComponent {
   });
 
   constructor() {
+    this.cargar();
+    this.cambiosEnVivoService
+      .huboCambio(['empresa', 'suscripcion'])
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.hayCambiosEnVivo.set(true));
+  }
+
+  protected actualizarPorCambioEnVivo(): void {
+    this.hayCambiosEnVivo.set(false);
     this.cargar();
   }
 

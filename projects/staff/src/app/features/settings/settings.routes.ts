@@ -7,4 +7,12 @@ import { SettingsPageComponent } from './pages/settings-page/settings-page.compo
  *  gestionar sobre "otros" (eso ya vive en los ítems de primer nivel
  *  Usuarios/Roles y permisos del sidebar de staff), así que no hace falta
  *  un árbol de sub-páginas. */
-export const SETTINGS_ROUTES: Routes = [{ path: '', component: SettingsPageComponent }];
+export const SETTINGS_ROUTES: Routes = [
+  {
+    path: '',
+    component: SettingsPageComponent,
+    // Rastro de navegación global del topbar (§5.4.4, 2026-10-02) —
+    // ver `NavigationTrailService`.
+    data: { breadcrumb: 'Settings', icon: 'settings-2' },
+  },
+];

@@ -1,0 +1,34 @@
+<!-- projects/staff/src/app/shared/ui/breadcrumb-trail/breadcrumb-trail.component.html -->
+@if (trailService.trail().length) {
+  <nav aria-label="Rastro de navegación" class="flex min-w-0 items-center gap-1 overflow-hidden">
+    @for (item of trailService.trail(); track item.id; let last = $last) {
+      <span class="shrink-0 text-[#525252]">›</span>
+
+      @if (last) {
+        <span
+          class="animate-[fade-in-up_0.2s_ease-out] flex min-w-0 shrink-0 items-center gap-[7px] rounded-lg px-1.5 py-1 text-[13px] font-medium text-[#e5e5e5]"
+        >
+          @if (item.icono === 'ia') {
+            <app-ia-marca [size]="16" />
+          } @else {
+            <tabler-icon [icon]="item.icono" [size]="15" [stroke]="1.75" class="shrink-0 text-[#2be0d5]" />
+          }
+          <span class="max-w-[160px] truncate">{{ item.etiqueta }}</span>
+        </span>
+      } @else {
+        <button
+          type="button"
+          (click)="ir(item.href)"
+          class="animate-[fade-in-up_0.2s_ease-out] flex min-w-0 shrink-0 items-center gap-[7px] rounded-lg px-1.5 py-1 text-[13px] font-medium text-[#a3a3a3] transition-colors duration-200 hover:bg-white/[0.08] hover:text-white"
+        >
+          @if (item.icono === 'ia') {
+            <app-ia-marca [size]="16" />
+          } @else {
+            <tabler-icon [icon]="item.icono" [size]="15" [stroke]="1.75" class="shrink-0 text-[#2be0d5]" />
+          }
+          <span class="max-w-[160px] truncate">{{ item.etiqueta }}</span>
+        </button>
+      }
+    }
+  </nav>
+}

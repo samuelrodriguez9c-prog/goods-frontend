@@ -34,14 +34,17 @@
         Nueva Empresa
       </button>
     </ng-container>
-    @if (esperaMaximaDias() > 0) {
-      <ng-container lectura>
-        La más vieja lleva <strong class="font-semibold text-amber-700">{{ esperaMaximaTexto() }}</strong> sin
-        moverse del embudo. Las altas se activan por llamada, así que conviene revisar primero las que más
-        esperaron.
-      </ng-container>
-    }
+    <!-- Siempre tiene contenido (2026-10-02) — antes solo aparecía si
+         esperaMaximaDias() > 0, así que el módulo se quedaba sin subtítulo
+         apenas no había ninguna alta esperando. `lectura()` ya cubre ese
+         caso con su propia frase ("Ninguna está esperando..."). -->
+    <ng-container lectura>{{ lectura() }}</ng-container>
   </app-cabecera-modulo>
+
+  <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
+  @if (hayCambiosEnVivo()) {
+    <app-aviso-datos-nuevos (actualizar)="actualizarPorCambioEnVivo()" />
+  }
 
   <app-pantalla-estado [estado]="estadoPantalla()" modulo="Empresas" (reintentar)="cargar()" (volver)="volver()">
     <div esqueleto class="mt-2 animate-pulse">

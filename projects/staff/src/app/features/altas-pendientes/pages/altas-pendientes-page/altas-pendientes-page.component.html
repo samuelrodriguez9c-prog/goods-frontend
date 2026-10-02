@@ -28,6 +28,11 @@
     <ng-container lectura>{{ resumenDia() }}</ng-container>
   </app-cabecera-modulo>
 
+  <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
+  @if (hayCambiosEnVivo()) {
+    <app-aviso-datos-nuevos (actualizar)="actualizarPorCambioEnVivo()" />
+  }
+
   <app-pantalla-estado
     [estado]="estadoPantalla()"
     modulo="Altas pendientes"

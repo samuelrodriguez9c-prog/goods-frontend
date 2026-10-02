@@ -51,3 +51,21 @@ export interface ComprobantePagoExtraido {
   entidadBancaria: string | null;
   notas: string | null;
 }
+
+/**
+ * Espejo de `AsistenteStaffDocumento` (backend,
+ * `modules/asistente-staff/entities/`) — Fase 6 (§5.6 de
+ * PROPUESTA_ASISTENTE_IA_RAG.md), manuales/procedimientos internos de
+ * Goods que el equipo de staff puede cargar para que el asistente los
+ * busque por similitud (`buscarEnDocumentosInternos`). Sin `empresaId`
+ * (igual criterio que el resto de `asistente-staff`): es contenido de
+ * toda la plataforma, no de un cliente puntual.
+ */
+export interface AsistenteStaffDocumento {
+  id: number;
+  titulo: string;
+  contenido: string;
+  creadoPorUsuarioId: number;
+  creadoEn: string;
+  actualizadoEn: string;
+}
