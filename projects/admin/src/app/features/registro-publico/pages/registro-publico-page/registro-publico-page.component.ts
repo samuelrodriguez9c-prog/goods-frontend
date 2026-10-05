@@ -49,6 +49,56 @@ function formatCop(value: number): string {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * IVA de los planes en la pre-factura (2026-10-05). Todavía no está
+ * decidido si `precioMensual` incluye IVA:
+ *  - `null`        → se muestra el precio tal cual y el IVA "por definir".
+ *  - `'adicional'` → el IVA se suma al precio (100.000 + 19.000).
+ *  - `'incluido'`  → el precio ya trae el IVA y se desglosa por dentro.
+ * Cambiar solo este valor cuando se defina.
+ */
+const IVA_PLANES: 'adicional' | 'incluido' | null = null;
+const TASA_IVA = 0.19;
+
+/** Miles con "." y sin decimales, sin el "$" (columnas de la factura). */
+function formatNumero(value: number): string {
+  return Math.round(value).toLocaleString('es-CO');
+}
+
+/**
+ * Valor en letras para el "Son: …" de la factura (pesos colombianos, hasta
+ * 999.999.999). Usa las formas apocopadas ("un", "veintiún") porque siempre
+ * va seguido de "pesos" o "mil".
+ */
+function numeroALetras(n: number): string {
+  const UNIDADES = ['', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'];
+  const DIEZ_A_29 = [
+    'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve',
+    'veinte', 'veintiún', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis', 'veintisiete',
+    'veintiocho', 'veintinueve',
+  ];
+  const DECENAS = ['', '', '', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+  const CENTENAS = [
+    '', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos',
+    'ochocientos', 'novecientos',
+  ];
+  const hasta999 = (x: number): string => {
+    if (x === 100) return 'cien';
+    const c = Math.floor(x / 100), r = x % 100;
+    const resto = r < 10 ? UNIDADES[r] : r < 30 ? DIEZ_A_29[r - 10] : DECENAS[Math.floor(r / 10)] + (r % 10 ? ' y ' + UNIDADES[r % 10] : '');
+    return [CENTENAS[c], resto].filter(Boolean).join(' ');
+  };
+  n = Math.round(n);
+  if (n === 0) return 'cero';
+  const millones = Math.floor(n / 1_000_000), miles = Math.floor((n % 1_000_000) / 1000), resto = n % 1000;
+  const partes: string[] = [];
+  if (millones) partes.push(millones === 1 ? 'un millón' : hasta999(millones) + ' millones');
+  if (miles) partes.push(miles === 1 ? 'mil' : hasta999(miles) + ' mil');
+  if (resto) partes.push(hasta999(resto));
+  // "un millón de pesos", pero "un millón doscientos mil pesos".
+  return partes.join(' ') + (millones && !miles && !resto ? ' de' : '');
+}
+
 /** 1 plan · 2 negocio · 3 persona dueña · 4 módulos · 5 enviado. */
 type Paso = 1 | 2 | 3 | 4 | 5;
 
@@ -129,8 +179,9 @@ const uiModulo = (codigo: string) => UI_MODULO[codigo] ?? { icono: IconPuzzle, d
  *   "Iniciar sesión" a la derecha con hover animado.
  * - Sin tarjeta blanca: los pasos van directo sobre `bg-login-bg`, con
  *   título en dos tonos + "burbuja" de diálogo que usa lo ya tipeado.
- * - A la derecha, un ticket en vivo que se llena mientras el visitante
- *   escribe; al enviar, se estampa "RECIBIDA" en diagonal.
+ * - A la derecha, una pre-factura en vivo (tirilla tipo factura POS, ver
+ *   `factura`) que se llena mientras el visitante escribe; al enviar, se
+ *   estampa "RECIBIDA" en el talón, sin tapar los datos.
  * - Pasos: 1 plan (tarjetas + comparativa de módulos), 2 negocio (rubro
  *   con chips), 3 persona dueña ("Voy a operar la cuenta yo" reutiliza el
  *   correo de contacto), 4 módulos extra (opcional), 5 enviado.
@@ -161,11 +212,11 @@ export class RegistroPublicoPageComponent implements OnInit {
   protected readonly pasosNombres = PASOS;
   protected readonly rubros = RUBROS;
   protected readonly uiModulo = uiModulo;
-  protected readonly fechaHoy = new Date().toLocaleDateString('es-CO', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  protected readonly formatNumero = formatNumero;
+  private readonly fechaHoy = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  /** Folio y hora de emisión: llegan al enviar (`id` de la Empresa creada). */
+  private readonly folioId = signal<number | null>(null);
+  private readonly emitidaEn = signal<string | null>(null);
 
   protected readonly paso = signal<Paso>(1);
   /** Paso más alto alcanzado — hasta ahí se puede volver desde el stepper. */
@@ -323,18 +374,58 @@ export class RegistroPublicoPageComponent implements OnInit {
     return [];
   });
 
-  /** Líneas del ticket en vivo. */
-  protected readonly lineasTicket = computed(() => {
+  /**
+   * Pre-factura en vivo (aside). Tirilla tipo factura POS: emisor,
+   * documento, adquiriente, ítems, totales con IVA (`IVA_PLANES`), pago y
+   * un talón con el folio. No es factura electrónica: esa se emite al
+   * activar la cuenta (CUFE/DIAN). El NIT/CC del cliente se pide en la
+   * llamada de activación, el registro no lo pregunta.
+   */
+  protected readonly factura = computed(() => {
     const c = this.campos();
+    const plan = this.plan();
     const v = (s: string) => s.trim() || null;
-    const dueno = [v(c.duenoNombres), v(c.duenoApellidos)].filter(Boolean).join(' ') || null;
-    return [
-      { k: 'Negocio', v: v(c.nombre) },
-      { k: 'Rubro', v: v(c.rubro) },
-      { k: 'Contacto', v: v(c.correoContacto) },
-      { k: 'Dueño/a', v: dueno },
-      { k: 'Inicia sesión con', v: v(this.correoDueno()) },
-    ];
+    const precio = plan?.precioMensual ?? null;
+    let subtotal = precio, iva: number | null = null, total = precio;
+    if (precio !== null && IVA_PLANES === 'adicional') {
+      iva = Math.round(precio * TASA_IVA);
+      total = precio + iva;
+    } else if (precio !== null && IVA_PLANES === 'incluido') {
+      subtotal = Math.round(precio / (1 + TASA_IVA));
+      iva = precio - subtotal;
+    }
+    const enviada = this.paso() === 5;
+    const id = this.folioId();
+    const folio = enviada && id !== null ? String(id).padStart(4, '0') : null;
+    const avance = this.obligatoriosCompletos();
+    const faltan = 5 - avance;
+    return {
+      enviada,
+      numero: folio ? 'PF-' + folio : 'Borrador',
+      folio: folio ? 'SOL-' + folio : 'SOL-····',
+      emision: enviada ? (this.emitidaEn() ?? this.fechaHoy) : this.fechaHoy,
+      cliente: [
+        { k: 'Razón social', v: v(c.nombre), fuerte: true, aviso: false },
+        { k: 'NIT / CC', v: 'Se pide en la llamada', fuerte: false, aviso: true },
+        { k: 'Actividad', v: v(c.rubro), fuerte: false, aviso: false },
+        { k: 'Correo', v: v(c.correoContacto), fuerte: false, aviso: false },
+        { k: 'Teléfono', v: v(c.telefonoContacto), fuerte: false, aviso: false },
+        { k: 'Responsable', v: [v(c.duenoNombres), v(c.duenoApellidos)].filter(Boolean).join(' ') || null, fuerte: false, aviso: false },
+        { k: 'Usuario admin', v: v(this.correoDueno()), fuerte: false, aviso: false },
+      ],
+      plan: plan ? { nombre: `Plan ${plan.nombre} · mensual`, detalle: plan.modulos.map((m) => m.nombre).join(', ') } : null,
+      subtotal,
+      iva,
+      ivaDefinido: IVA_PLANES !== null,
+      total,
+      letras: total !== null ? numeroALetras(total) + ' pesos M/CTE.' : null,
+      avance,
+      siguiente: enviada
+        ? 'Siguiente: te llamamos para confirmar.'
+        : faltan
+          ? `Falta${faltan === 1 ? '' : 'n'} ${faltan} dato${faltan === 1 ? '' : 's'} obligatorio${faltan === 1 ? '' : 's'}.`
+          : 'Lista para enviar.',
+    };
   });
   protected readonly obligatoriosCompletos = computed(() => {
     const c = this.campos();
@@ -486,8 +577,12 @@ export class RegistroPublicoPageComponent implements OnInit {
         modulosSolicitados: modulosSolicitados.length ? modulosSolicitados : undefined,
       })
       .subscribe({
-        next: () => {
+        next: (empresa) => {
           this.enviando.set(false);
+          this.folioId.set(empresa.id);
+          this.emitidaEn.set(
+            new Date().toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
+          );
           this.paso.set(5);
           this.pasoMax.set(5);
         },

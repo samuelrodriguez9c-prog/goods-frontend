@@ -435,72 +435,176 @@
       </div>
     </section>
 
-    <!-- ══ Ticket en vivo ══ -->
+    <!-- ══ Pre-factura en vivo ══
+         Tirilla tipo factura POS (rediseño 2026-10-05): emisor, documento,
+         adquiriente, ítems, totales, pago y CUFE en la parte con scroll
+         propio; el talón (folio, avance y sello) queda siempre visible. -->
     <aside class="flex flex-col gap-2.5 lg:sticky lg:top-[104px]">
       <span class="pl-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Tu solicitud, en vivo</span>
-      <div class="ticket relative rounded-t-[14px] bg-[#fafaf7] px-[22px] pb-[18px] pt-[22px]">
-        <div class="flex items-baseline justify-between">
-          <span class="font-display text-lg font-extrabold tracking-[-0.01em] text-gray-900">Solicitud de alta</span>
-          <span class="text-[11px] tabular-nums text-gray-400">{{ fechaHoy }}</span>
-        </div>
-        <p class="mt-0.5 text-[11px] text-gray-400">Sin cobro hasta que tu cuenta esté activa</p>
-
-        <div class="my-4 border-t-[1.5px] border-dashed border-[#d9d9d4]"></div>
-
-        <div class="flex flex-col gap-2.5">
-          <div class="flex items-baseline gap-2">
-            <span class="shrink-0 text-xs text-gray-500">Plan</span>
-            <span class="min-w-3 flex-1 -translate-y-[3px] border-b border-dotted border-gray-300"></span>
-            <span class="max-w-[170px] truncate text-right text-xs font-semibold text-gray-900">
-              {{ plan()?.nombre ?? '—' }}{{ plan()?.precioMensual != null ? ' · ' + formatCop(plan()!.precioMensual!) : '' }}
-            </span>
+      @let f = factura();
+      <div class="ticket flex flex-col rounded-t-[4px] bg-[#fdfdfb] font-factura text-[11px] leading-[1.5] text-[#16181d] lg:max-h-[calc(100vh-152px)]">
+        <div class="tirilla-scroll min-h-0 flex-1 overflow-y-auto px-[18px] pb-3.5 pt-5">
+          <!-- Emisor -->
+          <div class="flex flex-col items-center gap-px text-center">
+            <span class="font-factura-titulo text-[22px] font-bold tracking-[0.02em]">GOODS</span>
+            <span>Goods S.A.S. · NIT [900.000.000-0]</span>
+            <span>Responsable de IVA</span>
+            <span>[Dirección] · Bogotá D.C.</span>
+            <span>facturacion&#64;goods.co</span>
           </div>
-          @for (l of lineasTicket(); track l.k) {
-            <div class="flex items-baseline gap-2">
-              <span class="shrink-0 text-xs text-gray-500">{{ l.k }}</span>
-              <span class="min-w-3 flex-1 -translate-y-[3px] border-b border-dotted border-gray-300"></span>
-              <span
-                class="max-w-[170px] truncate text-right text-xs transition-colors duration-200"
-                [class]="l.v ? 'animate-[linea-in_0.2s_ease-out] font-medium text-gray-900' : 'text-[#c4c4c0]'"
-              >
-                {{ l.v ?? '— — —' }}
-              </span>
-            </div>
-          }
-        </div>
 
-        @if (modulosExtraElegidos().length) {
-          <div class="mt-3.5 flex flex-col gap-2">
-            <span class="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-400">Extras a confirmar</span>
-            @for (m of modulosExtraElegidos(); track m.codigo) {
-              <div class="animate-[linea-in_0.2s_ease-out] flex items-baseline gap-2">
-                <span class="text-xs text-gray-900">+ {{ m.nombre }}</span>
-                <span class="flex-1 -translate-y-[3px] border-b border-dotted border-gray-300"></span>
-                <span class="text-[11px] text-gray-400">a cotizar</span>
+          <div class="mb-2.5 mt-3 border-t border-dashed border-[#b9b8b2]"></div>
+
+          <!-- Documento -->
+          <div class="flex flex-col items-center text-center">
+            <span class="font-factura-titulo text-[15px] font-bold tracking-[0.06em]">PRE-FACTURA DE VENTA</span>
+            <span class="text-[#5b5f69]">No es factura electrónica</span>
+          </div>
+          <dl class="mt-2.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2.5 gap-y-0.5">
+            <dt class="text-[#5b5f69]">N.º</dt>
+            <dd class="text-right font-semibold" [class]="f.enviada ? 'text-[#16181d]' : 'text-[#b9b8b2]'">{{ f.numero }}</dd>
+            <dt class="text-[#5b5f69]">Emisión</dt>
+            <dd class="text-right">{{ f.emision }}</dd>
+            <dt class="text-[#5b5f69]">Vence</dt>
+            <dd class="text-right">Al activar la cuenta</dd>
+            <dt class="text-[#5b5f69]">Moneda</dt>
+            <dd class="text-right">COP</dd>
+          </dl>
+
+          <div class="mb-2 mt-3 border-t border-dashed border-[#b9b8b2]"></div>
+
+          <!-- Adquiriente -->
+          <span class="mb-1 block font-bold tracking-[0.08em]">ADQUIRIENTE</span>
+          <dl class="flex flex-col gap-[3px]">
+            @for (d of f.cliente; track d.k) {
+              <div class="grid grid-cols-[92px_minmax(0,1fr)] gap-x-2">
+                <dt class="text-[#5b5f69]">{{ d.k }}</dt>
+                <dd
+                  class="[overflow-wrap:anywhere]"
+                  [class]="d.aviso ? 'text-[#8a5a00]' : d.v ? 'animate-[linea-in_0.2s_ease-out] ' + (d.fuerte ? 'font-semibold' : '') : 'text-[#b9b8b2]'"
+                >
+                  {{ d.v ?? '— — —' }}
+                </dd>
               </div>
             }
+          </dl>
+
+          <div class="mt-3 border-t border-dashed border-[#b9b8b2]"></div>
+
+          <!-- Ítems -->
+          <div class="grid grid-cols-[22px_minmax(0,1fr)_70px] gap-x-1.5 border-b border-[#16181d] py-1.5 font-bold tracking-[0.04em]">
+            <span>CT</span><span>DESCRIPCIÓN</span><span class="text-right">VALOR</span>
           </div>
-        }
+          @if (f.plan; as p) {
+            <div class="grid grid-cols-[22px_minmax(0,1fr)_70px] gap-x-1.5 border-b border-dotted border-[#c9c8c2] py-1.5">
+              <span>1</span>
+              <span class="flex flex-col">
+                <span class="font-semibold">{{ p.nombre }}</span>
+                <span class="text-[#5b5f69]">{{ p.detalle }}</span>
+              </span>
+              <span class="text-right font-semibold">{{ f.subtotal !== null ? formatNumero(f.subtotal) : '—' }}</span>
+            </div>
+          }
+          @for (m of modulosExtraElegidos(); track m.codigo) {
+            <div class="grid animate-[linea-in_0.2s_ease-out] grid-cols-[22px_minmax(0,1fr)_70px] gap-x-1.5 border-b border-dotted border-[#c9c8c2] py-1.5">
+              <span>1</span>
+              <span class="flex flex-col">
+                <span class="font-semibold">Módulo extra: {{ m.nombre }}</span>
+                <span class="text-[#5b5f69]">Por cotizar en la llamada</span>
+              </span>
+              <span class="text-right text-[#8a5a00]">—</span>
+            </div>
+          }
 
-        <div class="mb-3 mt-4 border-t-[1.5px] border-dashed border-[#d9d9d4]"></div>
-        <div class="flex items-baseline justify-between">
-          <span class="text-xs font-semibold text-gray-900">Total mensual</span>
-          <span class="font-display text-2xl font-extrabold tracking-[-0.02em] tabular-nums text-gray-900">
-            {{ plan()?.precioMensual != null ? formatCop(plan()!.precioMensual!) : '—' }}
-          </span>
+          <!-- Totales -->
+          <dl class="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-y-0.5">
+            <dt class="text-[#5b5f69]">Subtotal</dt>
+            <dd class="text-right">{{ f.subtotal !== null ? formatNumero(f.subtotal) : '—' }}</dd>
+            <dt class="text-[#5b5f69]">Descuentos</dt>
+            <dd class="text-right">0</dd>
+            <dt class="text-[#5b5f69]">Base gravable</dt>
+            <dd class="text-right">{{ f.subtotal !== null ? formatNumero(f.subtotal) : '—' }}</dd>
+            <dt class="text-[#5b5f69]">IVA 19%</dt>
+            <dd class="text-right" [class.text-[#8a5a00]]="!f.ivaDefinido">{{ f.iva !== null ? formatNumero(f.iva) : 'Por definir' }}</dd>
+          </dl>
+          <div class="mb-1 mt-2 flex items-baseline justify-between border-y-[1.5px] border-[#16181d] py-2">
+            <span class="font-factura-titulo text-[13px] font-bold tracking-[0.06em]">TOTAL A PAGAR</span>
+            <span class="font-factura-titulo text-[22px] font-bold tabular-nums">
+              {{ f.total !== null ? formatCop(f.total) : '—' }}
+            </span>
+          </div>
+          @if (f.letras) {
+            <span class="block italic text-[#5b5f69]">Son: {{ f.letras }}</span>
+          }
+          @if (modulosExtraElegidos().length; as n) {
+            <span class="mt-1 block text-[#8a5a00]">+ {{ n }} extra{{ n === 1 ? '' : 's' }} sin valor: se cotiza{{ n === 1 ? '' : 'n' }} en la llamada.</span>
+          }
+
+          <div class="mb-2 mt-3 border-t border-dashed border-[#b9b8b2]"></div>
+
+          <!-- Pago y observaciones -->
+          <dl class="grid grid-cols-[92px_minmax(0,1fr)] gap-x-2 gap-y-[3px]">
+            <dt class="text-[#5b5f69]">Forma pago</dt>
+            <dd>Contado · mensual</dd>
+            <dt class="text-[#5b5f69]">Medio</dt>
+            <dd>Se acuerda al activar</dd>
+            <dt class="text-[#5b5f69]">Primer cobro</dt>
+            <dd>Al activar la cuenta</dd>
+          </dl>
+          <p class="mt-2 text-[#5b5f69]">
+            Obs.: sin cobro hasta que la cuenta esté activa. Los descuentos los asigna el equipo de Goods caso por caso.
+          </p>
+
+          <div class="mb-2 mt-3 border-t border-dashed border-[#b9b8b2]"></div>
+
+          <!-- CUFE / QR -->
+          <div class="flex items-center gap-2.5">
+            <span class="flex size-[58px] shrink-0 items-center justify-center border border-dashed border-[#9a9993] text-center text-[9px] leading-tight text-[#9a9993]">QR DIAN</span>
+            <span class="flex flex-col gap-0.5 text-[#5b5f69]">
+              <span class="font-semibold text-[#16181d]">CUFE</span>
+              Se genera al emitir la factura electrónica de venta.
+            </span>
+          </div>
         </div>
-        <p class="mb-2 mt-0.5 text-right text-[11px] text-gray-400">COP · descuentos aparte</p>
 
-        @if (paso() === 5) {
-          <span class="sello pointer-events-none absolute left-1/2 top-1/2 flex flex-col items-center whitespace-nowrap rounded-[14px] border-[5px] border-double border-success-solid bg-[#fafaf7]/55 px-[26px] pb-2.5 pt-2 text-success-solid mix-blend-multiply">
-            <span class="font-display text-[64px] font-extrabold leading-[64px] tracking-[0.14em]">RECIBIDA</span>
-            <span class="mt-0.5 text-xs font-semibold uppercase tracking-[0.3em]">{{ fechaHoy }} · Goods</span>
-          </span>
-        }
+        <!-- Troquel -->
+        <div class="relative h-[22px] shrink-0" aria-hidden="true">
+          <span class="absolute -left-[11px] top-0 size-[22px] rounded-full bg-login-bg"></span>
+          <span class="absolute -right-[11px] top-0 size-[22px] rounded-full bg-login-bg"></span>
+          <span class="absolute inset-x-[18px] top-2.5 border-t-2 border-dashed border-[#cfcec8]"></span>
+        </div>
+
+        <!-- Talón: siempre visible -->
+        <div class="flex shrink-0 items-center justify-between gap-3 px-[18px] pb-[26px] pt-2.5">
+          <div class="flex min-w-0 flex-col gap-[5px]">
+            <span class="font-bold tracking-[0.08em]">TALÓN DE SOLICITUD</span>
+            <span class="text-base font-bold tracking-[0.06em]" [class]="f.enviada ? 'text-[#16181d]' : 'text-[#b9b8b2]'">{{ f.folio }}</span>
+            <span class="codigo-barras block h-6 w-32 transition-opacity duration-300" [class]="f.enviada ? 'opacity-100' : 'opacity-15'"></span>
+            <span class="text-[#5b5f69]">{{ f.siguiente }}</span>
+          </div>
+          @if (f.enviada) {
+            <span class="sello flex shrink-0 flex-col items-center rounded-md border-[3px] border-double border-success-solid px-[9px] py-[5px] text-success-solid mix-blend-multiply">
+              <span class="font-factura-titulo text-[17px] font-bold tracking-[0.12em]">RECIBIDA</span>
+              <span class="text-[8.5px] font-semibold tracking-[0.16em]">{{ f.emision.slice(0, 10) }}</span>
+            </span>
+          } @else {
+            <span
+              class="flex size-[60px] shrink-0 items-center justify-center rounded-full transition-[background] duration-500"
+              [style.background]="'conic-gradient(#16181d 0 ' + f.avance * 20 + '%, #e4e3dd ' + f.avance * 20 + '% 100%)'"
+              role="img"
+              [attr.aria-label]="f.avance + ' de 5 datos obligatorios'"
+            >
+              <span class="flex size-12 flex-col items-center justify-center rounded-full bg-[#fdfdfb]">
+                <span class="text-sm font-bold tabular-nums">{{ f.avance }}/5</span>
+                <span class="text-[8.5px] text-[#5b5f69]">datos</span>
+              </span>
+            </span>
+          }
+        </div>
       </div>
-      <p class="mt-2 px-1 text-[11px] leading-4 text-gray-500">
-        {{ paso() === 5 ? 'Guardamos una copia de esta solicitud en tu correo de contacto.' : obligatoriosCompletos() + ' de 5 datos obligatorios completos.' }}
-      </p>
+      @if (f.enviada) {
+        <p class="mt-2 px-1 text-[11px] leading-4 text-gray-500">Guardamos una copia de esta solicitud en tu correo de contacto.</p>
+      }
     </aside>
   </main>
 
