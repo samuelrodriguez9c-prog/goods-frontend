@@ -152,4 +152,22 @@ export class EmpresaService {
   rechazar(id: number, motivo: string): Observable<Empresa> {
     return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/rechazar`, { motivo });
   }
+
+  // ── Ciclo de vida de una Empresa activa (2026-10-04) ─────────────────
+  // Permiso `empresas.cambiar_estado`. Ver `CicloEmpresaComponent`.
+
+  /** `activa` → `suspendida` (la suscripción no se toca). */
+  suspender(id: number, motivo: string): Observable<Empresa> {
+    return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/suspender`, { motivo });
+  }
+
+  /** `activa`/`suspendida` → `cancelada`; también cancela la suscripción. */
+  darDeBaja(id: number, motivo: string): Observable<Empresa> {
+    return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/dar-de-baja`, { motivo });
+  }
+
+  /** Vuelve a `activa`. Desde `cancelada` exige `planId` (abre una suscripción nueva). */
+  reactivar(id: number, datos: { motivo?: string; planId?: number }): Observable<Empresa> {
+    return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/reactivar`, datos);
+  }
 }

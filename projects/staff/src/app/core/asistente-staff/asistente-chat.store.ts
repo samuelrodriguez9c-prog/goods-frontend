@@ -1,3 +1,5 @@
+import { AsistenteStaffDocumentoService } from './asistente-staff-documento.service';
+import { AsistenteStaffDocumento } from './models/asistente-staff.model';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Subscription, of, switchMap } from 'rxjs';
 import { AsistenteStaffService } from './asistente-staff.service';
@@ -29,6 +31,10 @@ const VELOCIDAD_MS = 34;
 @Injectable({ providedIn: 'root' })
 export class AsistenteChatStore {
   private readonly api = inject(AsistenteStaffService);
+  private readonly documentosApi = inject(AsistenteStaffDocumentoService);
+
+  /** Documentos internos (v3): alimentan el submenú "Documentos internos" del +. */
+  readonly documentos = signal<AsistenteStaffDocumento[]>([]);
 
   readonly conversaciones = signal<AsistenteStaffConversacion[]>([]);
   readonly activaId = signal<number | null>(null);
@@ -54,9 +60,17 @@ export class AsistenteChatStore {
   private timer?: ReturnType<typeof setInterval>;
   private cargado = false;
 
+  cargarDocumentos(): void {
+    this.documentosApi.listar().subscribe({
+      next: (l) => this.documentos.set([...l].sort((a, b) => b.actualizadoEn.localeCompare(a.actualizadoEn))),
+      error: () => this.documentos.set([]), // sin permiso / sin red: el submenú muestra "Todavía no hay documentos"
+    });
+  }
+
   cargar(): void {
     if (this.cargado) return;
     this.cargado = true;
+    this.cargarDocumentos();
     this.refrescarConversaciones();
   }
 
@@ -156,8 +170,6 @@ export class AsistenteChatStore {
     return `Consulté ${etq.join(' y ')}`;
   }
 
-  /** Etiqueta del estado "pensando": la primera tool conocida o "Pensando…". */
-  readonly etiquetaPensando = signal('Pensando…');
 
   toggleFijada(id: number): void {
     const s = new Set(this.fijadas());

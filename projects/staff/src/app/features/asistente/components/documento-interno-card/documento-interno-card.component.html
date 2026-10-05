@@ -1,0 +1,153 @@
+<!-- projects/staff/src/app/features/asistente/components/documento-interno-card/documento-interno-card.component.html -->
+<input #input type="file" class="hidden" [accept]="extensiones" (change)="onInput($event)" />
+
+<div class="ia-msg-in flex items-start gap-3">
+  <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]"><app-ia-marca [size]="15" /></span>
+
+  <div class="min-w-0 flex-1 overflow-hidden rounded-2xl border border-[#e8e8e8] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_14px_34px_-22px_rgba(0,0,0,0.25)]">
+    @if (activo()) {
+      <!-- Cabecera + pasos -->
+      <div class="flex items-center gap-2.5 pb-3 pl-4 pr-3 pt-3.5">
+        <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span class="text-[13.5px] font-semibold text-[#111827]">Agregar documento interno</span>
+          <span class="text-[12px] text-[#6b7280]">{{ subtitulo() }}</span>
+        </div>
+        <div class="flex items-center gap-3">
+          @for (p of pasos(); track p.label) {
+            <span class="flex items-center gap-1 text-[11.5px] transition-colors duration-300"
+              [class.font-semibold]="p.actual" [class.font-medium]="!p.actual"
+              [class.text-[#111827]]="p.alcanzado" [class.text-[#a3a3a3]]="!p.alcanzado">
+              @if (p.hecho) { <tabler-icon [icon]="i.hecho" [size]="13" class="ia-pop text-[#00a19a]" /> }
+              {{ p.label }}
+            </span>
+          }
+        </div>
+        <button type="button" (click)="cancelar()" aria-label="Cancelar" class="flex rounded-lg p-[5px] text-[#9ca3af] transition-colors duration-150 hover:bg-[#f4f4f4] hover:text-[#111827]">
+          <tabler-icon [icon]="i.cerrar" [size]="16" />
+        </button>
+      </div>
+      <div class="mx-4 h-0.5 overflow-hidden rounded-sm bg-[#f0f0f0]">
+        <div class="h-full rounded-sm bg-[#0a0a0a] transition-[width] duration-[560ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]" [style.width]="progreso()"></div>
+      </div>
+
+      <div class="px-4 pb-4 pt-3.5">
+        <!-- Paso 1 · Archivo -->
+        @if (paso() === 'archivo') {
+          <div class="ia-paso-in flex flex-col gap-3">
+            <div
+              (click)="elegir()"
+              (dragover)="$event.preventDefault(); arrastrando.set(true)"
+              (dragleave)="arrastrando.set(false)"
+              (drop)="onDrop($event)"
+              class="flex cursor-pointer flex-col items-center gap-2 rounded-[14px] border-[1.5px] border-dashed px-4 py-[26px] text-center transition-[border-color,background-color,scale] duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:border-[#a3a3a3] hover:bg-white"
+              [class]="arrastrando() ? 'scale-[1.01] border-[#0a0a0a] bg-[#f4f4f4]' : 'border-[#d4d4d4] bg-[#fafafa]'"
+            >
+              <span class="flex size-10 items-center justify-center rounded-full bg-white text-[#111827] shadow-[0_0_0_1px_#ececec,0_4px_10px_-6px_rgba(0,0,0,0.2)] [animation:ia-flota_3s_ease-in-out_infinite]">
+                <tabler-icon [icon]="i.subir" [size]="20" />
+              </span>
+              <span class="text-[13.5px] font-semibold text-[#111827]">Arrastrá el manual o procedimiento acá</span>
+              <span class="text-[12px] text-[#6b7280]">o hacé clic para elegirlo · .md, .txt, .pdf o .docx</span>
+            </div>
+            @if (error(); as e) {
+              <div class="ia-msg-in flex items-center gap-[7px] rounded-[9px] bg-[#fef2f2] px-2.5 py-[7px] text-[12px] font-medium text-[#b91c1c]"><tabler-icon [icon]="i.alerta" [size]="15" />{{ e }}</div>
+            }
+            <div class="flex justify-center">
+              <button type="button" (click)="aMano()" class="border-0 bg-transparent p-0.5 text-[12px] font-medium text-[#111827] underline decoration-[#d4d4d4] underline-offset-[3px]">Pegar el texto a mano</button>
+            </div>
+          </div>
+        }
+
+        <!-- Paso 2 · Revisión -->
+        @if (enForm()) {
+          <div class="ia-paso-in flex flex-col gap-3">
+            @if (archivo(); as a) {
+              <div class="flex items-center gap-2.5 rounded-xl border border-[#efefef] bg-[#fafafa] py-2 pl-2 pr-2.5">
+                <span class="flex size-8 shrink-0 items-center justify-center rounded-lg" [style.background]="a.bg" [style.color]="a.fg"><tabler-icon [icon]="a.icono" [size]="17" /></span>
+                <span class="flex min-w-0 flex-1 flex-col gap-px">
+                  <span class="truncate text-[12.5px] font-medium text-[#111827]">{{ a.nombre }}</span>
+                  <span class="text-[11.5px] text-[#6b7280]">{{ paso() === 'leyendo' ? 'Extrayendo el texto…' : a.nota }}</span>
+                </span>
+                <button type="button" (click)="cambiarArchivo()" [disabled]="paso() !== 'revisar'" class="border-0 bg-transparent px-1.5 py-1 text-[12px] font-medium text-[#6b7280] underline decoration-[#d4d4d4] underline-offset-[3px] hover:text-[#111827]">Cambiar</button>
+              </div>
+            }
+
+            <div class="flex flex-col gap-[5px]">
+              <div class="flex items-center gap-1.5">
+                <label for="doc-titulo" class="flex-1 text-[11.5px] font-medium text-[#6b7280]">Título</label>
+                <span class="text-[11px] tabular-nums text-[#9ca3af]">{{ titulo().length }}/{{ maxTitulo }}</span>
+              </div>
+              @if (paso() === 'leyendo') {
+                <div class="ia-skeleton h-9 rounded-[9px]"></div>
+              } @else {
+                <input id="doc-titulo" [ngModel]="titulo()" (ngModelChange)="setTitulo($event)" [maxlength]="maxTitulo" [disabled]="paso() === 'guardando'"
+                  placeholder="Ej.: Gestión de altas pendientes"
+                  class="h-9 w-full rounded-[9px] border border-[#e5e5e5] bg-white px-[11px] text-[13.5px] text-[#111827] outline-none transition-[border-color,box-shadow] duration-150 [animation:ia-relleno_1100ms_ease-out] focus:border-[#a3a3a3] focus:shadow-[0_0_0_3px_rgba(10,10,10,0.06)]" />
+              }
+            </div>
+
+            <div class="flex flex-col gap-[5px]">
+              <div class="flex items-center gap-1.5">
+                <label for="doc-contenido" class="flex-1 text-[11.5px] font-medium text-[#6b7280]">Contenido</label>
+                @if (paso() !== 'leyendo') { <span class="text-[11px] tabular-nums text-[#9ca3af]">{{ palabras() }}</span> }
+              </div>
+              @if (paso() === 'leyendo') {
+                <div class="flex h-[178px] flex-col gap-[9px] overflow-hidden rounded-[9px] border border-[#efefef] px-3 py-3.5">
+                  @for (w of [42, 92, 86, 74, 88, 60]; track $index) {
+                    <span class="ia-skeleton h-2 rounded" [style.width.%]="w" [style.animation-delay.ms]="$index * 80"></span>
+                  }
+                </div>
+              } @else {
+                <textarea id="doc-contenido" rows="8" [ngModel]="contenido()" (ngModelChange)="setContenido($event)" [disabled]="paso() === 'guardando'"
+                  placeholder="Pegá el manual completo, en texto corrido — el asistente lo trocea y lo busca por similitud solo."
+                  class="block w-full resize-y rounded-[9px] border border-[#e5e5e5] bg-white px-3 py-2.5 text-[13px] leading-[1.5] text-[#111827] outline-none transition-[border-color,box-shadow] duration-150 [animation:ia-relleno_1100ms_ease-out] focus:border-[#a3a3a3] focus:shadow-[0_0_0_3px_rgba(10,10,10,0.06)]"></textarea>
+              }
+            </div>
+
+            @if (error(); as e) {
+              <div class="ia-msg-in flex items-center gap-[7px] rounded-[9px] bg-[#fef2f2] px-2.5 py-[7px] text-[12px] font-medium text-[#b91c1c]"><tabler-icon [icon]="i.alerta" [size]="15" />{{ e }}</div>
+            }
+          </div>
+        }
+      </div>
+
+      @if (enForm()) {
+        <div class="flex items-center gap-2.5 border-t border-[#f2f2f2] bg-[#fcfcfc] px-4 py-[11px]">
+          <span class="flex items-center gap-1.5 text-[12px] text-[#6b7280]"><tabler-icon [icon]="i.candado" [size]="14" />Nada se guarda hasta que confirmes</span>
+          <span class="flex-1"></span>
+          <button type="button" (click)="cancelar()" [disabled]="paso() === 'guardando'" class="rounded-[9px] border border-[#e5e5e5] bg-white px-[13px] py-[7px] text-[13px] font-medium text-[#4b5563] transition-colors duration-150 hover:bg-[#f5f5f5]">Cancelar</button>
+          <button type="button" (click)="guardar()" [disabled]="paso() !== 'revisar' || !valido()"
+            class="flex items-center gap-1.5 rounded-[9px] bg-[#0a0a0a] px-3.5 py-2 text-[13px] font-medium text-white transition-[opacity,scale,box-shadow] duration-200 hover:shadow-[0_6px_16px_-8px_rgba(0,0,0,0.5)] active:scale-[0.97]"
+            [style.opacity]="paso() === 'leyendo' ? 0.35 : paso() === 'revisar' && !valido() ? 0.4 : 1">
+            @if (paso() === 'guardando') {
+              <tabler-icon [icon]="i.cargando" [size]="15" class="animate-spin" />Guardando…
+            } @else {
+              <tabler-icon [icon]="i.check" [size]="15" />Guardar documento
+            }
+          </button>
+        </div>
+      }
+    }
+
+    @if (paso() === 'guardado') {
+      <div class="ia-msg-in">
+        <div class="flex items-center gap-3 px-4 py-3.5">
+          <span class="ia-pop flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[#e0f7f5] text-[#00605b]"><tabler-icon [icon]="i.check" [size]="18" /></span>
+          <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span class="text-[13.5px] font-semibold text-[#111827]">Documento guardado</span>
+            <span class="truncate text-[12.5px] text-[#6b7280]">{{ titulo() }} · {{ palabras() }}</span>
+          </span>
+          <span class="shrink-0 rounded-full bg-[#e0f7f5] px-2.5 py-[3px] text-[11.5px] font-semibold text-[#00605b]">Disponible para el asistente</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-3.5 border-t border-[#f2f2f2] bg-[#fcfcfc] px-4 py-[9px] text-[12px] text-[#6b7280]">
+          <span class="flex min-w-0 items-center gap-[5px]"><tabler-icon [icon]="i.clip" [size]="13" />{{ archivo()?.nombre ?? 'Escrito a mano' }}</span>
+          <span class="flex-1"></span>
+          <a routerLink="/asistente/documentos" class="flex items-center gap-[3px] font-medium text-[#111827] no-underline hover:underline">Ver documentos internos<tabler-icon [icon]="i.externo" [size]="13" /></a>
+        </div>
+      </div>
+    }
+
+    @if (paso() === 'cancelado') {
+      <div class="ia-msg-in flex items-center gap-2 px-4 py-3 text-[12.5px] text-[#9ca3af]"><tabler-icon [icon]="i.cancelado" [size]="16" />Carga del documento cancelada.</div>
+    }
+  </div>
+</div>

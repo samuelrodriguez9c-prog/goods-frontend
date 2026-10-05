@@ -1,6 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RealtimeService } from '../../core/realtime/realtime.service';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { AccesoEmpresaComponent } from '../acceso-empresa/acceso-empresa.component';
 import { AsistentePanelComponent } from '../asistente-panel/asistente-panel.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
@@ -24,16 +27,32 @@ import { TopbarComponent } from '../topbar/topbar.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent, AsistentePanelComponent],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent, AsistentePanelComponent, AccesoEmpresaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.component.html',
 })
 export class ShellComponent implements OnInit {
   private readonly authService = inject(AuthService);
 
+  private readonly realtime = inject(RealtimeService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  /** Ver `AccesoEmpresaComponent`. */
+  protected readonly acceso = computed(() => this.authService.currentUser()?.accesoEmpresa ?? null);
+
   ngOnInit(): void {
     if (this.authService.isAuthenticated() && !this.authService.currentUser()) {
       this.authService.cargarPerfil().subscribe({ error: () => undefined });
+    }
+    // Acceso en vivo (2026-10-04): cuando Goods registra un pago, anula uno,
+    // suspende o reactiva la cuenta, o el cron la vence, el backend emite
+    // `acceso:cambio` y el panel se bloquea o desbloquea sin recargar
+    // (también se recalculan los módulos del sidebar).
+    if (this.authService.isAuthenticated()) {
+      this.realtime
+        .escuchar<{ empresaId: number }>('acceso:cambio')
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this.authService.cargarPerfil().subscribe({ error: () => undefined }));
     }
   }
 }

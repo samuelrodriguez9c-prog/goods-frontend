@@ -1,0 +1,276 @@
+<div class="p-6">
+  <app-cabecera-modulo
+    titulo="Ingresos"
+    [periodo]="null"
+    [metricas]="metricas()"
+    [badge]="badge()"
+    (metricaClick)="metricaClick($event)"
+  >
+    <tabler-icon icono [icon]="i.modulo" [size]="20" [stroke]="1.75" />
+    <ng-container lectura>{{ lectura() }}</ng-container>
+    <ng-container acciones>
+      <div class="flex rounded-full border border-gray-200 bg-card-bg p-0.5" role="group" aria-label="Meses a mostrar">
+        @for (r of rangos; track r) {
+          <button
+            type="button"
+            (click)="elegirRango(r)"
+            class="rounded-full px-3 py-1 text-[12.5px] font-medium transition-colors duration-150"
+            [class]="rango() === r ? 'bg-canvas-bg text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+          >
+            {{ r }} meses
+          </button>
+        }
+      </div>
+      <button
+        type="button"
+        (click)="exportar()"
+        [disabled]="exportando() || !resumen()"
+        class="flex items-center gap-1.5 rounded-lg border-0 bg-neutral-200 px-3 py-[7px] text-[13px] font-medium text-[#303030] hover:bg-[#d4d4d4] disabled:opacity-60"
+      >
+        <tabler-icon [icon]="i.descargar" [size]="14" [stroke]="1.75" />
+        {{ exportando() ? 'Exportando…' : 'Exportar' }}
+      </button>
+    </ng-container>
+  </app-cabecera-modulo>
+
+  @if (cambiosEnVivo()) {
+    <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
+  }
+
+  <app-pantalla-estado [estado]="estadoPantalla()" modulo="Ingresos" (reintentar)="cargar()" (volver)="volver()">
+    <div esqueleto class="mt-[22px] flex animate-pulse flex-col gap-3">
+      <span class="h-[260px] w-full rounded-xl bg-gray-200"></span>
+      <div class="grid gap-3 lg:grid-cols-2">
+        <span class="h-[220px] rounded-xl bg-gray-100"></span>
+        <span class="h-[220px] rounded-xl bg-gray-100"></span>
+      </div>
+    </div>
+
+    <!-- Evolución: barras de MRR + línea de lo cobrado -->
+    <section class="mt-6 rounded-xl border border-gray-200 bg-card-bg p-5">
+      <header class="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <h2 class="text-[15px] font-semibold tracking-[-0.01em] text-gray-900">Evolución</h2>
+        <span class="flex items-center gap-1.5 text-xs text-gray-500"><span class="size-2.5 rounded-sm bg-[#d4d4d4]"></span>MRR</span>
+        <span class="flex items-center gap-1.5 text-xs text-gray-500"><span class="h-0.5 w-3 rounded bg-[#087b5d]"></span>Cobrado (COP) · el mes en curso va punteado</span>
+        <span class="ml-auto text-xs text-gray-400">Toca un mes para ver su detalle</span>
+      </header>
+
+      @if (barras(); as g) {
+        <svg
+          class="mt-3 block h-auto w-full select-none"
+          [attr.viewBox]="'0 0 ' + grafico.ancho + ' ' + grafico.alto"
+          role="img"
+          aria-label="MRR y cobrado por mes"
+        >
+          @for (guia of g.guias; track $index) {
+            <line [attr.x1]="grafico.margen.izq" [attr.x2]="grafico.ancho - grafico.margen.der" [attr.y1]="guia.y" [attr.y2]="guia.y" stroke="#ebebeb" />
+            <text [attr.x]="grafico.margen.izq - 8" [attr.y]="guia.y + 4" text-anchor="end" font-size="11" fill="#9ca3af">{{ guia.texto }}</text>
+          }
+          @for (b of g.items; track b.mes) {
+            <g class="cursor-pointer" (click)="elegirMes(b.mes)">
+              <title>{{ b.titulo }}</title>
+              <rect [attr.x]="b.x - 6" [attr.y]="grafico.margen.arriba" [attr.width]="b.ancho + 12" [attr.height]="g.base - grafico.margen.arriba" fill="transparent" />
+              <rect
+                [attr.x]="b.x"
+                [attr.y]="b.y"
+                [attr.width]="b.ancho"
+                [attr.height]="b.alto"
+                rx="4"
+                [attr.fill]="b.mes === mes() ? '#303030' : '#d4d4d4'"
+                class="transition-[fill] duration-150"
+              />
+              @if (b.mostrarEtiqueta || b.mes === mes()) {
+                <text
+                  [attr.x]="b.cx"
+                  [attr.y]="grafico.alto - 8"
+                  text-anchor="middle"
+                  font-size="11"
+                  [attr.fill]="b.mes === mes() ? '#111827' : '#9ca3af'"
+                  [attr.font-weight]="b.mes === mes() ? 600 : 400"
+                >{{ b.etiqueta }}</text>
+              }
+            </g>
+          }
+          <polyline [attr.points]="g.linea" fill="none" stroke="#087b5d" stroke-width="2" stroke-linejoin="round" pointer-events="none" />
+          <polyline [attr.points]="g.tramoEnCurso" fill="none" stroke="#087b5d" stroke-width="2" stroke-dasharray="4 4" pointer-events="none" />
+          @for (b of g.items; track b.mes) {
+            <circle [attr.cx]="b.cx" [attr.cy]="b.cy" r="3" fill="#ffffff" stroke="#087b5d" stroke-width="2" pointer-events="none" />
+          }
+        </svg>
+      }
+    </section>
+
+    <div class="mt-4 grid gap-4 lg:grid-cols-[1.25fr_1fr]">
+      <!-- Qué movió el MRR del mes elegido -->
+      <section class="rounded-xl border border-gray-200 bg-card-bg p-5">
+        <header class="flex items-baseline gap-2">
+          <h2 class="text-[15px] font-semibold tracking-[-0.01em] text-gray-900">Qué movió el MRR</h2>
+          <span class="text-[13px] capitalize text-gray-500">{{ nombreMes(mes()) }}</span>
+          @if (!esMesActual()) {
+            <button type="button" (click)="elegirMes(resumen()!.actual.mes)" class="ml-auto text-xs text-gray-400 hover:text-gray-700">Volver al mes actual</button>
+          }
+        </header>
+
+        @if (puente(); as p) {
+          <div class="mt-4 flex items-baseline justify-between text-[13px] text-gray-500">
+            <span>Arrancó en</span>
+            <span class="font-medium tabular-nums text-gray-900">{{ formatMonto(p.inicio) }}</span>
+          </div>
+          <ul class="mt-3 flex flex-col gap-3">
+            @for (paso of p.pasos; track paso.texto) {
+              <li>
+                <div class="flex items-baseline justify-between gap-3 text-[13px]">
+                  <span class="text-gray-700">{{ paso.texto }} <span class="text-xs text-gray-400">· {{ paso.detalle }}</span></span>
+                  <span class="font-medium tabular-nums" [style.color]="paso.valor ? paso.color : '#9ca3af'">{{ signo(paso.valor) }}</span>
+                </div>
+                <div class="mt-1.5 h-1.5 rounded-full bg-canvas-bg">
+                  <div class="h-full rounded-full" [style.width.%]="paso.ancho" [style.background]="paso.color"></div>
+                </div>
+              </li>
+            }
+          </ul>
+          <div class="mt-4 flex items-baseline justify-between border-t border-gray-100 pt-3 text-[13px]">
+            <span class="font-medium text-gray-900">{{ esMesActual() ? 'Hoy' : 'Cerró en' }}</span>
+            <span class="flex items-baseline gap-2">
+              <span class="text-xs tabular-nums" [class]="p.neto > 0 ? 'text-[#087b5d]' : p.neto < 0 ? 'text-[#d82c0d]' : 'text-gray-400'">{{ signo(p.neto) }}</span>
+              <span class="font-display text-lg font-semibold tabular-nums text-gray-900">{{ formatMonto(p.cierre) }}</span>
+            </span>
+          </div>
+        }
+
+        @if (cobranza(); as c) {
+          <div class="mt-5 rounded-[10px] bg-canvas-bg px-4 py-3">
+            <div class="flex items-baseline justify-between text-[13px]">
+              <span class="text-gray-700">Cobrado</span>
+              <span class="tabular-nums text-gray-900">
+                <span class="font-medium">{{ formatMonto(c.cobrado.COP) }}</span>
+                @if (c.cobrado.USD) { <span class="text-gray-500"> + {{ formatMonto(c.cobrado.USD, 'USD') }}</span> }
+                <span class="text-gray-400"> de {{ formatMonto(c.facturado) }} facturado</span>
+              </span>
+            </div>
+            <div class="mt-2 h-1.5 rounded-full bg-white">
+              <div class="h-full rounded-full bg-[#087b5d]" [style.width.%]="c.pct ?? 0"></div>
+            </div>
+            <p class="mt-1.5 text-xs text-gray-500">
+              @if (c.facturado) {
+                {{ c.pct }}% de lo facturado · {{ c.pendiente ? formatMonto(c.pendiente) + ' sigue pendiente' : 'nada pendiente' }}
+              } @else {
+                Sin cobros generados para este mes.
+              }
+              · {{ c.pagos }} {{ c.pagos === 1 ? 'pago' : 'pagos' }}
+            </p>
+          </div>
+        }
+      </section>
+
+      <!-- Por plan (foto de hoy) -->
+      <section class="rounded-xl border border-gray-200 bg-card-bg p-5">
+        <header class="flex items-baseline gap-2">
+          <h2 class="text-[15px] font-semibold tracking-[-0.01em] text-gray-900">Por plan</h2>
+          <span class="text-[13px] text-gray-500">hoy</span>
+        </header>
+        @if (porPlan().length) {
+          <ul class="mt-4 flex flex-col gap-4">
+            @for (pl of porPlan(); track pl.planId) {
+              <li>
+                <div class="flex flex-wrap items-baseline gap-2">
+                  <span class="text-[14px] font-semibold text-gray-900">{{ pl.plan }}</span>
+                  <span class="text-xs text-gray-400">{{ pl.precioMensual === null ? 'sin precio' : formatMonto(pl.precioMensual) + '/mes' }}</span>
+                  <span class="ml-auto font-medium tabular-nums text-gray-900">{{ formatMonto(pl.mrr) }}</span>
+                </div>
+                <div class="mt-1.5 h-2 rounded-full bg-canvas-bg">
+                  <div class="h-full rounded-full bg-[#303030]" [style.width.%]="pl.participacion"></div>
+                </div>
+                <div class="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                  <span>{{ pl.empresas }} {{ pl.empresas === 1 ? 'Empresa' : 'Empresas' }}</span>
+                  @if (pl.enMora) {
+                    <span class="rounded-full bg-[#fef3c7] px-1.5 py-px text-[11px] font-medium text-[#92400e]">{{ pl.enMora }} en mora</span>
+                  }
+                  <span class="ml-auto tabular-nums">{{ pl.participacion.toLocaleString('es-CO') }}% del MRR</span>
+                </div>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="mt-4 text-[13px] text-gray-500">No hay planes activos.</p>
+        }
+      </section>
+    </div>
+
+    <!-- Movimientos del mes elegido -->
+    <section class="mt-4 rounded-xl border border-gray-200 bg-card-bg p-5">
+      <header class="flex items-baseline gap-2">
+        <h2 class="text-[15px] font-semibold tracking-[-0.01em] text-gray-900">Movimientos</h2>
+        <span class="text-[13px] capitalize text-gray-500">{{ nombreMes(mes()) }}</span>
+        @if (cargandoMovimientos()) {
+          <span class="ml-auto size-3.5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-500"></span>
+        }
+      </header>
+      @if (filasMovimientos().length) {
+        <ul class="mt-3 divide-y divide-gray-100" [class.opacity-60]="cargandoMovimientos()">
+          @for (mv of filasMovimientos(); track $index) {
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
+              <span class="flex w-[150px] shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-medium" [class]="mv.estilo.tono">
+                <tabler-icon [icon]="mv.estilo.icono" [size]="13" [stroke]="2" />
+                {{ mv.estilo.texto }}
+              </span>
+              <span class="min-w-[180px] flex-1 text-[14px] font-medium text-gray-900">{{ mv.empresaNombre }}</span>
+              <span class="w-[130px] text-[13px] text-gray-500">{{ mv.planTexto }}</span>
+              <span class="w-[90px] text-xs text-gray-400">{{ formatFecha(mv.fecha) }}</span>
+              <span
+                class="w-[90px] text-right text-[13px] font-medium tabular-nums"
+                [class]="mv.deltaMrr > 0 ? 'text-[#087b5d]' : mv.deltaMrr < 0 ? 'text-[#d82c0d]' : 'text-gray-400'"
+              >{{ signo(mv.deltaMrr) }}</span>
+            </li>
+          }
+        </ul>
+      } @else if (!cargandoMovimientos()) {
+        <p class="mt-3 text-[13px] text-gray-500">Sin altas, bajas ni cambios de plan en {{ nombreMes(mes()) }}.</p>
+      }
+    </section>
+
+    <!-- Mes a mes -->
+    <section class="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-card-bg">
+      <table class="w-full min-w-[760px] text-[13px]">
+        <thead>
+          <tr class="border-b border-gray-200 text-left text-xs text-gray-500">
+            <th class="px-5 py-3 font-medium">Mes</th>
+            <th class="px-3 py-3 text-right font-medium">MRR</th>
+            <th class="px-3 py-3 text-right font-medium">Clientes</th>
+            <th class="px-3 py-3 text-right font-medium">Altas</th>
+            <th class="px-3 py-3 text-right font-medium">Bajas</th>
+            <th class="px-3 py-3 text-right font-medium">Facturado</th>
+            <th class="px-3 py-3 text-right font-medium">Cobrado</th>
+            <th class="px-5 py-3 text-right font-medium">Pendiente</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of tabla(); track m.mes) {
+            <tr
+              (click)="elegirMes(m.mes)"
+              class="cursor-pointer border-b border-gray-100 tabular-nums last:border-0 hover:bg-canvas-bg"
+              [class.bg-canvas-bg]="m.mes === mes()"
+            >
+              <td class="px-5 py-2.5 capitalize text-gray-900" [class.font-semibold]="m.mes === mes()">{{ nombreMes(m.mes) }}</td>
+              <td class="px-3 py-2.5 text-right text-gray-900">{{ formatMonto(m.mrr) }}</td>
+              <td class="px-3 py-2.5 text-right text-gray-700">{{ m.clientes }}</td>
+              <td class="px-3 py-2.5 text-right" [class]="m.nuevas + m.reactivaciones ? 'text-[#087b5d]' : 'text-gray-300'">{{ m.nuevas + m.reactivaciones }}</td>
+              <td class="px-3 py-2.5 text-right" [class]="m.bajas + m.vencidas ? 'text-[#d82c0d]' : 'text-gray-300'">{{ m.bajas + m.vencidas }}</td>
+              <td class="px-3 py-2.5 text-right text-gray-700">{{ m.facturado ? formatMonto(m.facturado) : '—' }}</td>
+              <td class="px-3 py-2.5 text-right text-gray-900">
+                {{ formatMonto(m.cobrado.COP) }}
+                @if (m.cobrado.USD) { <span class="text-xs text-gray-500">+ {{ formatMonto(m.cobrado.USD, 'USD') }}</span> }
+              </td>
+              <td class="px-5 py-2.5 text-right" [class]="m.pendiente ? 'text-[#b45309]' : 'text-gray-300'">{{ m.pendiente ? formatMonto(m.pendiente) : '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <p class="mt-3 text-xs leading-5 text-gray-400">
+      El MRR suma el precio actual del plan de cada suscripción activa, incluidas las que están en mora; los cambios de precio del catálogo
+      se reflejan en toda la serie. Facturado son los cobros generados para cada mes; cobrado, los pagos válidos por su fecha de pago.
+    </p>
+  </app-pantalla-estado>
+</div>

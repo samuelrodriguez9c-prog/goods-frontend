@@ -15,8 +15,8 @@
   </app-cabecera-modulo>
 
   <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
-  @if (hayCambiosEnVivo()) {
-    <app-aviso-datos-nuevos (actualizar)="actualizarPorCambioEnVivo()" />
+  @if (cambiosEnVivo()) {
+    <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
   }
 
   <app-pantalla-estado
@@ -155,6 +155,7 @@
               <button
                 type="button"
                 (click)="abrirPanel(fila.id)"
+                [class.fila-resaltada]="resaltadas().has(fila.id)"
                 class="flex w-full items-start gap-[13px] border-b border-neutral-100 px-4 py-3 text-left transition-colors duration-150 hover:bg-neutral-50"
                 [class]="fila.exitoso ? 'bg-card-bg' : 'bg-[#fffcfc]'"
               >

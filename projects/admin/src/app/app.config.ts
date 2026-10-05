@@ -5,6 +5,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { providePrimeNG } from 'primeng/config';
 import { authInterceptor } from './core/http/auth.interceptor';
 import {
+  IconBulb,
   IconChevronDown,
   IconDiscount2,
   IconHome2Filled,
@@ -85,6 +86,7 @@ export const appConfig: ApplicationConfig = {
       IconChevronDown,
       IconUsers,
       IconShieldLock,
+      IconBulb,
     }),
   ],
 };

@@ -42,8 +42,8 @@
   </app-cabecera-modulo>
 
   <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
-  @if (hayCambiosEnVivo()) {
-    <app-aviso-datos-nuevos (actualizar)="actualizarPorCambioEnVivo()" />
+  @if (cambiosEnVivo()) {
+    <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
   }
 
   <app-pantalla-estado [estado]="estadoPantalla()" modulo="Empresas" (reintentar)="cargar()" (volver)="volver()">
@@ -126,6 +126,7 @@
               tabindex="0"
               role="button"
               (click)="abrirDetalle(empresa)"
+              [class.fila-resaltada]="resaltadas().has(empresa.id)"
               (keydown.enter)="abrirDetalle(empresa)"
               (keydown.space)="abrirDetalle(empresa); $event.preventDefault()"
               class="flex cursor-pointer items-center gap-4 border-b border-gray-100 px-4 py-3 outline-none transition-colors duration-150 hover:bg-canvas-bg/60 focus-visible:bg-canvas-bg/60"
@@ -140,6 +141,10 @@
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="text-sm font-medium leading-5 text-gray-900">{{ empresa.nombre }}</span>
                   <app-status-badge [label]="etiquetaDe(empresa.estado)" [tone]="tonoDe(empresa.estado)" dot="filled" />
+                  <!-- Acceso real (2026-10-04): cuenta activa pero con la suscripción vencida, en mora o sin plan -->
+                  @if (marcaAcceso(empresa); as m) {
+                    <app-status-badge [label]="m.texto" [tone]="m.tono" dot="ring" />
+                  }
                 </div>
                 <div class="truncate text-xs leading-4 text-gray-500">
                   {{ empresa.rubro ?? 'Sin rubro' }} · {{ empresa.correoContacto }}

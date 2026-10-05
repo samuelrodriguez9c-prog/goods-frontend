@@ -1,0 +1,180 @@
+<div class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-50 flex justify-end bg-black/50" (click)="onBackdropClick($event)">
+  <div class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[540px] flex-col bg-card-bg shadow-xl">
+    <app-pantalla-estado class="contents" [estado]="estadoPantalla()" modulo="el estado de cuenta" [detalle]="error() ?? ''" (reintentar)="cargar()" (volver)="cerrar.emit()">
+      <div esqueleto class="flex flex-1 animate-pulse flex-col gap-5 p-6">
+        <span class="h-6 w-64 rounded bg-gray-200"></span>
+        <span class="h-16 w-full rounded-lg bg-gray-100"></span>
+        <span class="h-56 w-full rounded-lg bg-gray-100"></span>
+      </div>
+
+      @if (cuenta(); as c) {
+        <div class="shrink-0 border-b border-gray-200 px-6 pt-4">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Estado de cuenta</span>
+            <span class="text-[11px] tabular-nums text-gray-400">#{{ c.empresa.id }}</span>
+            <button
+              type="button"
+              (click)="cerrar.emit()"
+              aria-label="Cerrar"
+              class="ml-auto rounded-lg p-[5px] text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+            >
+              <tabler-icon [icon]="i.cerrar" [size]="18" [stroke]="2" />
+            </button>
+          </div>
+
+          <div class="mt-2.5 flex items-center gap-3.5">
+            <span class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-button font-display text-base font-semibold text-white">
+              {{ c.empresa.nombre.charAt(0) }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <h2 class="truncate font-display text-[22px] font-semibold leading-7 tracking-[-0.015em] text-gray-900">{{ c.empresa.nombre }}</h2>
+              <p class="mt-0.5 truncate text-xs text-gray-500">{{ c.empresa.correoContacto }}</p>
+            </div>
+          </div>
+
+          <div class="-mx-6 mt-4 grid grid-cols-3 border-t border-gray-100">
+            @for (cel of celdas(); track cel.etiqueta; let primero = $first) {
+              <div class="flex flex-col gap-1 pb-3 pt-2.5" [class]="primero ? 'px-6' : 'border-l border-gray-100 px-4'">
+                <span class="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-400">{{ cel.etiqueta }}</span>
+                <span class="truncate text-sm font-semibold tabular-nums text-gray-900" [title]="cel.valor">{{ cel.valor }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+          @if (situacion(); as s) {
+            <div class="flex items-start gap-3 rounded-[10px] border px-4 py-3.5" [class]="s.caja">
+              <tabler-icon [icon]="s.icono" [size]="20" [stroke]="2" class="shrink-0" [class]="s.tinta" />
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold" [class]="s.tinta">{{ s.titulo }}</p>
+                <p class="mt-[3px] text-xs leading-[18px] text-gray-600 text-pretty">{{ s.nota }}</p>
+              </div>
+            </div>
+          }
+
+          <!-- Cuota del mes: plan + extras (cargos recurrentes) -->
+          <section>
+            <div class="mb-2.5 flex items-center gap-2">
+              <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+              <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Cuota del mes</h3>
+              <span class="ml-auto text-[11px] text-gray-400">los extras se suman solos al cobro</span>
+            </div>
+            <div class="overflow-hidden rounded-lg border border-gray-200">
+              @if (c.cuotaMensual; as cuota) {
+                @for (l of cuota.detalle; track $index) {
+                  <div class="flex items-center gap-3 border-b border-gray-100 px-4 py-2 last:border-0">
+                    <span class="min-w-0 flex-1 truncate text-[13px] text-gray-800" [title]="l.concepto">{{ l.concepto }}</span>
+                    @if (l.origen === 'cargo' && puedeGestionar()) {
+                      <button type="button" (click)="quitandoId.set(l.cargoId ?? null); motivoBaja.set('')" class="text-[11px] text-gray-400 hover:text-badge-error-solid hover:underline">Quitar</button>
+                    }
+                    <span class="w-[92px] shrink-0 text-right text-[13px] tabular-nums text-gray-900">{{ formatMonto(l.monto) }}</span>
+                  </div>
+                  @if (l.origen === 'cargo' && quitandoId() === l.cargoId) {
+                    <div class="flex items-center gap-2 border-b border-gray-100 bg-[#fdf6f4] px-4 py-2">
+                      <input type="text" [ngModel]="motivoBaja()" (ngModelChange)="motivoBaja.set($event)" placeholder="Motivo (obligatorio)" class="min-w-0 flex-1 rounded-md border border-gray-200 bg-card-bg px-2 py-1 text-[12.5px] focus:border-gray-400 focus:outline-none" />
+                      <button type="button" (click)="quitandoId.set(null)" class="text-[12px] text-gray-500 hover:text-gray-800">Volver</button>
+                      <button type="button" [disabled]="motivoBaja().trim().length < 5 || guardandoExtra()" (click)="quitarExtra(l.cargoId!)" class="rounded-md bg-badge-error-solid px-2.5 py-1 text-[12px] font-medium text-white disabled:opacity-40">Quitar extra</button>
+                    </div>
+                  }
+                }
+                <div class="flex items-center gap-3 bg-neutral-50 px-4 py-2">
+                  <span class="flex-1 text-[13px] font-semibold text-gray-900">Total por mes</span>
+                  <span class="text-[13px] font-semibold tabular-nums text-gray-900">{{ formatMonto(cuota.total) }}</span>
+                </div>
+              } @else {
+                <p class="px-4 py-3 text-[13px] text-gray-500">Sin suscripción en curso.</p>
+              }
+            </div>
+            @if (puedeGestionar() && (c.empresa.estado === 'activa' || c.empresa.estado === 'suspendida')) {
+              @if (agregando()) {
+                <div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 p-2.5">
+                  <input type="text" maxlength="160" [ngModel]="concepto()" (ngModelChange)="concepto.set($event)" placeholder="Concepto (ej. Módulo de reservas)" class="min-w-[180px] flex-1 rounded-md border border-gray-200 bg-card-bg px-2 py-1.5 text-[13px] focus:border-gray-400 focus:outline-none" />
+                  <input type="number" min="1" step="1000" [ngModel]="montoExtra()" (ngModelChange)="montoExtra.set($event)" placeholder="$ al mes" class="w-28 rounded-md border border-gray-200 bg-card-bg px-2 py-1.5 text-[13px] focus:border-gray-400 focus:outline-none" />
+                  <button type="button" (click)="agregando.set(false)" class="text-[12.5px] text-gray-500 hover:text-gray-800">Cancelar</button>
+                  <button type="button" [disabled]="!puedeAgregar()" (click)="agregarExtra()" class="rounded-md bg-primary-button px-3 py-1.5 text-[12.5px] font-medium text-white disabled:opacity-40">Agregar</button>
+                </div>
+              } @else {
+                <button type="button" (click)="agregando.set(true)" class="mt-2 flex items-center gap-1 text-[12.5px] font-medium text-gray-600 hover:text-gray-900">
+                  <tabler-icon [icon]="i.agregar" [size]="14" [stroke]="2" />
+                  Agregar extra mensual
+                </button>
+              }
+            }
+            @if (errorExtra(); as m) {
+              <p class="mt-2 rounded-lg bg-field-error-bg px-3 py-2 text-[12.5px] text-badge-error-solid">{{ m }}</p>
+            }
+            @if (cargosTerminados().length) {
+              <p class="mt-2 text-[11px] text-gray-400">
+                Extras terminados: @for (t of cargosTerminados(); track t.id) {<span class="line-through">{{ t.concepto }}</span>{{ $last ? '' : ', ' }}}
+              </p>
+            }
+          </section>
+
+          <section>
+            <div class="mb-2.5 flex items-center gap-2">
+              <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+              <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Cobros</h3>
+              <span class="ml-auto text-[11px] text-gray-400">se generan solos 7 días antes de cada renovación</span>
+            </div>
+            <div class="overflow-hidden rounded-lg border border-gray-200">
+              @for (cobro of c.cobros; track cobro.id) {
+                <div class="flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 last:border-0">
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[13px] font-medium text-gray-900">{{ formatPeriodo(cobro.periodoDesde, cobro.periodoHasta) }}</p>
+                    <p class="mt-0.5 text-xs text-gray-400">
+                      {{ cobro.estado === 'pendiente' ? 'Vence el ' + formatFecha(cobro.fechaLimite) : cobro.pagoId ? 'Pago #' + cobro.pagoId : '—' }}
+                      @if (composicion(cobro); as comp) { · {{ comp }} }
+                    </p>
+                  </div>
+                  <span class="rounded-full px-2 py-0.5 text-[11px] font-medium" [class]="chipCobro(cobro).clase">{{ chipCobro(cobro).texto }}</span>
+                  <span class="w-[92px] shrink-0 text-right text-sm font-semibold tabular-nums" [class]="cobro.estado === 'anulado' ? 'text-gray-400 line-through' : 'text-gray-900'">
+                    {{ formatMonto(cobro.monto, cobro.moneda) }}
+                  </span>
+                </div>
+              } @empty {
+                <p class="px-4 py-4 text-[13px] text-gray-500">Todavía no se generó ningún cobro.</p>
+              }
+            </div>
+          </section>
+
+          <section>
+            <div class="mb-2.5 flex items-center gap-2">
+              <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+              <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Historial de pagos</h3>
+              <span class="ml-auto text-[11px] text-gray-400">{{ c.pagos.length }} en total</span>
+            </div>
+
+            <div class="overflow-hidden rounded-lg border border-gray-200">
+              @for (p of c.pagos; track p.id) {
+                <button
+                  type="button"
+                  (click)="verPago.emit(p.id)"
+                  class="flex w-full items-center gap-3 border-b border-gray-100 px-4 py-3 text-left transition-colors duration-150 last:border-0 hover:bg-neutral-50"
+                >
+                  <div class="min-w-0 flex-1">
+                    <p class="flex items-center gap-2 text-[13px] font-medium" [class]="p.estado === 'anulado' ? 'text-gray-400' : 'text-gray-900'">
+                      {{ formatFecha(p.fechaPago) }}
+                      @if (p.estado === 'anulado') {
+                        <span class="rounded-full bg-badge-neutral-bg px-[7px] py-0.5 text-[10px] font-medium text-gray-700">Anulado</span>
+                      }
+                    </p>
+                    <p class="mt-0.5 truncate text-xs text-gray-400">
+                      Cubre {{ formatPeriodo(p.periodoDesde, p.periodoHasta) }}{{ p.referencia ? ' · Ref. ' + p.referencia : '' }}
+                    </p>
+                  </div>
+                  <span class="shrink-0 text-sm font-semibold tabular-nums" [class]="p.estado === 'anulado' ? 'text-gray-400 line-through' : 'text-gray-900'">
+                    {{ formatMonto(p.monto, p.moneda) }}
+                  </span>
+                  <tabler-icon [icon]="i.ir" [size]="14" [stroke]="2" class="shrink-0 text-gray-300" />
+                </button>
+              } @empty {
+                <p class="px-4 py-5 text-[13px] text-gray-500">Todavía no tiene pagos registrados.</p>
+              }
+            </div>
+          </section>
+        </div>
+      }
+    </app-pantalla-estado>
+  </div>
+</div>

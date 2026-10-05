@@ -23,6 +23,7 @@ import {
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
 import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
+import { filasCambiadas } from '../../../../shared/ui/filas-cambiadas';
 
 type Preset = 'nada' | 'lectura' | 'total';
 
@@ -228,7 +229,12 @@ export class RolesPageComponent {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
-  protected readonly hayCambiosEnVivo = signal(false);
+  /** Cambios en vivo acumulados desde la última carga — alimenta la
+   *  píldora "N cambios nuevos · Actualizar" (handoff-alertas-pila §2). */
+  protected readonly cambiosEnVivo = signal(0);
+  /** Filas resaltadas 2 s después de tocar "Actualizar". */
+  protected readonly resaltadas = signal<ReadonlySet<number>>(new Set());
+  private compararAlCargar = false;
   protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
     this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
   );
@@ -253,12 +259,29 @@ export class RolesPageComponent {
     this.cambiosEnVivoService
       .huboCambio(['rol', 'permiso'])
       .pipe(takeUntilDestroyed())
-      .subscribe(() => this.hayCambiosEnVivo.set(true));
+      .subscribe(() => this.cambiosEnVivo.update((n) => n + 1));
   }
 
   protected actualizarPorCambioEnVivo(): void {
-    this.hayCambiosEnVivo.set(false);
+    this.cambiosEnVivo.set(0);
+    this.compararAlCargar = true;
     this.cargar();
+  }
+
+  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar"
+   *  (handoff-alertas-pila §2). `clave` = id de la fila en pantalla, por si
+   *  no coincide con el id del dato comparado. */
+  private resaltarCambios<T>(
+    antes: readonly T[],
+    despues: readonly T[],
+    id: (f: T) => number,
+    clave: (f: T) => number = id,
+  ): void {
+    if (!this.compararAlCargar) return;
+    this.compararAlCargar = false;
+    const cambiados = filasCambiadas(antes, despues, id);
+    this.resaltadas.set(new Set(despues.filter((f) => cambiados.has(id(f))).map(clave)));
+    setTimeout(() => this.resaltadas.set(new Set()), 2000);
   }
 
   private cargar(): void {
@@ -269,6 +292,7 @@ export class RolesPageComponent {
       permisos: this.rolService.listarPermisos(),
     }).subscribe({
       next: ({ roles, permisos }) => {
+        this.resaltarCambios(this.roles(), roles, (r) => r.id);
         this.roles.set(roles);
         this.permisos.set(permisos);
         this.sincronizarNiveles(roles, permisos);

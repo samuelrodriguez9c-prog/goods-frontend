@@ -6,6 +6,7 @@
 import {
   IconBuildingPlus,
   IconBuildingStore,
+  IconBulb,
   IconCalendarDue,
   IconCircleCheck,
   IconClock,
@@ -99,6 +100,23 @@ export const TIPOS: Record<TipoNotificacion, DefTipo> = {
     accion: 'Ver suscripción',
     ruta: () => ({ url: '/suscripciones', destino: 'Suscripciones' }),
     accionable: true,
+  },
+  // Solicitudes de personalización (2026-10-04): van con Empresas (es un
+  // pedido de una Empresa) y abren la solicitud directo.
+  solicitud_nueva: {
+    cat: 'empresas',
+    etiqueta: 'Solicitud nueva',
+    icono: IconBulb,
+    accion: 'Revisar solicitud',
+    ruta: (d) => ({ url: '/solicitudes', query: d['solicitudId'] ? { id: d['solicitudId'] } : undefined, destino: 'Solicitudes' }),
+    accionable: true,
+  },
+  solicitud_actualizada: {
+    cat: 'empresas',
+    etiqueta: 'Solicitud',
+    icono: IconBulb,
+    accion: 'Ver solicitud',
+    ruta: (d) => ({ url: '/solicitudes', query: d['solicitudId'] ? { id: d['solicitudId'] } : undefined, destino: 'Solicitudes' }),
   },
   // Categoría cliente: /notificaciones/staff no debería devolver nunca
   // estos tipos — se tipan igual para no romper si el backend cambia.

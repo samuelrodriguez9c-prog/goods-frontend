@@ -69,6 +69,12 @@ interface SectionChild {
    *  `usuarios.ver` ni `usuarios.cambiar_rol`). Mismo criterio que ya se
    *  usó en `staff/layout/sidebar/sidebar.component.ts`. */
   permiso: string;
+  /** Código de `Modulo` que la Empresa necesita en su plan (2026-10-02,
+   *  migración `AgregarModulosUsersYRoles`): mismo código que el backend
+   *  exige con `@RequireModulo` en `UsuarioController` / `RolController`.
+   *  Se combina con `permiso`: hacen falta los dos. Sin `codigo`, el ítem
+   *  no depende del plan (ej. Solicitudes a Goods). */
+  codigo?: string;
 }
 
 /** Un grupo de sidebar tipo "Sales channels"/"Apps" de la captura de
@@ -235,7 +241,7 @@ export class SidebarComponent {
     key: 'administracion',
     label: 'Administración',
     children: [
-      { label: 'Usuarios', path: '/settings/usuarios', icon: 'users', permiso: 'usuarios.ver' },
+      { label: 'Usuarios', path: '/settings/usuarios', icon: 'users', permiso: 'usuarios.ver', codigo: 'users' },
       {
         label: 'Roles y permisos',
         path: '/settings/roles',
@@ -250,16 +256,21 @@ export class SidebarComponent {
         // `roles.ver` a `dueno_empresa`, así que gatear por acá con ese
         // mismo permiso es lo consistente con lo que el backend exige.
         permiso: 'roles.ver',
+        codigo: 'roles',
       },
+      // Pedirle mejoras a Goods (2026-10-04): no depende del plan.
+      { label: 'Solicitudes a Goods', path: '/settings/solicitudes', icon: 'bulb', permiso: 'solicitudes.crear' },
     ],
   };
 
   /** Hijos visibles de `administracionSection` para quien esté logueado
    *  ahora — ver el comentario de `SectionChild.permiso`. */
   protected readonly administracionChildrenVisibles = computed(() => {
-    const permisos = this.authService.currentUser()?.permisos ?? [];
-    return this.administracionSection.children.filter((child) =>
-      permisos.includes(child.permiso),
+    const usuario = this.authService.currentUser();
+    const permisos = usuario?.permisos ?? [];
+    const modulos = usuario?.modulosDisponibles ?? [];
+    return this.administracionSection.children.filter(
+      (child) => permisos.includes(child.permiso) && (!child.codigo || modulos.includes(child.codigo)),
     );
   });
 
@@ -269,7 +280,7 @@ export class SidebarComponent {
   /** Índice de la ruta activa — se actualiza desde `(isActiveChange)` de
    *  cada `routerLinkActive`, nunca se calcula la ruta a mano acá para no
    *  duplicar la lógica de matching que ya vive en el propio directive. */
-  protected readonly activeIndex = signal(0);
+  protected readonly activeIndex = signal<number | null>(null);
 
   /** Un `ElementRef` por cada `#link` de primer nivel del `@for` — misma
    *  cantidad y orden que `navItems` (los links de un submenú desplegado
@@ -278,6 +289,7 @@ export class SidebarComponent {
 
   private readonly targetEl = computed(() => {
     const idx = this.hoveredIndex() ?? this.activeIndex();
+    if (idx === null) return null;
     return this.linkEls()[idx]?.nativeElement ?? null;
   });
 
@@ -353,6 +365,11 @@ export class SidebarComponent {
   protected onActiveChange(index: number, isActive: boolean): void {
     if (isActive) {
       this.activeIndex.set(index);
+    } else if (this.activeIndex() === index) {
+      // Fuera de los items de primer nivel (ej. /settings/*): sin pill, en
+      // vez de dejarla pegada en el último item (o en Dashboard al entrar
+      // directo por URL).
+      this.activeIndex.set(null);
     }
   }
 

@@ -26,6 +26,7 @@ import { ModuloService } from '../../../../core/catalog/modulo.service';
 import { Empresa, EmpresaConDueno, EstadoEmpresa } from '../../../../core/catalog/models/empresa.model';
 import { DesgloseModuloEmpresa } from '../../../../core/catalog/models/modulo.model';
 import { GestionarModulosPanelComponent } from '../../../suscripciones/pages/gestionar-modulos-panel/gestionar-modulos-panel.component';
+import { CicloEmpresaComponent } from '../../components/ciclo-empresa/ciclo-empresa.component';
 
 /** Mismo mapa de tonos que `EmpresasPageComponent.TONO_POR_ESTADO` — se
  * repite acá porque ese es `protected` del otro componente (no exportado)
@@ -106,7 +107,7 @@ const PUNTO_POR_TONO: Partial<Record<StatusBadgeTone, string>> = {
  *    (Estado · Alta · Módulos con "huella"); la sección Módulos pasa de
  *    solo lectura a interactiva — barra de composición + un interruptor
  *    por módulo. Salirse de lo que da el plan abre el motivo inline;
- *    volver al plan quita la excepción con "Deshacer" en la Pista.
+ *    volver al plan quita la excepción (solo con la alerta en línea global).
  *    "Gestión completa" sigue abriendo `GestionarModulosPanelComponent`.
  */
 @Component({
@@ -120,6 +121,7 @@ const PUNTO_POR_TONO: Partial<Record<StatusBadgeTone, string>> = {
     StatusBadgeComponent,
     PantallaEstadoComponent,
     GestionarModulosPanelComponent,
+    CicloEmpresaComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './empresa-detalle-panel.component.html',
@@ -271,6 +273,18 @@ export class EmpresaDetallePanelComponent {
     });
   }
 
+  /** Suspender / dar de baja / reactivar desde `CicloEmpresaComponent`:
+   *  recarga el detalle y los módulos (cambian con el estado) y avisa al
+   *  listado para que refresque la fila. */
+  protected onCicloCambiado(): void {
+    const id = this.empresaId();
+    this.empresaService.obtenerUno(id).subscribe((empresa) => {
+      this.empresa.set(empresa);
+      this.actualizada.emit(empresa);
+    });
+    this.cargarModulos(id);
+  }
+
   private cargar(id: number): void {
     this.cargando.set(true);
     this.error.set(null);
@@ -378,22 +392,18 @@ export class EmpresaDetallePanelComponent {
   }
 
   private quitarModulo(m: DesgloseModuloEmpresa): void {
-    const previa = m.override!;
     this.modGuardando.set(m.codigo);
     this.alertas
       .seguir(this.moduloService.quitar(this.empresaId(), m.id), {
         titulo: 'Quitando la excepción',
         texto: m.nombre,
-        exito: { titulo: 'Vuelve al default del plan' },
+        exito: { titulo: 'Vuelve al default del plan', texto: m.nombre },
         error: { titulo: 'No se pudo quitar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({
         next: () => {
           this.modGuardando.set(null);
           this.cargarModulos(this.empresaId());
-          this.pista.hecho(`${m.nombre} vuelve al plan`, () =>
-            this.aplicarModulo(m, previa.tipo, previa.motivo ?? undefined),
-          );
         },
         error: () => this.modGuardando.set(null),
       });

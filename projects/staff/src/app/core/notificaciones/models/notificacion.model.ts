@@ -22,7 +22,10 @@ export type TipoNotificacion =
   | 'plan_pago_vencido'
   // Segunda vuelta, mismo día (2026-09-23): avisa quién quedó a cargo de
   // una conversación — ver ChatService.notificarConversacionAsignada.
-  | 'conversacion_asignada';
+  | 'conversacion_asignada'
+  // Solicitudes de personalización (2026-10-04).
+  | 'solicitud_nueva'
+  | 'solicitud_actualizada';
 
 export interface Notificacion {
   id: number;

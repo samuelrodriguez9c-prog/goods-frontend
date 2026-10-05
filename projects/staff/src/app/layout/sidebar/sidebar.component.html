@@ -21,13 +21,20 @@
       routerLinkActive
       #rla="routerLinkActive"
       [routerLinkActiveOptions]="{ exact: item.exact }"
-      (isActiveChange)="onActiveChange(i, $event)"
       (mouseenter)="hoveredIndex.set(i)"
       [class.text-gray-900]="rla.isActive"
       class="relative z-10 flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium text-gray-700 transition-colors duration-200 ease-out"
     >
       <tabler-icon [icon]="item.icon" [size]="18" [stroke]="1.75" svgClass="shrink-0" />
       <span class="truncate">{{ item.label }}</span>
+      <!-- Punto de "hay cambios" en un módulo que no estás viendo
+           (handoff-alertas-pila §3) — se limpia al entrar. -->
+      @if (cambios.tiene(item.path)) {
+        <span
+          aria-label="Hay cambios"
+          class="ml-auto mr-[3px] size-[5px] shrink-0 rounded-full bg-[#2be0d5] animate-[latido-cambio_2.4s_ease-in-out_infinite]"
+        ></span>
+      }
     </a>
   }
 

@@ -26,7 +26,7 @@ export interface Suscripcion {
  * manuales — no hay pasarela conectada todavía, así que cada fila acá es
  * un pago que un miembro de staff cargó a mano tras revisar un
  * comprobante. Registrar un pago además RENUEVA la suscripción activa/
- * vencida de esa Empresa (ver `SuscripcionService.registrarPagoManual`,
+ * vencida de esa Empresa (ver `FacturacionService.registrar`,
  * backend) — esta fila es solo el comprobante en sí, no hace falta
  * volver a pedir la Suscripción actualizada para reflejar eso en la UI.
  */

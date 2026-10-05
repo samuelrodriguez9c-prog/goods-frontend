@@ -15,6 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   IconAlertCircle,
+  IconBooks,
   IconArrowUp,
   IconArrowUpRight,
   IconBuildingBank,
@@ -68,6 +69,10 @@ import { IaMarcaComponent } from '../../../../shared/ui/ia-marca/ia-marca.compon
 import { IaSaludoComponent } from '../../../../shared/ui/ia-saludo/ia-saludo.component';
 import { TopbarComponent } from '../../../../layout/topbar/topbar.component';
 import { MarkdownLigeroPipe } from '../../../../shared/ui/markdown-ligero/markdown-ligero.pipe';
+import { IaEscribiendoComponent } from '../../../../shared/ui/ia-escribiendo/ia-escribiendo.component';
+import { IaMenuMasComponent } from '../../../../shared/ui/ia-menu-mas/ia-menu-mas.component';
+import { DocumentoInternoCardComponent } from '../../components/documento-interno-card/documento-interno-card.component';
+import { AsistenteStaffDocumento } from '../../../../core/asistente-staff/models/asistente-staff.model';
 
 type PasoPago = 'empresa' | 'comprobante' | 'leyendo' | 'revisar' | 'guardando' | 'guardado' | 'cancelado';
 type CampoPago = 'monto' | 'fecha' | 'referencia' | 'banco' | 'notas';
@@ -82,6 +87,9 @@ const CAMPOS: { k: CampoPago; label: string; full?: boolean }[] = [
 ];
 const VACIO: Campos = { monto: '', fecha: '', referencia: '', banco: '', notas: '' };
 const ACCEPT_COMPROBANTE = 'image/jpeg,image/png,image/webp,image/gif,application/pdf';
+/** "agregar un manual", "cargar el procedimiento", "subir documento"… */
+const DOC_RE = /(agreg|carg|sub|guard)\w*\s+(un\s+|el\s+)?(documento|manual|procedimiento)/i;
+const EXT_DOC = /\.(md|txt|docx)$/i;
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 /** Badge de estado de Empresa (tokens `--color-badge-*` de styles.css). */
@@ -114,7 +122,10 @@ const SUGERENCIAS = [
 @Component({
   selector: 'app-asistente-page',
   standalone: true,
-  imports: [FormsModule, RouterLink, TablerIconComponent, IaMarcaComponent, IaSaludoComponent, TopbarComponent, MarkdownLigeroPipe],
+  imports: [
+    FormsModule, RouterLink, TablerIconComponent, IaMarcaComponent, IaSaludoComponent, TopbarComponent, MarkdownLigeroPipe,
+    IaEscribiendoComponent, IaMenuMasComponent, DocumentoInternoCardComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './asistente-page.component.html',
 })
@@ -136,7 +147,7 @@ export class AsistentePageComponent implements OnInit {
     fuentes: IconDatabase, subir: IconCloudUpload, hecho: IconCircleCheckFilled, ia: IconSparkles, cargando: IconLoader2,
     renov: IconCalendarRepeat, alerta: IconAlertCircle, ok: IconCircleCheck, banco: IconBuildingBank, hash: IconHash,
     externo: IconArrowUpRight, cancelado: IconCircleX, compartir: IconShare, fijar: IconPin, desfijar: IconPinnedOff,
-    renombrar: IconPencil, eliminar: IconTrash, pdf: IconFileTypePdf, imagen: IconPhoto, archivo: IconFile,
+    renombrar: IconPencil, eliminar: IconTrash, pdf: IconFileTypePdf, imagen: IconPhoto, archivo: IconFile, libros: IconBooks,
     documentos: IconFileText,
   };
   protected readonly sugerencias = SUGERENCIAS;
@@ -174,11 +185,10 @@ export class AsistentePageComponent implements OnInit {
   // ── Composer ────────────────────────────────────────────────
   protected readonly texto = signal('');
   protected readonly enfocado = signal(false);
-  protected readonly masAbierto = signal(false);
   protected readonly arrastre = signal(false);
   protected readonly copiado = signal<number | null>(null);
   protected readonly adjunto = signal<{ archivo: File; url: string | null } | null>(null);
-  protected readonly vacio = computed(() => !this.store.mensajes().length && !this.pago());
+  protected readonly vacio = computed(() => !this.store.mensajes().length && !this.pago() && !this.doc());
   protected readonly puedeEnviar = computed(() => !!this.texto().trim() || !!this.adjunto());
 
   // ── Pago (tarjeta en el hilo) ──────────────────────────────
@@ -194,6 +204,10 @@ export class AsistentePageComponent implements OnInit {
   protected readonly errorPago = signal<string | null>(null);
   protected readonly arrastreComprobante = signal(false);
   private archivoPendientePago: File | null = null;
+
+  // ── Documento interno (tarjeta en el hilo) ─────────────────
+  /** `key` fuerza a recrear la tarjeta si se arranca otra carga. */
+  protected readonly doc = signal<{ key: number; archivo: File | null; activo: boolean } | null>(null);
 
   protected readonly pasos = computed(() => {
     const idx = { empresa: 0, comprobante: 1, leyendo: 2, revisar: 2, guardando: 2 }[this.pago() as string] ?? 3;
@@ -227,6 +241,7 @@ export class AsistentePageComponent implements OnInit {
       this.store.mensajes();
       this.store.visible();
       this.pago();
+      this.doc();
       requestAnimationFrame(() => {
         const el = this.hiloRef?.nativeElement;
         if (el) el.scrollTo({ top: el.scrollHeight, behavior: this.store.fase() === 'escribiendo' ? 'auto' : 'smooth' });
@@ -246,9 +261,11 @@ export class AsistentePageComponent implements OnInit {
     const pendiente = this.store.archivoPendiente();
     if (pendiente) {
       this.store.archivoPendiente.set(null);
-      this.iniciarPago(pendiente);
+      EXT_DOC.test(pendiente.name) ? this.iniciarDoc(pendiente) : this.iniciarPago(pendiente);
     } else if (this.route.snapshot.queryParamMap.get('pago')) {
       this.iniciarPago();
+    } else if (this.route.snapshot.queryParamMap.get('doc')) {
+      this.iniciarDoc();
     }
     setTimeout(() => this.composerRef?.nativeElement.focus(), 60);
   }
@@ -256,7 +273,8 @@ export class AsistentePageComponent implements OnInit {
   @HostListener('document:keydown', ['$event'])
   protected onKey(e: KeyboardEvent): void {
     if (e.key === 'Escape') {
-      if (this.menu() || this.masAbierto()) return (this.menu.set(null), this.masAbierto.set(false), undefined);
+      if (this.menu()) return (this.menu.set(null), undefined);
+      if (document.querySelector('app-ia-menu-mas [role=menu]')) return; // el menú + se cierra solo con Esc
       if (this.buscando()) return this.cerrarBusqueda();
       if (this.store.generando()) return this.store.detener();
       this.volver();
@@ -286,6 +304,7 @@ export class AsistentePageComponent implements OnInit {
   protected nueva(): void {
     this.store.nueva();
     this.pago.set(null);
+    this.doc.set(null);
     this.texto.set('');
     setTimeout(() => this.composerRef?.nativeElement.focus(), 60);
   }
@@ -299,6 +318,7 @@ export class AsistentePageComponent implements OnInit {
 
   protected abrir(c: AsistenteStaffConversacion): void {
     this.pago.set(null);
+    this.doc.set(null);
     this.store.seleccionar(c.id);
   }
 
@@ -361,7 +381,13 @@ export class AsistentePageComponent implements OnInit {
       // Por ahora el backend solo lee comprobantes de pago → flujo de pago.
       this.adjunto.set(null);
       this.texto.set('');
-      this.iniciarPago(adj.archivo);
+      // .md/.txt/.docx → documento interno · PDF/imagen → comprobante de pago.
+      EXT_DOC.test(adj.archivo.name) ? this.iniciarDoc(adj.archivo) : this.iniciarPago(adj.archivo);
+      return;
+    }
+    if (DOC_RE.test(cuerpo)) {
+      this.texto.set('');
+      this.iniciarDoc();
       return;
     }
     if (/registr\w*\s+(un\s+)?pago|comprobante/i.test(cuerpo)) {
@@ -384,8 +410,29 @@ export class AsistentePageComponent implements OnInit {
   }
 
   protected adjuntarDesdeMenu(): void {
-    this.masAbierto.set(false);
     this.docsRef?.nativeElement.click();
+  }
+
+  // ── Documento interno ───────────────────────────────────────
+  protected iniciarDoc(archivo?: File): void {
+    if (this.store.generando()) return;
+    if (this.doc()?.activo) return;
+    this.doc.set({ key: Date.now(), archivo: archivo ?? null, activo: true });
+  }
+
+  protected onDocGuardado(d: AsistenteStaffDocumento): void {
+    this.store.cargarDocumentos();
+    this.store.agregarMensajeSistema(
+      `Listo, guardé "${d.titulo}". Desde ahora lo consulto cuando una pregunta lo necesite.`,
+    );
+  }
+
+  protected onDocFinalizado(): void {
+    this.doc.update((d) => (d ? { ...d, activo: false } : d));
+  }
+
+  protected preguntarDocumento(titulo: string): void {
+    this.enviar(`¿Qué dice "${titulo}"?`);
   }
 
   protected onDocs(e: Event): void {
@@ -403,8 +450,8 @@ export class AsistentePageComponent implements OnInit {
   }
 
   private tomarAdjunto(f: File): void {
-    if (!ACCEPT_COMPROBANTE.split(',').includes(f.type)) {
-      this.toastear('Por ahora solo se leen comprobantes en PDF o imagen');
+    if (!ACCEPT_COMPROBANTE.split(',').includes(f.type) && !EXT_DOC.test(f.name)) {
+      this.toastear('Por ahora se leen comprobantes (PDF o imagen) y documentos internos (.md, .txt, .docx)');
       return;
     }
     this.adjunto.set({ archivo: f, url: f.type.startsWith('image/') ? URL.createObjectURL(f) : null });

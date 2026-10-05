@@ -1,6 +1,6 @@
 <!-- projects/staff/src/app/features/asistente/pages/asistente-page/asistente-page.component.html -->
 <div class="flex h-screen flex-col overflow-hidden bg-white text-[#111827]">
-  <input #docs type="file" class="hidden" [accept]="acceptComprobante" (change)="onDocs($event)" />
+  <input #docs type="file" class="hidden" [accept]="acceptComprobante + ',.md,.txt,.docx'" (change)="onDocs($event)" />
   <input #archivoPago type="file" class="hidden" [accept]="acceptComprobante" (change)="onArchivoPago($event)" />
 
   <!-- Menú ⋮ de conversación -->
@@ -32,10 +32,10 @@
     <aside class="shrink-0 overflow-hidden border-r border-[#ececec] bg-[#fafafa] transition-[width] duration-[340ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]" [style.width.px]="railAbierto() ? 272 : 0">
       <div class="flex h-full w-[272px] flex-col">
         <div class="flex flex-col gap-px px-2 pb-1 pt-3">
-          <button type="button" (click)="nueva()" class="mb-1 flex w-full items-center gap-2.5 rounded-[11px] bg-[#0a0a0a] py-[9px] pl-[9px] pr-2.5 text-left text-[13.5px] font-medium text-white transition-[translate,box-shadow,scale] duration-200 hover:-translate-y-px hover:shadow-[0_10px_20px_-12px_rgba(0,0,0,0.7)] active:scale-[0.98]">
-            <span class="flex size-[22px] items-center justify-center rounded-[7px] bg-[#2be0d5] text-[#0a0a0a]"><tabler-icon [icon]="i.mas" [size]="14" /></span>
+          <button type="button" (click)="nueva()" class="mb-1 flex w-full items-center gap-2.5 rounded-full bg-[#0a0a0a] py-2 pl-2 pr-3 text-left text-[13.5px] font-medium text-white transition-[translate,box-shadow,scale] duration-200 hover:-translate-y-px hover:shadow-[0_10px_20px_-12px_rgba(0,0,0,0.7)] active:scale-[0.98]">
+            <span class="flex size-6 items-center justify-center rounded-full bg-[#2be0d5] text-[#0a0a0a]"><tabler-icon [icon]="i.mas" [size]="14" /></span>
             <span class="flex-1">Nueva conversación</span>
-            <span class="rounded-[5px] border border-[#333] px-[5px] text-[10.5px] text-[#8a8a8a]">N</span>
+            <span class="rounded-full border border-[#333] px-[7px] text-[10.5px] text-[#8a8a8a]">N</span>
           </button>
           @if (!buscando()) {
             <button type="button" (click)="abrirBusqueda()" class="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-2 text-left text-[13.5px] font-medium transition-colors duration-150 hover:bg-[#efefef]">
@@ -52,8 +52,9 @@
           <button type="button" (click)="iniciarPago()" class="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-2 text-left text-[13.5px] font-medium transition-colors duration-150 hover:bg-[#efefef]">
             <tabler-icon [icon]="i.pago" [size]="18" /><span class="flex-1">Registrar pago</span>
           </button>
-          <button type="button" (click)="irADocumentos()" class="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-2 text-left text-[13.5px] font-medium transition-colors duration-150 hover:bg-[#efefef]">
-            <tabler-icon [icon]="i.documentos" [size]="18" /><span class="flex-1">Documentos internos</span>
+          <button type="button" (click)="iniciarDoc()" class="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-2 text-left text-[13.5px] font-medium transition-[background-color,scale] duration-150 hover:bg-[#efefef] active:scale-[0.98]">
+            <tabler-icon [icon]="i.libros" [size]="18" /><span class="flex-1">Documentos internos</span>
+            <span class="text-[11.5px] tabular-nums text-[#9ca3af]">{{ store.documentos().length }}</span>
           </button>
         </div>
 
@@ -106,12 +107,12 @@
             </button>
             <div class="grid transition-[grid-template-rows] duration-[360ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]" [style.grid-template-rows]="capAbierto() ? '1fr' : '0fr'">
               <div class="min-h-0 overflow-hidden">
-                <div class="mx-3 mb-2.5 flex flex-col border-t border-[#1f1f1f] pt-1 transition-opacity duration-[260ms]" [style.opacity]="capAbierto() ? 1 : 0">
+                <!-- <div class="mx-3 mb-2.5 flex flex-col border-t border-[#1f1f1f] pt-1 transition-opacity duration-[260ms]" [style.opacity]="capAbierto() ? 1 : 0">
                   @for (f of [{ ic: i.empresas, t: 'Empresas' }, { ic: i.altas, t: 'Altas pendientes' }, { ic: i.suscripciones, t: 'Suscripciones' }, { ic: i.ingresos, t: 'Ingresos' }]; track f.t) {
                     <div class="flex items-center gap-2.5 px-0.5 py-1.5"><tabler-icon [icon]="f.ic" [size]="14" class="text-[#737373]" /><span class="flex-1 text-[12px] text-[#d4d4d4]">{{ f.t }}</span><span class="text-[10.5px] text-[#737373]">Lectura</span></div>
                   }
                   <div class="mt-0.5 flex items-center gap-2.5 border-t border-[#1f1f1f] px-0.5 pb-0.5 pt-2"><tabler-icon [icon]="i.escudo" [size]="14" class="text-[#2be0d5]" /><span class="flex-1 text-[12px] text-[#f5f5f5]">Registrar pagos</span><span class="text-[10.5px] text-[#2be0d5]">Con tu confirmación</span></div>
-                </div>
+                </div> -->
               </div>
             </div>
           </div>
@@ -171,11 +172,8 @@
 
               @if (store.fase() === 'pensando') {
                 <div class="ia-msg-in flex items-start gap-3">
-                  <span class="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]">
-                    <app-ia-marca [size]="15" ritmo="activo" />
-                    <span class="absolute -inset-1 rounded-full border-[1.5px] border-transparent border-r-[#2be0d5] border-t-[#2be0d5] [animation:ia-girar_900ms_linear_infinite]"></span>
-                  </span>
-                  <span class="ia-shimmer-texto pt-[5px] text-[13.5px] font-medium">{{ store.etiquetaPensando() }}</span>
+                  <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]"><app-ia-marca [size]="15" ritmo="activo" /></span>
+                  <app-ia-escribiendo [alto]="34" />
                 </div>
               }
               @if (store.error(); as e) {
@@ -353,15 +351,22 @@
                   </div>
                 </div>
               }
+
+              <!-- Tarjeta de documento interno (v3) -->
+              @if (doc(); as d) {
+                @for (k of [d.key]; track k) {
+                  <app-documento-interno-card [archivoInicial]="d.archivo" (guardado)="onDocGuardado($event)" (finalizado)="onDocFinalizado()" />
+                }
+              }
             </div>
           }
         </div>
 
         <!-- Saludo (solo vacío) -->
-        <div class="absolute inset-x-0 bottom-[calc(50%+62px)] flex justify-center px-6 text-center transition-[opacity,transform] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+        <!-- <div class="absolute inset-x-0 bottom-[calc(50%+62px)] flex justify-center px-6 text-center transition-[opacity,transform] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           [style.opacity]="vacio() ? 1 : 0" [style.transform]="vacio() ? 'none' : 'translateY(-18px)'" [style.pointer-events]="vacio() ? 'auto' : 'none'">
           @if (vacio()) { <app-ia-saludo [nombre]="nombre()" /> }
-        </div>
+        </div> -->
 
         <!-- Sugerencias (solo vacío) -->
         <div class="absolute inset-x-0 top-[calc(50%+40px)] px-6 transition-[opacity,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
@@ -402,25 +407,14 @@
                 </div>
               }
               <div class="flex items-end gap-1">
-                <div class="relative shrink-0">
-                  <button type="button" (click)="masAbierto.set(!masAbierto())" aria-label="Adjuntar o registrar pago"
-                    class="flex size-[38px] items-center justify-center rounded-full transition-colors duration-150 hover:bg-[#f0f0f0]" [class.bg-[#f0f0f0]]="masAbierto()">
-                    <tabler-icon [icon]="i.mas" [size]="20" class="transition-transform duration-300" [class.rotate-45]="masAbierto()" />
-                  </button>
-                  @if (masAbierto()) {
-                    <div class="fixed inset-0 z-40" (click)="masAbierto.set(false)"></div>
-                    <div class="absolute bottom-[46px] left-0 z-[41] w-[270px] origin-bottom-left rounded-[14px] bg-white p-1.5 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_-14px_rgba(0,0,0,0.3)] [animation:ia-menu-up_220ms_cubic-bezier(0.2,0.8,0.2,1)]">
-                      <button type="button" (click)="adjuntarDesdeMenu()" class="flex w-full items-center gap-[11px] rounded-[10px] p-2 text-left transition-colors duration-150 hover:bg-[#f4f4f4]">
-                        <span class="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-[#f1f1f1]"><tabler-icon [icon]="i.clip" [size]="17" /></span>
-                        <span class="flex flex-col gap-px"><span class="text-[13.5px] font-medium">Adjuntar comprobante</span><span class="text-[11.5px] text-[#6b7280]">PDF o imagen</span></span>
-                      </button>
-                      <button type="button" (click)="masAbierto.set(false); iniciarPago()" class="flex w-full items-center gap-[11px] rounded-[10px] p-2 text-left transition-colors duration-150 hover:bg-[#f4f4f4]">
-                        <span class="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-[#0a0a0a] text-[#2be0d5]"><tabler-icon [icon]="i.pago" [size]="17" /></span>
-                        <span class="flex flex-col gap-px"><span class="text-[13.5px] font-medium">Registrar pago</span><span class="text-[11.5px] text-[#6b7280]">Desde un comprobante; la IA completa los datos</span></span>
-                      </button>
-                    </div>
-                  }
-                </div>
+                <app-ia-menu-mas
+                  variante="completa"
+                  [documentos]="store.documentos()"
+                  (subirArchivos)="adjuntarDesdeMenu()"
+                  (registrarPago)="iniciarPago()"
+                  (agregarDocumento)="iniciarDoc()"
+                  (preguntarDocumento)="preguntarDocumento($event)"
+                />
                 <textarea #composer rows="1" [ngModel]="texto()" (ngModelChange)="texto.set($event)" (keydown)="onKeyDown($event)" (focus)="enfocado.set(true)" (blur)="enfocado.set(false)"
                   placeholder="Preguntá algo o adjuntá un comprobante…"
                   class="block max-h-[180px] min-h-[38px] min-w-0 flex-1 resize-none border-0 bg-transparent px-1.5 py-2 text-[15px] leading-[22px] outline-none [field-sizing:content] placeholder:text-[#9ca3af]"></textarea>

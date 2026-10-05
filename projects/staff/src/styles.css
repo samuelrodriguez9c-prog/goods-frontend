@@ -248,16 +248,44 @@
   }
 }
 
-/* `aparecer-alerta` — entrada de cada tarjeta en `AlertaPilaComponent`. */
-@keyframes aparecer-alerta {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ── Alertas en línea v2 · Pila oscura (handoff-alertas-pila, 2026-10-02) ─
+ * Reemplaza a `aparecer-alerta` (v1). `girar` (arriba) lo sigue usando
+ * EstadoIconoComponent. */
+
+/* entrada de cada alerta en AlertaPilaComponent */
+@keyframes alerta-entrar {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); filter: blur(2px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+/* barra de tiempo de la alerta del frente */
+@keyframes alerta-barra {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* píldora "N cambios nuevos · Actualizar" (AvisoDatosNuevosComponent) */
+@keyframes vivo-entrar {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+/* punto del sidebar: crece apenas y vuelve. Renombrado a `latido-cambio`
+ * porque `latido` ya existe (asistente de activación / Usuarios) con otra forma. */
+@keyframes latido-cambio {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(43, 224, 213, 0); }
+  50% { transform: scale(1.3); box-shadow: 0 0 0 3px rgba(43, 224, 213, 0.18); }
+}
+
+/* fila nueva o modificada después de tocar Actualizar */
+@keyframes fila-resaltada {
+  0%, 35% { background-color: #e6fbf9; box-shadow: inset 3px 0 0 #2be0d5; }
+  100% { background-color: transparent; box-shadow: inset 3px 0 0 transparent; }
+}
+.fila-resaltada { animation: fila-resaltada 2s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fila-resaltada { animation-duration: 1ms; }
 }
 
 /* `aparecer-modal` — entrada de `AlertaOverlayComponent` y de los modales
@@ -535,7 +563,7 @@
   }
 }
 
-/* ─── Asistente de IA (rediseño 2026-09-30) ─────────────────────────────
+/* ─── Asistente de IA (rediseño 2026-09-30 · v3 2026-10-02) ─────────────────────────────
    Pegar al final de projects/staff/src/styles.css.
    Todo lleva prefijo `ia-` porque styles.css ya tiene `latido`, `pop`,
    `brillo` y `msg-in` con otras curvas. */
@@ -564,6 +592,9 @@
 @keyframes ia-mini-in { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: none; } }
 @keyframes ia-saluda { 0% { transform: rotate(0); } 25% { transform: rotate(-14deg) scale(1.08); } 55% { transform: rotate(10deg) scale(1.08); } 80% { transform: rotate(-4deg); } 100% { transform: rotate(0); } }
 @keyframes ia-anillo { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.45); opacity: 0; } }
+@keyframes ia-tecleo { 0%, 64%, 100% { transform: translateY(0) scale(.78); opacity: .28; background: #0a0a0a; } 28% { transform: translateY(-4px) scale(1); opacity: 1; background: #0a0a0a; } 40% { background: #00a19a; } }
+@keyframes ia-tip-in { from { opacity: 0; transform: translate(-4px, -50%); } to { opacity: 1; transform: translate(0, -50%); } }
+@keyframes ia-sub-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
 
 .ia-latido { animation: ia-latido 2.4s ease-in-out infinite; }
 .ia-palabra { animation: ia-palabra 720ms cubic-bezier(.2, .8, .2, 1) both; }
@@ -574,7 +605,10 @@
 .ia-paso-in { animation: ia-paso-in 340ms cubic-bezier(.2, .8, .2, 1); }
 .ia-chip-in { animation: ia-chip-in 300ms cubic-bezier(.2, .8, .2, 1); }
 .ia-pop { animation: ia-pop 360ms cubic-bezier(.2, .8, .2, 1) both; }
-.ia-caret { display: inline-block; width: 7px; height: 15px; margin-left: 2px; border-radius: 2px; background: #111827; vertical-align: -2px; animation: ia-caret 900ms steps(1) infinite; }
+/* v3: el caret es un punto turquesa que late al final del texto que se va escribiendo. */
+.ia-caret { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 9999px; background: #2be0d5; vertical-align: 2px; animation: ia-latido 900ms ease-in-out infinite; }
+/* v3: puntos de "escribiendo" (app-ia-escribiendo). */
+.ia-tecleo { animation: ia-tecleo 1.25s cubic-bezier(.45, 0, .55, 1) infinite; }
 
 /* Markdown del Asistente de IA (`MarkdownLigeroPipe`) — reglas mínimas a
    mano en vez de un plugin de "prose" (Tailwind v4 acá no tiene
@@ -619,7 +653,7 @@
   background-size: 900% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-/* Texto "Pensando…" / "Consultando …" con barrido. */
+/* Texto con barrido (v3: ya no se usa para "Pensando…"; queda para otros estados). */
 .ia-shimmer-texto {
   background: linear-gradient(90deg, #a3a3a3 0%, #a3a3a3 35%, #111827 50%, #a3a3a3 65%, #a3a3a3 100%);
   background-size: 200% 100%;

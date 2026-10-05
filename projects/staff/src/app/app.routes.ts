@@ -72,6 +72,11 @@ export const routes: Routes = [
           import('./features/ingresos/ingresos.routes').then((m) => m.INGRESOS_ROUTES),
       },
       {
+        path: 'solicitudes',
+        loadChildren: () =>
+          import('./features/solicitudes/solicitudes.routes').then((m) => m.SOLICITUDES_ROUTES),
+      },
+      {
         path: 'soporte',
         loadChildren: () => import('./features/soporte/soporte.routes').then((m) => m.SOPORTE_ROUTES),
       },

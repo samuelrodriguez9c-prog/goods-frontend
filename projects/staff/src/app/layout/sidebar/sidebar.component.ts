@@ -7,9 +7,12 @@ import {
   signal,
   viewChildren,
 } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { TablerIconComponent } from '@tabler/icons-angular';
 import { AuthService } from '../../core/auth/auth.service';
+import { CambiosPendientesService } from '../../core/realtime/cambios-pendientes.service';
 
 interface NavItem {
   label: string;
@@ -92,14 +95,17 @@ interface NavItem {
 })
 export class SidebarComponent {
   private readonly authService = inject(AuthService);
+  /** Rutas con cambios en vivo que no se están viendo (punto turquesa). */
+  protected readonly cambios = inject(CambiosPendientesService);
 
   private readonly todosLosNavItems: NavItem[] = [
     { label: 'Empresas', path: '/empresas', icon: 'building', exact: false, permiso: 'empresas.ver' },
     { label: 'Altas pendientes', path: '/altas-pendientes', icon: 'user-plus', exact: false, permiso: 'empresas.ver' },
     { label: 'Planes', path: '/planes', icon: 'stack-2', exact: false, permiso: 'planes.ver' },
     { label: 'Suscripciones', path: '/suscripciones', icon: 'repeat', exact: false, permiso: 'suscripciones.ver' },
-    { label: 'Facturación', path: '/facturacion', icon: 'receipt-2', exact: false },
-    { label: 'Ingresos', path: '/ingresos', icon: 'report-money', exact: false },
+    { label: 'Facturación', path: '/facturacion', icon: 'receipt-2', exact: false, permiso: 'facturacion.ver' },
+    { label: 'Ingresos', path: '/ingresos', icon: 'report-money', exact: false, permiso: 'ingresos.ver' },
+    { label: 'Solicitudes', path: '/solicitudes', icon: 'bulb', exact: false, permiso: 'solicitudes.ver' },
     { label: 'Soporte', path: '/soporte', icon: 'headset', exact: false },
     { label: 'Auditoría', path: '/auditoria', icon: 'history', exact: false, permiso: 'auditoria.ver' },
     { label: 'Usuarios', path: '/usuarios', icon: 'users', exact: false, permiso: 'usuarios.ver' },
@@ -134,7 +140,29 @@ export class SidebarComponent {
    *  items (hover, o si no hay hover, la ruta activa) — ver
    *  ADMIN_DISENO.md > "Sidebar > Animación" para el porqué del diseño. */
   protected readonly hoveredIndex = signal<number | null>(null);
-  protected readonly activeIndex = signal(0);
+
+  /** Índice del ítem de la ruta actual DENTRO de `navItems()` (-1 si la
+   *  ruta no es de la lista, ej. Settings: la pill se oculta).
+   *
+   *  Antes salía de `(isActiveChange)` de cada `routerLinkActive`, y eso
+   *  fallaba al entrar directo por URL (2026-10-02): hasta que llega
+   *  `/auth/me` los ítems con `permiso` no se muestran, así que la pill se
+   *  calculaba sobre la lista corta (ej. Facturación quedaba en el índice
+   *  0); cuando la lista crecía, `isActive` no cambiaba y nadie la movía —
+   *  quedaba resaltando Empresas. Calcularlo de la URL + `navItems()` lo
+   *  recalcula solo cuando cambia cualquiera de los dos. */
+  private readonly router = inject(Router);
+  private readonly url = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+  protected readonly activeIndex = computed(() => {
+    const ruta = this.url().split(/[?#]/)[0];
+    return this.navItems().findIndex((item) => ruta === item.path || ruta.startsWith(item.path + '/'));
+  });
 
   private readonly linkEls = viewChildren<ElementRef<HTMLElement>>('link');
 
@@ -147,9 +175,4 @@ export class SidebarComponent {
   protected readonly indicatorHeight = computed(() => this.targetEl()?.offsetHeight ?? 0);
   protected readonly indicatorVisible = computed(() => this.targetEl() !== null);
 
-  protected onActiveChange(index: number, isActive: boolean): void {
-    if (isActive) {
-      this.activeIndex.set(index);
-    }
-  }
 }

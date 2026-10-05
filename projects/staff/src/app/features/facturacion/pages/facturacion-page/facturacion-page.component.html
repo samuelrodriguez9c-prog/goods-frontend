@@ -1,0 +1,243 @@
+<div class="p-6">
+  <app-cabecera-modulo
+    titulo="Facturación"
+    [periodo]="null"
+    [metricas]="metricas()"
+    [badge]="badge()"
+    (metricaClick)="metricaClick($event)"
+  >
+    <tabler-icon icono [icon]="i.modulo" [size]="20" [stroke]="1.75" />
+    <ng-container lectura>{{ lectura() }}</ng-container>
+    <ng-container acciones>
+      <button
+        type="button"
+        (click)="exportar()"
+        [disabled]="exportando()"
+        title="Descarga en CSV los pagos del filtro actual (todas las páginas)"
+        class="flex items-center gap-1.5 rounded-lg border-0 bg-neutral-200 px-3 py-[7px] text-[13px] font-medium text-[#303030] hover:bg-[#d4d4d4] disabled:opacity-60"
+      >
+        <tabler-icon [icon]="i.descargar" [size]="14" [stroke]="1.75" />
+        {{ exportando() ? 'Exportando…' : 'Exportar' }}
+      </button>
+      @if (puedeGestionar()) {
+        <button
+          type="button"
+          (click)="registrando.set(true)"
+          class="flex items-center gap-[7px] rounded-lg bg-primary-button px-3.5 py-2 text-[13px] font-medium text-white transition-all duration-200 hover:-translate-y-px hover:opacity-90"
+        >
+          <tabler-icon [icon]="i.nuevo" [size]="15" [stroke]="2" />
+          Registrar pago
+        </button>
+      }
+    </ng-container>
+  </app-cabecera-modulo>
+
+  @if (cambiosEnVivo()) {
+    <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
+  }
+
+  <app-pantalla-estado [estado]="estadoPantalla()" modulo="Facturación" (reintentar)="reintentar()" (volver)="volver()">
+    <div esqueleto class="mt-[22px] flex animate-pulse flex-col gap-2">
+      <span class="h-[100px] w-full rounded-xl bg-gray-200"></span>
+      <span class="h-9 w-2/3 rounded-full bg-gray-100"></span>
+      @for (s of skeletons; track $index) {
+        <span class="h-[64px] w-full rounded-[10px] bg-gray-100"></span>
+      }
+    </div>
+
+    <!-- Filtros: período + estado + método + búsqueda (todos server-side) -->
+    <div class="mt-6 flex flex-wrap items-center gap-2">
+      @for (p of periodos; track p.clave) {
+        <button
+          type="button"
+          (click)="elegirPeriodo(p.clave)"
+          class="rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-all duration-200"
+          [class]="periodo() === p.clave ? 'border-primary-button bg-primary-button text-white' : 'border-gray-200 bg-card-bg text-gray-700 hover:bg-canvas-bg'"
+        >
+          {{ p.texto }}
+        </button>
+      }
+
+      <span class="mx-1 h-5 w-px bg-gray-200"></span>
+
+      <div class="flex rounded-full border border-gray-200 bg-card-bg p-0.5">
+        @for (e of estados; track e.valor) {
+          <button
+            type="button"
+            (click)="elegirEstado(e.valor)"
+            class="rounded-full px-3 py-1 text-[12.5px] font-medium transition-colors duration-150"
+            [class]="estado() === e.valor ? 'bg-canvas-bg text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+          >
+            {{ e.texto }}
+          </button>
+        }
+      </div>
+
+      <select
+        [ngModel]="metodo()"
+        (ngModelChange)="elegirMetodo($event)"
+        aria-label="Método de pago"
+        class="rounded-full border border-gray-200 bg-card-bg py-1.5 pl-3 pr-8 text-[13px] font-medium text-gray-700 focus:border-gray-400 focus:outline-none"
+      >
+        <option value="">Todos los métodos</option>
+        @for (m of metodos; track m.valor) {
+          <option [value]="m.valor">{{ m.texto }}</option>
+        }
+      </select>
+
+      <label class="ml-auto flex min-w-[240px] items-center gap-2 rounded-lg border border-gray-200 bg-card-bg px-3 py-[7px] focus-within:border-gray-400">
+        <tabler-icon [icon]="i.buscar" [size]="15" [stroke]="2" class="text-gray-400" />
+        <input
+          type="search"
+          [ngModel]="buscar()"
+          (ngModelChange)="escribirBusqueda($event)"
+          placeholder="Referencia o Empresa"
+          class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+        />
+      </label>
+    </div>
+
+    <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
+      <span class="tabular-nums">{{ totalesTexto() }}</span>
+      @if (hayFiltros()) {
+        <button type="button" (click)="limpiarFiltros()" class="flex items-center gap-1 text-gray-400 hover:text-gray-700">
+          <tabler-icon [icon]="i.limpiar" [size]="12" [stroke]="2" />
+          Limpiar filtros
+        </button>
+      }
+      @if (cargandoLista()) {
+        <span class="ml-auto size-3.5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-500"></span>
+      }
+    </div>
+
+    <!-- Una fila por pago -->
+    <div class="mt-3 flex flex-col gap-2 transition-opacity duration-150" [class.opacity-60]="cargandoLista()">
+      @for (p of filas(); track p.id) {
+        <div
+          tabindex="0"
+          role="button"
+          (click)="abrirPago(p.id)"
+          (keydown.enter)="abrirPago(p.id)"
+          [class.fila-resaltada]="resaltadas().has(p.id)"
+          class="flex cursor-pointer flex-wrap items-center gap-[18px] rounded-[10px] border px-[18px] py-3 transition-shadow duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06)] focus-visible:outline-2 focus-visible:outline-gray-400"
+          [class]="p.estado === 'anulado' ? 'border-gray-200 bg-neutral-50' : 'border-gray-200 bg-card-bg'"
+        >
+          <!-- Fecha -->
+          <div class="flex w-11 shrink-0 flex-col items-center leading-none">
+            <span class="font-display text-xl font-semibold tabular-nums" [class]="p.estado === 'anulado' ? 'text-gray-400' : 'text-gray-900'">{{ p.dia }}</span>
+            <span class="mt-1 text-[10.5px] font-medium uppercase tracking-[0.06em] text-gray-400">{{ p.mes }}</span>
+          </div>
+
+          <!-- Empresa + período -->
+          <div class="min-w-[200px] flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                (click)="abrirEmpresa(p.empresaId, $event)"
+                class="text-[15px] font-semibold leading-[21px] tracking-[-0.01em] text-gray-900 hover:underline"
+              >
+                {{ p.empresaNombre }}
+              </button>
+              @if (p.planNombre) {
+                <span class="rounded-full bg-canvas-bg px-2 py-0.5 text-[11px] font-medium text-gray-500">{{ p.planNombre }}</span>
+              }
+              @if (p.estado === 'anulado') {
+                <span class="rounded-full bg-badge-neutral-bg px-2 py-0.5 text-[11px] font-medium text-gray-700">Anulado</span>
+              }
+            </div>
+            <p class="mt-0.5 text-xs leading-[18px] text-gray-400">Cubre {{ formatPeriodo(p.periodoDesde, p.periodoHasta) }}</p>
+          </div>
+
+          <!-- Método + origen -->
+          <div class="w-[210px] shrink-0">
+            <div class="flex items-center gap-[7px] text-[13px] font-medium text-gray-700">
+              <tabler-icon [icon]="p.icono" [size]="15" [stroke]="1.75" class="text-gray-400" />
+              {{ p.metodoTexto }}
+            </div>
+            <p class="mt-0.5 truncate pl-[22px] text-xs text-gray-400" [title]="p.origen">{{ p.origen || 'Sin referencia' }}</p>
+          </div>
+
+          <!-- Monto -->
+          <div class="w-[130px] shrink-0 text-right">
+            <p
+              class="font-display text-[18px] font-semibold leading-none tabular-nums"
+              [class]="p.estado === 'anulado' ? 'text-gray-400 line-through' : 'text-gray-900'"
+            >
+              {{ formatMonto(p.monto, p.moneda) }}
+            </p>
+            <p class="mt-1 truncate text-[11px] text-gray-400">{{ p.registradoPor?.nombre ?? 'Sin registrar quién' }}</p>
+          </div>
+
+          <tabler-icon [icon]="i.siguiente" [size]="16" [stroke]="2" class="shrink-0 text-gray-300" />
+        </div>
+      } @empty {
+        <div class="rounded-[10px] border border-gray-200 bg-card-bg px-6 py-[22px]">
+          <p class="text-[15px] font-semibold text-gray-900">
+            {{ hayFiltros() ? 'Ningún pago con estos filtros.' : 'Todavía no hay pagos este mes.' }}
+          </p>
+          <p class="mt-1 text-[13px] text-gray-500">
+            {{ hayFiltros() ? 'Prueba con otro período o limpia los filtros.' : 'Los pagos que registres (o que confirme el asistente desde un comprobante) aparecen acá.' }}
+          </p>
+        </div>
+      }
+    </div>
+
+    @if ((listado()?.totalPaginas ?? 1) > 1) {
+      <div class="mt-4 flex items-center justify-end gap-2 text-xs text-gray-500">
+        <span class="tabular-nums">{{ rango() }}</span>
+        <button
+          type="button"
+          [disabled]="pagina() <= 1 || cargandoLista()"
+          (click)="irAPagina(pagina() - 1)"
+          aria-label="Página anterior"
+          class="rounded-lg border border-gray-200 bg-card-bg p-1.5 text-gray-600 hover:bg-canvas-bg disabled:opacity-40"
+        >
+          <tabler-icon [icon]="i.anterior" [size]="15" [stroke]="2" />
+        </button>
+        <button
+          type="button"
+          [disabled]="pagina() >= (listado()?.totalPaginas ?? 1) || cargandoLista()"
+          (click)="irAPagina(pagina() + 1)"
+          aria-label="Página siguiente"
+          class="rounded-lg border border-gray-200 bg-card-bg p-1.5 text-gray-600 hover:bg-canvas-bg disabled:opacity-40"
+        >
+          <tabler-icon [icon]="i.siguiente" [size]="15" [stroke]="2" />
+        </button>
+      </div>
+    }
+
+    <p class="mt-5 text-xs leading-[18px] text-gray-400 text-pretty">
+      Un pago nunca se borra: se anula con un motivo y queda en el historial. Registrar un pago renueva la
+      suscripción un mes; anularlo devuelve el vencimiento a donde estaba.
+    </p>
+  </app-pantalla-estado>
+</div>
+
+@if (pagoAbiertoId(); as id) {
+  <app-pago-detalle-panel
+    [pagoId]="id"
+    [puedeGestionar]="puedeGestionar()"
+    (cerrar)="pagoAbiertoId.set(null)"
+    (verEmpresa)="abrirEmpresa($event)"
+    (enviando)="silenciarEco()"
+    (anulado)="onCambio()"
+  />
+}
+
+@if (empresaAbiertaId(); as id) {
+  <app-estado-cuenta-panel
+    [empresaId]="id"
+    [puedeGestionar]="puedeGestionar()"
+    (cerrar)="empresaAbiertaId.set(null)"
+    (verPago)="abrirPago($event)"
+    (cambio)="onCambio()"
+  />
+}
+
+@if (registrando()) {
+  <app-registrar-pago-panel
+    (cerrar)="registrando.set(false)"
+    (enviando)="silenciarEco()"
+    (registrado)="onRegistrado($event)"
+  />
+}
