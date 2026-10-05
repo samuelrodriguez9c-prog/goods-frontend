@@ -57,7 +57,64 @@
       </span>
     </div>
 
-    <div class="mt-3 overflow-x-auto overflow-y-hidden rounded-xl border border-gray-200 bg-white">
+    <!-- Navegación de la matriz (2026-10-05): con tantos módulos, un salto
+         directo a cada uno, flechas y una barrita de qué parte se ve. -->
+    <div class="mt-3 flex items-center gap-2">
+      <button
+        type="button"
+        (click)="desplazar(-1)"
+        [disabled]="!hayIzquierda()"
+        aria-label="Ver módulos anteriores"
+        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-gray-600 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] transition-all duration-200 hover:text-gray-900 disabled:opacity-35"
+      >
+        <tabler-icon [icon]="iconos.izquierda" [size]="16" [stroke]="2" />
+      </button>
+      <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div class="flex gap-1 overflow-x-auto [scrollbar-width:none]">
+          @for (m of modulos(); track m.id) {
+            <button
+              type="button"
+              (click)="irAModulo(m.id)"
+              (mouseenter)="moduloHover.set(m.id)"
+              (mouseleave)="moduloHover.set(null)"
+              class="shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-colors duration-150"
+              [class]="moduloHover() === m.id ? 'bg-[#303030] text-white' : 'bg-white text-gray-600 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] hover:text-gray-900'"
+            >
+              {{ m.corto }} <span class="tabular-nums opacity-60">{{ m.acciones.length }}</span>
+            </button>
+          }
+        </div>
+        <span class="relative h-1 overflow-hidden rounded-full bg-[#e3e3e3]">
+          <span
+            class="absolute inset-y-0 rounded-full bg-[#303030] transition-[left,width] duration-150"
+            [style.left.%]="vista().desde"
+            [style.width.%]="vista().ancho"
+          ></span>
+        </span>
+      </div>
+      <button
+        type="button"
+        (click)="desplazar(1)"
+        [disabled]="!hayDerecha()"
+        aria-label="Ver más módulos"
+        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-gray-600 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] transition-all duration-200 hover:text-gray-900 disabled:opacity-35"
+      >
+        <tabler-icon [icon]="iconos.derecha" [size]="16" [stroke]="2" />
+      </button>
+    </div>
+
+    <div class="relative mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <!-- Sombras en los bordes cuando hay más columnas a un lado -->
+    <span
+      class="pointer-events-none absolute inset-y-0 left-[240px] z-20 w-8 bg-gradient-to-r from-black/[0.06] to-transparent transition-opacity duration-200"
+      [class]="hayIzquierda() ? 'opacity-100' : 'opacity-0'"
+    ></span>
+    <span
+      class="pointer-events-none absolute inset-y-0 right-[130px] z-20 w-8 bg-gradient-to-l from-black/[0.06] to-transparent transition-opacity duration-200"
+      [class]="hayDerecha() ? 'opacity-100' : 'opacity-0'"
+    ></span>
+    <div #matriz (scroll)="medirDesplazamiento()" class="overflow-x-auto overflow-y-hidden">
+    <div class="w-max min-w-full">
       <!-- Encabezado: una columna por módulo real del backend. Columnas más
            anchas a propósito (ajuste "se ve apretado" de 2026-09-22): en vez
            de achicar todo para que quepa, se deja que el contenedor
@@ -74,11 +131,11 @@
            primera versión con `left-5`/`-ml-5` dejaba un hueco de ~20px por
            el que se colaba la celda de al lado — ver ADMIN_DISENO.md). -->
       <div
-        class="grid min-w-[900px] items-end border-b border-gray-200 bg-[#fafafa] py-3"
-        [style.gridTemplateColumns]="'240px repeat(' + modulos().length + ', minmax(88px, 1fr)) 130px'"
+        class="grid w-full items-end border-b border-gray-200 bg-[#fafafa] py-3"
+        [style.gridTemplateColumns]="plantillaColumnas()"
       >
         <div
-          class="sticky left-0 z-10 bg-[#fafafa] py-0 pl-5 pr-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400"
+          class="sticky left-0 z-10 -my-3 flex self-stretch items-end bg-[#fafafa] py-3 pl-5 pr-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400"
         >
           Rol
         </div>
@@ -86,35 +143,41 @@
           <button
             type="button"
             (click)="aplicarColumna(m)"
+            (mouseenter)="moduloHover.set(m.id)"
+            (mouseleave)="moduloHover.set(null)"
+            [attr.data-modulo]="m.id"
             [title]="'Dar acceso total a todos los roles en ' + m.largo"
-            class="rounded-md px-1 py-1.5 text-center text-[11px] font-medium leading-[14px] text-gray-600 transition-colors duration-200 hover:bg-[#efefef] hover:text-gray-900"
+            class="mx-0.5 rounded-md px-1 py-1.5 text-center text-[11px] font-medium leading-[14px] transition-colors duration-200"
+            [class]="moduloHover() === m.id ? 'bg-[#303030] text-white' : 'text-gray-600 hover:bg-[#efefef] hover:text-gray-900'"
           >
             {{ m.corto }}
           </button>
         }
         <div
-          class="sticky right-0 z-10 bg-[#fafafa] py-0 pl-2 pr-5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400"
+          class="sticky right-0 z-10 -my-3 flex self-stretch items-end justify-end bg-[#fafafa] py-3 pl-2 pr-5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400"
         >
           Total
         </div>
       </div>
 
       @for (g of grupos(); track g.titulo) {
-        <div class="flex min-w-[900px] items-center gap-2 border-b border-gray-100 bg-[#f7f7f7] px-5 py-2">
-          <span class="text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-500">
-            {{ g.titulo }}
+        <div class="w-full border-b border-gray-100 bg-[#f7f7f7] py-2">
+          <span class="sticky left-0 inline-flex items-center gap-2 px-5">
+            <span class="text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-500">
+              {{ g.titulo }}
+            </span>
+            <span class="whitespace-nowrap text-[11px] text-gray-400">{{ g.nota }}</span>
           </span>
-          <span class="text-[11px] text-gray-400">{{ g.nota }}</span>
         </div>
 
         @for (f of g.filas; track f.rol.id) {
           <div
-            class="grid min-w-[900px] items-center border-b border-gray-100 transition-colors duration-150"
+            class="grid w-full items-center border-b border-gray-100 transition-colors duration-150"
             [class.fila-resaltada]="resaltadas().has(f.rol.id)"
             [class.bg-white]="!f.seleccionada && !f.tocada"
             [class.bg-[#fafafa]]="f.seleccionada"
             [class.bg-[#fcfcfa]]="f.tocada && !f.seleccionada"
-            [style.gridTemplateColumns]="'240px repeat(' + modulos().length + ', minmax(88px, 1fr)) 130px'"
+            [style.gridTemplateColumns]="plantillaColumnas()"
           >
             <div
               class="sticky left-0 z-10 w-[240px] overflow-hidden pl-5 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.08)]"
@@ -152,7 +215,10 @@
                  como piso mínimo (min-width), no como ancho fijo. -->
             @for (c of f.celdas; track c.modulo) {
               <div
-                class="flex items-stretch gap-1 rounded-md px-1.5 py-2.5"
+                class="flex items-stretch gap-1 rounded-md px-1.5 py-2.5 transition-colors duration-150"
+                [class.bg-[#f2f2f2]]="moduloHover() === c.modulo"
+                (mouseenter)="moduloHover.set(c.modulo)"
+                (mouseleave)="moduloHover.set(null)"
                 [title]="c.titulo"
                 [style.boxShadow]="c.sucia ? 'inset 0 0 0 1.5px #303030' : 'none'"
               >
@@ -194,12 +260,16 @@
         <button
           type="button"
           (click)="abrirCreacion()"
-          class="flex w-full min-w-[900px] items-center gap-1.5 border-b border-gray-100 px-5 py-3 text-xs text-gray-400 transition-all duration-200 hover:bg-[#fafafa] hover:text-gray-600"
+          class="block w-full border-b border-gray-100 py-3 text-left text-xs text-gray-400 transition-all duration-200 hover:bg-[#fafafa] hover:text-gray-600"
         >
-          <tabler-icon [icon]="iconos.plus" [size]="13" [stroke]="2" />
-          {{ g.etiquetaNuevo }}
+          <span class="sticky left-0 inline-flex items-center gap-1.5 px-5">
+            <tabler-icon [icon]="iconos.plus" [size]="13" [stroke]="2" />
+            {{ g.etiquetaNuevo }}
+          </span>
         </button>
       }
+    </div>
+    </div>
     </div>
   </app-pantalla-estado>
 </div>
