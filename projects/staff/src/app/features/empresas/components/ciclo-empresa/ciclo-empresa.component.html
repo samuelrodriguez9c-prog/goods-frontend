@@ -1,0 +1,104 @@
+@if (visible()) {
+  <section>
+    <div class="mb-2.5 flex items-center gap-2">
+      <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+      <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Estado de la cuenta</h3>
+    </div>
+
+    <div class="rounded-[10px] border border-gray-200 px-4 py-3.5">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="flex items-center gap-2 text-sm font-semibold text-gray-900">
+          <span class="size-2 rounded-full" [class]="ui().punto"></span>
+          {{ ui().texto }}
+        </span>
+        @if (empresa().estadoCambiadoEn) {
+          <span class="text-xs text-gray-400">desde el {{ empresa().estadoCambiadoEn | date: 'd MMM y' }}</span>
+        }
+        @if (puedeGestionar() && !accion()) {
+          <div class="ml-auto flex flex-wrap gap-2">
+            @for (a of acciones(); track a.clave) {
+              <button
+                type="button"
+                (click)="elegir(a.clave)"
+                class="flex items-center gap-1.5 rounded-lg border bg-card-bg px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 hover:bg-canvas-bg"
+                [class]="a.peligro ? 'border-[#f0d8d2] text-badge-error-solid' : 'border-gray-200 text-gray-700'"
+              >
+                <tabler-icon [icon]="a.icono" [size]="15" [stroke]="2" />
+                {{ a.texto }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+      @if (accesoTexto(); as a) {
+        <p class="mt-1.5 text-xs leading-[18px] text-pretty" [class]="a.tinta">{{ a.texto }}</p>
+      } @else {
+        <p class="mt-1.5 text-xs leading-[18px] text-gray-500 text-pretty">{{ ui().nota }}</p>
+      }
+      @if (empresa().motivoEstado) {
+        <p class="mt-2.5 rounded-lg bg-neutral-100 px-3 py-2 text-[13px] leading-5 text-gray-700">
+          <span class="font-medium">Motivo:</span> {{ empresa().motivoEstado }}
+        </p>
+      }
+    </div>
+
+    @if (accion(); as a) {
+      <div
+        class="mt-3 animate-[fade-in-up_0.2s_ease-out] rounded-[10px] border p-4"
+        [class]="a === 'reactivar' ? 'border-gray-200 bg-neutral-50' : 'border-[#f0d8d2] bg-[#fdf6f4]'"
+      >
+        <p class="text-sm font-semibold text-gray-900">
+          {{ a === 'suspender' ? 'Suspender la cuenta' : a === 'dar-de-baja' ? 'Dar de baja la cuenta' : 'Reactivar la cuenta' }}
+        </p>
+        <p class="mt-1 text-xs leading-[18px] text-gray-600 text-pretty">{{ consecuencia() }}</p>
+
+        @if (a === 'reactivar' && empresa().estado === 'cancelada') {
+          <label class="mt-3 flex flex-col gap-1">
+            <span class="text-xs font-medium text-gray-600">Plan con el que vuelve</span>
+            <select
+              [ngModel]="planId()"
+              (ngModelChange)="planId.set($event === null ? null : +$event)"
+              class="rounded-lg border border-gray-200 bg-card-bg py-2 pl-3 pr-8 text-[13px] text-gray-900 focus:border-gray-400 focus:outline-none"
+            >
+              <option [ngValue]="null" disabled>Elige un plan</option>
+              @for (p of planes(); track p.id) {
+                <option [ngValue]="p.id">{{ p.nombre }}{{ p.precioMensual !== null ? ' · $' + p.precioMensual.toLocaleString('es-CO') : '' }}</option>
+              }
+            </select>
+          </label>
+        }
+
+        <textarea
+          rows="2"
+          [ngModel]="motivo()"
+          (ngModelChange)="motivo.set($event)"
+          [placeholder]="a === 'reactivar' ? 'Nota (opcional): ej. pagó lo adeudado' : 'Motivo (obligatorio): lo verá el cliente en su panel'"
+          class="mt-3 w-full resize-none rounded-lg border border-gray-200 bg-card-bg px-3 py-2 text-[13px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+        ></textarea>
+
+        @if (error(); as m) {
+          <p class="mt-2.5 rounded-lg bg-field-error-bg px-3 py-2 text-[13px] text-badge-error-solid">{{ m }}</p>
+        }
+
+        <div class="mt-3 flex justify-end gap-2">
+          <button
+            type="button"
+            (click)="cancelar()"
+            class="rounded-lg px-3 py-1.5 text-[13px] font-medium text-gray-600 transition-colors hover:bg-badge-neutral-bg"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            [disabled]="!puedeConfirmar()"
+            (click)="confirmar()"
+            class="rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-white transition-opacity duration-150 disabled:cursor-not-allowed disabled:opacity-40"
+            [class]="a === 'reactivar' ? 'bg-primary-button' : 'bg-badge-error-solid'"
+          >
+            {{ guardando() ? 'Guardando…' : a === 'suspender' ? 'Suspender' : a === 'dar-de-baja' ? 'Dar de baja' : 'Reactivar' }}
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+}

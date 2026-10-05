@@ -1,6 +1,7 @@
 // projects/staff/src/app/shared/ui/pista/pista.component.ts
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { IconArrowRight, IconCheck, IconFilter, TablerIconComponent } from '@tabler/icons-angular';
+import { AlertaService } from '../../../core/ui/alerta.service';
 import { PistaService } from '../../../core/ui/pista.service';
 
 /**
@@ -17,6 +18,9 @@ import { PistaService } from '../../../core/ui/pista.service';
 })
 export class PistaComponent {
   protected readonly pista = inject(PistaService);
+  /** La Pista sube por encima de la pila de alertas para no pisarse
+   *  (handoff-alertas-pila §4). */
+  protected readonly alertas = inject(AlertaService);
   private readonly iconos = { navegar: IconArrowRight, hecho: IconCheck, filtro: IconFilter };
 
   protected readonly p = computed(() => this.pista.actual());

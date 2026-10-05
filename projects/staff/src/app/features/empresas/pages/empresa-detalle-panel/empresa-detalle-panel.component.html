@@ -384,6 +384,9 @@
           }
         </section>
 
+        <!-- Suspender / dar de baja / reactivar (2026-10-04) -->
+        <app-ciclo-empresa [empresa]="e" (cambiado)="onCicloCambiado()" />
+
         <!-- Actividad -->
         <section>
           <div class="mb-2.5 flex items-center gap-2">

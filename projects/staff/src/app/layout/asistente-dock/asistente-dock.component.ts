@@ -39,6 +39,8 @@ import { AsistenteStaffMensaje } from '../../core/asistente-staff/models/asisten
 import { IaMarcaComponent } from '../../shared/ui/ia-marca/ia-marca.component';
 import { IaSaludoComponent } from '../../shared/ui/ia-saludo/ia-saludo.component';
 import { MarkdownLigeroPipe } from '../../shared/ui/markdown-ligero/markdown-ligero.pipe';
+import { IaEscribiendoComponent } from '../../shared/ui/ia-escribiendo/ia-escribiendo.component';
+import { IaMenuMasComponent } from '../../shared/ui/ia-menu-mas/ia-menu-mas.component';
 
 type Lado = 'right' | 'left' | 'top' | 'bottom';
 interface Dock { lado: Lado; t: number }
@@ -53,12 +55,15 @@ interface EtiquetaEstilo {
   opacidad: number;
 }
 
-const B = 52; // diámetro del botón
-const OCULTO = 26; // px escondidos tras el borde en reposo
-const ASOMA = 18; // px escondidos en hover (crece pegado al borde)
+const B = 52; // caja de referencia del botón (el botón real cambia de forma, ver `forma`)
+const EXT = 40; // px que la píldora sigue de largo detrás del borde: su extremo nunca se ve
+const ASOMA_REPOSO = 40; // px visibles en reposo (el extremo redondo: "parece un círculo")
+const ASOMA_HOVER = 74; // px visibles en hover (sale el rectángulo)
+const CIRCULO_ARRASTRE = 56; // diámetro mientras se arrastra (círculo perfecto, sin importar el lado)
+const DOC_RE = /(agreg|carg|sub|guard)\w*\s+(un\s+|el\s+)?(documento|manual|procedimiento)/i;
 const M = 12; // margen con los bordes de la ventana
 const KEY_DOCK = 'goods-ia-dock';
-const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,application/pdf';
+const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,application/pdf,.md,.txt,.docx';
 
 const SUGERENCIAS = [
   { icono: IconBuildingStore, texto: '¿Cuántas Empresas están activas hoy?' },
@@ -84,7 +89,7 @@ const SUGERENCIAS = [
 @Component({
   selector: 'app-asistente-dock',
   standalone: true,
-  imports: [FormsModule, TablerIconComponent, IaMarcaComponent, IaSaludoComponent, MarkdownLigeroPipe],
+  imports: [FormsModule, TablerIconComponent, IaMarcaComponent, IaSaludoComponent, MarkdownLigeroPipe, IaEscribiendoComponent, IaMenuMasComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './asistente-dock.component.html',
 })
@@ -131,17 +136,39 @@ export class AsistenteDockComponent implements OnDestroy {
   });
   protected readonly lado = computed<Lado>(() => (this.drag() ? this.masCercano(this.base().x, this.base().y) : this.dock().lado));
 
+  /**
+   * Forma del botón (v3), relativa a la caja de 52×52 pegada al borde:
+   *  - Reposo: píldora pegada al borde. Asoma 40 px (el extremo redondo,
+   *    se lee como un círculo) y sigue 40 px más detrás del borde, así que
+   *    su final del lado del borde nunca se ve.
+   *  - Hover: sale el rectángulo redondeado (radio 20): asoma 74 px.
+   *  - Arrastre: círculo perfecto de 56 px, igual en cualquier lado.
+   *  - Abierto: círculo de 52 px con el chevron.
+   * La marca (26 px) se ubica cerca del extremo visible.
+   */
+  protected readonly forma = computed(() => {
+    const lado = this.lado();
+    if (this.drag()) {
+      const d = CIRCULO_ARRASTRE, o = (B - d) / 2;
+      return { left: o, top: o, width: d, height: d, radio: '50%', iconoX: d / 2 - 13, iconoY: d / 2 - 13 };
+    }
+    if (this.abierto()) return { left: 0, top: 0, width: B, height: B, radio: '26px', iconoX: 13, iconoY: 13 };
+    const V = this.hover() ? ASOMA_HOVER : ASOMA_REPOSO; // largo visible
+    const d = this.hover() ? 37 : 21; // centro de la marca, medido desde el extremo visible
+    const N = V + EXT; // largo total (perpendicular al borde)
+    const vert = lado === 'top' || lado === 'bottom';
+    const w = vert ? B : N, h = vert ? N : B;
+    const left = lado === 'right' ? B - V : lado === 'left' ? V - w : 0;
+    const top = lado === 'bottom' ? B - V : lado === 'top' ? V - h : 0;
+    const iconoX = lado === 'right' ? d - 13 : lado === 'left' ? w - d - 13 : w / 2 - 13;
+    const iconoY = lado === 'bottom' ? d - 13 : lado === 'top' ? h - d - 13 : h / 2 - 13;
+    return { left, top, width: w, height: h, radio: this.hover() ? '20px' : '26px', iconoX, iconoY };
+  });
+
   protected readonly boton = computed(() => {
     const { x, y } = this.base();
-    const lado = this.lado();
-    const pegado = !this.abierto() && !this.drag();
-    const off = pegado ? (this.hover() ? ASOMA : OCULTO) : 0;
-    const desliz = { right: `translateX(${off}px)`, left: `translateX(${-off}px)`, top: `translateY(${-off}px)`, bottom: `translateY(${off}px)` }[lado];
-    const escala = this.drag() ? ' scale(1.08)' : this.hover() && pegado ? ' scale(1.2)' : '';
     return {
       left: x, top: y,
-      transform: desliz + escala,
-      origen: this.drag() ? 'center' : { right: 'right center', left: 'left center', top: 'center top', bottom: 'center bottom' }[lado],
       transicion: this.drag() ? 'opacity 200ms' : 'left 520ms cubic-bezier(0.3,1.35,0.5,1), top 520ms cubic-bezier(0.3,1.35,0.5,1), opacity 200ms',
       sombra: this.drag()
         ? '0 0 0 1px rgba(255,255,255,0.1), 0 22px 40px -12px rgba(0,0,0,0.6)'
@@ -152,7 +179,7 @@ export class AsistenteDockComponent implements OnDestroy {
   });
 
   protected readonly etiqueta = computed(() => {
-    const g = !this.abierto() ? '54px' : B + 10 + 'px';
+    const g = (this.abierto() ? B : this.hover() ? ASOMA_HOVER : ASOMA_REPOSO) + 10 + 'px';
     const ver = this.hover() && !this.drag() && !this.abierto();
     const pos = {
       right: { right: g, top: '50%', on: 'translateY(-50%)', off: 'translate(8px,-50%)' },
@@ -189,7 +216,6 @@ export class AsistenteDockComponent implements OnDestroy {
   // ── Chat ────────────────────────────────────────────────────
   protected readonly texto = signal('');
   protected readonly enfocado = signal(false);
-  protected readonly masAbierto = signal(false);
   protected readonly copiado = signal<number | null>(null);
   protected readonly vacio = computed(() => !this.store.mensajes().length);
   protected readonly puedeEnviar = computed(() => !!this.texto().trim());
@@ -236,7 +262,6 @@ export class AsistenteDockComponent implements OnDestroy {
 
   @HostListener('document:keydown.escape')
   protected onEsc(): void {
-    if (this.masAbierto()) return this.masAbierto.set(false);
     if (this.abierto()) this.cerrar();
   }
 
@@ -313,7 +338,6 @@ export class AsistenteDockComponent implements OnDestroy {
   }
 
   protected maximizar(): void {
-    this.masAbierto.set(false);
     this.maximizando.set(true);
     setTimeout(() => {
       this.router.navigate(['/asistente']).then(() => {
@@ -334,6 +358,11 @@ export class AsistenteDockComponent implements OnDestroy {
       this.servicio.cerrarPanel();
       return;
     }
+    if (DOC_RE.test(cuerpo)) {
+      this.texto.set('');
+      this.agregarDocumento();
+      return;
+    }
     if (this.store.enviar(cuerpo)) this.texto.set('');
   }
 
@@ -349,11 +378,11 @@ export class AsistenteDockComponent implements OnDestroy {
   }
 
   protected adjuntar(): void {
-    this.masAbierto.set(false);
     this.archivoRef?.nativeElement.click();
   }
 
-  /** Un comprobante adjunto en el mini chat se continúa en pantalla completa. */
+  /** Un comprobante o documento adjunto en el mini chat se continúa en pantalla completa
+   * (la página decide por extensión: .md/.txt/.docx → documento interno, resto → pago). */
   protected onArchivo(e: Event): void {
     const input = e.target as HTMLInputElement;
     const f = input.files?.[0];
@@ -363,8 +392,13 @@ export class AsistenteDockComponent implements OnDestroy {
     this.maximizar();
   }
 
+  /** Cargar un documento interno necesita espacio para revisar el texto: pantalla completa. */
+  protected agregarDocumento(): void {
+    this.router.navigate(['/asistente'], { queryParams: { doc: 1 } });
+    this.servicio.cerrarPanel();
+  }
+
   protected registrarPago(): void {
-    this.masAbierto.set(false);
     this.router.navigate(['/asistente'], { queryParams: { pago: 1 } });
     this.servicio.cerrarPanel();
   }

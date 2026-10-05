@@ -9,8 +9,8 @@
   </app-cabecera-modulo>
 
   <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
-  @if (hayCambiosEnVivo()) {
-    <app-aviso-datos-nuevos (actualizar)="actualizarPorCambioEnVivo()" />
+  @if (cambiosEnVivo()) {
+    <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
   }
 
   <app-pantalla-estado [estado]="estadoPantalla()" modulo="Planes" (reintentar)="reintentar()" (volver)="volver()">
@@ -36,6 +36,7 @@
             @for (plan of planes(); track plan.id; let pi = $index) {
               <div
                 class="rounded-t-[10px] border border-b-0 px-4 pb-3.5 pt-4"
+                [class.fila-resaltada]="resaltadas().has(plan.id)"
                 [class]="plan.activo ? 'border-gray-200 bg-card-bg' : 'border-gray-100 bg-neutral-50'"
               >
                 <div class="flex items-start justify-between gap-2">

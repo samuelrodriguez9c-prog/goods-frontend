@@ -28,8 +28,8 @@
   </app-cabecera-modulo>
 
   <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
-  @if (hayCambiosEnVivo()) {
-    <app-aviso-datos-nuevos (actualizar)="actualizarPorCambioEnVivo()" />
+  @if (cambiosEnVivo()) {
+    <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
   }
 
   <app-pantalla-estado [estado]="estadoPantalla()" modulo="Roles y permisos" (reintentar)="reintentar()" (volver)="volver()">
@@ -110,6 +110,7 @@
         @for (f of g.filas; track f.rol.id) {
           <div
             class="grid min-w-[900px] items-center border-b border-gray-100 transition-colors duration-150"
+            [class.fila-resaltada]="resaltadas().has(f.rol.id)"
             [class.bg-white]="!f.seleccionada && !f.tocada"
             [class.bg-[#fafafa]]="f.seleccionada"
             [class.bg-[#fcfcfa]]="f.tocada && !f.seleccionada"

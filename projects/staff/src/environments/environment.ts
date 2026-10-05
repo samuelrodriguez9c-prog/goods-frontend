@@ -22,4 +22,7 @@ export const environment = {
   production: false,
   apiUrl: 'http://localhost:3000/api',
   socketUrl: 'http://localhost:3000',
+  /** Registro público (checkout) del panel `admin`: "Nueva Empresa" lo
+   *  abre para cargar el alta en nombre del negocio (alta asistida, §5). */
+  registroPublicoUrl: 'http://localhost:4200/registro',
 };

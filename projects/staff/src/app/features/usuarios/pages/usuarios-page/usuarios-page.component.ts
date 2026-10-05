@@ -33,6 +33,7 @@ import {
   MetricaCabecera,
   serieConteo,
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
+import { filasCambiadas } from '../../../../shared/ui/filas-cambiadas';
 
 /** Payload real de `RealtimeGateway.EVENTO_PRESENCIA_CAMBIO` (backend,
  * `modules/realtime/realtime.constants.ts`) — mismo criterio que
@@ -305,7 +306,12 @@ export class UsuariosPageComponent implements OnDestroy {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
-  protected readonly hayCambiosEnVivo = signal(false);
+  /** Cambios en vivo acumulados desde la última carga — alimenta la
+   *  píldora "N cambios nuevos · Actualizar" (handoff-alertas-pila §2). */
+  protected readonly cambiosEnVivo = signal(0);
+  /** Filas resaltadas 2 s después de tocar "Actualizar". */
+  protected readonly resaltadas = signal<ReadonlySet<number>>(new Set());
+  private compararAlCargar = false;
   protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
     this.error() ? 'error' : this.cargando() ? 'cargando' : 'listo',
   );
@@ -333,8 +339,25 @@ export class UsuariosPageComponent implements OnDestroy {
   }
 
   protected actualizarPorCambioEnVivo(): void {
-    this.hayCambiosEnVivo.set(false);
+    this.cambiosEnVivo.set(0);
+    this.compararAlCargar = true;
     this.cargar();
+  }
+
+  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar"
+   *  (handoff-alertas-pila §2). `clave` = id de la fila en pantalla, por si
+   *  no coincide con el id del dato comparado. */
+  private resaltarCambios<T>(
+    antes: readonly T[],
+    despues: readonly T[],
+    id: (f: T) => number,
+    clave: (f: T) => number = id,
+  ): void {
+    if (!this.compararAlCargar) return;
+    this.compararAlCargar = false;
+    const cambiados = filasCambiadas(antes, despues, id);
+    this.resaltadas.set(new Set(despues.filter((f) => cambiados.has(id(f))).map(clave)));
+    setTimeout(() => this.resaltadas.set(new Set()), 2000);
   }
 
   private cargar(): void {
@@ -346,6 +369,7 @@ export class UsuariosPageComponent implements OnDestroy {
       enLinea: this.usuarioService.enLinea(),
     }).subscribe({
       next: ({ usuarios, roles, auditoria, enLinea }) => {
+        this.resaltarCambios(this.usuarios(), usuarios.data, (u) => u.id);
         this.usuarios.set(usuarios.data);
         this.roles.set(roles);
         this.accesos.set(this.reconstruirAccesos(auditoria.data));
@@ -374,7 +398,7 @@ export class UsuariosPageComponent implements OnDestroy {
   private escucharCambiosEnVivo(): void {
     this.cambiosEnVivoSub = this.cambiosEnVivoService
       .huboCambio(['usuario', 'rol'])
-      .subscribe(() => this.hayCambiosEnVivo.set(true));
+      .subscribe(() => this.cambiosEnVivo.update((n) => n + 1));
   }
 
   private escucharPresencia(): void {

@@ -31,6 +31,13 @@ export interface Empresa {
    * /empresas/:id/rechazar`, `estado === 'rechazada'`) — `null` en
    * cualquier otro estado. */
   motivoRechazo: string | null;
+  /** Acceso real (2026-10-04): lo que `estado` (la cuenta) no dice — una
+   * Empresa `activa` con la suscripción vencida no puede operar. Mismo
+   * cálculo que el backend usa para cortar el acceso. */
+  acceso: AccesoResumen;
+  /** Por qué se suspendió, se dio de baja o se reactivó (2026-10-04). */
+  motivoEstado: string | null;
+  estadoCambiadoEn: string | null;
   /** Texto que el propio visitante tipeó en el registro público
    * (`POST /empresas/registro-publico`) — NO es la cuenta real todavía,
    * es solo lo que declaró en el formulario. La cuenta real (`Usuario`
@@ -97,4 +104,21 @@ export interface RespuestaPaginada<T> {
   page: number;
   pageSize: number;
   totalPaginas: number;
+}
+
+export interface AccesoResumen {
+  /** `en_mora`: venció el pago, sigue operando dentro de la gracia. */
+  estado: 'ok' | 'en_mora' | 'bloqueada';
+  motivo: 'alta_en_curso' | 'rechazada' | 'suspendida' | 'cancelada' | 'sin_plan' | 'suscripcion_vencida' | null;
+  suscripcionEstado: string | null;
+  fechaProximoVencimiento: string | null;
+}
+
+/** Marca extra junto al estado de la cuenta cuando no alcanza para saber si
+ *  la Empresa opera (solo para Empresas `activa`). `null` = no hace falta. */
+export function marcaAcceso(e: Pick<Empresa, 'estado' | 'acceso'>): { texto: string; tono: 'critical' | 'warning' | 'neutral' } | null {
+  if (e.estado !== 'activa' || !e.acceso || e.acceso.estado === 'ok') return null;
+  if (e.acceso.estado === 'en_mora') return { texto: 'En mora', tono: 'warning' };
+  if (e.acceso.motivo === 'suscripcion_vencida') return { texto: 'Vencida', tono: 'critical' };
+  return { texto: 'Sin plan', tono: 'neutral' };
 }

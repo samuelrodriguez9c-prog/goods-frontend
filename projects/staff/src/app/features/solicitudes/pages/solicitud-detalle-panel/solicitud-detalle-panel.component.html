@@ -1,0 +1,278 @@
+<div class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-50 flex justify-end bg-black/50" (click)="onBackdropClick($event)">
+  <div class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[560px] flex-col bg-card-bg shadow-xl">
+    <app-pantalla-estado class="contents" [estado]="estadoPantalla()" modulo="la solicitud" [detalle]="error() ?? ''" (reintentar)="cargar()" (volver)="cerrar.emit()">
+      <div esqueleto class="flex flex-1 animate-pulse flex-col gap-5 p-6">
+        <span class="h-6 w-56 rounded bg-gray-200"></span>
+        <span class="h-10 w-72 rounded bg-gray-100"></span>
+        <span class="h-40 w-full rounded-lg bg-gray-100"></span>
+      </div>
+
+      @if (solicitud(); as s) {
+        <!-- Cabecera -->
+        <div class="shrink-0 border-b border-gray-200 px-6 pt-4">
+          <div class="flex items-center gap-2">
+            <app-status-badge [label]="estadoInfo[s.estado].texto" [tone]="estadoInfo[s.estado].tono" dot="filled" />
+            <button type="button" (click)="copiarId()" title="Copiar ID" class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] tabular-nums text-gray-400 transition-colors duration-150 hover:bg-canvas-bg hover:text-gray-700">
+              #{{ s.id }}
+              <tabler-icon [icon]="i.copiar" [size]="12" [stroke]="2" />
+            </button>
+            <button type="button" (click)="cerrar.emit()" aria-label="Cerrar" class="ml-auto rounded-lg p-[5px] text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600">
+              <tabler-icon [icon]="i.cerrar" [size]="18" [stroke]="2" />
+            </button>
+          </div>
+
+          <h2 class="mt-3 font-display text-[22px] font-semibold leading-7 tracking-[-0.015em] text-gray-900 text-balance">{{ s.titulo }}</h2>
+          <p class="mt-1 text-sm text-gray-600">
+            {{ s.empresaNombre }} · pedida por {{ s.creadaPor?.nombre ?? '—' }} el {{ formatFecha(s.creadoEn) }}
+          </p>
+          <div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
+            <span>Responsable: <span class="font-medium text-gray-800">{{ s.asignadaA?.nombre ?? 'sin asignar' }}</span></span>
+            @if (puedeGestionar() && (s.siguientes.length > 0)) {
+              @if (esMia()) {
+                <button type="button" (click)="asignarme(true)" class="text-gray-400 hover:text-gray-700 hover:underline">Soltar</button>
+              } @else {
+                <button type="button" (click)="asignarme()" class="font-medium text-gray-700 hover:underline">Asignarme</button>
+              }
+            }
+          </div>
+
+          <div class="-mx-6 mt-4 grid grid-cols-3 border-t border-gray-100">
+            @for (c of celdas(); track c.etiqueta; let primero = $first) {
+              <div class="flex flex-col gap-1 pb-3 pt-2.5" [class]="primero ? 'px-6' : 'border-l border-gray-100 px-4'">
+                <span class="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-400">{{ c.etiqueta }}</span>
+                <span class="truncate text-sm font-semibold text-gray-900" [title]="c.valor">{{ c.valor }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+          @if (s.agrupadaEn; as principal) {
+            <div class="flex items-center gap-3 rounded-[10px] border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3">
+              <p class="min-w-0 flex-1 text-[13px] text-[#1e3a8a]">
+                Sumada a la <button type="button" (click)="abrirOtra(principal.id)" class="font-semibold hover:underline">#{{ principal.id }} · {{ principal.titulo }}</button>: avanza con ella.
+              </p>
+              @if (puedeGestionar()) {
+                <button type="button" (click)="desagrupar(s.id)" class="shrink-0 text-[12px] font-medium text-[#1e3a8a] hover:underline">Separar</button>
+              }
+            </div>
+          }
+
+          @if (s.agrupadas.length) {
+            <section>
+              <div class="mb-2.5 flex items-center gap-2">
+                <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+                <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">También la piden</h3>
+              </div>
+              <ul class="overflow-hidden rounded-lg border border-gray-200">
+                @for (a of s.agrupadas; track a.id) {
+                  <li class="flex items-center gap-3 border-b border-gray-100 px-4 py-2 last:border-0">
+                    <span class="min-w-0 flex-1 text-[13px]"><span class="font-medium text-gray-900">{{ a.empresaNombre }}</span> <span class="text-gray-400">· #{{ a.id }} {{ a.titulo }}</span></span>
+                    @if (puedeGestionar()) {
+                      <button type="button" (click)="desagrupar(a.id)" class="text-[11px] text-gray-400 hover:text-gray-700 hover:underline">Separar</button>
+                    }
+                  </li>
+                }
+              </ul>
+              <p class="mt-1.5 text-[11px] text-gray-400">Avanzan con esta: cada cambio de estado y respuesta les llega a sus clientes.</p>
+            </section>
+          }
+
+          <section>
+            <div class="mb-2.5 flex items-center gap-2">
+              <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+              <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Lo que pidió</h3>
+            </div>
+            <p class="whitespace-pre-wrap rounded-lg bg-neutral-100 px-4 py-3 text-[13px] leading-5 text-gray-800">{{ s.descripcion }}</p>
+            <p class="mt-2 text-[11px] leading-4 text-gray-400">{{ tipoInfo[s.tipo].ayuda }}</p>
+          </section>
+
+          <!-- Historial -->
+          <section>
+            <div class="mb-2.5 flex items-center gap-2">
+              <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+              <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Historial</h3>
+            </div>
+            <ol class="flex flex-col gap-3">
+              @for (e of eventos(); track e.id) {
+                <li class="rounded-lg border px-3.5 py-2.5" [class]="!e.visibleCliente ? 'border-[#f3e2b5] bg-[#fffbeb]' : e.lado === 'goods' ? 'border-gray-200 bg-card-bg' : 'border-gray-200 bg-neutral-50'">
+                  <div class="flex items-center gap-2 text-xs">
+                    @if (!e.visibleCliente) {
+                      <tabler-icon [icon]="i.interno" [size]="12" [stroke]="2" class="text-[#92400e]" />
+                    }
+                    <span class="font-semibold text-gray-800">{{ e.titulo }}</span>
+                    <span class="text-gray-400">· {{ e.quien }}{{ e.lado === 'cliente' ? ' (cliente)' : '' }}</span>
+                    <span class="ml-auto text-gray-400">{{ formatFecha(e.creadoEn) }}</span>
+                  </div>
+                  @if (e.texto) {
+                    <p class="mt-1 whitespace-pre-wrap text-[13px] leading-5 text-gray-700">{{ e.texto }}</p>
+                  }
+                </li>
+              }
+            </ol>
+          </section>
+
+          @if (puedeGestionar()) {
+            <!-- Comentar -->
+            <section class="rounded-[10px] border border-gray-200 p-3">
+              <textarea
+                rows="2"
+                [ngModel]="comentario()"
+                (ngModelChange)="comentario.set($event)"
+                [placeholder]="interno() ? 'Nota interna: solo la ve el equipo de Goods' : 'Escríbele al cliente (lo recibe como notificación)'"
+                class="w-full resize-none border-0 bg-transparent p-0 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+              ></textarea>
+              <div class="mt-2 flex items-center gap-2">
+                <div class="flex rounded-full border border-gray-200 bg-card-bg p-0.5 text-[12px]">
+                  <button type="button" (click)="interno.set(false)" class="rounded-full px-2.5 py-0.5 font-medium" [class]="!interno() ? 'bg-canvas-bg text-gray-900' : 'text-gray-500'">Para el cliente</button>
+                  <button type="button" (click)="interno.set(true)" class="rounded-full px-2.5 py-0.5 font-medium" [class]="interno() ? 'bg-[#fef3c7] text-[#92400e]' : 'text-gray-500'">Nota interna</button>
+                </div>
+                <button
+                  type="button"
+                  [disabled]="!comentario().trim() || comentando()"
+                  (click)="comentar()"
+                  class="ml-auto flex items-center gap-1.5 rounded-lg bg-primary-button px-3 py-1.5 text-[12.5px] font-medium text-white hover:opacity-90 disabled:opacity-40"
+                >
+                  <tabler-icon [icon]="i.enviar" [size]="14" [stroke]="2" />
+                  {{ interno() ? 'Guardar nota' : 'Enviar' }}
+                </button>
+              </div>
+            </section>
+          }
+
+          <!-- Acción en curso -->
+          @if (destino(); as d) {
+            <section class="animate-[fade-in-up_0.2s_ease-out] rounded-[10px] border p-4" [class]="d === 'rechazada' || d === 'cancelada' ? 'border-[#f0d8d2] bg-[#fdf6f4]' : 'border-gray-200 bg-neutral-50'">
+              <p class="text-sm font-semibold text-gray-900">{{ estadoInfo[d].texto }}</p>
+              <p class="mt-1 text-xs leading-[18px] text-gray-600 text-pretty">{{ accion[d].explica }}</p>
+
+              @if (d === 'aprobada') {
+                <div class="mt-3 flex gap-2">
+                  @for (a of alcances; track a.valor) {
+                    <button
+                      type="button"
+                      (click)="alcance.set(a.valor)"
+                      class="flex-1 rounded-lg border px-3 py-2 text-left text-[13px]"
+                      [class]="alcance() === a.valor ? 'border-gray-900 bg-card-bg' : 'border-gray-200 bg-card-bg text-gray-600'"
+                    >
+                      <span class="block font-semibold">{{ a.texto }}</span>
+                      <span class="text-[11px] text-gray-500">{{ a.ayuda }}</span>
+                    </button>
+                  }
+                </div>
+                @if (alcance() === 'exclusiva') {
+                  <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-gray-700">
+                    <label class="flex items-center gap-2">
+                      Costo mensual (COP)
+                      <input type="number" min="0" step="1000" [ngModel]="costo()" (ngModelChange)="costo.set($event)" class="w-32 rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-[13px] focus:border-gray-400 focus:outline-none" />
+                    </label>
+                    <label class="flex items-center gap-2">
+                      Entrega comprometida
+                      <input type="date" [min]="hoy" [ngModel]="fechaCompromiso()" (ngModelChange)="fechaCompromiso.set($event)" class="rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-[13px] focus:border-gray-400 focus:outline-none" />
+                    </label>
+                  </div>
+                  <p class="mt-1.5 text-[11px] text-gray-500">Al entregarla, el costo se suma solo al cobro de cada mes de la Empresa.</p>
+                }
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                  <label class="flex flex-col gap-1 text-[11px] text-gray-500">
+                    Reclasificar como
+                    <select [ngModel]="tipoNuevo()" (ngModelChange)="tipoNuevo.set($event)" class="rounded-lg border border-gray-200 bg-card-bg px-2 py-1.5 text-[13px] text-gray-800">
+                      <option value="">{{ tipoInfo[s.tipo].texto }} (sin cambio)</option>
+                      @for (t of tipos; track t.valor) {
+                        <option [value]="t.valor">{{ t.texto }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="flex flex-col gap-1 text-[11px] text-gray-500">
+                    Módulo
+                    <select [ngModel]="moduloId()" (ngModelChange)="moduloId.set($event ? +$event : null)" class="rounded-lg border border-gray-200 bg-card-bg px-2 py-1.5 text-[13px] text-gray-800">
+                      <option [ngValue]="null">Ninguno todavía</option>
+                      @for (m of catalogo(); track m.id) {
+                        <option [ngValue]="m.id">{{ m.nombre }}</option>
+                      }
+                    </select>
+                  </label>
+                </div>
+              }
+
+              @if (d === 'entregada') {
+                <label class="mt-3 flex items-center gap-2 text-[13px] text-gray-800">
+                  <input type="checkbox" [ngModel]="activarModulo()" (ngModelChange)="activarModulo.set($event)" class="rounded border-gray-300" />
+                  Activarle un módulo a {{ s.empresaNombre }}
+                </label>
+                @if (activarModulo()) {
+                  <select [ngModel]="moduloId()" (ngModelChange)="moduloId.set($event ? +$event : null)" class="mt-2 w-full rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-[13px] text-gray-800">
+                    <option [ngValue]="null">Elige el módulo…</option>
+                    @for (m of catalogo(); track m.id) {
+                      <option [ngValue]="m.id">{{ m.nombre }}</option>
+                    }
+                  </select>
+                }
+              }
+
+              @if (accion[d].pideRespuesta !== 'no') {
+                <textarea
+                  rows="3"
+                  [ngModel]="respuesta()"
+                  (ngModelChange)="respuesta.set($event)"
+                  [placeholder]="accion[d].pideRespuesta === 'si' ? 'Respuesta para el cliente (obligatoria)' : 'Mensaje para el cliente (opcional)'"
+                  class="mt-3 w-full resize-none rounded-lg border border-gray-200 bg-card-bg px-3 py-2 text-[13px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+                ></textarea>
+              }
+            </section>
+          }
+
+          @if (puedeGestionar() && puedeAgrupar() && !destino()) {
+            @if (agrupando()) {
+              <section class="rounded-[10px] border border-gray-200 bg-neutral-50 p-4">
+                <p class="text-sm font-semibold text-gray-900">Sumar a otra solicitud igual</p>
+                <p class="mt-1 text-xs leading-[18px] text-gray-600">Si otra Empresa ya pidió lo mismo, súmala: avanza con aquella y la mejora gana prioridad (lo que piden más Empresas va primero).</p>
+                <div class="mt-3 flex items-center gap-2">
+                  <span class="text-[13px] text-gray-600">#</span>
+                  <input type="number" min="1" [ngModel]="principalId()" (ngModelChange)="principalId.set($event ? +$event : null)" placeholder="Número de la solicitud" class="w-44 rounded-lg border border-gray-200 bg-card-bg px-2.5 py-1.5 text-[13px] focus:border-gray-400 focus:outline-none" />
+                  <button type="button" (click)="agrupando.set(false)" class="ml-auto text-[12.5px] text-gray-500 hover:text-gray-800">Cancelar</button>
+                  <button type="button" [disabled]="!principalId()" (click)="agrupar()" class="rounded-lg bg-primary-button px-3 py-1.5 text-[12.5px] font-medium text-white disabled:opacity-40">Sumar</button>
+                </div>
+              </section>
+            } @else {
+              <button type="button" (click)="agrupando.set(true)" class="self-start text-[12.5px] font-medium text-gray-600 hover:text-gray-900 hover:underline">¿Otra Empresa pidió lo mismo? Sumarla a esa solicitud…</button>
+            }
+          }
+
+          @if (errorAccion(); as mensaje) {
+            <p class="rounded-lg bg-field-error-bg px-3 py-2.5 text-[13px] text-badge-error-solid">{{ mensaje }}</p>
+          }
+        </div>
+
+        <!-- Pie: acciones según el estado -->
+        @if (puedeGestionar() && s.siguientes.length) {
+          <div class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-card-bg px-5 py-3">
+            @if (destino()) {
+              <button type="button" (click)="destino.set(null); errorAccion.set(null)" class="rounded-lg px-3 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-200">Volver</button>
+              <button
+                type="button"
+                [disabled]="!puedeConfirmar()"
+                (click)="confirmar()"
+                class="rounded-lg px-3.5 py-2 text-[13px] font-medium transition-all duration-200"
+                [class]="!puedeConfirmar() ? 'cursor-not-allowed bg-badge-neutral-bg text-gray-400' : destino() === 'rechazada' || destino() === 'cancelada' ? 'bg-badge-error-solid text-white hover:opacity-90' : 'bg-primary-button text-white hover:opacity-90'"
+              >
+                Confirmar
+              </button>
+            } @else {
+              @for (sig of s.siguientes; track sig) {
+                <button
+                  type="button"
+                  (click)="iniciar(sig)"
+                  class="rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200"
+                  [class]="sig === 'rechazada' || sig === 'cancelada' ? 'border border-gray-200 bg-card-bg text-gray-600 hover:bg-canvas-bg' : 'bg-primary-button text-white hover:opacity-90'"
+                >
+                  {{ accion[sig].boton }}
+                </button>
+              }
+            }
+          </div>
+        }
+      }
+    </app-pantalla-estado>
+  </div>
+</div>

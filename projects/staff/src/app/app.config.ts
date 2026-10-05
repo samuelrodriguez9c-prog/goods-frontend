@@ -6,6 +6,7 @@ import { providePrimeNG } from 'primeng/config';
 import {
   IconBell,
   IconBuilding,
+  IconBulb,
   IconFileText,
   IconHeadset,
   IconHistory,
@@ -63,6 +64,7 @@ export const appConfig: ApplicationConfig = {
     provideTablerIcons({
       IconBell,
       IconBuilding,
+      IconBulb,
       IconFileText,
       IconUserPlus,
       IconStack2,

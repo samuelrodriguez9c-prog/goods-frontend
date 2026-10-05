@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { EstadoAlerta } from '../../shared/ui/estado-icono/estado-icono.component';
 
@@ -6,11 +6,18 @@ export interface AlertaEnLinea {
   id: number;
   estado: EstadoAlerta;
   titulo: string;
+  /** Va en la misma línea: "Título · texto". Completo al expandir. */
   texto?: string;
   /** Botón opcional; no se muestra mientras `estado === 'cargando'`. */
   accion?: { label: string; ejecutar: () => void };
   /** ms hasta el auto-cierre. `null` = queda hasta que la cierren. */
   autoCierre: number | null;
+  /** Cuerpo expandido. El error abre expandido. */
+  abierta: boolean;
+  /** Sube en cada `resolver()`: el componente reinicia la barra de tiempo. */
+  vuelta: number;
+  /** Animando su salida (300 ms) antes de salir del array. */
+  saliendo: boolean;
 }
 
 export interface AlertaOverlay {
@@ -18,9 +25,7 @@ export interface AlertaOverlay {
   /** `tarjeta` = modal blanco con acciones. `velo` = ícono+texto sobre el velo. */
   variante: 'tarjeta' | 'velo';
   titulo: string;
-  /** Primera mitad de la línea de contexto — el "qué". */
   dato?: string;
-  /** Segunda mitad — el "en qué paso va". Es lo único que cambia al avanzar. */
   paso?: string;
   primario?: { label: string; ejecutar: () => void };
   secundario?: { label: string; ejecutar: () => void };
@@ -28,50 +33,67 @@ export interface AlertaOverlay {
 
 type Parcial = Partial<Omit<AlertaOverlay, 'variante'>>;
 
+const SALIDA_MS = 300;
+
 /**
- * Único dueño de las alertas del panel. Dos superficies:
+ * Único dueño de las alertas del panel (LEEME §12, v2 "Pila oscura").
  *
- * - **en línea** (`enLinea()`): apiladas arriba a la derecha del contenido.
- *   La operación en curso y su resultado son **la misma alerta**: se llama
- *   `mostrar()` y después `resolver(id, …)`. Nunca desaparece una y aparece
- *   otra — el ícono muta en el lugar y ese movimiento es el que comunica.
- * - **overlay** (`overlay()`): una sola, bloqueante, para operaciones que el
- *   usuario no puede abandonar a medias (activar una Empresa, publicar el
- *   catálogo). Mientras `estado === 'cargando'` el shell no debe cerrarla
- *   con `Esc` ni con clic afuera.
+ * - **en línea** (`enLinea()`): pila abajo al centro. La más nueva al frente;
+ *   las demás esperan detrás. **Solo corre el tiempo de la del frente** — las
+ *   de atrás no se cierran sin que nadie las lea. La operación en curso y su
+ *   resultado siguen siendo la misma alerta: `mostrar()` → `resolver(id, …)`.
+ * - **overlay** (`overlay()`): sin cambios.
+ *
+ * API pública igual que antes (`mostrar`, `resolver`, `cerrar`, `seguir`):
+ * ninguna página tiene que cambiar.
  */
 @Injectable({ providedIn: 'root' })
 export class AlertaService {
   private secuencia = 0;
-  private readonly temporizadores = new Map<number, ReturnType<typeof setTimeout>>();
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  private claveFrente = '';
 
   readonly enLinea = signal<AlertaEnLinea[]>([]);
   readonly overlay = signal<AlertaOverlay | null>(null);
+  readonly pausada = signal(false);
+  /** Alto real de la alerta del frente (lo escribe `AlertaPilaComponent`). */
+  readonly altoFrente = signal(44);
+
+  readonly activas = computed(() => this.enLinea().filter((a) => !a.saliendo));
+  readonly frente = computed(() => this.activas().at(-1) ?? null);
+  /** Alto total ocupado por la pila (frente + bordes asomando), para que la Pista suba. */
+  readonly altoPila = computed(() => {
+    const n = this.activas().length;
+    return n ? this.altoFrente() + 9 * Math.min(n - 1, 2) : 0;
+  });
 
   // ── En línea ──────────────────────────────────────────────────────────
 
-  /** Abre una alerta (por defecto en curso) y devuelve su id para resolverla. */
-  mostrar(alerta: Omit<AlertaEnLinea, 'id' | 'estado' | 'autoCierre'> & {
+  mostrar(alerta: Omit<AlertaEnLinea, 'id' | 'estado' | 'autoCierre' | 'abierta' | 'vuelta' | 'saliendo'> & {
     estado?: EstadoAlerta;
     autoCierre?: number | null;
   }): number {
     const id = ++this.secuencia;
     const estado = alerta.estado ?? 'cargando';
-    const item: AlertaEnLinea = {
-      ...alerta,
-      id,
-      estado,
-      autoCierre: alerta.autoCierre ?? this.autoCierrePorDefecto(estado),
-    };
-    this.enLinea.update((xs) => [...xs, item]);
-    this.programarCierre(item);
+    this.enLinea.update((xs) => [
+      ...xs,
+      {
+        ...alerta,
+        id,
+        estado,
+        autoCierre: alerta.autoCierre ?? this.autoCierrePorDefecto(estado),
+        abierta: estado === 'error',
+        vuelta: 0,
+        saliendo: false,
+      },
+    ]);
+    this.sincronizarFrente();
     return id;
   }
 
-  /** Muta una alerta existente. El ícono transiciona; el texto se reemplaza. */
   resolver(
     id: number,
-    cambio: Partial<Omit<AlertaEnLinea, 'id'>> & { estado: EstadoAlerta },
+    cambio: Partial<Omit<AlertaEnLinea, 'id' | 'vuelta' | 'saliendo'>> & { estado: EstadoAlerta },
   ): void {
     this.enLinea.update((xs) =>
       xs.map((a) =>
@@ -80,33 +102,52 @@ export class AlertaService {
               ...a,
               ...cambio,
               autoCierre: cambio.autoCierre ?? this.autoCierrePorDefecto(cambio.estado),
+              abierta: cambio.estado === 'error' ? true : (cambio.abierta ?? a.abierta),
+              vuelta: a.vuelta + 1,
             }
           : a,
       ),
     );
-    const item = this.enLinea().find((a) => a.id === id);
-    if (item) {
-      this.programarCierre(item);
-    }
+    this.sincronizarFrente();
+  }
+
+  alternar(id: number): void {
+    this.enLinea.update((xs) => xs.map((a) => (a.id === id ? { ...a, abierta: !a.abierta } : a)));
   }
 
   cerrar(id: number): void {
-    clearTimeout(this.temporizadores.get(id));
-    this.temporizadores.delete(id);
-    this.enLinea.update((xs) => xs.filter((a) => a.id !== id));
+    this.enLinea.update((xs) => xs.map((a) => (a.id === id ? { ...a, saliendo: true } : a)));
+    this.sincronizarFrente();
+    setTimeout(() => this.enLinea.update((xs) => xs.filter((a) => a.id !== id)), SALIDA_MS);
+  }
+
+  /** Cierra todas menos las que están cargando (no hay nada que descartar). */
+  cerrarTodas(): void {
+    this.activas()
+      .filter((a) => a.estado !== 'cargando')
+      .forEach((a) => this.cerrar(a.id));
+  }
+
+  pausar(): void {
+    this.pausada.set(true);
+    clearTimeout(this.timer);
+  }
+
+  /** Al salir el mouse, la del frente se va 2 s después (no reinicia completo). */
+  reanudar(): void {
+    this.pausada.set(false);
+    const f = this.frente();
+    if (f?.autoCierre != null) this.programar(f.id, 2000);
   }
 
   /**
-   * Azúcar para el caso de siempre: una llamada HTTP con su alerta en línea.
-   *
    *   this.alertas.seguir(this.rolService.asignarPermisos(id, ids), {
    *     titulo: 'Guardando permisos', texto: 'Rol “Soporte”',
    *     exito: { titulo: 'Permisos guardados' },
    *     error: { titulo: 'No se pudo guardar', texto: 'El servidor rechazó el cambio.' },
    *   }).subscribe();
    *
-   * Importante: **no** traga el error — lo vuelve a lanzar para que la página
-   * decida (revertir el borrador, reintentar). Solo se ocupa de la alerta.
+   * No traga el error: lo vuelve a lanzar para que la página decida.
    */
   seguir<T>(
     origen: Observable<T>,
@@ -126,13 +167,12 @@ export class AlertaService {
     );
   }
 
-  // ── Overlay ───────────────────────────────────────────────────────────
+  // ── Overlay (sin cambios) ─────────────────────────────────────────────
 
   abrirOverlay(cfg: Omit<AlertaOverlay, 'estado'> & { estado?: EstadoAlerta }): void {
     this.overlay.set({ estado: 'cargando', ...cfg });
   }
 
-  /** Avanza el texto del paso sin tocar el estado (sigue girando). */
   avanzarOverlay(paso: string): void {
     this.overlay.update((o) => (o ? { ...o, paso } : o));
   }
@@ -147,25 +187,24 @@ export class AlertaService {
 
   // ── Interno ───────────────────────────────────────────────────────────
 
-  /**
-   * El error no se cierra solo: es el único estado que puede exigir una
-   * decisión, y una alerta que se va sola es una alerta que nadie leyó.
-   */
+  /** El error no se cierra solo: una alerta que se va sola es una alerta que nadie leyó. */
   private autoCierrePorDefecto(estado: EstadoAlerta): number | null {
-    if (estado === 'cargando' || estado === 'error') {
-      return null;
-    }
+    if (estado === 'cargando' || estado === 'error') return null;
     return estado === 'success' ? 6000 : 9000;
   }
 
-  private programarCierre(alerta: AlertaEnLinea): void {
-    clearTimeout(this.temporizadores.get(alerta.id));
-    if (alerta.autoCierre === null) {
-      return;
-    }
-    this.temporizadores.set(
-      alerta.id,
-      setTimeout(() => this.cerrar(alerta.id), alerta.autoCierre),
-    );
+  /** Solo la del frente tiene temporizador. Se reprograma si cambia el frente o su estado. */
+  private sincronizarFrente(): void {
+    const f = this.frente();
+    const clave = f ? `${f.id}:${f.estado}:${f.vuelta}` : '';
+    if (clave === this.claveFrente) return;
+    this.claveFrente = clave;
+    clearTimeout(this.timer);
+    if (f?.autoCierre != null && !this.pausada()) this.programar(f.id, f.autoCierre);
+  }
+
+  private programar(id: number, ms: number): void {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.cerrar(id), ms);
   }
 }

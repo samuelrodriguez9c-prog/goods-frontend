@@ -1,0 +1,92 @@
+<!-- projects/staff/src/app/shared/ui/ia-menu-mas/ia-menu-mas.component.html -->
+@let mini = variante() === 'mini';
+<div class="relative shrink-0">
+  <button
+    type="button"
+    (click)="toggle()"
+    aria-label="Más opciones"
+    [attr.aria-expanded]="abierto()"
+    class="flex items-center justify-center rounded-full text-[#111827] transition-colors duration-150 hover:bg-[#f0f0f0]"
+    [class.size-[38px]]="!mini"
+    [class.size-[34px]]="mini"
+    [class.bg-[#f0f0f0]]="abierto()"
+  >
+    <tabler-icon [icon]="i.mas" [size]="mini ? 19 : 20" class="transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]" [class.rotate-45]="abierto()" />
+  </button>
+
+  @if (abierto()) {
+    <div class="fixed inset-0 z-40" (click)="cerrar()"></div>
+    <div
+      class="absolute left-0 z-[41] origin-bottom-left bg-[#1c1c1c] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_24px_48px_-16px_rgba(0,0,0,0.55)] [animation:ia-menu-up_220ms_cubic-bezier(0.2,0.8,0.2,1)]"
+      [class]="mini ? 'bottom-[42px] w-[252px] rounded-[20px] p-[7px]' : 'bottom-[48px] w-64 rounded-[22px] p-2'"
+      (mouseleave)="hover.set(null)"
+      role="menu"
+    >
+      @if (!mini || vista() === 'raiz') {
+        @for (grupo of [grupo1, grupo2]; track $index; let g = $index) {
+          @if (g === 1) { <div class="mx-3 my-1.5 h-px bg-[#333]"></div> }
+          @for (it of grupo; track it.k) {
+            <div class="relative" (mouseenter)="hover.set(it.k)">
+              <button
+                type="button"
+                role="menuitem"
+                (click)="elegir(it.k)"
+                class="flex w-full items-center rounded-xl border-0 text-left text-[#ececec] transition-colors duration-[140ms]"
+                [class]="mini ? 'h-[38px] gap-[13px] px-[11px] text-[13.5px]' : 'h-10 gap-3.5 px-3 text-[14px]'"
+                [style.background]="hover() === it.k ? '#2c2c2c' : 'transparent'"
+              >
+                <tabler-icon [icon]="it.icono" [size]="mini ? 18 : 19" class="text-[#d4d4d4]" />
+                <span class="min-w-0 flex-1 truncate">{{ it.texto }}</span>
+                @if (it.sub) { <tabler-icon [icon]="i.sub" [size]="mini ? 15 : 16" class="text-[#a3a3a3]" /> }
+                @if (externo(it.k)) { <tabler-icon [icon]="i.externo" [size]="14" class="text-[#737373]" /> }
+              </button>
+
+              <!-- Descripción en píldora clara (solo pantalla completa) -->
+              @if (!mini && it.tip && hover() === it.k) {
+                <span class="pointer-events-none absolute left-[calc(100%+20px)] top-1/2 whitespace-nowrap rounded-[10px] bg-[#f1f1f1] px-3 py-[7px] text-[13px] text-[#1f1f1f] shadow-[0_10px_24px_-12px_rgba(0,0,0,0.45)] [animation:ia-tip-in_160ms_ease-out_both]">{{ it.tip }}</span>
+              }
+
+              <!-- Submenú al costado (solo pantalla completa) -->
+              @if (!mini && it.sub && hover() === it.k) {
+                <div class="absolute left-full top-[-8px] z-[2] pl-4">
+                  <div class="w-[270px] rounded-[20px] bg-[#1c1c1c] p-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_24px_48px_-16px_rgba(0,0,0,0.55)] [animation:ia-sub-in_180ms_cubic-bezier(0.2,0.8,0.2,1)]">
+                    <ng-container *ngTemplateOutlet="listaDocs" />
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        }
+      } @else {
+        <!-- Submenú dentro del menú (mini) -->
+        <div class="[animation:ia-sub-in_200ms_cubic-bezier(0.2,0.8,0.2,1)]">
+          <button type="button" (click)="vista.set('raiz')"
+            class="flex h-[34px] w-full items-center gap-2 rounded-xl border-0 bg-transparent px-2 text-[12px] font-medium text-[#8a8a8a] hover:bg-[#2c2c2c] hover:text-[#ececec]">
+            <tabler-icon [icon]="i.volver" [size]="15" />Documentos internos · preguntar sobre
+          </button>
+          <ng-container *ngTemplateOutlet="listaDocs" />
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<ng-template #listaDocs>
+  @if (!mini) { <p class="m-0 px-3 py-1.5 text-[11.5px] font-medium text-[#8a8a8a]">Preguntar sobre</p> }
+  @for (d of documentos().slice(0, 5); track d.id) {
+    <button type="button" (click)="preguntar(d.titulo)"
+      class="flex h-[38px] w-full items-center gap-3 rounded-xl border-0 bg-transparent px-3 text-left text-[13.5px] text-[#ececec] transition-colors duration-[140ms] hover:bg-[#2c2c2c]">
+      <tabler-icon [icon]="i.doc" [size]="17" class="text-[#a3a3a3]" />
+      <span class="min-w-0 flex-1 truncate">{{ d.titulo }}</span>
+    </button>
+  } @empty {
+    <p class="m-0 px-3 py-2 text-[12.5px] text-[#8a8a8a]">Todavía no hay documentos.</p>
+  }
+  <div class="mx-2.5 my-1.5 h-px bg-[#333]"></div>
+  <button type="button" (click)="nuevoDoc()"
+    class="flex h-[38px] w-full items-center gap-3 rounded-xl border-0 bg-transparent px-3 text-left text-[13.5px] text-[#ececec] transition-colors duration-[140ms] hover:bg-[#2c2c2c]">
+    <tabler-icon [icon]="i.mas" [size]="17" class="text-[#2be0d5]" />
+    <span class="flex-1">Agregar documento</span>
+    @if (mini) { <tabler-icon [icon]="i.externo" [size]="14" class="text-[#737373]" /> }
+  </button>
+</ng-template>

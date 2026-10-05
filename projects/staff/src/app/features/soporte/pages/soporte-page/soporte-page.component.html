@@ -452,15 +452,4 @@
     </div>
   </app-pantalla-estado>
 
-  <!-- Aviso de mensaje entrante (siempre en el DOM para animar la salida) -->
-  <button
-    type="button"
-    (click)="abrirToast()"
-    class="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5 rounded-xl bg-[#1a1a1a] py-2.5 pl-3 pr-3.5 text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
-    [class]="toast() ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-4 scale-[0.97] opacity-0'"
-  >
-    <tabler-icon [icon]="i.toast" [size]="16" [stroke]="2" class="text-[#cdfee1]" />
-    <span class="text-[13px]"><strong class="font-semibold">{{ ultimoToast()?.cliente }}</strong> {{ ultimoToast()?.texto }}</span>
-    <span class="border-l border-white/20 pl-2.5 text-[12.5px] font-medium text-[#cdfee1]">Abrir</span>
-  </button>
 </div>

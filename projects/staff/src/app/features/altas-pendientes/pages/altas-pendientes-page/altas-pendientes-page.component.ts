@@ -28,6 +28,7 @@ import {
 import { ActivarEmpresaWizardComponent } from '../activar-empresa-wizard/activar-empresa-wizard.component';
 import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
 import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
+import { filasCambiadas } from '../../../../shared/ui/filas-cambiadas';
 
 /** Días de espera desde los que una alta pasa a estar "pasada de rosca".
  * Mismo umbral ya confirmado con el cliente para `EmpresasPageComponent`
@@ -145,7 +146,12 @@ export class AltasPendientesPageComponent {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
-  protected readonly hayCambiosEnVivo = signal(false);
+  /** Cambios en vivo acumulados desde la última carga — alimenta la
+   *  píldora "N cambios nuevos · Actualizar" (handoff-alertas-pila §2). */
+  protected readonly cambiosEnVivo = signal(0);
+  /** Filas resaltadas 2 s después de tocar "Actualizar". */
+  protected readonly resaltadas = signal<ReadonlySet<number>>(new Set());
+  private compararAlCargar = false;
   protected readonly empresaSeleccionadaWizard = signal<number | null>(null);
 
   protected readonly estadoPantalla = computed<'cargando' | 'error' | 'listo'>(() =>
@@ -304,12 +310,29 @@ export class AltasPendientesPageComponent {
     this.cambiosEnVivoService
       .huboCambio(['empresa', 'suscripcion'])
       .pipe(takeUntilDestroyed())
-      .subscribe(() => this.hayCambiosEnVivo.set(true));
+      .subscribe(() => this.cambiosEnVivo.update((n) => n + 1));
   }
 
   protected actualizarPorCambioEnVivo(): void {
-    this.hayCambiosEnVivo.set(false);
+    this.cambiosEnVivo.set(0);
+    this.compararAlCargar = true;
     this.cargar();
+  }
+
+  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar"
+   *  (handoff-alertas-pila §2). `clave` = id de la fila en pantalla, por si
+   *  no coincide con el id del dato comparado. */
+  private resaltarCambios<T>(
+    antes: readonly T[],
+    despues: readonly T[],
+    id: (f: T) => number,
+    clave: (f: T) => number = id,
+  ): void {
+    if (!this.compararAlCargar) return;
+    this.compararAlCargar = false;
+    const cambiados = filasCambiadas(antes, despues, id);
+    this.resaltadas.set(new Set(despues.filter((f) => cambiados.has(id(f))).map(clave)));
+    setTimeout(() => this.resaltadas.set(new Set()), 2000);
   }
 
   protected cargar(): void {
@@ -325,6 +348,11 @@ export class AltasPendientesPageComponent {
       next: ({ pendientes, esperandoConfirmacion, suscripcionesPendientes, planes }) => {
         const mapaPlan = construirMapaPlanPorEmpresa(suscripcionesPendientes.data, planes.data);
         const conPlan = (empresa: Empresa) => ({ ...empresa, planNombre: mapaPlan.get(empresa.id) ?? null });
+        this.resaltarCambios(
+          [...this.pendientes(), ...this.corroboradas()],
+          [...pendientes.data, ...esperandoConfirmacion.data].map(conPlan),
+          (e) => e.id,
+        );
         this.pendientes.set(pendientes.data.map(conPlan));
         this.corroboradas.set(esperandoConfirmacion.data.map(conPlan));
         this.cargando.set(false);

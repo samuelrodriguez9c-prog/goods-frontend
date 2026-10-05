@@ -29,8 +29,8 @@
   </app-cabecera-modulo>
 
   <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
-  @if (hayCambiosEnVivo()) {
-    <app-aviso-datos-nuevos (actualizar)="actualizarPorCambioEnVivo()" />
+  @if (cambiosEnVivo()) {
+    <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
   }
 
   <app-pantalla-estado
@@ -72,6 +72,7 @@
 
           <div
             class="relative flex overflow-hidden rounded-[10px] border transition-shadow duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.07)]"
+            [class.fila-resaltada]="resaltadas().has(fila.id)"
             [class]="fila.destacada ? 'border-[#eccfc8] bg-[#fdf6f4]' : 'border-gray-200 bg-card-bg'"
           >
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-5 px-5 py-4">
@@ -169,7 +170,10 @@
 
       <div class="mt-3 overflow-hidden rounded-[10px] border border-gray-200 bg-card-bg">
         @for (fila of esperando(); track fila.id) {
-          <div class="flex flex-wrap items-center gap-4 border-b border-gray-100 px-5 py-[13px] last:border-0">
+          <div
+            class="flex flex-wrap items-center gap-4 border-b border-gray-100 px-5 py-[13px] last:border-0"
+            [class.fila-resaltada]="resaltadas().has(fila.id)"
+          >
             <span class="flex size-4 shrink-0 items-center justify-center rounded-full border-2 border-sky-300 bg-card-bg"></span>
             <div class="min-w-[200px] flex-1">
               <span class="text-sm font-medium text-gray-900">{{ fila.nombre }}</span>

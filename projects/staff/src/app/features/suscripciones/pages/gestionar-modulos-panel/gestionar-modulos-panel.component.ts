@@ -52,7 +52,7 @@ const PASA: Record<FiltroModulos, (f: FilaModulo) => boolean> = {
  * - Cada fila tiene un selector de tres posiciones: Quitar (revocado) ·
  *   Plan (sin excepción) · Dar (concedido). Ir a Quitar/Dar abre el motivo
  *   inline con chips sugeridos; volver a Plan quita la excepción al toque,
- *   con "Deshacer" en la Pista.
+ *   con la alerta en línea global.
  *
  * Sigue aplicando cada cambio al toque y emitiendo `actualizada` por cada
  * uno, igual que antes — `EmpresaDetallePanelComponent` lo escucha.
@@ -231,11 +231,11 @@ export class GestionarModulosPanelComponent {
       });
   }
 
-  /** Vuelve al default del plan — sin motivo; "Deshacer" en la Pista
-   * reaplica la excepción anterior tal cual (tipo + motivo). */
+  /** Vuelve al default del plan — sin motivo. Solo avisa la alerta en
+   * línea global: la Pista con "Deshacer" que salía en paralelo se quitó
+   * (2026-10-02) porque duplicaba el aviso. */
   private quitarExcepcion(fila: FilaModulo): void {
-    const previa = fila.override;
-    if (!previa) {
+    if (!fila.override) {
       return;
     }
     this.guardandoCodigo.set(fila.codigo);
@@ -244,7 +244,7 @@ export class GestionarModulosPanelComponent {
       .seguir(this.moduloService.quitar(this.empresaId(), fila.id), {
         titulo: 'Quitando la excepción',
         texto: fila.nombre,
-        exito: { titulo: 'Vuelve al default del plan' },
+        exito: { titulo: 'Vuelve al default del plan', texto: fila.nombre },
         error: { titulo: 'No se pudo quitar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({
@@ -252,9 +252,6 @@ export class GestionarModulosPanelComponent {
         this.guardandoCodigo.set(null);
         this.recargarDesglose();
         this.actualizada.emit();
-        this.pista.hecho(`${fila.nombre} vuelve al plan`, () =>
-          this.aplicar(fila, previa.tipo, previa.motivo ?? undefined),
-        );
       },
       error: () => this.guardandoCodigo.set(null),
     });

@@ -26,6 +26,8 @@ import {
 import { forkJoin } from 'rxjs';
 import { Router } from '@angular/router';
 import { AlertaService } from '../../../../core/ui/alerta.service';
+import { descargarCsv } from '../../../../core/http/descarga';
+import { environment } from '../../../../../environments/environment';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import {
   CabeceraModuloComponent,
@@ -37,11 +39,12 @@ import { EmpresaService } from '../../../../core/catalog/empresa.service';
 import { PlanService } from '../../../../core/catalog/plan.service';
 import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
 import { construirMapaPlanPorEmpresa } from '../../../../core/catalog/plan-lookup.util';
-import { Empresa, EstadoEmpresa } from '../../../../core/catalog/models/empresa.model';
+import { Empresa, EstadoEmpresa, marcaAcceso } from '../../../../core/catalog/models/empresa.model';
 import { EmpresaDetallePanelComponent } from '../empresa-detalle-panel/empresa-detalle-panel.component';
 import { ActivarEmpresaWizardComponent } from '../../../altas-pendientes/pages/activar-empresa-wizard/activar-empresa-wizard.component';
 import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
 import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nuevos/aviso-datos-nuevos.component';
+import { filasCambiadas } from '../../../../shared/ui/filas-cambiadas';
 
 /** Los 7 estados reales (ver `EstadoEmpresa`), en el mismo orden en que
  * recorre el flujo de alta asistida (§1/§5.1 de
@@ -204,7 +207,12 @@ export class EmpresasPageComponent {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
-  protected readonly hayCambiosEnVivo = signal(false);
+  /** Cambios en vivo acumulados desde la última carga — alimenta la
+   *  píldora "N cambios nuevos · Actualizar" (handoff-alertas-pila §2). */
+  protected readonly cambiosEnVivo = signal(0);
+  /** Filas resaltadas 2 s después de tocar "Actualizar". */
+  protected readonly resaltadas = signal<ReadonlySet<number>>(new Set());
+  private compararAlCargar = false;
   protected readonly filas = signal<FilaEmpresa[]>([]);
   protected readonly skeletons = [1, 2, 3, 4, 5, 6];
 
@@ -443,14 +451,31 @@ export class EmpresasPageComponent {
   constructor() {
     this.cargar();
     this.cambiosEnVivoService
-      .huboCambio(['empresa', 'suscripcion'])
+      .huboCambio(['empresa', 'suscripcion', 'facturacion'])
       .pipe(takeUntilDestroyed())
-      .subscribe(() => this.hayCambiosEnVivo.set(true));
+      .subscribe(() => this.cambiosEnVivo.update((n) => n + 1));
   }
 
   protected actualizarPorCambioEnVivo(): void {
-    this.hayCambiosEnVivo.set(false);
+    this.cambiosEnVivo.set(0);
+    this.compararAlCargar = true;
     this.cargar();
+  }
+
+  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar"
+   *  (handoff-alertas-pila §2). `clave` = id de la fila en pantalla, por si
+   *  no coincide con el id del dato comparado. */
+  private resaltarCambios<T>(
+    antes: readonly T[],
+    despues: readonly T[],
+    id: (f: T) => number,
+    clave: (f: T) => number = id,
+  ): void {
+    if (!this.compararAlCargar) return;
+    this.compararAlCargar = false;
+    const cambiados = filasCambiadas(antes, despues, id);
+    this.resaltadas.set(new Set(despues.filter((f) => cambiados.has(id(f))).map(clave)));
+    setTimeout(() => this.resaltadas.set(new Set()), 2000);
   }
 
   protected cargar(): void {
@@ -464,6 +489,11 @@ export class EmpresasPageComponent {
     }).subscribe({
       next: ({ empresas, suscripcionesActivas, planes }) => {
         const mapaPlan = construirMapaPlanPorEmpresa(suscripcionesActivas.data, planes.data);
+        this.resaltarCambios(
+          this.filas(),
+          empresas.data.map((e) => ({ ...e, planNombre: mapaPlan.get(e.id) ?? null })),
+          (e) => e.id,
+        );
         this.filas.set(
           empresas.data.map((empresa) => ({
             ...empresa,
@@ -651,6 +681,9 @@ export class EmpresasPageComponent {
     );
   }
 
+  /** Ver `marcaAcceso` (2026-10-04). */
+  protected readonly marcaAcceso = marcaAcceso;
+
   protected tonoDe(estado: string): StatusBadgeTone {
     return this.tonoPorEstado[estado as EstadoEmpresa] ?? 'neutral';
   }
@@ -659,15 +692,35 @@ export class EmpresasPageComponent {
     return ETIQUETA_POR_ESTADO[estado as EstadoEmpresa] ?? estado;
   }
 
-  /** TODO: modal de creación manual de Empresa — no forma parte de este
-   * rediseño, queda pendiente de una tarea aparte (ver el mismo TODO en
-   * el handoff original). */
-  protected abrirNuevaEmpresa(): void {}
+  /** No hay alta "a mano" (se quitó `POST /empresas`, que creaba una
+   *  Empresa activa sin suscripción ni dueño): staff carga el registro
+   *  público en nombre del negocio y el alta sigue el camino normal
+   *  (Altas pendientes → activar), con plan, suscripción y dueño. */
+  protected abrirNuevaEmpresa(): void {
+    window.open(environment.registroPublicoUrl, '_blank', 'noopener');
+  }
 
-  /** TODO: exportar `filasFiltradas()` a CSV — no forma parte de este
-   * rediseño, queda pendiente de una tarea aparte (ver el mismo TODO en
-   * el handoff original). */
-  protected exportar(): void {}
+  /** Las Empresas del filtro actual (todas las páginas) en CSV. */
+  protected exportar(): void {
+    descargarCsv(
+      'goods-empresas',
+      ['Id', 'Empresa', 'Rubro', 'Estado', 'Acceso', 'Plan', 'Próximo vencimiento', 'Correo', 'Teléfono', 'Dueño', 'Correo del dueño', 'Registrada el'],
+      this.filasFiltradas().map((e) => [
+        e.id,
+        e.nombre,
+        e.rubro,
+        ETIQUETA_POR_ESTADO[e.estado] ?? e.estado,
+        marcaAcceso(e)?.texto ?? (e.estado === 'activa' ? 'Al día' : ''),
+        e.planNombre,
+        e.acceso?.fechaProximoVencimiento?.slice(0, 10),
+        e.correoContacto,
+        e.telefonoContacto,
+        [e.duenoNombres, e.duenoApellidos].filter(Boolean).join(' ') || null,
+        e.duenoCorreo,
+        e.creadoEn?.slice(0, 10),
+      ]),
+    );
+  }
 }
 
 function mismoGrupo(a: EstadoEmpresa[] | null, b: EstadoEmpresa[]): boolean {

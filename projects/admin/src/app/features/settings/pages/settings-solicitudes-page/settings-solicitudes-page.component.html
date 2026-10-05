@@ -1,0 +1,254 @@
+<div class="p-8">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="max-w-[640px]">
+      <h1 class="text-lg font-semibold text-gray-900">Solicitudes a Goods</h1>
+      <p class="mt-2 text-sm text-gray-500">
+        ¿Te falta algo? Pide una mejora, un dato propio o una sección nueva. El equipo de Goods la revisa, te responde
+        acá y te avisa cuando esté lista.
+      </p>
+    </div>
+    <button
+      type="button"
+      (click)="nueva()"
+      class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700"
+    >
+      <tabler-icon [icon]="i.nueva" [size]="16" [stroke]="2" />
+      Nueva solicitud
+    </button>
+  </div>
+
+  @if (cargando()) {
+    <p class="mt-6 text-sm text-gray-400">Cargando…</p>
+  } @else if (error()) {
+    <p class="mt-6 text-sm text-red-600">{{ error() }}</p>
+  } @else {
+    <div class="mt-6 grid gap-5 lg:grid-cols-[minmax(300px,380px)_1fr]">
+      <!-- Lista -->
+      <div class="flex flex-col gap-4">
+        @if (!lista().length) {
+          <div class="rounded-2xl bg-card-bg p-6 text-center shadow-sm">
+            <tabler-icon [icon]="i.idea" [size]="28" [stroke]="1.5" class="mx-auto text-gray-300" />
+            <p class="mt-2 text-sm font-medium text-gray-900">Todavía no pediste nada</p>
+            <p class="mt-1 text-xs text-gray-500">Cuando lo hagas, acá ves en qué va cada pedido.</p>
+          </div>
+        }
+        @for (grupo of [{ titulo: 'En curso', items: abiertas() }, { titulo: 'Cerradas', items: cerradas() }]; track grupo.titulo) {
+          @if (grupo.items.length) {
+            <div>
+              <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">{{ grupo.titulo }}</p>
+              <div class="flex flex-col gap-2">
+                @for (s of grupo.items; track s.id) {
+                  <button
+                    type="button"
+                    (click)="abrir(s.id)"
+                    class="rounded-xl bg-card-bg px-4 py-3 text-left shadow-sm ring-1 transition-shadow duration-150 hover:shadow"
+                    [class]="abierta()?.id === s.id ? 'ring-gray-900' : 'ring-transparent'"
+                  >
+                    <div class="flex items-start gap-2">
+                      <span class="min-w-0 flex-1 text-sm font-medium text-gray-900">{{ s.titulo }}</span>
+                      <app-status-badge [label]="estadoInfo[s.estado].texto" [tone]="estadoInfo[s.estado].tono" />
+                    </div>
+                    <p class="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+                      @if (s.ultimaRespuestaDeGoods && grupo.titulo === 'En curso') {
+                        <span class="size-1.5 rounded-full bg-[#2c6ecb]"></span>
+                        <span class="font-medium text-[#2c6ecb]">Goods respondió</span> ·
+                      }
+                      actualizada el {{ fecha(s.actualizadoEn) }}
+                    </p>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Detalle / nueva -->
+      <div>
+        @if (creando()) {
+          <div class="rounded-2xl bg-card-bg p-6 shadow-sm">
+            <div class="flex items-center">
+              <h2 class="text-base font-semibold text-gray-900">Nueva solicitud</h2>
+              <button type="button" (click)="cerrar()" aria-label="Cerrar" class="ml-auto rounded-lg p-1 text-gray-400 hover:bg-canvas-bg hover:text-gray-600">
+                <tabler-icon [icon]="i.cerrar" [size]="18" [stroke]="2" />
+              </button>
+            </div>
+
+            <p class="mt-4 text-sm font-medium text-gray-700">¿Qué necesitas?</p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+              @for (t of tipos; track t.valor) {
+                <button
+                  type="button"
+                  (click)="tipo.set(t.valor)"
+                  class="rounded-xl border px-3.5 py-2.5 text-left transition-colors duration-150"
+                  [class]="tipo() === t.valor ? 'border-gray-900 bg-white' : 'border-gray-200 bg-white hover:border-gray-300'"
+                >
+                  <span class="block text-sm font-medium text-gray-900">{{ t.texto }}</span>
+                  <span class="mt-0.5 block text-xs text-gray-500">{{ t.ejemplo }}</span>
+                </button>
+              }
+            </div>
+
+            @if (tipo() === 'ajuste_modulo') {
+              <label class="mt-4 block text-sm font-medium text-gray-700">
+                ¿En qué sección?
+                <select
+                  [ngModel]="moduloCodigo()"
+                  (ngModelChange)="moduloCodigo.set($event)"
+                  class="mt-1.5 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800"
+                >
+                  <option value="">No estoy seguro</option>
+                  @for (m of misModulos(); track m.codigo) {
+                    <option [value]="m.codigo">{{ m.nombre }}</option>
+                  }
+                </select>
+              </label>
+            }
+
+            <label class="mt-4 block text-sm font-medium text-gray-700">
+              Título
+              <input
+                type="text"
+                maxlength="140"
+                [ngModel]="titulo()"
+                (ngModelChange)="titulo.set($event)"
+                placeholder="En pocas palabras, ej.: “Filtrar pedidos por barrio”"
+                class="mt-1.5 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400"
+              />
+            </label>
+            <label class="mt-4 block text-sm font-medium text-gray-700">
+              Cuéntanos más
+              <textarea
+                rows="5"
+                maxlength="4000"
+                [ngModel]="descripcion()"
+                (ngModelChange)="descripcion.set($event)"
+                placeholder="Qué necesitas, para qué lo usarías y cómo lo haces hoy."
+                class="mt-1.5 block w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400"
+              ></textarea>
+            </label>
+            <p class="mt-2 text-xs text-gray-500">
+              {{ tipoElegido().ejemplo }} Si sirve para otros negocios, lo sumamos para todos sin costo; si es algo solo
+              tuyo, te contamos el costo antes de hacerlo.
+            </p>
+
+            @if (errorForm(); as m) {
+              <p class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ m }}</p>
+            }
+
+            <div class="mt-5 flex justify-end gap-2">
+              <button type="button" (click)="cerrar()" class="rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-canvas-bg">Cancelar</button>
+              <button
+                type="button"
+                [disabled]="!formValido()"
+                (click)="enviar()"
+                class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40"
+              >
+                <tabler-icon [icon]="i.enviar" [size]="15" [stroke]="2" />
+                {{ enviando() ? 'Enviando…' : 'Enviar a Goods' }}
+              </button>
+            </div>
+          </div>
+        } @else if (abierta(); as s) {
+          <div class="rounded-2xl bg-card-bg p-6 shadow-sm">
+            <div class="flex items-start gap-3">
+              <div class="min-w-0 flex-1">
+                <h2 class="text-base font-semibold text-gray-900">{{ s.titulo }}</h2>
+                <p class="mt-1 text-xs text-gray-500">
+                  #{{ s.id }} · {{ s.creadaPor?.nombre ?? '' }} · {{ fecha(s.creadoEn) }}
+                  @if (s.modulo) { · {{ s.modulo.nombre }} }
+                </p>
+              </div>
+              <app-status-badge [label]="estadoInfo[s.estado].texto" [tone]="estadoInfo[s.estado].tono" dot="filled" />
+              <button type="button" (click)="cerrar()" aria-label="Cerrar" class="rounded-lg p-1 text-gray-400 hover:bg-canvas-bg hover:text-gray-600">
+                <tabler-icon [icon]="i.cerrar" [size]="18" [stroke]="2" />
+              </button>
+            </div>
+
+            <p class="mt-3 rounded-xl bg-canvas-bg px-4 py-3 text-sm text-gray-600">{{ estadoInfo[s.estado].explica }}</p>
+
+            @if (s.estado === 'aprobada' || s.estado === 'en_desarrollo' || s.estado === 'entregada') {
+              @if (s.alcance) {
+                <p class="mt-3 text-sm text-gray-700">
+                  @if (s.alcance === 'para_todos') {
+                    Se suma a Goods para todos los negocios, sin costo para ti.
+                  } @else {
+                    Es una mejora solo para tu negocio{{ s.costoMensual ? ', con un costo de $' + s.costoMensual.toLocaleString('es-CO') + ' al mes que se suma a tu cobro mensual' : ', sin costo adicional' }}.
+                    @if (s.fechaCompromiso && s.estado !== 'entregada') {
+                      La entregamos a más tardar el {{ fecha(s.fechaCompromiso + 'T12:00:00') }}.
+                    }
+                  }
+                </p>
+              }
+            }
+
+            @if (s.otrosNegocios > 0) {
+              <p class="mt-3 text-sm text-gray-700">
+                {{ s.otrosNegocios === 1 ? 'Otro negocio pidió' : s.otrosNegocios + ' negocios más pidieron' }} algo muy parecido: eso le da prioridad.
+              </p>
+            }
+
+            <p class="mt-4 text-xs font-medium uppercase tracking-wide text-gray-400">Lo que pediste</p>
+            <p class="mt-1.5 whitespace-pre-wrap text-sm text-gray-800">{{ s.descripcion }}</p>
+
+            <p class="mt-5 text-xs font-medium uppercase tracking-wide text-gray-400">Conversación</p>
+            <ol class="mt-2 flex flex-col gap-2">
+              @for (e of eventos(); track e.id) {
+                <li class="rounded-xl px-4 py-2.5" [class]="e.deGoods ? 'bg-[#eef4fd]' : 'bg-canvas-bg'">
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="font-medium text-gray-800">{{ e.titulo }}</span>
+                    <span class="ml-auto text-gray-400">{{ fecha(e.creadoEn) }}</span>
+                  </div>
+                  @if (e.texto) {
+                    <p class="mt-1 whitespace-pre-wrap text-sm text-gray-700">{{ e.texto }}</p>
+                  }
+                </li>
+              }
+            </ol>
+
+            @if (s.estado !== 'cancelada') {
+              <div class="mt-4 flex items-end gap-2">
+                <textarea
+                  rows="2"
+                  [ngModel]="comentario()"
+                  (ngModelChange)="comentario.set($event)"
+                  placeholder="Escríbele al equipo de Goods"
+                  class="min-w-0 flex-1 resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400"
+                ></textarea>
+                <button
+                  type="button"
+                  [disabled]="!comentario().trim() || comentando()"
+                  (click)="comentar()"
+                  class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40"
+                >
+                  <tabler-icon [icon]="i.enviar" [size]="15" [stroke]="2" />
+                  Enviar
+                </button>
+              </div>
+            }
+
+            @if (errorDetalle(); as m) {
+              <p class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ m }}</p>
+            }
+
+            @if (s.cancelable) {
+              <div class="mt-5 border-t border-gray-100 pt-4 text-right">
+                @if (confirmandoRetiro()) {
+                  <span class="mr-2 text-sm text-gray-600">¿Retirar esta solicitud?</span>
+                  <button type="button" (click)="confirmandoRetiro.set(false)" class="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-canvas-bg">No</button>
+                  <button type="button" (click)="retirar()" class="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">Sí, retirar</button>
+                } @else {
+                  <button type="button" (click)="confirmandoRetiro.set(true)" class="text-sm text-gray-500 hover:text-red-600 hover:underline">Retirar solicitud</button>
+                }
+              </div>
+            }
+          </div>
+        } @else if (lista().length) {
+          <div class="hidden rounded-2xl border border-dashed border-gray-200 p-10 text-center text-sm text-gray-400 lg:block">
+            Elige una solicitud para ver la conversación.
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

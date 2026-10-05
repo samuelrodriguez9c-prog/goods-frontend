@@ -1,0 +1,256 @@
+<div class="animate-[fade-in-up_0.15s_ease-out] fixed inset-0 z-50 flex justify-end bg-black/50" (click)="onBackdropClick($event)">
+  <div class="animate-[slide-in-right_0.2s_ease-out] flex h-full w-full max-w-[520px] flex-col bg-card-bg shadow-xl">
+    <div class="shrink-0 border-b border-gray-200 px-6 py-4">
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Facturación</span>
+        <button
+          type="button"
+          (click)="cerrar.emit()"
+          aria-label="Cerrar"
+          class="ml-auto rounded-lg p-[5px] text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-gray-600"
+        >
+          <tabler-icon [icon]="i.cerrar" [size]="18" [stroke]="2" />
+        </button>
+      </div>
+      <h2 class="mt-1 font-display text-[22px] font-semibold leading-7 tracking-[-0.015em] text-gray-900">Registrar pago</h2>
+      <p class="mt-0.5 text-xs text-gray-500">Renueva la suscripción de la Empresa un mes. Para leer un comprobante con IA, usa el asistente.</p>
+    </div>
+
+    <div class="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+      <!-- 1. Empresa -->
+      <section>
+        <div class="mb-2.5 flex items-center gap-2">
+          <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+          <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Empresa</h3>
+        </div>
+
+        @if (empresa(); as e) {
+          <div class="flex items-center gap-3 rounded-[9px] border border-primary-button bg-neutral-50 px-4 py-3">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-button font-display text-sm font-semibold text-white">
+              {{ e.nombre.charAt(0) }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-semibold text-gray-900">{{ e.nombre }}</p>
+              <p class="mt-0.5 truncate text-xs text-gray-500">
+                @if (cuenta(); as c) {
+                  {{ c.suscripcion?.plan?.nombre ?? 'Sin plan' }}
+                  @if (c.suscripcion?.fechaProximoVencimiento) {
+                    · vence {{ formatFecha(c.suscripcion?.fechaProximoVencimiento) }}
+                  }
+                } @else {
+                  Cargando su estado de cuenta…
+                }
+              </p>
+            </div>
+            <button type="button" (click)="cambiarEmpresa()" class="shrink-0 text-xs font-medium text-gray-500 hover:text-gray-900">Cambiar</button>
+          </div>
+        } @else {
+          <label class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-gray-400">
+            <tabler-icon [icon]="i.buscar" [size]="15" [stroke]="2" class="text-gray-400" />
+            <input
+              type="search"
+              [ngModel]="busqueda()"
+              (ngModelChange)="escribir($event)"
+              placeholder="Buscar la Empresa por nombre"
+              class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+            />
+            @if (buscando()) {
+              <span class="size-3.5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-500"></span>
+            }
+          </label>
+          @if (resultados().length) {
+            <div class="mt-2 overflow-hidden rounded-lg border border-gray-200">
+              @for (e of resultados(); track e.id) {
+                <button
+                  type="button"
+                  (click)="elegir(e)"
+                  class="flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2.5 text-left last:border-0 hover:bg-neutral-50"
+                >
+                  <span class="flex size-[30px] shrink-0 items-center justify-center rounded-lg bg-[#f1f1f1] text-[11px] font-semibold text-gray-700">
+                    {{ e.nombre.charAt(0) }}
+                  </span>
+                  <span class="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-900">{{ e.nombre }}</span>
+                  <span class="text-[11px] text-gray-400">#{{ e.id }}</span>
+                </button>
+              }
+            </div>
+          } @else if (busqueda().trim() && !buscando()) {
+            <p class="mt-2 text-xs text-gray-400">Ninguna Empresa con ese nombre.</p>
+          }
+        }
+
+        @if (bloqueo(); as b) {
+          <p class="mt-2.5 rounded-lg bg-field-error-bg px-3 py-2.5 text-[13px] text-badge-error-solid">{{ b }}</p>
+        }
+      </section>
+
+      <!-- 2. Pago -->
+      <section [class.pointer-events-none]="!cuenta() || bloqueo()" [class.opacity-50]="!cuenta() || bloqueo()">
+        <div class="mb-2.5 flex items-center gap-2">
+          <span class="h-px w-4 shrink-0 bg-gray-300"></span>
+          <h3 class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Pago</h3>
+        </div>
+
+        <div class="grid grid-cols-[1fr_auto] gap-3">
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-medium text-gray-600">Monto</span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              [ngModel]="monto()"
+              (ngModelChange)="monto.set($event)"
+              class="rounded-lg border border-gray-200 px-3 py-2 text-[15px] font-semibold tabular-nums text-gray-900 focus:border-gray-400 focus:outline-none"
+            />
+          </label>
+          <div class="flex flex-col gap-1">
+            <span class="text-xs font-medium text-gray-600">Moneda</span>
+            <div class="flex rounded-lg border border-gray-200 p-0.5">
+              @for (m of ['COP', 'USD']; track m) {
+                <button
+                  type="button"
+                  (click)="moneda.set($any(m))"
+                  class="rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150"
+                  [class]="moneda() === m ? 'bg-primary-button text-white' : 'text-gray-600 hover:bg-canvas-bg'"
+                >
+                  {{ m }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-medium text-gray-600">Fecha de pago</span>
+            <input
+              type="date"
+              [max]="hoy"
+              [ngModel]="fecha()"
+              (ngModelChange)="fecha.set($event)"
+              class="rounded-lg border border-gray-200 px-3 py-2 text-[13px] text-gray-900 focus:border-gray-400 focus:outline-none"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-medium text-gray-600">Método</span>
+            <select
+              [ngModel]="metodo()"
+              (ngModelChange)="metodo.set($event)"
+              class="rounded-lg border border-gray-200 py-2 pl-3 pr-8 text-[13px] text-gray-900 focus:border-gray-400 focus:outline-none"
+            >
+              @for (m of metodos; track m.valor) {
+                <option [value]="m.valor">{{ m.texto }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-medium text-gray-600">Referencia</span>
+            <input
+              type="text"
+              maxlength="120"
+              [ngModel]="referencia()"
+              (ngModelChange)="referencia.set($event)"
+              placeholder="N.º de transacción o comprobante"
+              class="rounded-lg border border-gray-200 px-3 py-2 text-[13px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs font-medium text-gray-600">Entidad</span>
+            <input
+              type="text"
+              maxlength="120"
+              [ngModel]="entidad()"
+              (ngModelChange)="entidad.set($event)"
+              placeholder="Banco"
+              class="w-[150px] rounded-lg border border-gray-200 px-3 py-2 text-[13px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+            />
+          </label>
+        </div>
+
+        <label class="mt-3 flex flex-col gap-1">
+          <span class="text-xs font-medium text-gray-600">Notas <span class="font-normal text-gray-400">(opcional)</span></span>
+          <textarea
+            rows="2"
+            [ngModel]="notas()"
+            (ngModelChange)="notas.set($event)"
+            class="resize-none rounded-lg border border-gray-200 px-3 py-2 text-[13px] text-gray-900 focus:border-gray-400 focus:outline-none"
+          ></textarea>
+        </label>
+
+        <label class="mt-3 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 px-4 py-3 hover:bg-neutral-50">
+          <tabler-icon [icon]="i.archivo" [size]="18" [stroke]="1.75" class="text-gray-400" />
+          <span class="min-w-0 flex-1 truncate text-[13px]" [class]="archivo() ? 'font-medium text-gray-900' : 'text-gray-500'">
+            {{ archivo()?.name ?? 'Adjuntar comprobante (opcional)' }}
+          </span>
+          @if (archivo()) {
+            <button type="button" (click)="$event.preventDefault(); archivo.set(null)" class="text-xs text-gray-400 hover:text-gray-700">Quitar</button>
+          }
+          <input type="file" accept="application/pdf,image/*" class="hidden" (change)="elegirArchivo($event)" />
+        </label>
+      </section>
+
+      @if (vistaPrevia(); as v) {
+        <div class="animate-[fade-in-up_0.2s_ease-out] rounded-[9px] bg-neutral-100 px-[15px] py-3.5">
+          <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">Qué pasa al registrar</p>
+          <div class="flex items-start gap-2.5 py-[3px]">
+            <tabler-icon [icon]="i.ok" [size]="14" [stroke]="2" class="mt-[3px] shrink-0 text-gray-500" />
+            <p class="text-xs leading-[18px] text-gray-600">
+              Cubre <strong class="font-semibold text-gray-900">{{ v.periodo }}</strong>{{ v.reactiva ? ' y reactiva la suscripción vencida.' : '.' }}
+            </p>
+          </div>
+          <div class="flex items-start gap-2.5 py-[3px]">
+            <tabler-icon [icon]="i.ok" [size]="14" [stroke]="2" class="mt-[3px] shrink-0 text-gray-500" />
+            <p class="text-xs leading-[18px] text-gray-600">
+              @if (v.cobro; as cobro) {
+                Liquida el cobro pendiente de <strong class="font-semibold text-gray-900">{{ formatMonto(cobro.monto) }}</strong>{{ cobro.atrasado ? ' (atrasado)' : '' }}.
+              } @else {
+                Queda registrado como el cobro de ese período.
+              }
+              El panel del cliente se actualiza al instante.
+            </p>
+          </div>
+          @if (v.enMoraDesde) {
+            <div class="flex items-start gap-2.5 py-[3px]">
+              <tabler-icon [icon]="i.info" [size]="14" [stroke]="2" class="mt-[3px] shrink-0 text-badge-error-solid" />
+              <p class="text-xs leading-[18px] text-gray-600">
+                Estaba en mora desde el {{ v.enMoraDesde }}: el mes nuevo arranca en la fecha del pago.
+              </p>
+            </div>
+          }
+          @if (v.diferencia !== null && v.precioPlan !== null) {
+            <div class="flex items-start gap-2.5 py-[3px]">
+              <tabler-icon [icon]="i.info" [size]="14" [stroke]="2" class="mt-[3px] shrink-0 text-amber-700" />
+              <p class="text-xs leading-[18px] text-amber-800">
+                {{ v.conExtras ? 'La cuota del mes (plan + extras) es' : 'El plan cuesta' }} {{ formatMonto(v.precioPlan) }}: este pago es {{ formatMonto(v.diferencia < 0 ? -v.diferencia : v.diferencia) }}
+                {{ v.diferencia < 0 ? 'menos' : 'más' }}. Se puede registrar igual.
+              </p>
+            </div>
+          }
+        </div>
+      }
+
+      @if (error(); as mensaje) {
+        <p class="rounded-lg bg-field-error-bg px-3 py-2.5 text-[13px] text-badge-error-solid">{{ mensaje }}</p>
+      }
+    </div>
+
+    <div class="flex shrink-0 items-center justify-end gap-3 border-t border-gray-200 bg-card-bg px-5 py-3">
+      <button
+        type="button"
+        (click)="cerrar.emit()"
+        class="rounded-lg px-3 py-2.5 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:bg-gray-200"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        [disabled]="!puedeGuardar()"
+        (click)="guardar()"
+        class="flex items-center gap-[7px] rounded-lg px-3.5 py-2.5 text-[13px] font-medium transition-all duration-200"
+        [class]="puedeGuardar() ? 'bg-primary-button text-white hover:-translate-y-px hover:opacity-90' : 'cursor-not-allowed bg-badge-neutral-bg text-gray-400'"
+      >
+        <tabler-icon [icon]="i.ok" [size]="15" [stroke]="2" />
+        {{ guardando() ? 'Registrando…' : 'Registrar pago' }}
+      </button>
+    </div>
+  </div>
+</div>

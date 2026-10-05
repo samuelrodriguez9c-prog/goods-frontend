@@ -28,7 +28,6 @@ import {
   IconInbox,
   IconInfoCircle,
   IconLock,
-  IconMessageCircle2,
   IconMoodEmpty,
   IconSearch,
   IconUser,
@@ -40,6 +39,7 @@ import {
 } from '@tabler/icons-angular';
 import { Subscription, finalize } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { AlertaService } from '../../../../core/ui/alerta.service';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { ChatService } from '../../../../core/chat/chat.service';
 import {
@@ -137,6 +137,7 @@ interface Chip {
 })
 export class SoportePageComponent implements OnDestroy {
   private readonly chatService = inject(ChatService);
+  private readonly alertas = inject(AlertaService);
   private readonly authService = inject(AuthService);
   private readonly realtimeService = inject(RealtimeService);
   private readonly usuarioService = inject(UsuarioService);
@@ -156,7 +157,6 @@ export class SoportePageComponent implements OnDestroy {
     candado: IconLock,
     citar: IconCornerUpLeft,
     enviar: IconCornerDownLeft,
-    toast: IconMessageCircle2,
     vacio: IconMoodEmpty,
     sinAgente: IconUserQuestion,
     info: IconInfoCircle,
@@ -227,8 +227,10 @@ export class SoportePageComponent implements OnDestroy {
   /** ids de mensajes/filas que llegaron en vivo — son los únicos que animan. */
   private readonly recientes = signal<ReadonlySet<number>>(new Set());
   private readonly filasRecientes = signal<ReadonlySet<number>>(new Set());
-  protected readonly toast = signal<{ id: number; cliente: string; texto: string } | null>(null);
-  protected readonly ultimoToast = signal<{ id: number; cliente: string; texto: string } | null>(null);
+  /** Aviso de mensaje entrante en la pila global (AlertaService) — antes
+   *  era un toast local abajo al centro que se encimaba con la pila
+   *  (2026-10-02). Se guarda para cerrarlo al abrir esa conversación. */
+  private aviso: { alertaId: number; conversacionId: number } | null = null;
   /** Reloj para los tiempos relativos ("38 min") — se refresca cada 30 s. */
   private readonly ahora = signal(Date.now());
 
@@ -245,7 +247,6 @@ export class SoportePageComponent implements OnDestroy {
   private mensajeSub: Subscription | undefined;
   private asignadaSub: Subscription | undefined;
   private reloj: ReturnType<typeof setInterval> | undefined;
-  private toastTimer: ReturnType<typeof setTimeout> | undefined;
   private primeraCargaHilo = true;
 
   @ViewChild('inputMensaje') private readonly inputMensajeRef?: ElementRef<HTMLTextAreaElement>;
@@ -478,7 +479,6 @@ export class SoportePageComponent implements OnDestroy {
     this.mensajeSub?.unsubscribe();
     this.asignadaSub?.unsubscribe();
     clearInterval(this.reloj);
-    clearTimeout(this.toastTimer);
   }
 
   // ── Teclado y clic afuera ───────────────────────────────────────────────
@@ -575,7 +575,10 @@ export class SoportePageComponent implements OnDestroy {
     this.menuAbierto.set(false);
     this.respondiendoA.set(null);
     this.nuevas.update((s) => this.sin(s, id));
-    if (this.toast()?.id === id) this.toast.set(null);
+    if (this.aviso?.conversacionId === id) {
+      this.alertas.cerrar(this.aviso.alertaId);
+      this.aviso = null;
+    }
     this.primeraCargaHilo = true;
     this.cargandoHilo.set(true);
     this.chatService
@@ -717,11 +720,6 @@ export class SoportePageComponent implements OnDestroy {
       });
   }
 
-  protected abrirToast(): void {
-    const t = this.toast();
-    if (t) this.seleccionar(t.id);
-  }
-
   // ── Tiempo real ─────────────────────────────────────────────────────────
   private escucharTiempoReal(): void {
     this.mensajeSub = this.realtimeService.escuchar<EventoMensajeNuevo>('mensaje:nuevo').subscribe((evento) => {
@@ -760,11 +758,15 @@ export class SoportePageComponent implements OnDestroy {
   }
 
   private avisar(id: number, cliente: string, texto: string): void {
-    const t = { id, cliente, texto };
-    this.toast.set(t);
-    this.ultimoToast.set(t);
-    clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.toast.set(null), 6000);
+    if (this.aviso) this.alertas.cerrar(this.aviso.alertaId);
+    const alertaId = this.alertas.mostrar({
+      estado: 'info',
+      titulo: cliente,
+      texto,
+      autoCierre: 6000,
+      accion: { label: 'Abrir', ejecutar: () => this.seleccionar(id) },
+    });
+    this.aviso = { alertaId, conversacionId: id };
   }
 
   // ── Helpers de presentación ─────────────────────────────────────────────

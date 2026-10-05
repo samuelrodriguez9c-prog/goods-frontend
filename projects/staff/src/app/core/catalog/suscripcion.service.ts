@@ -66,12 +66,13 @@ export class SuscripcionService {
     });
   }
 
-  /** `POST /suscripciones/pagos` (§5.5, 2026-09-29) — paso "Confirmar y
-   * guardar" del modo documento del Asistente de IA de staff. Registra
-   * el pago Y renueva la suscripción activa/vencida de esa Empresa en el
-   * mismo paso (ver `SuscripcionService.registrarPagoManual`, backend) —
-   * acá no hace falta un segundo llamado para eso. */
+  /** `POST /facturacion/pagos` (antes `/suscripciones/pagos`, movido al
+   * módulo de Facturación el 2026-10-02) — paso "Confirmar y guardar" del
+   * modo documento del Asistente de IA de staff. Registra el pago Y
+   * renueva la suscripción activa/vencida de esa Empresa en el mismo paso
+   * (ver `FacturacionService.registrar`, backend) — acá no hace falta un
+   * segundo llamado para eso. */
   registrarPago(payload: RegistrarPagoSuscripcionPayload): Observable<SuscripcionPago> {
-    return this.http.post<SuscripcionPago>(`${environment.apiUrl}/suscripciones/pagos`, payload);
+    return this.http.post<SuscripcionPago>(`${environment.apiUrl}/facturacion/pagos`, payload);
   }
 }

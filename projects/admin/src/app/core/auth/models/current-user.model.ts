@@ -31,4 +31,35 @@ export interface CurrentUser {
    * backend, esto es solo UX — ocultar un link no es lo que impide el
    * acceso). Vacío si la Empresa no tiene una suscripción activa. */
   modulosDisponibles: string[];
+  /** Si la Empresa puede operar hoy y, si no, por qué (backend
+   * `ModuloAccessService.estadoAcceso`, 2026-10-04). Lo usa el Shell para
+   * mostrar el aviso de mora o la pantalla de bloqueo. `null` si la cuenta
+   * no tiene Empresa. */
+  accesoEmpresa: AccesoEmpresa | null;
+}
+
+export type MotivoBloqueo =
+  | 'alta_en_curso'
+  | 'rechazada'
+  | 'suspendida'
+  | 'cancelada'
+  | 'sin_plan'
+  | 'suscripcion_vencida';
+
+export interface AccesoEmpresa {
+  operativa: boolean;
+  /** `en_mora`: venció el pago pero sigue operando durante la gracia. */
+  estado: 'ok' | 'en_mora' | 'bloqueada';
+  motivo: MotivoBloqueo | null;
+  /** Texto listo para mostrar. */
+  mensaje: string;
+  empresaEstado: string;
+  /** Motivo que cargó Goods al suspender o dar de baja. */
+  motivoEstado: string | null;
+  suscripcionEstado: string | null;
+  fechaProximoVencimiento: string | null;
+  corteEn: string | null;
+  diasGracia: number;
+  /** Cobro pendiente más próximo (se genera 7 días antes de renovar). */
+  proximoCobro: { monto: number; moneda: string; fechaLimite: string } | null;
 }
