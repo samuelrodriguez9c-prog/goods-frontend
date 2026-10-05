@@ -688,3 +688,18 @@
 @media (prefers-reduced-motion: reduce) {
   .salir-portazo, .salir-ola { animation-duration: 1ms; }
 }
+
+/* Escala de la interfaz (2026-10-05): el topbar y el contenido de los
+ * módulos se ven un poco más chicos, como un zoom del navegador al 90 %; el
+ * sidebar queda a su tamaño. `zoom` (no `transform: scale`) para que el
+ * layout, el scroll y los paneles fijos se acomoden solos. */
+:root {
+  --escala-contenido: 0.9;
+}
+app-topbar {
+  display: block;
+  zoom: var(--escala-contenido);
+}
+.escala-contenido {
+  zoom: var(--escala-contenido);
+}
