@@ -669,3 +669,22 @@
 @media (prefers-reduced-motion: reduce) {
   [class*='ia-'], [class*='ia-'] * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
+
+/* Cerrar sesión "puerta" del menú de cuenta (topbar, 2026-10-05): la
+ * puerta se cierra de un portazo y la despedida entra letra por letra. */
+@keyframes salir-portazo {
+  0% { transform: scaleX(0.25); }
+  70% { transform: scaleX(1.08); }
+  85% { transform: scaleX(0.96); }
+  100% { transform: scaleX(1); }
+}
+@keyframes salir-ola {
+  0% { transform: translateY(6px); opacity: 0; }
+  60% { transform: translateY(-2px); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.salir-portazo { animation: salir-portazo 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.salir-ola { animation: salir-ola 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .salir-portazo, .salir-ola { animation-duration: 1ms; }
+}
