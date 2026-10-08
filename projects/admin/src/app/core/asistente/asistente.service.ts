@@ -85,6 +85,16 @@ export class AsistenteService {
    * `multipart/form-data` — nunca se fija manualmente el header
    * `Content-Type` acá: `HttpClient` arma el boundary solo a partir del
    * `FormData`, fijarlo a mano rompería el parseo en el backend. */
+  /** `PATCH /asistente/conversaciones/:id` — renombrar desde el rail. */
+  renombrarConversacion(id: number, titulo: string): Observable<AsistenteConversacion> {
+    return this.http.patch<AsistenteConversacion>(`${this.base}/conversaciones/${id}`, { titulo });
+  }
+
+  /** `DELETE /asistente/conversaciones/:id`. */
+  eliminarConversacion(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/conversaciones/${id}`);
+  }
+
   extraerFacturaProveedor(archivo: File): Observable<FacturaProveedorExtraida> {
     const formData = new FormData();
     formData.append('file', archivo);

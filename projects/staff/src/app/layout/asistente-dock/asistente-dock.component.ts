@@ -58,7 +58,8 @@ interface EtiquetaEstilo {
 const B = 52; // caja de referencia del botón (el botón real cambia de forma, ver `forma`)
 const EXT = 40; // px que la píldora sigue de largo detrás del borde: su extremo nunca se ve
 const ASOMA_REPOSO = 40; // px visibles en reposo (el extremo redondo: "parece un círculo")
-const ASOMA_HOVER = 74; // px visibles en hover (sale el rectángulo)
+const ASOMA_HOVER = 58; // px visibles en hover (sale el rectángulo, recortado casi a la raíz de la marca)
+const CURVA = 12; // radio de las curvas cóncavas que unen el botón con el borde
 const CIRCULO_ARRASTRE = 56; // diámetro mientras se arrastra (círculo perfecto, sin importar el lado)
 const DOC_RE = /(agreg|carg|sub|guard)\w*\s+(un\s+|el\s+)?(documento|manual|procedimiento)/i;
 const M = 12; // margen con los bordes de la ventana
@@ -122,6 +123,9 @@ export class AsistenteDockComponent implements OnDestroy {
   protected readonly cerrando = signal(false);
   protected readonly maximizando = signal(false);
   protected readonly pendiente = signal(false);
+  /** true ~1.2 s después de soltar: dispara el "aplastón" contra la pared y el crecimiento de las curvas. */
+  protected readonly pegando = signal(false);
+  private tPegar?: ReturnType<typeof setTimeout>;
 
   private readonly base = computed(() => {
     const d = this.drag();
@@ -154,7 +158,7 @@ export class AsistenteDockComponent implements OnDestroy {
     }
     if (this.abierto()) return { left: 0, top: 0, width: B, height: B, radio: '26px', iconoX: 13, iconoY: 13 };
     const V = this.hover() ? ASOMA_HOVER : ASOMA_REPOSO; // largo visible
-    const d = this.hover() ? 37 : 21; // centro de la marca, medido desde el extremo visible
+    const d = 21; // centro de la marca, medido desde el extremo visible
     const N = V + EXT; // largo total (perpendicular al borde)
     const vert = lado === 'top' || lado === 'bottom';
     const w = vert ? B : N, h = vert ? N : B;
@@ -165,10 +169,39 @@ export class AsistenteDockComponent implements OnDestroy {
     return { left, top, width: w, height: h, radio: this.hover() ? '20px' : '26px', iconoX, iconoY };
   });
 
+  /**
+   * Dos curvas cóncavas (radio CURVA) donde el botón toca el borde de la
+   * ventana. Hacen que el botón se vea integrado a la plantilla.
+   * Se ocultan al arrastrar y con el chat abierto (el botón es un círculo).
+   */
+  protected readonly curvas = computed(() => {
+    const R = CURVA;
+    const g = (at: string) => `radial-gradient(circle at ${at}, transparent ${R - 0.5}px, #0a0a0a ${R}px)`;
+    const p: Record<Lado, [number, number, string][]> = {
+      right: [[B - R, -R, '0 0'], [B - R, B, '0 100%']],
+      left: [[0, -R, '100% 0'], [0, B, '100% 100%']],
+      top: [[-R, 0, '0 100%'], [B, 0, '100% 100%']],
+      bottom: [[-R, B - R, '0 0'], [B, B - R, '100% 0']],
+    };
+    const ver = !this.drag() && !this.abierto();
+    // origen = la esquina que toca borde y botón (opuesta al centro del círculo)
+    const inv = (at: string) => at.split(' ').map((v) => (v === '0' ? '100%' : '0')).join(' ');
+    const retraso = this.pegando() ? '560ms' : '0ms';
+    return p[this.lado()].map(([left, top, at]) => ({
+      left, top, fondo: g(at), opacidad: ver ? 1 : 0,
+      escala: ver ? 'scale(1)' : 'scale(0)', origen: inv(at),
+      transicion: `opacity 200ms, transform 420ms cubic-bezier(0.3,1.6,0.5,1) ${retraso}`,
+    }));
+  });
+
   protected readonly boton = computed(() => {
     const { x, y } = this.base();
+    const vert = this.lado() === 'top' || this.lado() === 'bottom';
     return {
       left: x, top: y,
+      origen: { right: 'right center', left: 'left center', top: 'center top', bottom: 'center bottom' }[this.lado()],
+      // "Aplastón" contra la pared cuando llega del rebote (empieza a los 380 ms del soltar)
+      animacion: this.pegando() ? `${vert ? 'ia-pegar-y' : 'ia-pegar-x'} 600ms cubic-bezier(0.3,0.7,0.4,1) 380ms both` : 'none',
       transicion: this.drag() ? 'opacity 200ms' : 'left 520ms cubic-bezier(0.3,1.35,0.5,1), top 520ms cubic-bezier(0.3,1.35,0.5,1), opacity 200ms',
       sombra: this.drag()
         ? '0 0 0 1px rgba(255,255,255,0.1), 0 22px 40px -12px rgba(0,0,0,0.6)'
@@ -303,6 +336,9 @@ export class AsistenteDockComponent implements OnDestroy {
     }
     this.drag.set(null);
     this.hover.set(false);
+    this.pegando.set(true);
+    clearTimeout(this.tPegar);
+    this.tPegar = setTimeout(() => this.pegando.set(false), 1200);
   };
 
   protected onBotonKey(e: KeyboardEvent): void {
@@ -410,6 +446,7 @@ export class AsistenteDockComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    clearTimeout(this.tPegar);
     window.removeEventListener('pointermove', this.onMove);
     window.removeEventListener('pointerup', this.onUp);
   }

@@ -5,8 +5,8 @@ import { OrderEditPageComponent } from './pages/order-edit-page/order-edit-page.
 import { OrderRefundPageComponent } from './pages/order-refund-page/order-refund-page.component';
 
 export const ORDERS_ROUTES: Routes = [
-  { path: '', component: OrderListPageComponent },
-  { path: ':id', component: OrderDetailPageComponent },
-  { path: ':id/edit', component: OrderEditPageComponent },
-  { path: ':id/refund', component: OrderRefundPageComponent },
+  { path: '', component: OrderListPageComponent, data: { breadcrumb: 'Orders', icon: 'inbox' } },
+  { path: ':id', component: OrderDetailPageComponent, data: { breadcrumb: 'Pedido', icon: 'inbox' } },
+  { path: ':id/edit', component: OrderEditPageComponent, data: { breadcrumb: 'Editar pedido', icon: 'inbox' } },
+  { path: ':id/refund', component: OrderRefundPageComponent, data: { breadcrumb: 'Reembolso', icon: 'inbox' } },
 ];

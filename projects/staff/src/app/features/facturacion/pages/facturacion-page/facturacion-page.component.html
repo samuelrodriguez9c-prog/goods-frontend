@@ -1,243 +1,320 @@
-<div class="p-6">
-  <app-cabecera-modulo
-    titulo="Facturación"
-    [periodo]="null"
-    [metricas]="metricas()"
-    [badge]="badge()"
-    (metricaClick)="metricaClick($event)"
+<app-cabecera-modulo
+  titulo="Facturación"
+  [metricas]="metricas()"
+  [activa]="filtro()"
+  [badge]="badge()"
+  [periodoTitulo]="(hoy | date: 'EEEE d \'de\' MMMM') ?? ''"
+  (metricaClick)="alternarMetrica($event)"
+>
+  <tabler-icon icono [icon]="i.modulo" [size]="20" [stroke]="1.75" />
+  <ng-container acciones>
+    <button type="button" (click)="exportar()" class="rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] hover:bg-[#d4d4d4]">Exportar</button>
+    <button type="button" (click)="abrirNuevo()" class="flex items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] hover:opacity-90">
+      <tabler-icon [icon]="i.mas" [size]="14" [stroke]="1.75" />Registrar pago
+    </button>
+  </ng-container>
+  <ng-container lectura>{{ lectura() }}</ng-container>
+</app-cabecera-modulo>
+
+<app-pantalla-estado class="mt-4 flex min-h-0 flex-1 flex-col" [estado]="estadoPantalla()" modulo="Facturación" (reintentar)="cargar()" (volver)="volver()">
+  <div esqueleto class="grid flex-1 animate-pulse grid-cols-[minmax(250px,0.78fr)_minmax(0,1.42fr)] gap-4">
+    <div class="flex flex-col gap-2">
+      @for (s of [1, 2, 3, 4, 5]; track s) {
+        <span class="h-12 rounded-xl bg-[#e6e6e6]" [style.opacity]="1 - s * 0.14"></span>
+      }
+    </div>
+    <div class="rounded-2xl bg-white"></div>
+  </div>
+
+  <app-lista-hoja
+    etiquetaLista="Pagos"
+    placeholder="Referencia o Empresa"
+    vacioTexto="No hay pagos que coincidan."
+    [grupos]="grupos()"
+    [seleccionadaId]="modo() === 'pago' ? seleccionadaId() : null"
+    [colapsados]="colapsados()"
+    [resaltadas]="resaltadas()"
+    [buscar]="buscar()"
+    [resultados]="resultados()"
+    [filtroTexto]="filtroTexto()"
+    [cambios]="cambiosEnVivo()"
+    [ordenIcono]="ordenIcono()"
+    [ordenTitulo]="ordenTitulo()"
+    (seleccionar)="seleccionar($event)"
+    (buscarChange)="cambiarBusqueda($event)"
+    (cargarMas)="cargarMas($event)"
+    (alternarOrden)="alternarOrden()"
+    (alternarGrupo)="alternarGrupo($event)"
+    (quitarFiltro)="filtro.set(null)"
+    (limpiar)="limpiar()"
+    (actualizar)="actualizar()"
   >
-    <tabler-icon icono [icon]="i.modulo" [size]="20" [stroke]="1.75" />
-    <ng-container lectura>{{ lectura() }}</ng-container>
-    <ng-container acciones>
-      <button
-        type="button"
-        (click)="exportar()"
-        [disabled]="exportando()"
-        title="Descarga en CSV los pagos del filtro actual (todas las páginas)"
-        class="flex items-center gap-1.5 rounded-lg border-0 bg-neutral-200 px-3 py-[7px] text-[13px] font-medium text-[#303030] hover:bg-[#d4d4d4] disabled:opacity-60"
-      >
-        <tabler-icon [icon]="i.descargar" [size]="14" [stroke]="1.75" />
-        {{ exportando() ? 'Exportando…' : 'Exportar' }}
-      </button>
-      @if (puedeGestionar()) {
-        <button
-          type="button"
-          (click)="registrando.set(true)"
-          class="flex items-center gap-[7px] rounded-lg bg-primary-button px-3.5 py-2 text-[13px] font-medium text-white transition-all duration-200 hover:-translate-y-px hover:opacity-90"
-        >
-          <tabler-icon [icon]="i.nuevo" [size]="15" [stroke]="2" />
-          Registrar pago
-        </button>
-      }
-    </ng-container>
-  </app-cabecera-modulo>
+    <div hoja class="flex min-h-0 flex-1 flex-col">
+      @if (modo() === 'nuevo' && nuevo(); as n) {
+        <!-- Registrar pago -->
+        <div class="animar-ficha flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5">
+          <span class="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Registrar pago</span>
+          <input
+            [value]="n.monto"
+            (input)="parcheNuevo({ monto: $any($event.target).value })"
+            inputmode="numeric"
+            aria-label="Monto"
+            class="mt-1 w-full border-0 bg-transparent font-display text-[40px] font-semibold leading-[48px] tracking-[-0.02em] tabular-nums text-gray-900 outline-none"
+          />
+          <p class="text-[13px] text-gray-500">{{ plata(montoNuevo()) }}{{ notaNuevo() ? ' · ' + notaNuevo() : '' }}</p>
 
-  @if (cambiosEnVivo()) {
-    <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
-  }
-
-  <app-pantalla-estado [estado]="estadoPantalla()" modulo="Facturación" (reintentar)="reintentar()" (volver)="volver()">
-    <div esqueleto class="mt-[22px] flex animate-pulse flex-col gap-2">
-      <span class="h-[100px] w-full rounded-xl bg-gray-200"></span>
-      <span class="h-9 w-2/3 rounded-full bg-gray-100"></span>
-      @for (s of skeletons; track $index) {
-        <span class="h-[64px] w-full rounded-[10px] bg-gray-100"></span>
-      }
-    </div>
-
-    <!-- Filtros: período + estado + método + búsqueda (todos server-side) -->
-    <div class="mt-6 flex flex-wrap items-center gap-2">
-      @for (p of periodos; track p.clave) {
-        <button
-          type="button"
-          (click)="elegirPeriodo(p.clave)"
-          class="rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-all duration-200"
-          [class]="periodo() === p.clave ? 'border-primary-button bg-primary-button text-white' : 'border-gray-200 bg-card-bg text-gray-700 hover:bg-canvas-bg'"
-        >
-          {{ p.texto }}
-        </button>
-      }
-
-      <span class="mx-1 h-5 w-px bg-gray-200"></span>
-
-      <div class="flex rounded-full border border-gray-200 bg-card-bg p-0.5">
-        @for (e of estados; track e.valor) {
-          <button
-            type="button"
-            (click)="elegirEstado(e.valor)"
-            class="rounded-full px-3 py-1 text-[12.5px] font-medium transition-colors duration-150"
-            [class]="estado() === e.valor ? 'bg-canvas-bg text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-          >
-            {{ e.texto }}
-          </button>
+          <div class="mt-5 grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+            <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Empresa</span>
+            <div class="flex max-h-[132px] flex-wrap gap-1.5 overflow-y-auto">
+              @for (e of empresasNuevo(); track e.id) {
+                <button
+                  type="button"
+                  (click)="elegirEmpresaNuevo(e.id)"
+                  class="flex items-center gap-1.5 rounded-full px-[11px] py-[5px] text-xs font-medium"
+                  [class]="e.id === n.empresaId ? 'bg-[#303030] text-white' : 'bg-[#f1f1f1] text-[#303030] hover:bg-[#e6e6e6]'"
+                >
+                  <span class="size-1.5 rounded-full" [class]="e.debe ? 'bg-[#d82c0d]' : 'bg-[#087b5d]'"></span>{{ e.nombre }}
+                </button>
+              }
+            </div>
+          </div>
+          <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+            <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Método</span>
+            <div class="flex flex-col gap-2.5">
+              <div class="flex flex-wrap gap-1.5">
+                @for (m of metodos; track m.valor) {
+                  <button
+                    type="button"
+                    (click)="parcheNuevo({ metodo: m.valor })"
+                    class="flex items-center gap-1.5 rounded-full px-[11px] py-[5px] text-xs font-medium"
+                    [class]="n.metodo === m.valor ? 'bg-[#303030] text-white' : 'bg-[#f1f1f1] text-[#303030] hover:bg-[#e6e6e6]'"
+                  >
+                    <tabler-icon [icon]="iconoMetodo[m.valor]" [size]="13" [stroke]="1.75" />{{ m.texto }}
+                  </button>
+                }
+              </div>
+              <div class="flex gap-2">
+                <input [value]="n.ref" (input)="parcheNuevo({ ref: $any($event.target).value })" placeholder="Referencia del comprobante" class="min-w-0 flex-1 rounded-[9px] border-0 bg-[#f5f5f5] px-[11px] py-2 text-[13px] outline-none" />
+                <input type="date" [value]="n.fecha" (input)="parcheNuevo({ fecha: $any($event.target).value })" class="w-40 rounded-[9px] border-0 bg-[#f5f5f5] px-[11px] py-2 text-[13px] outline-none" />
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+            <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Efecto</span>
+            <div class="flex flex-col gap-2">
+              @for (t of efectoNuevo(); track $index) {
+                <p class="flex items-start gap-2.5 text-[13px] leading-[19px] text-gray-900">
+                  <span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#f1f1f1] text-[11px] font-semibold text-gray-600">{{ $index + 1 }}</span>{{ t }}
+                </p>
+              }
+            </div>
+          </div>
+          <div class="mt-auto flex justify-end gap-2 pt-4">
+            <button type="button" (click)="modo.set('pago'); nuevo.set(null)" class="rounded-lg px-3 py-[7px] text-[13px] font-medium text-gray-600 hover:bg-[#f1f1f1]">Cancelar</button>
+            <button type="button" (click)="registrar()" [disabled]="!montoNuevo()" class="rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] disabled:opacity-40">Registrar pago</button>
+          </div>
+        </div>
+      } @else if (sel(); as p) {
+        @if (pop()) {
+          <div class="fixed inset-0 z-20" (click)="pop.set(false)"></div>
         }
-      </div>
-
-      <select
-        [ngModel]="metodo()"
-        (ngModelChange)="elegirMetodo($event)"
-        aria-label="Método de pago"
-        class="rounded-full border border-gray-200 bg-card-bg py-1.5 pl-3 pr-8 text-[13px] font-medium text-gray-700 focus:border-gray-400 focus:outline-none"
-      >
-        <option value="">Todos los métodos</option>
-        @for (m of metodos; track m.valor) {
-          <option [value]="m.valor">{{ m.texto }}</option>
-        }
-      </select>
-
-      <label class="ml-auto flex min-w-[240px] items-center gap-2 rounded-lg border border-gray-200 bg-card-bg px-3 py-[7px] focus-within:border-gray-400">
-        <tabler-icon [icon]="i.buscar" [size]="15" [stroke]="2" class="text-gray-400" />
-        <input
-          type="search"
-          [ngModel]="buscar()"
-          (ngModelChange)="escribirBusqueda($event)"
-          placeholder="Referencia o Empresa"
-          class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
-        />
-      </label>
-    </div>
-
-    <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
-      <span class="tabular-nums">{{ totalesTexto() }}</span>
-      @if (hayFiltros()) {
-        <button type="button" (click)="limpiarFiltros()" class="flex items-center gap-1 text-gray-400 hover:text-gray-700">
-          <tabler-icon [icon]="i.limpiar" [size]="12" [stroke]="2" />
-          Limpiar filtros
-        </button>
-      }
-      @if (cargandoLista()) {
-        <span class="ml-auto size-3.5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-500"></span>
-      }
-    </div>
-
-    <!-- Una fila por pago -->
-    <div class="mt-3 flex flex-col gap-2 transition-opacity duration-150" [class.opacity-60]="cargandoLista()">
-      @for (p of filas(); track p.id) {
-        <div
-          tabindex="0"
-          role="button"
-          (click)="abrirPago(p.id)"
-          (keydown.enter)="abrirPago(p.id)"
-          [class.fila-resaltada]="resaltadas().has(p.id)"
-          class="flex cursor-pointer flex-wrap items-center gap-[18px] rounded-[10px] border px-[18px] py-3 transition-shadow duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06)] focus-visible:outline-2 focus-visible:outline-gray-400"
-          [class]="p.estado === 'anulado' ? 'border-gray-200 bg-neutral-50' : 'border-gray-200 bg-card-bg'"
-        >
-          <!-- Fecha -->
-          <div class="flex w-11 shrink-0 flex-col items-center leading-none">
-            <span class="font-display text-xl font-semibold tabular-nums" [class]="p.estado === 'anulado' ? 'text-gray-400' : 'text-gray-900'">{{ p.dia }}</span>
-            <span class="mt-1 text-[10.5px] font-medium uppercase tracking-[0.06em] text-gray-400">{{ p.mes }}</span>
+        <div class="shrink-0 px-6 pt-4">
+          <div class="flex items-center gap-2">
+            <span class="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Pago #{{ p.id }}</span>
+            <span class="flex-1"></span>
+            <span class="text-[11.5px] tabular-nums text-gray-400">{{ lista()?.posicion() }}</span>
+            <button type="button" (click)="lista()?.mover(-1)" aria-label="Anterior" class="flex rounded-lg p-[5px] text-gray-500 hover:bg-[#f1f1f1] hover:text-gray-900"><tabler-icon [icon]="i.arriba" [size]="16" [stroke]="1.75" /></button>
+            <button type="button" (click)="lista()?.mover(1)" aria-label="Siguiente" class="flex rounded-lg p-[5px] text-gray-500 hover:bg-[#f1f1f1] hover:text-gray-900"><tabler-icon [icon]="i.abajo" [size]="16" [stroke]="1.75" /></button>
           </div>
 
-          <!-- Empresa + período -->
-          <div class="min-w-[200px] flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                (click)="abrirEmpresa(p.empresaId, $event)"
-                class="text-[15px] font-semibold leading-[21px] tracking-[-0.01em] text-gray-900 hover:underline"
-              >
-                {{ p.empresaNombre }}
+          @for (k of [p.id]; track k) {
+            <div class="animar-ficha mt-1">
+              <span class="font-display text-[34px] font-semibold leading-10 tracking-[-0.02em] tabular-nums" [class]="anulado() ? 'text-[#c4c4c4] line-through' : 'text-gray-900'">{{ plata(p.monto) }}</span>
+              <p class="mt-0.5 text-[13px] text-gray-500"><strong class="font-semibold text-gray-900">{{ p.empresaNombre }}</strong> · {{ p.fechaPago | date: 'd MMM y' }}</p>
+            </div>
+          }
+
+          <div class="relative z-30 mt-3.5 flex flex-wrap items-center gap-1.5">
+            <div class="relative">
+              <button type="button" (click)="pop.set(!pop()); motivo.set('')" class="flex h-[30px] items-center gap-[7px] rounded-full pl-[11px] pr-2.5 text-[13px] font-medium text-gray-900 hover:bg-[#ebebeb]" [class]="pop() ? 'bg-[#e6e6e6]' : 'bg-[#f4f4f4]'">
+                <span class="size-[7px] rounded-full" [style.background]="estadoPunto()"></span>{{ estadoTexto() }}
+                <tabler-icon [icon]="i.abajo" [size]="13" [stroke]="1.75" class="text-[#8a8a8a]" />
               </button>
-              @if (p.planNombre) {
-                <span class="rounded-full bg-canvas-bg px-2 py-0.5 text-[11px] font-medium text-gray-500">{{ p.planNombre }}</span>
-              }
-              @if (p.estado === 'anulado') {
-                <span class="rounded-full bg-badge-neutral-bg px-2 py-0.5 text-[11px] font-medium text-gray-700">Anulado</span>
+              @if (pop()) {
+                <div class="absolute left-0 top-9 w-[320px] animate-[fade-in-up_0.18s_ease-out] rounded-[14px] bg-white p-3 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_-16px_rgba(0,0,0,0.35)]">
+                  @if (detalle(); as d) {
+                    @if (d.estado === 'anulado') {
+                      <p class="text-[13px] font-semibold text-gray-900">Pago anulado</p>
+                      <p class="mt-1 text-xs leading-[17px] text-gray-500">Lo anuló {{ d.anuladoPor?.nombre ?? '—' }} el {{ d.anuladoEn | date: 'd MMM' }}: {{ d.motivoAnulacion }}.</p>
+                    } @else if (d.anulable) {
+                      <p class="text-[13px] font-semibold text-gray-900">Anular este pago</p>
+                      <p class="mt-1 text-xs leading-[17px] text-gray-500">El monto vuelve al saldo de {{ d.empresaNombre }}. No se puede deshacer.</p>
+                      <textarea rows="2" [value]="motivo()" (input)="motivo.set($any($event.target).value)" placeholder="Motivo (obligatorio)" class="mt-2.5 w-full resize-none rounded-[9px] border-0 bg-[#f5f5f5] px-[11px] py-[9px] text-[13px] outline-none"></textarea>
+                      <div class="mt-2 flex justify-end gap-1.5">
+                        <button type="button" (click)="pop.set(false)" class="rounded-full px-[13px] py-1.5 text-[12.5px] font-medium text-gray-600 hover:bg-[#f1f1f1]">Volver</button>
+                        <button type="button" (click)="anular()" [disabled]="!motivo().trim()" class="rounded-full bg-[#d82c0d] px-[13px] py-1.5 text-[12.5px] font-medium text-white disabled:opacity-40">Anular pago</button>
+                      </div>
+                    } @else {
+                      <p class="text-[13px] font-semibold text-gray-900">Conciliado</p>
+                      <p class="mt-1 text-xs leading-[17px] text-gray-500">Solo se puede anular el último pago válido de la Empresa, y mientras su suscripción no haya cambiado.</p>
+                    }
+                  }
+                </div>
               }
             </div>
-            <p class="mt-0.5 text-xs leading-[18px] text-gray-400">Cubre {{ formatPeriodo(p.periodoDesde, p.periodoHasta) }}</p>
+            <span class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-gray-900">
+              <tabler-icon [icon]="iconoMetodo[p.metodo]" [size]="14" [stroke]="1.75" class="text-gray-500" />{{ textoMetodo[p.metodo] }}
+            </span>
+            @if (p.referencia) {
+              <button type="button" (click)="copiarRef()" title="Copiar referencia" class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium tabular-nums text-gray-900 hover:bg-[#ebebeb]">
+                <tabler-icon [icon]="copiado() ? i.check : i.hash" [size]="14" [stroke]="1.75" class="text-gray-500" />{{ copiado() ? 'Copiada' : p.referencia }}
+              </button>
+            }
+            <span class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-gray-900">
+              <tabler-icon [icon]="i.usuario" [size]="14" [stroke]="1.75" class="text-gray-500" />{{ p.registradoPor?.nombre ?? '—' }}
+            </span>
           </div>
 
-          <!-- Método + origen -->
-          <div class="w-[210px] shrink-0">
-            <div class="flex items-center gap-[7px] text-[13px] font-medium text-gray-700">
-              <tabler-icon [icon]="p.icono" [size]="15" [stroke]="1.75" class="text-gray-400" />
-              {{ p.metodoTexto }}
+          @if (cubre(); as c) {
+            <div class="mt-4 pb-4" [title]="c.titulo">
+              <div class="flex items-baseline justify-between text-xs">
+                <span class="text-gray-500">Cubre <strong class="font-semibold text-gray-900">{{ c.texto }}</strong></span>
+                <span [style.color]="c.notaTinta">{{ c.nota }}</span>
+              </div>
+              <div class="relative mt-1.5 h-2.5 rounded-full bg-[#f3f3f3]">
+                <span class="absolute inset-y-0 rounded-full transition-all duration-500" [style.left.%]="c.left" [style.width.%]="c.ancho" [style.background]="c.color"></span>
+                <span class="absolute -inset-y-1 w-0.5 rounded-full bg-[#00a19a]" [style.left.%]="c.hoy" title="Hoy"></span>
+              </div>
+              <div class="mt-1 flex justify-between text-[11px] text-gray-400"><span>{{ c.desde }}</span><span>{{ c.hasta }}</span></div>
             </div>
-            <p class="mt-0.5 truncate pl-[22px] text-xs text-gray-400" [title]="p.origen">{{ p.origen || 'Sin referencia' }}</p>
-          </div>
+          }
 
-          <!-- Monto -->
-          <div class="w-[130px] shrink-0 text-right">
-            <p
-              class="font-display text-[18px] font-semibold leading-none tabular-nums"
-              [class]="p.estado === 'anulado' ? 'text-gray-400 line-through' : 'text-gray-900'"
-            >
-              {{ formatMonto(p.monto, p.moneda) }}
-            </p>
-            <p class="mt-1 truncate text-[11px] text-gray-400">{{ p.registradoPor?.nombre ?? 'Sin registrar quién' }}</p>
-          </div>
+          <app-hoja-pestanas [pestanas]="pestanas()" [activa]="pestana()" (elegir)="elegirPestana($event)" />
+        </div>
 
-          <tabler-icon [icon]="i.siguiente" [size]="16" [stroke]="2" class="shrink-0 text-gray-300" />
+        <div class="min-h-0 flex-1 overflow-y-auto">
+          @for (k of [p.id + pestana()]; track k) {
+            <div class="animar-cuerpo flex flex-col px-6 pb-6 pt-2">
+              @switch (pestana()) {
+                @case ('cuenta') {
+                  @if (saldo(); as s) {
+                    <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 py-[18px]">
+                      <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Saldo</span>
+                      <div class="flex items-start gap-2.5">
+                        <tabler-icon [icon]="s.icono" [size]="18" [stroke]="1.75" [style.color]="s.tinta" />
+                        <div><p class="text-[13.5px] font-semibold text-gray-900">{{ s.titulo }}</p><p class="mt-0.5 text-[13px] text-gray-500">{{ s.texto }}</p></div>
+                      </div>
+                    </div>
+                  }
+                  @if (cuenta(); as c) {
+                    <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+                      <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Cuota del mes</span>
+                      <div class="flex flex-col">
+                        @for (l of c.cuotaMensual?.detalle ?? []; track $index) {
+                          <div class="flex items-center justify-between gap-3 border-b border-dashed border-[#ececec] py-[7px] text-[13px]">
+                            <span class="text-gray-600">{{ l.concepto }}</span>
+                            <span class="flex items-center gap-3">
+                              @if (l.origen === 'cargo' && l.cargoId) {
+                                <button type="button" (click)="bajaCargo.set({ id: l.cargoId!, motivo: '' })" class="text-[11.5px] text-gray-400 hover:text-[#b42318]">Quitar</button>
+                              }
+                              <span class="font-medium tabular-nums text-gray-900">{{ plata(l.monto) }}</span>
+                            </span>
+                          </div>
+                          @if (l.cargoId && bajaCargo()?.id === l.cargoId) {
+                            <div class="flex gap-1.5 py-2">
+                              <input [value]="bajaCargo()!.motivo" (input)="bajaCargo.set({ id: l.cargoId!, motivo: $any($event.target).value })" (keydown.enter)="quitarCargo()" placeholder="Motivo de la baja" class="min-w-0 flex-1 rounded-[9px] border-0 bg-[#f5f5f5] px-[11px] py-1.5 text-[13px] outline-none" />
+                              <button type="button" (click)="bajaCargo.set(null)" class="rounded-full px-3 text-[12.5px] text-gray-600 hover:bg-[#f1f1f1]">Cancelar</button>
+                              <button type="button" (click)="quitarCargo()" [disabled]="!bajaCargo()!.motivo.trim()" class="rounded-full bg-[#d82c0d] px-3 text-[12.5px] font-medium text-white disabled:opacity-40">Quitar</button>
+                            </div>
+                          }
+                        }
+                        <div class="flex items-center justify-between py-2 text-[13px]">
+                          <span class="font-semibold text-gray-900">Total por mes</span>
+                          <span class="font-semibold tabular-nums text-gray-900">{{ plata(c.cuotaMensual?.total ?? 0) }}</span>
+                        </div>
+                        @if (formExtra(); as f) {
+                          <div class="flex animate-[fade-in-up_0.18s_ease-out] gap-1.5 rounded-xl bg-[#f7f7f7] p-2.5 shadow-[inset_2px_0_0_#303030]">
+                            <input [value]="f.concepto" (input)="formExtra.set({ concepto: $any($event.target).value, monto: f.monto })" placeholder="Concepto" class="min-w-0 flex-1 rounded-[9px] border-0 bg-white px-[11px] py-1.5 text-[13px] outline-none" />
+                            <input [value]="f.monto" (input)="formExtra.set({ concepto: f.concepto, monto: $any($event.target).value })" placeholder="$ al mes" class="w-28 rounded-[9px] border-0 bg-white px-[11px] py-1.5 text-[13px] tabular-nums outline-none" />
+                            <button type="button" (click)="formExtra.set(null)" class="rounded-full px-3 text-[12.5px] text-gray-600 hover:bg-[#ececec]">Cancelar</button>
+                            <button type="button" (click)="agregarExtra()" class="rounded-full bg-[#303030] px-3 text-[12.5px] font-medium text-white">Agregar</button>
+                          </div>
+                        } @else {
+                          <button type="button" (click)="abrirExtra()" class="flex items-center gap-1.5 self-start rounded-full bg-[#f1f1f1] px-[11px] py-[5px] text-xs font-medium text-[#303030] hover:bg-[#e6e6e6]">
+                            <tabler-icon [icon]="i.mas" [size]="13" [stroke]="1.75" />Extra mensual
+                          </button>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+                      <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Cobros</span>
+                      <div class="flex flex-col gap-3">
+                        <div class="flex h-[30px] items-end gap-1.5">
+                          @for (b of cobros().barras; track $index) {
+                            <span class="w-5 rounded-[3px]" [title]="b.titulo" [style.height.px]="b.alto" [style.background]="b.color"></span>
+                          }
+                        </div>
+                        @for (x of cobros().lista; track $index) {
+                          <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-dashed border-[#ececec] py-1.5">
+                            <span class="flex flex-col"><span class="text-[13px] font-medium text-gray-900">{{ x.periodo }}</span><span class="text-[11.5px] text-gray-400">{{ x.nota }}</span></span>
+                            <span class="rounded-full px-2 py-px text-[11px] font-semibold" [class]="x.chipClase">{{ x.chip }}</span>
+                            <span class="w-24 text-right text-[13px] font-medium tabular-nums text-gray-900">{{ x.monto }}</span>
+                          </div>
+                        } @empty {
+                          <p class="text-[13px] text-gray-500">Sin cobros generados todavía.</p>
+                        }
+                      </div>
+                    </div>
+                  } @else {
+                    <p class="py-8 text-center text-[13px] text-gray-500">Esta Empresa no tiene una suscripción en ciclo.</p>
+                  }
+                }
+
+                @case ('pagos') {
+                  <div class="flex flex-col pt-3">
+                    @for (x of pagosEmpresa(); track x.id) {
+                      <button
+                        type="button"
+                        (click)="seleccionar(x.id)"
+                        class="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-[10px] px-2 py-2.5 text-left hover:bg-[#f7f7f7]"
+                        [class]="x.actual ? 'bg-[#f4f4f4]' : ''"
+                      >
+                        <span class="flex flex-col items-center"><span class="font-display text-lg font-semibold leading-5 tabular-nums text-gray-900">{{ x.dia }}</span><span class="text-[10px] font-semibold uppercase text-gray-400">{{ x.mes }}</span></span>
+                        <span class="flex min-w-0 flex-col gap-px"><span class="text-[13px] font-medium text-gray-900">{{ x.titulo }}</span><span class="truncate text-[11.5px] text-gray-400">{{ x.detalle }}</span></span>
+                        <span class="text-[13px] font-semibold tabular-nums" [class]="x.anulado ? 'text-gray-400 line-through' : 'text-gray-900'">{{ x.monto }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+
+                @case ('comp') {
+                  <div class="pt-4">
+                    @if (detalle()?.archivoUrl; as url) {
+                      <a [href]="url" target="_blank" rel="noopener" class="flex h-[220px] items-center justify-center gap-2 rounded-xl bg-[#f7f7f7] text-[13px] font-medium text-[#303030] hover:bg-[#f1f1f1]">
+                        <tabler-icon [icon]="i.externo" [size]="15" [stroke]="1.75" />Abrir comprobante
+                      </a>
+                    } @else {
+                      <div class="rayado-comprobante flex h-[220px] items-center justify-center rounded-xl text-[13px] text-gray-500">
+                        {{ anulado() ? 'Comprobante anulado' : 'Sin comprobante adjunto' }}
+                      </div>
+                    }
+                    <div class="mt-4 flex flex-col">
+                      @for (d of datosComprobante(); track d.k) {
+                        <div class="flex justify-between gap-3 border-b border-dashed border-[#ececec] py-[7px] text-[13px]">
+                          <span class="text-gray-500">{{ d.k }}</span><span class="text-right font-medium text-gray-900">{{ d.v }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
         </div>
-      } @empty {
-        <div class="rounded-[10px] border border-gray-200 bg-card-bg px-6 py-[22px]">
-          <p class="text-[15px] font-semibold text-gray-900">
-            {{ hayFiltros() ? 'Ningún pago con estos filtros.' : 'Todavía no hay pagos este mes.' }}
-          </p>
-          <p class="mt-1 text-[13px] text-gray-500">
-            {{ hayFiltros() ? 'Prueba con otro período o limpia los filtros.' : 'Los pagos que registres (o que confirme el asistente desde un comprobante) aparecen acá.' }}
-          </p>
-        </div>
+      } @else {
+        <p class="m-auto text-[13px] text-gray-500">Elegí un pago de la lista.</p>
       }
     </div>
-
-    @if ((listado()?.totalPaginas ?? 1) > 1) {
-      <div class="mt-4 flex items-center justify-end gap-2 text-xs text-gray-500">
-        <span class="tabular-nums">{{ rango() }}</span>
-        <button
-          type="button"
-          [disabled]="pagina() <= 1 || cargandoLista()"
-          (click)="irAPagina(pagina() - 1)"
-          aria-label="Página anterior"
-          class="rounded-lg border border-gray-200 bg-card-bg p-1.5 text-gray-600 hover:bg-canvas-bg disabled:opacity-40"
-        >
-          <tabler-icon [icon]="i.anterior" [size]="15" [stroke]="2" />
-        </button>
-        <button
-          type="button"
-          [disabled]="pagina() >= (listado()?.totalPaginas ?? 1) || cargandoLista()"
-          (click)="irAPagina(pagina() + 1)"
-          aria-label="Página siguiente"
-          class="rounded-lg border border-gray-200 bg-card-bg p-1.5 text-gray-600 hover:bg-canvas-bg disabled:opacity-40"
-        >
-          <tabler-icon [icon]="i.siguiente" [size]="15" [stroke]="2" />
-        </button>
-      </div>
-    }
-
-    <p class="mt-5 text-xs leading-[18px] text-gray-400 text-pretty">
-      Un pago nunca se borra: se anula con un motivo y queda en el historial. Registrar un pago renueva la
-      suscripción un mes; anularlo devuelve el vencimiento a donde estaba.
-    </p>
-  </app-pantalla-estado>
-</div>
-
-@if (pagoAbiertoId(); as id) {
-  <app-pago-detalle-panel
-    [pagoId]="id"
-    [puedeGestionar]="puedeGestionar()"
-    (cerrar)="pagoAbiertoId.set(null)"
-    (verEmpresa)="abrirEmpresa($event)"
-    (enviando)="silenciarEco()"
-    (anulado)="onCambio()"
-  />
-}
-
-@if (empresaAbiertaId(); as id) {
-  <app-estado-cuenta-panel
-    [empresaId]="id"
-    [puedeGestionar]="puedeGestionar()"
-    (cerrar)="empresaAbiertaId.set(null)"
-    (verPago)="abrirPago($event)"
-    (cambio)="onCambio()"
-  />
-}
-
-@if (registrando()) {
-  <app-registrar-pago-panel
-    (cerrar)="registrando.set(false)"
-    (enviando)="silenciarEco()"
-    (registrado)="onRegistrado($event)"
-  />
-}
+  </app-lista-hoja>
+</app-pantalla-estado>

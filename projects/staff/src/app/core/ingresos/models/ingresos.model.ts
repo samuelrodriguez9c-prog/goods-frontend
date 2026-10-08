@@ -43,6 +43,8 @@ export interface MesIngresos {
   mrrExpansion: number;
   mrrContraccion: number;
   mrrPerdido: number;
+  /** MRR de planes por plan al cierre de ese mes (sin extras). */
+  porPlan: { planId: number; plan: string; empresas: number; mrr: number; participacion: number }[];
 }
 
 export interface PlanIngresos {

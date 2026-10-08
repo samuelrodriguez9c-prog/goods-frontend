@@ -669,3 +669,72 @@
 @media (prefers-reduced-motion: reduce) {
   [class*='ia-'], [class*='ia-'] * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
+
+/* Pegar al final de styles.css: "aplastón" del botón al pegarse a la pared */
+@keyframes ia-pegar-x{0%{transform:scale(1,1)}28%{transform:scale(.82,1.1)}58%{transform:scale(1.07,.96)}80%{transform:scale(.98,1.01)}100%{transform:scale(1,1)}}
+@keyframes ia-pegar-y{0%{transform:scale(1,1)}28%{transform:scale(1.1,.82)}58%{transform:scale(.96,1.07)}80%{transform:scale(1.01,.98)}100%{transform:scale(1,1)}}
+
+/* Pegar en projects/staff/src/styles.css (handoff módulos v2, 2026-10-05).
+   `fade-in-up`, `vivo-entrar` y `.fila-resaltada` ya están de handoffs anteriores. */
+
+/* Entrada de la hoja al cambiar de selección. La página recrea el nodo con
+   `@for (k of [clave]; track k)` para que la animación vuelva a correr. */
+@keyframes ficha {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.animar-ficha { animation: ficha 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.animar-cuerpo { animation: ficha 380ms cubic-bezier(0.2, 0.8, 0.2, 1) 40ms both; }
+
+/* Esquinas cóncavas de la fila unida a la hoja (lista-hoja). */
+.esquina-concava-arriba { background: radial-gradient(circle at 0 0, transparent 11.5px, #fff 12px); }
+.esquina-concava-abajo { background: radial-gradient(circle at 0 100%, transparent 11.5px, #fff 12px); }
+
+/* Llamada en curso (Altas pendientes). */
+@keyframes latido-anillo {
+  0% { box-shadow: 0 0 0 0 rgba(43, 224, 213, 0.55); }
+  70% { box-shadow: 0 0 0 10px rgba(43, 224, 213, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(43, 224, 213, 0); }
+}
+.latido-anillo { animation: latido-anillo 1.6s ease-out infinite; }
+
+/* Placeholder rayado del comprobante (Facturación). */
+.rayado-comprobante { background: repeating-linear-gradient(135deg, #f7f7f7 0 10px, #f1f1f1 10px 20px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .animar-ficha, .animar-cuerpo, .latido-anillo { animation: none; }
+}
+
+/* Cerrar sesión "puerta" del menú de cuenta (topbar, 2026-10-05): la
+ * puerta se cierra de un portazo y la despedida entra letra por letra. */
+@keyframes salir-portazo {
+  0% { transform: scaleX(0.25); }
+  70% { transform: scaleX(1.08); }
+  85% { transform: scaleX(0.96); }
+  100% { transform: scaleX(1); }
+}
+@keyframes salir-ola {
+  0% { transform: translateY(6px); opacity: 0; }
+  60% { transform: translateY(-2px); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.salir-portazo { animation: salir-portazo 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.salir-ola { animation: salir-ola 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .salir-portazo, .salir-ola { animation-duration: 1ms; }
+}
+
+/* Escala de la interfaz (2026-10-05): el topbar y el contenido de los
+ * módulos se ven un poco más chicos, como un zoom del navegador al 90 %; el
+ * sidebar queda a su tamaño. `zoom` (no `transform: scale`) para que el
+ * layout, el scroll y los paneles fijos se acomoden solos. */
+:root {
+  --escala-contenido: 0.9;
+}
+app-topbar {
+  display: block;
+  zoom: var(--escala-contenido);
+}
+.escala-contenido {
+  zoom: var(--escala-contenido);
+}

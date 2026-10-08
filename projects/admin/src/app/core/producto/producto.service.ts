@@ -27,7 +27,9 @@ export class ProductoService {
   listar(buscar?: string): Observable<RespuestaPaginada<Producto>> {
     return this.http.get<RespuestaPaginada<Producto>>(this.base, {
       params: {
-        pageSize: 200,
+        // 100 = tope de PaginationQueryDto (con 200 el backend respondía 400
+        // y el selector de productos del asistente quedaba vacío).
+        pageSize: 100,
         ...(buscar ? { buscar } : {}),
       },
     });

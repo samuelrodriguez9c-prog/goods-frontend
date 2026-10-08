@@ -1,115 +1,96 @@
 <nav
-  class="relative flex h-full w-80 shrink-0 flex-col gap-0.5 rounded-tl-xl bg-sidebar-bg p-3"
+  class="relative flex h-full w-56 shrink-0 flex-col gap-0.5 overflow-y-auto rounded-tl-xl bg-sidebar-bg p-2.5"
   (mouseleave)="hoveredIndex.set(null)"
 >
-  <!-- Indicador deslizante de primer nivel: una sola pill que se mueve
-       entre items (hover o activo) en vez de aparecer/desaparecer en cada
-       uno — ver ADMIN_DISENO.md > "Sidebar > Animación". `inset-x-3` calza
-       con el `p-3` del nav para tener el mismo ancho que cada item. Su
-       posición sale de `#link.offsetTop/offsetHeight` — eso solo da la
-       cuenta correcta si el único ancestro con `position` distinto de
-       static entre `#link` y `<nav>` es el propio `<nav>`, por eso los
-       `<div>` de agrupación de abajo van SIN `relative`/`position` propio
-       (un bug anterior los tenía con `relative`, lo que corría el
-       `offsetParent` de cada link a su propio wrapper y rompía el
-       cálculo). -->
+  <!-- Píldora que se desliza entre ítems de primer nivel (hover o, si no,
+       la ruta activa) — mismo mecanismo que el sidebar de staff. Los
+       `<div>` de agrupación de abajo van SIN `position` propio: así el
+       `offsetParent` de cada `#link` sigue siendo el `<nav>`. -->
   <div
-    class="pointer-events-none absolute inset-x-3 z-0 rounded-lg bg-nav-active transition-all duration-200 ease-out"
+    class="pointer-events-none absolute inset-x-2.5 z-0 rounded-lg bg-nav-active transition-all duration-200 ease-out"
     [style.top.px]="indicatorTop()"
     [style.height.px]="indicatorHeight()"
     [style.opacity]="indicatorVisible() ? 1 : 0"
   ></div>
 
-  @for (item of navItemsVisibles(); track item.path; let i = $index) {
+  @for (item of navItems(); track item.path; let i = $index) {
     <div>
-      <!-- Fila: el link (crece para llenar el espacio) + el chevron como
-           HERMANO, nunca anidado dentro del `<a>` — un `<button>` dentro
-           de un `<a>` es HTML inválido (contenido interactivo anidado) y
-           es justo lo que tenía roto esta fila antes. `(mouseenter)` vive
-           acá (no en el `<a>`) para que pasar el mouse por el chevron
-           también mantenga la pill enganchada a este item. -->
+      <!-- Fila: el link + el chevron como HERMANO (un botón dentro de un
+           `<a>` es HTML inválido). `mouseenter` en la fila para que pasar
+           por el chevron también mantenga la píldora en este ítem. -->
       <div class="flex items-center" (mouseenter)="hoveredIndex.set(i)">
         <a
           #link
           [routerLink]="item.path"
-          routerLinkActive
-          #rla="routerLinkActive"
-          [routerLinkActiveOptions]="{ exact: item.exact }"
-          (isActiveChange)="onActiveChange(i, $event)"
-          [class.text-gray-900]="rla.isActive"
-          class="relative z-10 flex flex-1 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 ease-out"
+          [class.text-gray-900]="activeIndex() === i"
+          class="relative z-10 flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium text-gray-700 transition-colors duration-200 ease-out"
         >
-          <!-- Sin @switch: el nombre de ícono de Tabler viaja directo en el
-               dato (item.icon) — ver ADMIN_DISENO.md > "Sidebar > Íconos". -->
-          <tabler-icon [icon]="item.icon" [size]="20" [stroke]="1.75" svgClass="shrink-0" />
+          <tabler-icon [icon]="item.icon" [size]="18" [stroke]="1.75" svgClass="shrink-0" />
           <span class="truncate">{{ item.label }}</span>
+          @if (cambios.tiene(item.path)) {
+            <span
+              aria-label="Hay cambios"
+              class="ml-auto mr-[3px] size-[5px] shrink-0 rounded-full bg-[#2be0d5] animate-[latido-cambio_2.4s_ease-in-out_infinite]"
+            ></span>
+          }
         </a>
 
-        @if (item.children) {
+        @if (item.hijos) {
           <button
             type="button"
             class="relative z-10 shrink-0 rounded p-1.5 text-gray-400 transition-colors duration-200 ease-out hover:text-gray-700"
-            [attr.aria-label]="(isGroupOpen(item) ? 'Contraer ' : 'Expandir ') + item.label"
-            (click)="toggleGroup(item.path)"
+            [attr.aria-label]="(abierto(item) ? 'Contraer ' : 'Expandir ') + item.label"
+            [attr.aria-expanded]="abierto(item)"
+            (click)="toggleGrupo(item)"
           >
             <span
               class="flex transition-transform duration-150 ease-out"
-              [style.transform]="isGroupOpen(item) ? 'rotate(0deg)' : 'rotate(-90deg)'"
+              [style.transform]="abierto(item) ? 'rotate(0deg)' : 'rotate(-90deg)'"
             >
-              <tabler-icon icon="chevron-down" [size]="16" [stroke]="1.75" />
+              <tabler-icon [icon]="iconChevron" [size]="15" [stroke]="1.75" />
             </span>
           </button>
         }
       </div>
 
-      @if (item.children) {
-        <!-- Altura animada con la técnica CSS `grid-template-rows`
-             0fr → 1fr: el contenido NUNCA se desmonta (a diferencia de un
-             `@if` puro, que aparecía/desaparecía de golpe) — solo se le
-             anima la fila de grid en la que vive, con el mismo
-             `duration-200 ease-out` que ya usa el resto del sidebar, y se
-             le suma un fade de opacidad para que la aparición se sienta
-             tan suave como el desplazamiento del indicador de arriba. -->
+      @if (item.hijos) {
+        <!-- Altura animada con `grid-template-rows` 0fr → 1fr + fade: el
+             submenú nunca se desmonta, solo se anima su fila. -->
         <div
           class="grid transition-[grid-template-rows] duration-200 ease-out"
-          [style.gridTemplateRows]="isGroupOpen(item) ? '1fr' : '0fr'"
+          [style.gridTemplateRows]="abierto(item) ? '1fr' : '0fr'"
         >
           <div
             class="overflow-hidden transition-opacity duration-200 ease-out"
-            [style.opacity]="isGroupOpen(item) ? 1 : 0"
+            [style.opacity]="abierto(item) ? 1 : 0"
           >
-            <div
-              class="relative mt-0.5 flex flex-col gap-0.5"
-              (mouseleave)="onChildAreaMouseLeave()"
-            >
-              <!-- Conector tipo "árbol" entre hijos (calcado de la
-                   referencia de Shopify) — NO es un ícono que salta de
-                   fila en fila: es un único trazo pegado arriba (`top:
-                   0`, justo debajo del item padre) cuyo `height` crece o
-                   se encoge hasta el centro vertical del hijo bajo el
-                   mouse (o el activo, sin hover) — mismo mecanismo de
-                   `offsetTop/offsetHeight` reales que la pill de arriba,
-                   acotado a ESTE wrapper porque es su propio `position:
-                   relative`. El "codo" lo dibuja el propio borde: una
-                   línea vertical (`border-left`) que dobla en una
-                   horizontal (`border-bottom`) con la esquina redondeada. -->
-              @if (isChildArrowInGroup(item.path)) {
+            <div class="relative mt-0.5 flex flex-col gap-0.5" (mouseleave)="hoveredChild.set(null)">
+              <!-- Conector "árbol": un único trazo pegado arriba cuya altura
+                   crece o se encoge hasta el centro del hijo bajo el mouse
+                   (o el activo). El codo lo dibuja el propio borde. -->
+              @if (conectorVisible()) {
                 <div
-                  class="pointer-events-none absolute left-3 top-0 z-10 w-5 rounded-bl-lg border-l-2 border-b-2 border-gray-300 transition-[height] duration-200 ease-out"
-                  [style.height.px]="childElbowHeight()"
+                  class="pointer-events-none absolute left-2.5 top-0 z-10 w-[14px] rounded-bl-lg border-b-[1.5px] border-l-[1.5px] border-dashed border-gray-400 transition-[height] duration-200 ease-out"
+                  [style.height.px]="conectorAlto()"
                 ></div>
               }
-
-              @for (child of item.children; track child.path) {
+              @for (h of item.hijos; track h.path; let n = $index) {
                 <a
                   #childLink
-                  [routerLink]="child.path"
-                  routerLinkActive="bg-nav-active text-gray-900"
-                  (isActiveChange)="onChildActiveChange(childFlatIndex(item.path, child.path), $event)"
-                  (mouseenter)="hoveredChildIndex.set(childFlatIndex(item.path, child.path))"
-                  class="relative z-0 rounded-lg py-1.5 pl-8 pr-3 text-sm text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
+                  [routerLink]="h.path"
+                  (mouseenter)="hoveredChild.set(n)"
+                  [class.bg-nav-active]="esHijoActivo(h.path)"
+                  [class.text-gray-900]="esHijoActivo(h.path)"
+                  class="relative z-0 flex items-center gap-2 rounded-lg py-1.5 pl-[30px] pr-2.5 text-[13px] text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
                 >
-                  <span class="truncate">{{ child.label }}</span>
+                  <tabler-icon [icon]="h.icon" [size]="16" [stroke]="1.75" svgClass="shrink-0" />
+                  <span class="truncate">{{ h.label }}</span>
+                  @if (cambios.tiene(h.path)) {
+                    <span
+                      aria-label="Hay cambios"
+                      class="ml-auto mr-[3px] size-[5px] shrink-0 rounded-full bg-[#2be0d5] animate-[latido-cambio_2.4s_ease-in-out_infinite]"
+                    ></span>
+                  }
                 </a>
               }
             </div>
@@ -119,75 +100,15 @@
     </div>
   }
 
-  <!-- Bloque fijo abajo (mt-auto), calcado de la posición de Shopify:
-       la sección "Administración" (patrón "Sales channels") justo arriba
-       de Settings, ambos empujados al fondo juntos. -->
-  <div class="mt-auto flex flex-col gap-0.5">
-    <!-- Sección tipo "Sales channels"/"Apps": el encabezado NO navega a
-         ningún lado (no es un `<a>`, es un `<button>` que solo
-         expande/contrae) — toda la fila es clickeable, a diferencia de
-         Products/Settings donde el link y el chevron son hermanos
-         separados. Sin conector "árbol": cada hijo lleva su propio ícono
-         y se resuelve solo con `routerLinkActive` + hover, igual que
-         cualquier link simple del sidebar. -->
-    @if (administracionChildrenVisibles().length > 0) {
-      <div>
-        <button
-          type="button"
-          class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors duration-200 ease-out hover:text-gray-700"
-          [attr.aria-label]="
-            (isSectionOpen(administracionSection) ? 'Contraer ' : 'Expandir ') +
-            administracionSection.label
-          "
-          (click)="toggleGroup(administracionSection.key)"
-        >
-          <span class="truncate">{{ administracionSection.label }}</span>
-          <span
-            class="flex shrink-0 transition-transform duration-150 ease-out"
-            [style.transform]="isSectionOpen(administracionSection) ? 'rotate(0deg)' : 'rotate(-90deg)'"
-          >
-            <tabler-icon icon="chevron-down" [size]="16" [stroke]="1.75" />
-          </span>
-        </button>
-
-        <!-- Misma animación de altura que el submenú árbol de Products
-             (grid-template-rows 0fr → 1fr + fade), sin el wrapper
-             `position: relative` ni el conector — acá no hace falta medir
-             nada por JS. -->
-        <div
-          class="grid transition-[grid-template-rows] duration-200 ease-out"
-          [style.gridTemplateRows]="isSectionOpen(administracionSection) ? '1fr' : '0fr'"
-        >
-          <div
-            class="overflow-hidden transition-opacity duration-200 ease-out"
-            [style.opacity]="isSectionOpen(administracionSection) ? 1 : 0"
-          >
-            <div class="mt-0.5 flex flex-col gap-0.5">
-              @for (child of administracionChildrenVisibles(); track child.path) {
-                <a
-                  [routerLink]="child.path"
-                  routerLinkActive="bg-nav-active text-gray-900"
-                  class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
-                >
-                  <tabler-icon [icon]="child.icon" [size]="20" [stroke]="1.75" svgClass="shrink-0" />
-                  <span class="truncate">{{ child.label }}</span>
-                </a>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- Settings: link simple, sin submenú propio (ver comentario de
-         `settingsItem` en el componente). -->
+  <!-- Settings: link simple, empujado al fondo (igual que staff). -->
+  <div class="mt-auto pt-2">
     <a
       [routerLink]="settingsItem.path"
-      routerLinkActive="bg-nav-active text-gray-900"
-      [routerLinkActiveOptions]="{ exact: settingsItem.exact }"
-      class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
+      [class.bg-nav-active]="ruta() === '/settings'"
+      [class.text-gray-900]="ruta() === '/settings'"
+      class="flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
     >
-      <tabler-icon [icon]="settingsItem.icon" [size]="20" [stroke]="1.75" svgClass="shrink-0" />
+      <tabler-icon [icon]="settingsItem.icon" [size]="18" [stroke]="1.75" svgClass="shrink-0" />
       <span class="truncate">{{ settingsItem.label }}</span>
     </a>
   </div>

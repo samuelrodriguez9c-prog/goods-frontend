@@ -36,8 +36,8 @@ export type EstadoAsignableSuscripcion = 'activa' | 'cancelada' | 'vencida';
 export class SuscripcionService {
   private readonly http = inject(HttpClient);
 
-  listar(estado?: string, empresaId?: number): Observable<RespuestaPaginada<Suscripcion>> {
-    let params = new HttpParams().set('pageSize', 100);
+  listar(estado?: string, empresaId?: number, page = 1): Observable<RespuestaPaginada<Suscripcion>> {
+    let params = new HttpParams().set('pageSize', 100).set('page', page);
     if (estado) {
       params = params.set('estado', estado);
     }
@@ -57,6 +57,11 @@ export class SuscripcionService {
       empresaId,
       planId,
     });
+  }
+
+  /** `POST /suscripciones/:id/reactivar` — vencida o cancelada vuelve a estar activa, con el mismo plan u otro, en un paso. */
+  reactivar(id: number, planId: number): Observable<Suscripcion> {
+    return this.http.post<Suscripcion>(`${environment.apiUrl}/suscripciones/${id}/reactivar`, { planId });
   }
 
   /** `PATCH /suscripciones/:id/estado`. */
