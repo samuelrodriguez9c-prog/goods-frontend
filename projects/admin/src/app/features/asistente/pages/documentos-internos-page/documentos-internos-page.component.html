@@ -1,0 +1,232 @@
+<!-- projects/admin/src/app/features/asistente/pages/documentos-internos-page/documentos-internos-page.component.html -->
+<div class="flex h-screen flex-col overflow-hidden bg-white text-[#111827]">
+  <!-- ─── Topbar ─── -->
+  <!-- Mismo criterio que AsistentePageComponent (§5.4.4): fuera del
+       Shell, trae su propia topbar — TopbarComponent ya detecta
+       `/asistente` por prefijo, así que "Volver al panel" aparece acá
+       también sin tocar ese componente. -->
+  <app-topbar />
+
+  <div class="min-h-0 flex-1 overflow-y-auto">
+    <div class="p-6">
+      <app-cabecera-modulo
+        titulo="Documentos"
+        [periodo]="null"
+        [badge]="documentos().length + ' documento' + (documentos().length === 1 ? '' : 's')"
+      >
+        <tabler-icon icono [icon]="iconModulo" [size]="20" [stroke]="1.75" />
+        <ng-container lectura>{{ lectura() }}</ng-container>
+        <div acciones>
+          <button
+            type="button"
+            (click)="abrirNuevo()"
+            class="flex items-center gap-[7px] rounded-lg bg-primary-button px-3.5 py-2 text-[13px] font-medium text-white transition-all duration-200 hover:-translate-y-px hover:opacity-90"
+          >
+            <tabler-icon [icon]="iconNuevo" [size]="15" [stroke]="2" />
+            Nuevo documento
+          </button>
+        </div>
+      </app-cabecera-modulo>
+
+      <div
+        class="mt-5 flex items-center gap-2.5 rounded-xl bg-white px-3 py-2 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]"
+      >
+        <tabler-icon [icon]="iconBuscar" [size]="16" class="text-gray-400" />
+        <input
+          type="text"
+          [ngModel]="busqueda()"
+          (ngModelChange)="busqueda.set($event)"
+          placeholder="Buscar por título o contenido…"
+          aria-label="Buscar documentos"
+          class="min-w-0 flex-1 border-0 bg-transparent py-0.5 text-[13.5px] outline-none placeholder:text-gray-400"
+        />
+      </div>
+
+      <app-pantalla-estado
+        [estado]="estadoPantalla()"
+        modulo="Documentos"
+        (reintentar)="reintentar()"
+        (volver)="volver()"
+      >
+        <div esqueleto class="mt-5 flex animate-pulse flex-col gap-2.5">
+          @for (s of skeletons; track s) {
+            <span class="h-[72px] rounded-xl bg-gray-200"></span>
+          }
+        </div>
+
+        @if (filtrados().length) {
+          <div class="mt-5 flex flex-col gap-2.5">
+            @for (doc of filtrados(); track doc.id) {
+              <div
+                class="flex items-start justify-between gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.03)] transition-colors duration-150 hover:border-gray-200"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="m-0 truncate text-[14.5px] font-semibold text-gray-900">{{ doc.titulo }}</p>
+                  <p class="m-0 mt-1 text-[13px] leading-5 text-gray-500 text-pretty">{{ preview(doc.contenido) }}</p>
+                  <p class="m-0 mt-2 text-[11.5px] text-gray-400">Actualizado {{ textoActualizado(doc) }}</p>
+                </div>
+                <div class="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    (click)="abrirEditar(doc)"
+                    aria-label="Editar"
+                    title="Editar"
+                    class="flex rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-gray-100 hover:text-gray-700"
+                  >
+                    <tabler-icon [icon]="iconEditar" [size]="16" [stroke]="2" />
+                  </button>
+                  <button
+                    type="button"
+                    (click)="pedirEliminar(doc)"
+                    aria-label="Eliminar"
+                    title="Eliminar"
+                    class="flex rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-badge-error-solid/10 hover:text-badge-error-solid"
+                  >
+                    <tabler-icon [icon]="iconEliminar" [size]="16" [stroke]="2" />
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="mt-10 flex flex-col items-center gap-2 py-10 text-center">
+            <tabler-icon [icon]="iconModulo" [size]="28" [stroke]="1.5" class="text-gray-300" />
+            <p class="m-0 max-w-[420px] text-[13.5px] text-gray-500 text-pretty">{{ lectura() }}</p>
+            @if (!busqueda()) {
+              <button
+                type="button"
+                (click)="abrirNuevo()"
+                class="mt-1 text-[13px] font-medium text-[#00807a] hover:underline"
+              >
+                Cargar el primero
+              </button>
+            }
+          </div>
+        }
+      </app-pantalla-estado>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Panel crear/editar ─── -->
+@if (panelAbierto()) {
+  <app-side-panel [titulo]="tituloPanel()" (cerrar)="cerrarPanel()">
+    <div class="flex flex-col gap-4">
+      @if (cargandoDocumento()) {
+        <p class="m-0 text-[13px] text-gray-400">Cargando la versión más reciente…</p>
+      }
+
+      <!-- Subir archivo: precarga título/contenido, no guarda nada por
+           sí sola — el staff sigue revisando antes de tocar "Guardar". -->
+      <input
+        #inputArchivo
+        type="file"
+        [accept]="extensionesAceptadas"
+        class="hidden"
+        (change)="manejarArchivoSeleccionado($event)"
+      />
+      <button
+        type="button"
+        (click)="inputArchivo.click()"
+        [disabled]="subiendoArchivo() || guardando()"
+        class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 py-2.5 text-[13px] font-medium text-gray-500 transition-all duration-150 hover:border-gray-400 hover:bg-neutral-50 hover:text-gray-700 disabled:opacity-60"
+      >
+        <tabler-icon [icon]="iconSubir" [size]="16" [stroke]="2" />
+        {{ subiendoArchivo() ? 'Leyendo el archivo…' : 'Subir un archivo (.md, .txt, .pdf, .docx)' }}
+      </button>
+      @if (errorArchivo()) {
+        <p class="m-0 rounded-lg bg-badge-error-solid/10 px-3 py-2 text-[12.5px] text-badge-error-solid">
+          {{ errorArchivo() }}
+        </p>
+      }
+
+      <label class="flex flex-col gap-1.5">
+        <span class="text-[12.5px] font-medium text-gray-600">Título</span>
+        <input
+          type="text"
+          [ngModel]="tituloForm()"
+          (ngModelChange)="tituloForm.set($event)"
+          [maxlength]="maxTitulo"
+          placeholder="Ej.: Gestión de altas pendientes"
+          [disabled]="guardando() || subiendoArchivo()"
+          class="rounded-lg border border-gray-200 px-3 py-2 text-[13.5px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400 disabled:opacity-60"
+        />
+        <span class="self-end text-[11px] text-gray-400">{{ tituloForm().length }}/{{ maxTitulo }}</span>
+      </label>
+
+      <label class="flex flex-col gap-1.5">
+        <span class="text-[12.5px] font-medium text-gray-600">Contenido</span>
+        <textarea
+          rows="16"
+          [ngModel]="contenidoForm()"
+          (ngModelChange)="contenidoForm.set($event)"
+          placeholder="Pega el manual completo, en texto corrido — el asistente lo trocea y lo busca por similitud solo."
+          [disabled]="guardando() || subiendoArchivo()"
+          class="resize-y rounded-lg border border-gray-200 px-3 py-2 text-[13px] leading-[19px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400 disabled:opacity-60"
+        ></textarea>
+      </label>
+
+      @if (errorGuardar()) {
+        <p class="m-0 rounded-lg bg-badge-error-solid/10 px-3 py-2 text-[12.5px] text-badge-error-solid">
+          {{ errorGuardar() }}
+        </p>
+      }
+
+      <div class="mt-1 flex justify-end gap-2">
+        <button
+          type="button"
+          (click)="cerrarPanel()"
+          [disabled]="guardando()"
+          class="rounded-lg px-3.5 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:bg-gray-100 disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          (click)="guardar()"
+          [disabled]="guardando() || subiendoArchivo() || !formValido()"
+          class="rounded-lg bg-primary-button px-3.5 py-2 text-[13px] font-medium text-white transition-all duration-200 hover:-translate-y-px hover:opacity-90 disabled:opacity-50"
+        >
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </app-side-panel>
+}
+
+<!-- ─── Confirmación de borrado ─── -->
+@if (documentoABorrar(); as doc) {
+  <app-modal titulo="Eliminar documento" (cerrar)="cancelarEliminar()">
+    <div class="flex flex-col gap-4">
+      <p class="m-0 text-[13.5px] leading-5 text-gray-600 text-pretty">
+        Vas a eliminar <strong class="font-semibold text-gray-900">"{{ doc.titulo }}"</strong>. El asistente deja de
+        poder buscar en este contenido de inmediato — no se puede deshacer.
+      </p>
+
+      @if (errorEliminar()) {
+        <p class="m-0 rounded-lg bg-badge-error-solid/10 px-3 py-2 text-[12.5px] text-badge-error-solid">
+          {{ errorEliminar() }}
+        </p>
+      }
+
+      <div class="flex justify-end gap-2">
+        <button
+          type="button"
+          (click)="cancelarEliminar()"
+          [disabled]="eliminando()"
+          class="rounded-lg px-3.5 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:bg-gray-100 disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          (click)="confirmarEliminar()"
+          [disabled]="eliminando()"
+          class="rounded-lg bg-badge-error-solid px-3.5 py-2 text-[13px] font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
+        >
+          {{ eliminando() ? 'Eliminando…' : 'Eliminar' }}
+        </button>
+      </div>
+    </div>
+  </app-modal>
+}

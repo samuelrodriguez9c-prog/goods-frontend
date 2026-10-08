@@ -30,6 +30,7 @@ import { AvisoDatosNuevosComponent } from '../../../../shared/ui/aviso-datos-nue
 import { Plan } from '../../../../core/catalog/models/plan.model';
 import { Suscripcion } from '../../../../core/catalog/models/suscripcion.model';
 import { filasCambiadas } from '../../../../shared/ui/filas-cambiadas';
+import { traerTodo } from '../../../../shared/ui/lista-hoja/traer-todo';
 
 /** Un plan en edición. `id` negativo = plan nuevo que todavía no existe en
  * el backend (se crea al publicar). */
@@ -339,7 +340,7 @@ export class PlanesPageComponent {
 
     // Ajuste propio: 'activa' — ver la nota en el docstring de la clase.
     const peticiones = this.mostrarSuscripciones
-      ? forkJoin({ planes: this.planService.listarTodos(), suscripciones: this.suscripcionService.listar('activa') })
+      ? forkJoin({ planes: this.planService.listarTodos(), suscripciones: traerTodo((page) => this.suscripcionService.listar('activa', undefined, page)) })
       : forkJoin({ planes: this.planService.listarTodos() });
 
     peticiones.subscribe({

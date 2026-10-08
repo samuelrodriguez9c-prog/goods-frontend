@@ -27,6 +27,17 @@
 @import "@fontsource/archivo/600.css";
 @import "@fontsource/archivo/700.css";
 
+/*
+ * Pre-factura del registro público (2026-10-05): tirilla tipo factura POS
+ * en monoespaciada de impresora, con títulos en una sans condensada.
+ * Solo se cargan los pesos que usa ese componente.
+ */
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/400-italic.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/ibm-plex-mono/700.css";
+@import "@fontsource/ibm-plex-sans-condensed/700.css";
+
 /* You can add global styles to this file, and also import other style files */
 
 /*
@@ -46,6 +57,8 @@
     'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
     sans-serif;
   --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-factura: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-factura-titulo: 'IBM Plex Sans Condensed', 'Archivo', ui-sans-serif, sans-serif;
 
   --color-topbar: #0a0a0a;
   --color-sidebar-bg: #ebebeb;
@@ -150,14 +163,26 @@
   50% { box-shadow: 0 0 0 6px rgb(164 255 182 / 0); }
 }
 
-/* Sello "RECIBIDA": cruza el ticket de abajo-izquierda a arriba-derecha. */
+/* Sello "RECIBIDA": cae sobre el talón de la pre-factura, nunca sobre
+ * los datos. */
 @keyframes sello {
-  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-52deg) scale(1.9); }
-  55% { opacity: 1; transform: translate(-50%, -50%) rotate(-52deg) scale(0.95); }
-  100% { opacity: 1; transform: translate(-50%, -50%) rotate(-52deg) scale(1); }
+  0% { opacity: 0; transform: rotate(-8deg) scale(1.7); }
+  60% { opacity: 1; transform: rotate(-8deg) scale(0.95); }
+  100% { opacity: 1; transform: rotate(-8deg) scale(1); }
 }
 .sello {
   animation: sello 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Código de barras decorativo del talón (folio de la solicitud). */
+.codigo-barras {
+  background: repeating-linear-gradient(90deg, #16181d 0 2px, transparent 2px 4px, #16181d 4px 5px, transparent 5px 8px, #16181d 8px 11px, transparent 11px 13px);
+}
+
+/* Scroll propio de la tirilla dentro del panel fijo: fino y discreto. */
+.tirilla-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cfcec8 transparent;
 }
 
 /* Borde inferior dentado del ticket (recorta también el sello). */
@@ -167,5 +192,616 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sello { animation: none; transform: translate(-50%, -50%) rotate(-52deg); }
+  .sello { animation: none; transform: rotate(-8deg); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * Paridad con `staff` (2026-10-07): topbar, sidebar, notificaciones,
+ * asistente de IA, Settings y contenido al 90 %. Copiado de
+ * `projects/staff/src/styles.css`; `latido` y `linea-in` de arriba (registro
+ * público) se mantienen: la `linea-in` de staff se renombró
+ * `linea-in-soporte`.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+/* `aparecer` — entrada del paso 2 completo y de los dos modales inline
+ * (confirmar llamada / rechazar), más suave que `fade-in-up` porque no
+ * lleva desplazamiento vertical. */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* `pop` — el círculo verde de tilde en la pantalla "Activada", con
+ * rebote (cubic-bezier con overshoot) para que se sienta como un logro,
+ * no como una notificación más. */
+@keyframes pop {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* `onda` — el anillo que se expande y se desvanece detrás del círculo de
+ * "Activada", en loop, para que la pantalla final no se sienta estática. */
+@keyframes onda {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+/* `slide-up` — rediseño de `planes-page` integrado 2026-09-21 (LEEME.md
+ * §6): entrada de la barra de publicación de `PlanesPageComponent`,
+ * anclada al borde inferior de la pantalla (`fixed inset-x-0 bottom-0`),
+ * análoga a `slide-in-right` pero deslizando desde abajo. */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* `desplegar` — rediseño de `suscripciones-page` integrado 2026-09-21
+ * (LEEME.md §7): apertura del historial de planes de una Empresa dentro
+ * de su fila, un fade con leve desplazamiento vertical hacia arriba —
+ * mismo criterio que `fade-in-up`, pero con menos recorrido porque es
+ * contenido que se despliega dentro de la fila, no un elemento nuevo que
+ * entra a la pantalla. */
+@keyframes desplegar {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* `rise` — rediseño de `roles-page` integrado 2026-09-22 (LEEME.md §10):
+ * entrada de la barra flotante de "cambios sin guardar" y del aviso de
+ * confirmación, ambos anclados y centrados en el borde inferior
+ * (`fixed bottom-6 left-1/2 -translate-x-1/2`). El `-50%` en X va DENTRO
+ * de la keyframe (no alcanza con la clase `-translate-x-1/2` sola): si
+ * la keyframe solo anima Y, el paso final pisa el translateX de la clase
+ * y el elemento salta a la izquierda apenas termina la animación. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Sistema transversal de alertas y estados de carga (LEEME.md §12,
+ * integrado 2026-09-22): `AlertaService` + `AlertaPilaComponent` +
+ * `AlertaOverlayComponent` + `EstadoIconoComponent` + `PantallaEstadoComponent`
+ * en `shared/ui/` y `core/ui/`. No hacen falta tokens de color nuevos —
+ * los sólidos salen de `--color-success-solid`, `--color-badge-error-solid`
+ * y `--color-badge-info-solid` ya definidos arriba, más `#b07400` para
+ * warning (el mismo `--color-badge-warning-solid` bajado a 4.5:1 sobre
+ * blanco, sin tokenizar porque por ahora solo lo usa este sistema). */
+
+/* `girar` — el arco de `EstadoIconoComponent` mientras `estado==='cargando'`. */
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Alertas en línea v2 · Pila oscura (handoff-alertas-pila, 2026-10-02) ─
+ * Reemplaza a `aparecer-alerta` (v1). `girar` (arriba) lo sigue usando
+ * EstadoIconoComponent. */
+
+/* entrada de cada alerta en AlertaPilaComponent */
+@keyframes alerta-entrar {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); filter: blur(2px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+/* barra de tiempo de la alerta del frente */
+@keyframes alerta-barra {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* píldora "N cambios nuevos · Actualizar" (AvisoDatosNuevosComponent) */
+@keyframes vivo-entrar {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+/* punto del sidebar: crece apenas y vuelve. Renombrado a `latido-cambio`
+ * porque `latido` ya existe (asistente de activación / Usuarios) con otra forma. */
+@keyframes latido-cambio {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(43, 224, 213, 0); }
+  50% { transform: scale(1.3); box-shadow: 0 0 0 3px rgba(43, 224, 213, 0.18); }
+}
+
+/* fila nueva o modificada después de tocar Actualizar */
+@keyframes fila-resaltada {
+  0%, 35% { background-color: #e6fbf9; box-shadow: inset 3px 0 0 #2be0d5; }
+  100% { background-color: transparent; box-shadow: inset 3px 0 0 transparent; }
+}
+.fila-resaltada { animation: fila-resaltada 2s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fila-resaltada { animation-duration: 1ms; }
+}
+
+/* `aparecer-modal` — entrada de `AlertaOverlayComponent` y de los modales
+ * nuevos de Settings (código de verificación, confirmar cambio de
+ * contraseña). Deliberadamente distinta de `aparecer` (arriba, sin
+ * translateY): esta lleva un leve desplazamiento vertical además del
+ * scale, pensada para un modal centrado en pantalla completa. */
+@keyframes aparecer-modal {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* `barra-indeterminada` — la franja que recorre la barra de progreso de
+ * `AlertaOverlayComponent` y de `PantallaEstadoComponent` mientras
+ * `estado==='cargando'`, sin duración conocida (no hay % real que mostrar). */
+@keyframes barra-indeterminada {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(340%);
+  }
+}
+
+/* `brillo` — destello de los esqueletos de página (bloque gris) que cada
+ * pantalla proyecta dentro de `<ng-content select="[esqueleto]">` de
+ * `PantallaEstadoComponent` mientras `estado==='cargando'`. */
+@keyframes brillo {
+  from {
+    background-position: -320px 0;
+  }
+  to {
+    background-position: 320px 0;
+  }
+}
+
+/* Settings (LEEME.md §13, integrado 2026-09-22): modal de código de
+ * verificación de correo. */
+
+/* `parpadeo` — el cursor del input invisible de 6 dígitos, en la caja activa. */
+@keyframes parpadeo {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* `sacudir-a`/`sacudir-b` — error del código: las cajas tiemblan. Son
+ * IDÉNTICAS a propósito (`otpSacudon()` alterna entre las dos en cada
+ * error) — reasignar el mismo nombre de animación no la vuelve a
+ * disparar, así que hacen falta dos nombres para que el sacudón se repita
+ * en errores consecutivos. */
+@keyframes sacudir-a {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+@keyframes sacudir-b {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+/* Pista (LEEME.md §18, integrado 2026-09-23): aviso liviano abajo al
+ * centro, montado una sola vez en el shell. Dos pares de keyframes
+ * IDÉNTICAS a propósito (`pista-in`/`pista-in-b`, `barra`/`barra-b`):
+ * `PistaComponent` alterna entre ellas según la paridad del `id` de cada
+ * pista, para que el navegador reinicie la animación sin recrear el nodo
+ * del DOM (mismo truco que `sacudir-a`/`sacudir-b` arriba). */
+@keyframes pista-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes pista-in-b {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+/* `barra`/`barra-b` — la franja celeste de la pista con botón de acción
+ * (Deshacer/Quitar), que se va achicando durante los 5 s antes del
+ * auto-cierre. La duración real la fija el componente por `id` con
+ * `[style.animation-duration.ms]`. */
+@keyframes barra {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes barra-b {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.anim-pista-a {
+  animation: pista-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-pista-b {
+  animation: pista-in-b 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-barra-a {
+  animation: barra linear both;
+}
+.anim-barra-b {
+  animation: barra-b linear both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-pista-a,
+  .anim-pista-b {
+    animation-duration: 1ms;
+  }
+}
+
+/* Topbar (LEEME.md §17, integrado 2026-09-24): campanita de
+ * notificaciones — sacudida al llegar una nueva (`campana`), el contador
+ * hace `pop`, y cada fila nueva del panel entra con `entra`. */
+@keyframes campana {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(14deg);
+  }
+  30% {
+    transform: rotate(-12deg);
+  }
+  45% {
+    transform: rotate(9deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes entra {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-campana {
+  animation: campana 900ms ease both;
+}
+.anim-pop {
+  animation: pop 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-entra {
+  animation: entra 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-campana,
+  .anim-pop,
+  .anim-entra {
+    animation-duration: 1ms;
+  }
+}
+
+/* Soporte (LEEME.md §15, integrado 2026-09-24): bandeja rediseñada —
+ * mensajes/líneas de sistema entrando en el hilo (`msg-in`/`linea-in`),
+ * el hilo entero al cambiar de conversación (`hilo-in`), y filas nuevas
+ * que llegan en vivo en la lista agrupada (`fila-in`). Plegar grupos, la
+ * cita sobre el input, el menú de asignar y el aviso inferior usan
+ * transiciones (grid-rows 0fr↔1fr, opacidad, escala), no keyframes: por
+ * eso esos elementos quedan siempre en el DOM (ver el HTML). */
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes linea-in-soporte {
+  from {
+    opacity: 0;
+    transform: scaleX(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes hilo-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fila-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-msg-in {
+  animation: msg-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-linea-in {
+  animation: linea-in-soporte 420ms ease both;
+}
+.anim-hilo-in {
+  animation: hilo-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-fila-in {
+  animation: fila-in 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-msg-in,
+  .anim-linea-in,
+  .anim-hilo-in,
+  .anim-fila-in {
+    animation-duration: 1ms;
+  }
+}
+
+/* ─── Asistente de IA (rediseño 2026-09-30 · v3 2026-10-02) ─────────────────────────────
+   Pegar al final de projects/staff/src/styles.css.
+   Todo lleva prefijo `ia-` porque styles.css ya tiene `latido`, `pop`,
+   `brillo` y `msg-in` con otras curvas. */
+
+@keyframes ia-girar { to { transform: rotate(360deg); } }
+@keyframes ia-latido { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .55; transform: scale(.7); } }
+@keyframes ia-ping { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes ia-palabra { from { opacity: 0; filter: blur(8px); transform: translateY(8px); } to { opacity: 1; filter: blur(0); transform: none; } }
+@keyframes ia-letra { from { opacity: 0; filter: blur(12px); transform: translateY(.45em) rotate(8deg) scale(.9); } to { opacity: 1; filter: blur(0); transform: none; } }
+@keyframes ia-brillo { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+@keyframes ia-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes ia-caret { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+@keyframes ia-msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ia-user-in { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes ia-card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes ia-paso-in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes ia-chip-in { from { opacity: 0; transform: scale(.92) translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes ia-menu-in { from { opacity: 0; transform: scale(.95) translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes ia-menu-up { from { opacity: 0; transform: scale(.95) translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes ia-toast-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes ia-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes ia-scan { 0% { transform: translateY(-40px); } 100% { transform: translateY(200px); } }
+@keyframes ia-relleno { 0% { background: #bff3ee; } 100% { background: rgba(224, 247, 245, 0); } }
+@keyframes ia-flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes ia-puntos { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+@keyframes ia-mini-in { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: none; } }
+@keyframes ia-saluda { 0% { transform: rotate(0); } 25% { transform: rotate(-14deg) scale(1.08); } 55% { transform: rotate(10deg) scale(1.08); } 80% { transform: rotate(-4deg); } 100% { transform: rotate(0); } }
+@keyframes ia-anillo { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.45); opacity: 0; } }
+@keyframes ia-tecleo { 0%, 64%, 100% { transform: translateY(0) scale(.78); opacity: .28; background: #0a0a0a; } 28% { transform: translateY(-4px) scale(1); opacity: 1; background: #0a0a0a; } 40% { background: #00a19a; } }
+@keyframes ia-tip-in { from { opacity: 0; transform: translate(-4px, -50%); } to { opacity: 1; transform: translate(0, -50%); } }
+@keyframes ia-sub-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+
+.ia-latido { animation: ia-latido 2.4s ease-in-out infinite; }
+.ia-palabra { animation: ia-palabra 720ms cubic-bezier(.2, .8, .2, 1) both; }
+.ia-letra { animation: ia-letra 900ms cubic-bezier(.2, .8, .2, 1) both; }
+.ia-msg-in { animation: ia-msg-in 380ms cubic-bezier(.2, .8, .2, 1); }
+.ia-user-in { animation: ia-user-in 380ms cubic-bezier(.2, .8, .2, 1); transform-origin: bottom right; }
+.ia-card-in { animation: ia-card-in 440ms cubic-bezier(.2, .8, .2, 1) both; }
+.ia-paso-in { animation: ia-paso-in 340ms cubic-bezier(.2, .8, .2, 1); }
+.ia-chip-in { animation: ia-chip-in 300ms cubic-bezier(.2, .8, .2, 1); }
+.ia-pop { animation: ia-pop 360ms cubic-bezier(.2, .8, .2, 1) both; }
+/* v3: el caret es un punto turquesa que late al final del texto que se va escribiendo. */
+.ia-caret { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 9999px; background: #2be0d5; vertical-align: 2px; animation: ia-latido 900ms ease-in-out infinite; }
+/* v3: puntos de "escribiendo" (app-ia-escribiendo). */
+.ia-tecleo { animation: ia-tecleo 1.25s cubic-bezier(.45, 0, .55, 1) infinite; }
+
+/* Markdown del Asistente de IA (`MarkdownLigeroPipe`) — reglas mínimas a
+   mano en vez de un plugin de "prose" (Tailwind v4 acá no tiene
+   @tailwindcss/typography instalado): solo lo que el modelo realmente usa
+   (negrita, listas, código inline, enlaces, párrafos), con los mismos
+   tonos/espaciados que ya usa el resto del chat. Sin estilos para
+   bloques de código con lenguaje/resaltado — no hacía falta todavía. */
+.ia-markdown { display: flex; flex-direction: column; gap: 10px; }
+.ia-markdown p { margin: 0; }
+.ia-markdown strong { font-weight: 600; color: #111827; }
+.ia-markdown em { font-style: italic; }
+.ia-markdown ul, .ia-markdown ol { margin: 0; padding-left: 1.25em; display: flex; flex-direction: column; gap: 4px; }
+.ia-markdown ul { list-style: disc; }
+.ia-markdown ol { list-style: decimal; }
+.ia-markdown li::marker { color: #9ca3af; }
+.ia-markdown a { color: #00807a; text-decoration: underline; text-underline-offset: 2px; }
+.ia-markdown a:hover { color: #00605b; }
+.ia-markdown code { background: #f1f1f1; color: #b43d00; border-radius: 4px; padding: 1px 5px; font-size: 0.92em; font-family: ui-monospace, monospace; }
+.ia-markdown pre { background: #f4f4f4; border-radius: 10px; padding: 10px 12px; overflow-x: auto; }
+.ia-markdown pre code { background: transparent; padding: 0; color: #111827; }
+.ia-markdown blockquote { margin: 0; padding-left: 10px; border-left: 2px solid #e5e5e5; color: #6b7280; }
+.ia-markdown h1, .ia-markdown h2, .ia-markdown h3 { margin: 2px 0 0; font-weight: 600; color: #111827; }
+.ia-markdown h1 { font-size: 1.05em; }
+.ia-markdown h2 { font-size: 1em; }
+.ia-markdown h3 { font-size: 0.97em; }
+.ia-markdown hr { border: none; border-top: 1px solid #ececec; margin: 2px 0; }
+.ia-markdown table { border-collapse: collapse; font-size: 0.95em; }
+.ia-markdown th, .ia-markdown td { border: 1px solid #e5e5e5; padding: 4px 8px; text-align: left; }
+.ia-markdown th { background: #fafafa; font-weight: 600; }
+
+/* Nombre del usuario: degradé gris→negro con brillo lento. */
+.ia-degrade-nombre {
+  background: linear-gradient(100deg, #0a0a0a 0%, #303030 28%, #8a8a8a 52%, #303030 76%, #0a0a0a 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: ia-palabra 740ms cubic-bezier(.2, .8, .2, 1) both, ia-brillo 5s ease-in-out 1.4s infinite alternate;
+}
+/* Letras de "Goods": el degradé es continuo entre letras (900 % de ancho,
+   cada letra corrida 12,5 %) y su posición la mueve el cursor. */
+.ia-degrade-goods {
+  background-image: linear-gradient(100deg, #0a0a0a 0%, #262626 22%, #5c5c5c 45%, #a3a3a3 55%, #5c5c5c 65%, #262626 80%, #0a0a0a 100%);
+  background-size: 900% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* Texto con barrido (v3: ya no se usa para "Pensando…"; queda para otros estados). */
+.ia-shimmer-texto {
+  background: linear-gradient(90deg, #a3a3a3 0%, #a3a3a3 35%, #111827 50%, #a3a3a3 65%, #a3a3a3 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: ia-shimmer 1.8s linear infinite;
+}
+.ia-skeleton {
+  background: linear-gradient(90deg, #f3f3f3 0%, #f3f3f3 35%, #e7e7e7 50%, #f3f3f3 65%, #f3f3f3 100%);
+  background-size: 200% 100%;
+  animation: ia-shimmer 1.3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*='ia-'], [class*='ia-'] * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
+
+/* Pegar al final de styles.css: "aplastón" del botón al pegarse a la pared */
+@keyframes ia-pegar-x{0%{transform:scale(1,1)}28%{transform:scale(.82,1.1)}58%{transform:scale(1.07,.96)}80%{transform:scale(.98,1.01)}100%{transform:scale(1,1)}}
+@keyframes ia-pegar-y{0%{transform:scale(1,1)}28%{transform:scale(1.1,.82)}58%{transform:scale(.96,1.07)}80%{transform:scale(1.01,.98)}100%{transform:scale(1,1)}}
+
+/* Pegar en projects/staff/src/styles.css (handoff módulos v2, 2026-10-05).
+   `fade-in-up`, `vivo-entrar` y `.fila-resaltada` ya están de handoffs anteriores. */
+
+/* Entrada de la hoja al cambiar de selección. La página recrea el nodo con
+   `@for (k of [clave]; track k)` para que la animación vuelva a correr. */
+@keyframes ficha {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.animar-ficha { animation: ficha 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.animar-cuerpo { animation: ficha 380ms cubic-bezier(0.2, 0.8, 0.2, 1) 40ms both; }
+
+/* Esquinas cóncavas de la fila unida a la hoja (lista-hoja). */
+.esquina-concava-arriba { background: radial-gradient(circle at 0 0, transparent 11.5px, #fff 12px); }
+.esquina-concava-abajo { background: radial-gradient(circle at 0 100%, transparent 11.5px, #fff 12px); }
+
+/* Llamada en curso (Altas pendientes). */
+@keyframes latido-anillo {
+  0% { box-shadow: 0 0 0 0 rgba(43, 224, 213, 0.55); }
+  70% { box-shadow: 0 0 0 10px rgba(43, 224, 213, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(43, 224, 213, 0); }
+}
+.latido-anillo { animation: latido-anillo 1.6s ease-out infinite; }
+
+/* Placeholder rayado del comprobante (Facturación). */
+.rayado-comprobante { background: repeating-linear-gradient(135deg, #f7f7f7 0 10px, #f1f1f1 10px 20px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .animar-ficha, .animar-cuerpo, .latido-anillo { animation: none; }
+}
+
+/* Cerrar sesión "puerta" del menú de cuenta (topbar, 2026-10-05): la
+ * puerta se cierra de un portazo y la despedida entra letra por letra. */
+@keyframes salir-portazo {
+  0% { transform: scaleX(0.25); }
+  70% { transform: scaleX(1.08); }
+  85% { transform: scaleX(0.96); }
+  100% { transform: scaleX(1); }
+}
+@keyframes salir-ola {
+  0% { transform: translateY(6px); opacity: 0; }
+  60% { transform: translateY(-2px); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.salir-portazo { animation: salir-portazo 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.salir-ola { animation: salir-ola 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .salir-portazo, .salir-ola { animation-duration: 1ms; }
+}
+
+/* Escala de la interfaz (2026-10-05): el topbar y el contenido de los
+ * módulos se ven un poco más chicos, como un zoom del navegador al 90 %; el
+ * sidebar queda a su tamaño. `zoom` (no `transform: scale`) para que el
+ * layout, el scroll y los paneles fijos se acomoden solos. */
+:root {
+  --escala-contenido: 0.9;
+}
+app-topbar {
+  display: block;
+  zoom: var(--escala-contenido);
+}
+.escala-contenido {
+  zoom: var(--escala-contenido);
 }

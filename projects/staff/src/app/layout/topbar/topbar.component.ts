@@ -12,7 +12,6 @@ import {
   IconChecks,
   IconCrown,
   IconEraser,
-  IconPower,
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { Subscription, filter, map } from 'rxjs';
@@ -33,7 +32,11 @@ import { RealtimeService } from '../../core/realtime/realtime.service';
 import { PistaService } from '../../core/ui/pista.service';
 
 type Pestana = 'todas' | Exclude<CategoriaNotificacion, 'otras'>;
-const MS_HOLD = 900;
+const MS_HOLD = 1100;
+/** Al soltar antes de tiempo, la barra vuelve en este tiempo (desde llena). */
+const MS_VUELTA = 320;
+/** Lo que dura la despedida ("Hasta luego, …") antes de cerrar la sesión. */
+const MS_DESPEDIDA = 1100;
 
 /**
  * Topbar de staff — rediseño (LEEME §17, 2026-09-24): campanita con
@@ -68,7 +71,6 @@ export class TopbarComponent implements OnDestroy {
     limpiar: IconEraser,
     vacio: IconBellCheck,
     corona: IconCrown,
-    apagar: IconPower,
     volver: IconArrowLeft,
   };
 
@@ -138,6 +140,7 @@ export class TopbarComponent implements OnDestroy {
   protected readonly resaltado = signal(-1);
   /** `false` | `'manteniendo'` | `'listo'` — "Cerrar sesión" se mantiene. */
   protected readonly hold = signal<false | 'manteniendo' | 'listo'>(false);
+  protected readonly progreso = signal(0);
   protected readonly opciones = [
     { texto: 'Mi perfil', seccion: 'perfil', destino: 'Settings · Perfil' },
     { texto: 'Configuración', seccion: 'seguridad', destino: 'Settings · Seguridad' },
@@ -145,6 +148,7 @@ export class TopbarComponent implements OnDestroy {
 
   private notifSub: Subscription | undefined;
   private holdTimer: ReturnType<typeof setTimeout> | undefined;
+  private holdRaf = 0;
 
   constructor() {
     // Carga el perfil (`GET /auth/me`) si todavía no está en memoria —
@@ -173,6 +177,8 @@ export class TopbarComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.notifSub?.unsubscribe();
     clearTimeout(this.holdTimer);
+    clearTimeout(this.pistaTimer);
+    cancelAnimationFrame(this.holdRaf);
   }
 
   @HostListener('document:mousedown', ['$event'])
@@ -276,7 +282,11 @@ export class TopbarComponent implements OnDestroy {
     this.menuAbierto.update((v) => !v);
     this.panelAbierto.set(false);
     this.resaltado.set(-1);
-    this.hold.set(false);
+    if (this.hold() !== 'listo') {
+      cancelAnimationFrame(this.holdRaf);
+      this.hold.set(false);
+      this.progreso.set(0);
+    }
   }
 
   private cerrarMenu(): void {
@@ -291,27 +301,76 @@ export class TopbarComponent implements OnDestroy {
     this.router.navigate(['/settings'], { queryParams: { seccion: o.seccion } });
   }
 
+  /** Cerrar sesión "puerta" (2026-10-05): mientras se mantiene, la barra se
+   *  llena, la puerta del ícono se abre y sale la flecha; al completar, la
+   *  puerta se cierra con un rebote y el texto se despide letra por letra.
+   *  `progreso` (0–1) se mueve cuadro a cuadro para que soltar a mitad de
+   *  camino haga retroceder todo desde donde estaba. */
   protected empezarHold(e?: Event): void {
     if (e instanceof MouseEvent && e.button > 0) return;
     if (e instanceof KeyboardEvent) {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
+      if (e.repeat) return;
     }
-    if (this.hold()) return;
+    if (this.hold() === 'listo' || this.hold() === 'manteniendo') return;
     this.hold.set('manteniendo');
-    clearTimeout(this.holdTimer);
-    this.holdTimer = setTimeout(() => {
-      this.hold.set('listo');
-      this.pista.hecho('Cerrando sesión…');
-      setTimeout(() => this.logout(), 500);
-    }, MS_HOLD);
+    this.animarProgreso(1);
   }
 
   protected cancelarHold(): void {
     if (this.hold() !== 'manteniendo') return;
-    clearTimeout(this.holdTimer);
+    // Soltó casi enseguida (un clic): se le recuerda que hay que mantener,
+    // ya que el botón no tiene otra pista visible.
+    if (this.progreso() < 0.15) {
+      this.pistaHold.set(true);
+      clearTimeout(this.pistaTimer);
+      this.pistaTimer = setTimeout(() => this.pistaHold.set(false), 1600);
+    }
     this.hold.set(false);
+    this.animarProgreso(-1);
   }
+
+  /** `true` ~1,6 s después de un clic corto: el texto pasa a "Mantené presionado". */
+  protected readonly pistaHold = signal(false);
+  private pistaTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private animarProgreso(sentido: 1 | -1): void {
+    cancelAnimationFrame(this.holdRaf);
+    let antes = performance.now();
+    const paso = (ahora: number) => {
+      const dt = ahora - antes;
+      antes = ahora;
+      const p = Math.min(1, Math.max(0, this.progreso() + (sentido > 0 ? dt / MS_HOLD : -dt / MS_VUELTA)));
+      this.progreso.set(p);
+      if (sentido > 0 && p >= 1) {
+        this.completarHold();
+        return;
+      }
+      if ((sentido > 0 && this.hold() === 'manteniendo') || (sentido < 0 && p > 0)) {
+        this.holdRaf = requestAnimationFrame(paso);
+      }
+    };
+    this.holdRaf = requestAnimationFrame(paso);
+  }
+
+  private completarHold(): void {
+    this.hold.set('listo');
+    clearTimeout(this.holdTimer);
+    this.holdTimer = setTimeout(() => this.logout(), MS_DESPEDIDA);
+  }
+
+  /** Texto del botón, letra por letra (la despedida entra en ola). */
+  protected readonly letrasSalir = computed(() => {
+    const nombre = this.currentUser()?.nombres?.split(' ')[0];
+    const texto =
+      this.hold() === 'listo'
+        ? nombre ? `Hasta luego, ${nombre}` : 'Hasta luego'
+        : this.pistaHold() && !this.hold() ? 'Mantené presionado' : 'Cerrar sesión';
+    return [...texto].map((c, i) => ({ c, retraso: i * 28 }));
+  });
+
+  protected readonly puntosSalir = [0, 1, 2];
 
   protected readonly initials = computed(() => {
     const u = this.currentUser();

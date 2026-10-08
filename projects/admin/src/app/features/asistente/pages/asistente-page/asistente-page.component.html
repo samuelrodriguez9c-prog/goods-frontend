@@ -1,0 +1,454 @@
+<!-- projects/admin/src/app/features/asistente/pages/asistente-page/asistente-page.component.html -->
+<div class="flex h-screen flex-col overflow-hidden bg-white text-[#111827]">
+  <input #docs type="file" class="hidden" [accept]="acceptComprobante + ',.md,.txt,.docx'" (change)="onDocs($event)" />
+  <input #archivoCompra type="file" class="hidden" [accept]="acceptComprobante" (change)="onArchivoCompra($event)" />
+
+  <!-- Menú ⋮ de conversación -->
+  @if (convMenu(); as c) {
+    <div class="fixed inset-0 z-[60]" (click)="menu.set(null)"></div>
+    <div class="fixed z-[61] min-w-[220px] origin-top-left rounded-[14px] bg-white p-1.5 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_-12px_rgba(0,0,0,0.3)] [animation:ia-menu-in_180ms_cubic-bezier(0.2,0.8,0.2,1)]"
+      [style.left.px]="menu()!.x" [style.top.px]="menu()!.y">
+      <button type="button" (click)="accionMenu('compartir', c)" class="flex w-full items-center gap-[11px] rounded-[9px] px-2.5 py-2 text-left text-[13.5px] transition-colors duration-150 hover:bg-[#f4f4f4]"><tabler-icon [icon]="i.compartir" [size]="17" />Compartir conversación</button>
+      <button type="button" (click)="accionMenu('fijar', c)" class="flex w-full items-center gap-[11px] rounded-[9px] px-2.5 py-2 text-left text-[13.5px] transition-colors duration-150 hover:bg-[#f4f4f4]"><tabler-icon [icon]="store.fijadas().has(c.id) ? i.desfijar : i.fijar" [size]="17" />{{ store.fijadas().has(c.id) ? 'Desfijar' : 'Fijar' }}</button>
+      <button type="button" (click)="accionMenu('renombrar', c)" class="flex w-full items-center gap-[11px] rounded-[9px] px-2.5 py-2 text-left text-[13.5px] transition-colors duration-150 hover:bg-[#f4f4f4]"><tabler-icon [icon]="i.renombrar" [size]="17" />Cambiar nombre</button>
+      <button type="button" (click)="accionMenu('eliminar', c)" class="flex w-full items-center gap-[11px] rounded-[9px] px-2.5 py-2 text-left text-[13.5px] text-[#b42318] transition-colors duration-150 hover:bg-[#f4f4f4]"><tabler-icon [icon]="i.eliminar" [size]="17" />Eliminar</button>
+    </div>
+  }
+
+  @if (toast(); as t) {
+    <div class="fixed left-1/2 top-16 z-[70] flex -translate-x-1/2 items-center gap-2.5 rounded-xl bg-[#0a0a0a] px-3 py-[9px] text-[13px] text-[#f5f5f5] shadow-[0_16px_36px_-14px_rgba(0,0,0,0.55)] [animation:ia-toast-in_300ms_cubic-bezier(0.2,0.8,0.2,1)]">
+      <tabler-icon [icon]="i.ok" [size]="16" class="text-[#2be0d5]" />{{ t.texto }}
+    </div>
+  }
+
+  <!-- ─── Topbar ─── -->
+  <!-- Compartido con el Shell (rediseño 2026-10-01, §5.4.4): el propio
+       TopbarComponent detecta `/asistente` (señal `enAsistente`) y
+       muestra ahí el breadcrumb "› Asistente de IA" + "Volver al panel". -->
+  <app-topbar />
+
+  <div class="flex min-h-0 flex-1">
+    <!-- ─── Rail ─── -->
+    <aside class="shrink-0 overflow-hidden border-r border-[#ececec] bg-[#fafafa] transition-[width] duration-[340ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]" [style.width.px]="railAbierto() ? 272 : 0">
+      <div class="flex h-full w-[272px] flex-col">
+        <div class="flex flex-col gap-px px-2 pb-1 pt-3">
+          <button type="button" (click)="nueva()" class="mb-1 flex w-full items-center gap-2.5 rounded-full bg-[#0a0a0a] py-2 pl-2 pr-3 text-left text-[13.5px] font-medium text-white transition-[translate,box-shadow,scale] duration-200 hover:-translate-y-px hover:shadow-[0_10px_20px_-12px_rgba(0,0,0,0.7)] active:scale-[0.98]">
+            <span class="flex size-6 items-center justify-center rounded-full bg-[#2be0d5] text-[#0a0a0a]"><tabler-icon [icon]="i.mas" [size]="14" /></span>
+            <span class="flex-1">Nueva conversación</span>
+            <span class="rounded-full border border-[#333] px-[7px] text-[10.5px] text-[#8a8a8a]">N</span>
+          </button>
+          @if (!buscando()) {
+            <button type="button" (click)="abrirBusqueda()" class="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-2 text-left text-[13.5px] font-medium transition-colors duration-150 hover:bg-[#efefef]">
+              <tabler-icon [icon]="i.buscar" [size]="18" /><span class="flex-1">Buscar conversaciones</span><span class="text-[11px] text-[#b4b4b4]">/</span>
+            </button>
+          } @else {
+            <div class="ia-chip-in flex items-center gap-[11px] rounded-[10px] bg-white pl-2.5 pr-1.5 shadow-[0_0_0_1px_#e0e0e0,0_2px_6px_-3px_rgba(0,0,0,0.1)]">
+              <tabler-icon [icon]="i.buscar" [size]="18" />
+              <input #buscador [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" placeholder="Buscar conversaciones"
+                class="min-w-0 flex-1 border-0 bg-transparent py-2 text-[13.5px] outline-none placeholder:text-[#9ca3af]" />
+              <button type="button" (click)="cerrarBusqueda()" aria-label="Cerrar búsqueda" class="flex rounded-md p-[3px] text-[#9ca3af] hover:bg-[#f0f0f0] hover:text-[#111827]"><tabler-icon [icon]="i.cerrar" [size]="14" /></button>
+            </div>
+          }
+          <button type="button" (click)="iniciarCompra()" class="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-2 text-left text-[13.5px] font-medium transition-colors duration-150 hover:bg-[#efefef]">
+            <tabler-icon [icon]="i.pago" [size]="18" /><span class="flex-1">Registrar compra</span>
+          </button>
+          <button type="button" (click)="iniciarDoc()" class="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-2 text-left text-[13.5px] font-medium transition-[background-color,scale] duration-150 hover:bg-[#efefef] active:scale-[0.98]">
+            <tabler-icon [icon]="i.libros" [size]="18" /><span class="flex-1">Documentos</span>
+            <span class="text-[11.5px] tabular-nums text-[#9ca3af]">{{ store.documentos().length }}</span>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-2 pb-3 pt-1">
+          @for (g of secciones(); track g.titulo) {
+            <p class="m-0 px-2.5 pb-1.5 pt-[18px] text-[12.5px] font-medium text-[#9ca3af]">{{ g.titulo }}</p>
+            @for (c of g.items; track c.id) {
+              @if (editandoId() === c.id) {
+                <input [ngModel]="nombreDraft()" (ngModelChange)="nombreDraft.set($event)" (keydown.enter)="guardarNombre()" (keydown.escape)="editandoId.set(null); $event.stopPropagation()" (blur)="guardarNombre()" autofocus
+                  class="ia-chip-in my-px w-full rounded-[9px] border border-[#cfcfcf] bg-white px-[9px] py-1.5 text-[13.5px] outline-none shadow-[0_0_0_3px_rgba(10,10,10,0.05)]" />
+              } @else {
+                <div (mouseenter)="hoverId.set(c.id)" (mouseleave)="hoverId.set(null)"
+                  class="my-px flex items-center gap-1 rounded-[9px] transition-colors duration-150"
+                  [class]="c.id === store.activaId() ? 'bg-[#e9e9e9]' : hoverId() === c.id || menu()?.id === c.id ? 'bg-[#f0f0f0]' : 'bg-transparent'">
+                  <button type="button" (click)="abrir(c)" class="min-w-0 flex-1 truncate py-[7px] pl-2.5 pr-1 text-left text-[13.5px]"
+                    [class]="c.id === store.activaId() ? 'font-medium text-[#111827]' : 'text-[#374151]'">{{ titulo(c) }}</button>
+                  @if (c.id === store.activaId() && store.generando()) {
+                    <span class="mr-0.5 flex shrink-0 gap-0.5">
+                      @for (d of [0, 150, 300]; track d) {
+                        <span class="size-1 rounded-full bg-[#00a19a] [animation:ia-puntos_1s_infinite]" [style.animation-delay.ms]="d"></span>
+                      }
+                    </span>
+                  }
+                  <button type="button" (click)="abrirMenu($event, c)" aria-label="Opciones de la conversación"
+                    class="mr-1 flex shrink-0 rounded-[7px] p-1 text-[#6b7280] transition-[opacity,background-color,color] duration-150 hover:bg-[#e0e0e0] hover:text-[#111827]"
+                    [style.opacity]="hoverId() === c.id || menu()?.id === c.id || c.id === store.activaId() ? 1 : 0">
+                    <tabler-icon [icon]="i.kebab" [size]="16" />
+                  </button>
+                </div>
+              }
+            }
+          } @empty {
+            <p class="m-0 px-2.5 py-5 text-[12.5px] text-[#9ca3af]">Ninguna conversación coincide.</p>
+          }
+        </div>
+
+        <!-- Conectado a tu tienda -->
+        <div class="p-2.5">
+          <div class="overflow-hidden rounded-[14px] bg-[#0a0a0a] text-[#e5e5e5] shadow-[0_12px_26px_-18px_rgba(0,0,0,0.7)]">
+            <button type="button" (click)="capAbierto.set(!capAbierto())" class="flex w-full items-center gap-2.5 px-3 py-[11px] text-left">
+              <span class="relative flex size-2 shrink-0">
+                <span class="absolute inset-0 rounded-full bg-[#2be0d5] [animation:ia-ping_1.8s_cubic-bezier(0,0,0.2,1)_infinite]"></span>
+                <span class="relative size-2 rounded-full bg-[#2be0d5]"></span>
+              </span>
+              <span class="flex min-w-0 flex-1 flex-col gap-px">
+                <span class="text-[12.5px] font-semibold text-white">Conectado a tu tienda</span>
+                <span class="text-[11px] text-[#8a8a8a]">Datos al día · {{ horaSync }}</span>
+              </span>
+              <tabler-icon [icon]="i.chevron" [size]="15" class="text-[#8a8a8a] transition-transform duration-300" [class.rotate-180]="capAbierto()" />
+            </button>
+            <div class="grid transition-[grid-template-rows] duration-[360ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]" [style.grid-template-rows]="capAbierto() ? '1fr' : '0fr'">
+              <div class="min-h-0 overflow-hidden">
+                <!-- <div class="mx-3 mb-2.5 flex flex-col border-t border-[#1f1f1f] pt-1 transition-opacity duration-[260ms]" [style.opacity]="capAbierto() ? 1 : 0">
+                  @for (f of [{ ic: i.empresas, t: 'Empresas' }, { ic: i.altas, t: 'Altas pendientes' }, { ic: i.suscripciones, t: 'Suscripciones' }, { ic: i.ingresos, t: 'Ingresos' }]; track f.t) {
+                    <div class="flex items-center gap-2.5 px-0.5 py-1.5"><tabler-icon [icon]="f.ic" [size]="14" class="text-[#737373]" /><span class="flex-1 text-[12px] text-[#d4d4d4]">{{ f.t }}</span><span class="text-[10.5px] text-[#737373]">Lectura</span></div>
+                  }
+                  <div class="mt-0.5 flex items-center gap-2.5 border-t border-[#1f1f1f] px-0.5 pb-0.5 pt-2"><tabler-icon [icon]="i.escudo" [size]="14" class="text-[#2be0d5]" /><span class="flex-1 text-[12px] text-[#f5f5f5]">Registrar pagos</span><span class="text-[10.5px] text-[#2be0d5]">Con tu confirmación</span></div>
+                </div> -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ─── Main ─── -->
+    <main class="flex min-w-0 flex-1 flex-col bg-white">
+      <div class="flex h-[52px] shrink-0 items-center gap-2.5 border-b border-[#f2f2f2] px-4">
+        <button type="button" (click)="railAbierto.set(!railAbierto())" aria-label="Mostrar u ocultar conversaciones" class="flex rounded-lg p-1.5 text-[#6b7280] transition-colors duration-150 hover:bg-[#f5f5f5] hover:text-[#111827]">
+          <tabler-icon [icon]="railAbierto() ? i.railCerrar : i.railAbrir" [size]="18" />
+        </button>
+        <h1 class="m-0 min-w-0 truncate text-[14px] font-semibold">{{ store.activa() ? titulo(store.activa()!) : 'Nueva conversación' }}</h1>
+        <span class="flex-1"></span>
+        <button type="button" (click)="iniciarCompra()" class="flex items-center gap-1.5 rounded-[9px] border border-[#e5e5e5] bg-white px-[11px] py-1.5 text-[12.5px] font-medium transition-[background-color,scale] duration-150 hover:bg-[#f5f5f5] active:scale-[0.97]">
+          <tabler-icon [icon]="i.pago" [size]="15" />Registrar compra
+        </button>
+      </div>
+
+      <div class="relative min-h-0 flex-1">
+        <!-- Hilo -->
+        <div #hilo class="absolute inset-0 overflow-y-auto pb-[150px]">
+          @if (!vacio()) {
+            <div class="mx-auto flex max-w-[760px] flex-col gap-[26px] px-6 py-7">
+              @for (m of store.mensajes(); track m.id) {
+                @if (m.rol === 'usuario') {
+                  <div class="ia-user-in flex justify-end">
+                    <div class="max-w-[78%] whitespace-pre-wrap rounded-[18px_18px_6px_18px] bg-[#303030] px-[15px] py-2.5 text-[14.5px] leading-[1.55] text-white [text-wrap:pretty]">{{ m.cuerpo }}</div>
+                  </div>
+                } @else {
+                  <div class="ia-msg-in flex items-start gap-3">
+                    <span class="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]">
+                      <app-ia-marca [size]="15" [ritmo]="m.id === store.escribiendoId() ? 'activo' : 'reposo'" />
+                    </span>
+                    <div class="flex min-w-0 flex-1 flex-col gap-3 pt-1">
+                      <div class="flex flex-wrap items-end gap-0.5">
+                        <div class="ia-markdown text-[14.5px] leading-[1.65] text-[#1f2937] [text-wrap:pretty]" [innerHTML]="store.textoDe(m) | markdownLigero"></div>
+                        @if (m.id === store.escribiendoId()) {
+                          <span class="ia-caret"></span>
+                        }
+                      </div>
+                      @if (m.id !== store.escribiendoId()) {
+                        <div class="ia-msg-in flex flex-wrap items-center gap-1">
+                          @if (store.herramientasTexto(m); as f) {
+                            <span class="mr-1.5 flex items-center gap-[5px] rounded-full bg-[#f4f4f4] px-[9px] py-[3px] text-[11.5px] text-[#6b7280]"><tabler-icon [icon]="i.fuentes" [size]="12" />{{ f }}</span>
+                          }
+                          <button type="button" (click)="copiar(m)" aria-label="Copiar" class="flex rounded-[7px] p-[5px] text-[#9ca3af] transition-colors duration-150 hover:bg-[#f4f4f4] hover:text-[#111827]">
+                            <tabler-icon [icon]="copiado() === m.id ? i.copiado : i.copiar" [size]="15" />
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+
+              @if (store.fase() === 'pensando') {
+                <div class="ia-msg-in flex items-start gap-3">
+                  <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]"><app-ia-marca [size]="15" ritmo="activo" /></span>
+                  <app-ia-escribiendo [alto]="34" />
+                </div>
+              }
+              @if (store.error(); as e) {
+                <p class="m-0 rounded-[9px] bg-[#fef2f2] px-2.5 py-[7px] text-[12px] font-medium text-[#b91c1c]">{{ e }}</p>
+              }
+
+              <!-- Tarjeta de compra (factura de proveedor) -->
+              @if (compra(); as p) {
+                <div class="ia-msg-in flex items-start gap-3">
+                  <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]"><app-ia-marca [size]="15" /></span>
+                  <div class="min-w-0 flex-1 overflow-hidden rounded-2xl border border-[#e8e8e8] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_14px_34px_-22px_rgba(0,0,0,0.25)]">
+                    @if (p !== 'guardado' && p !== 'cancelado') {
+                      <div class="flex items-center gap-2.5 pb-3 pl-4 pr-3 pt-3.5">
+                        <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <span class="text-[13.5px] font-semibold">Registrar compra a proveedor</span>
+                          <span class="text-[12px] text-[#6b7280]">{{ subtitulo() }}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                          @for (ps of pasos(); track ps.label) {
+                            <span class="flex items-center gap-1 text-[11.5px] transition-colors duration-300" [class]="ps.alcanzado ? 'text-[#111827]' : 'text-[#a3a3a3]'" [class.font-semibold]="ps.actual" [class.font-medium]="!ps.actual">
+                              @if (ps.hecho) { <tabler-icon [icon]="i.hecho" [size]="13" class="ia-pop text-[#00a19a]" /> }
+                              {{ ps.label }}
+                            </span>
+                          }
+                        </div>
+                        <button type="button" (click)="cancelarCompra()" aria-label="Cancelar registro" class="flex rounded-lg p-[5px] text-[#9ca3af] hover:bg-[#f4f4f4] hover:text-[#111827]"><tabler-icon [icon]="i.cerrar" [size]="16" /></button>
+                      </div>
+                      <div class="mx-4 h-0.5 overflow-hidden rounded-sm bg-[#f0f0f0]">
+                        <div class="h-full rounded-sm bg-[#0a0a0a] transition-[width] duration-[560ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]" [style.width]="progreso()"></div>
+                      </div>
+
+                      <div class="px-4 pb-4 pt-3.5">
+                        @if (p === 'factura') {
+                          <div class="ia-paso-in flex flex-col gap-3">
+                            <div (click)="elegirComprobante()" (dragover)="$event.preventDefault(); arrastreComprobante.set(true)" (dragleave)="arrastreComprobante.set(false)" (drop)="onDropComprobante($event)"
+                              class="flex cursor-pointer flex-col items-center gap-2 rounded-[14px] border-[1.5px] border-dashed px-4 py-[26px] text-center transition-[border-color,background-color,scale] duration-200 hover:border-[#a3a3a3] hover:bg-white"
+                              [class]="arrastreComprobante() ? 'scale-[1.015] border-[#0a0a0a] bg-[#f5f5f5]' : 'border-[#d4d4d4] bg-[#fafafa]'">
+                              <span class="flex size-10 items-center justify-center rounded-full bg-white shadow-[0_0_0_1px_#ececec,0_4px_10px_-6px_rgba(0,0,0,0.2)] [animation:ia-flota_3s_ease-in-out_infinite]"><tabler-icon [icon]="i.subir" [size]="20" /></span>
+                              <span class="text-[13.5px] font-semibold">Arrastra la factura del proveedor acá</span>
+                              <span class="text-[12px] text-[#6b7280]">o haz clic para elegirla · PDF, JPG, PNG o WEBP</span>
+                            </div>
+                            @if (errorCompra(); as e) {
+                              <div class="ia-msg-in flex items-center gap-[7px] rounded-[9px] bg-[#fef2f2] px-2.5 py-[7px] text-[12px] font-medium text-[#b91c1c]"><tabler-icon [icon]="i.alerta" [size]="15" />{{ e }}</div>
+                            }
+                          </div>
+                        }
+
+                        @if (enLectura()) {
+                          <div class="ia-paso-in grid grid-cols-[148px_minmax(0,1fr)] gap-[18px]">
+                            <div class="flex flex-col gap-1.5">
+                              <div class="relative h-[196px] overflow-hidden rounded-[10px] border border-[#e5e5e5] bg-white">
+                                @if (comprobante()?.url; as url) {
+                                  <div role="img" aria-label="Factura" class="size-full bg-cover bg-center" [style.background-image]="'url(' + url + ')'"></div>
+                                } @else {
+                                  <div class="flex size-full items-center justify-center text-[#b42318]"><tabler-icon [icon]="i.pdf" [size]="34" [stroke]="1.5" /></div>
+                                }
+                                @if (p === 'leyendo') {
+                                  <span class="absolute inset-x-0 top-0 h-10 border-b-[1.5px] border-[#2be0d5] bg-gradient-to-b from-[rgba(43,224,213,0)] to-[rgba(43,224,213,0.3)] [animation:ia-scan_1.5s_cubic-bezier(0.45,0,0.55,1)_infinite_alternate]"></span>
+                                }
+                              </div>
+                              <span class="flex min-w-0 items-center gap-1 text-[11.5px] text-[#6b7280]"><tabler-icon [icon]="i.clip" [size]="12" class="shrink-0" /><span class="truncate">{{ comprobante()?.archivo?.name }}</span></span>
+                            </div>
+                            <div class="flex min-w-0 flex-col gap-3">
+                              @if (p === 'leyendo') {
+                                <div class="grid grid-cols-2 gap-2.5">
+                                  @for (n of [0, 1, 2, 3]; track n) { <div class="ia-skeleton h-9 rounded-[9px]"></div> }
+                                </div>
+                                <div class="ia-skeleton h-24 rounded-[9px]"></div>
+                              } @else {
+                                <datalist id="proveedores-ia">
+                                  @for (pv of proveedores(); track pv.id) { <option [value]="pv.nombre"></option> }
+                                </datalist>
+                                <div class="grid grid-cols-2 gap-2.5">
+                                  <div class="col-span-2 flex flex-col gap-[5px]">
+                                    <div class="flex min-h-[17px] items-center gap-1.5">
+                                      <label class="text-[11.5px] font-medium text-[#6b7280]">Proveedor</label>
+                                      @if (deIa('proveedor')) { <span class="ia-pop flex items-center gap-[3px] rounded-full bg-[#e0f7f5] px-1.5 py-px text-[10.5px] font-semibold text-[#00605b]"><tabler-icon [icon]="i.ia" [size]="11" />IA</span> }
+                                      @if (editado('proveedor')) { <span class="ia-msg-in text-[10.5px] text-[#9ca3af]">editado</span> }
+                                      @if (proveedorNombre().trim() && proveedorId() === null) { <span class="ia-msg-in rounded-full bg-[#fff1e3] px-1.5 py-px text-[10.5px] font-semibold text-[#9a3412]">Nuevo · se crea al guardar</span> }
+                                    </div>
+                                    <input list="proveedores-ia" [ngModel]="proveedorNombre()" (ngModelChange)="setProveedor($event)" [disabled]="p === 'guardando'" placeholder="Elige uno o escribe el nombre"
+                                      class="h-9 w-full rounded-[9px] border border-[#e5e5e5] bg-transparent px-[11px] text-[13.5px] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#a3a3a3] focus:shadow-[0_0_0_3px_rgba(10,10,10,0.06)]" />
+                                  </div>
+                                  @for (c of [{ k: 'numero', label: 'N° de factura' }, { k: 'fecha', label: 'Fecha' }]; track c.k) {
+                                    <div class="flex flex-col gap-[5px]">
+                                      <div class="flex min-h-[17px] items-center gap-1.5">
+                                        <label class="text-[11.5px] font-medium text-[#6b7280]">{{ c.label }}</label>
+                                        @if (deIa($any(c.k))) { <span class="ia-pop flex items-center gap-[3px] rounded-full bg-[#e0f7f5] px-1.5 py-px text-[10.5px] font-semibold text-[#00605b]"><tabler-icon [icon]="i.ia" [size]="11" />IA</span> }
+                                        @if (editado($any(c.k))) { <span class="ia-msg-in text-[10.5px] text-[#9ca3af]">editado</span> }
+                                      </div>
+                                      @if (c.k === 'numero') {
+                                        <input [ngModel]="numero()" (ngModelChange)="numero.set($event)" [disabled]="p === 'guardando'"
+                                          class="h-9 w-full rounded-[9px] border border-[#e5e5e5] bg-transparent px-[11px] text-[13.5px] tabular-nums outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#a3a3a3] focus:shadow-[0_0_0_3px_rgba(10,10,10,0.06)] [animation:ia-relleno_1100ms_ease-out]" />
+                                      } @else {
+                                        <input type="date" [ngModel]="fecha()" (ngModelChange)="fecha.set($event)" [disabled]="p === 'guardando'"
+                                          class="h-9 w-full rounded-[9px] border border-[#e5e5e5] bg-transparent px-[11px] text-[13.5px] tabular-nums outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#a3a3a3] focus:shadow-[0_0_0_3px_rgba(10,10,10,0.06)] [animation:ia-relleno_1100ms_ease-out]" />
+                                      }
+                                    </div>
+                                  }
+                                </div>
+
+                                <!-- Líneas de la factura -->
+                                <div class="overflow-hidden rounded-[11px] border border-[#ececec]">
+                                  <div class="grid grid-cols-[minmax(0,1fr)_64px_96px_28px] gap-2 border-b border-[#f2f2f2] bg-[#fafafa] px-2.5 py-1.5 text-[11px] font-medium text-[#6b7280]">
+                                    <span>Producto</span><span class="text-right">Cant.</span><span class="text-right">Precio unit.</span><span></span>
+                                  </div>
+                                  @for (it of items(); track $index; let n = $index) {
+                                    <div class="ia-card-in grid grid-cols-[minmax(0,1fr)_64px_96px_28px] items-center gap-2 border-b border-[#f5f5f5] px-2.5 py-1.5 last:border-0" [style.animation-delay.ms]="n * 40">
+                                      <div class="flex min-w-0 flex-col gap-0.5">
+                                        <select [ngModel]="it.productoId" (ngModelChange)="setItem(n, 'productoId', $event)" [disabled]="p === 'guardando'"
+                                          class="h-8 w-full min-w-0 rounded-[8px] border bg-white px-2 text-[12.5px] outline-none focus:border-[#a3a3a3]"
+                                          [class]="it.productoId === null ? 'border-[#f0b4ae] text-[#9ca3af]' : 'border-[#e5e5e5] text-[#111827]'">
+                                          <option [ngValue]="null">Elige el producto…</option>
+                                          @for (pr of productos(); track pr.id) { <option [ngValue]="pr.id">{{ pr.nombre }}</option> }
+                                        </select>
+                                        @if (it.nombre) { <span class="truncate text-[10.5px] text-[#9ca3af]">En la factura: {{ it.nombre }}</span> }
+                                      </div>
+                                      <input inputmode="numeric" [ngModel]="it.cantidad" (ngModelChange)="setItem(n, 'cantidad', numeroDe($event))" [disabled]="p === 'guardando'"
+                                        class="h-8 w-full rounded-[8px] border border-[#e5e5e5] bg-transparent px-2 text-right text-[12.5px] tabular-nums outline-none focus:border-[#a3a3a3]" />
+                                      <input inputmode="decimal" [ngModel]="it.precioUnitario" (ngModelChange)="setItem(n, 'precioUnitario', numeroDe($event))" [disabled]="p === 'guardando'"
+                                        class="h-8 w-full rounded-[8px] border border-[#e5e5e5] bg-transparent px-2 text-right text-[12.5px] tabular-nums outline-none focus:border-[#a3a3a3]" />
+                                      <button type="button" (click)="quitarItem(n)" [disabled]="p === 'guardando'" aria-label="Quitar línea" class="flex justify-center rounded-md p-1 text-[#9ca3af] hover:bg-[#f4f4f4] hover:text-[#b42318]"><tabler-icon [icon]="i.eliminar" [size]="14" /></button>
+                                    </div>
+                                  } @empty {
+                                    <p class="m-0 px-2.5 py-3 text-[12px] text-[#9ca3af]">La IA no encontró líneas. Agrégalas a mano.</p>
+                                  }
+                                  <div class="flex items-center justify-between bg-[#fcfcfc] px-2.5 py-1.5">
+                                    <button type="button" (click)="agregarItem()" [disabled]="p === 'guardando'" class="flex items-center gap-1 rounded-md px-1.5 py-1 text-[12px] font-medium text-[#374151] hover:bg-[#f0f0f0]"><tabler-icon [icon]="i.mas" [size]="13" />Agregar línea</button>
+                                    <span class="text-[12.5px] font-semibold tabular-nums">Total {{ moneda(totalCompra()) }}</span>
+                                  </div>
+                                </div>
+
+                                <div class="flex flex-col gap-[5px]">
+                                  <div class="flex min-h-[17px] items-center gap-1.5">
+                                    <label class="text-[11.5px] font-medium text-[#6b7280]">Notas</label>
+                                    @if (deIa('notas')) { <span class="ia-pop flex items-center gap-[3px] rounded-full bg-[#e0f7f5] px-1.5 py-px text-[10.5px] font-semibold text-[#00605b]"><tabler-icon [icon]="i.ia" [size]="11" />IA</span> }
+                                  </div>
+                                  <textarea rows="2" [ngModel]="notas()" (ngModelChange)="notas.set($event)" [disabled]="p === 'guardando'"
+                                    class="block w-full resize-none rounded-[9px] border border-[#e5e5e5] bg-transparent px-[11px] py-2 text-[13.5px] leading-[1.45] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#a3a3a3] focus:shadow-[0_0_0_3px_rgba(10,10,10,0.06)]"></textarea>
+                                </div>
+                              }
+                              @if (errorCompra(); as e) {
+                                <div class="ia-msg-in flex items-center gap-[7px] rounded-[9px] bg-[#fef2f2] px-2.5 py-[7px] text-[12px] font-medium text-[#b91c1c]"><tabler-icon [icon]="i.alerta" [size]="15" />{{ e }}</div>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+
+                      @if (enLectura()) {
+                        <div class="flex items-center gap-2.5 border-t border-[#f2f2f2] bg-[#fcfcfc] px-4 py-[11px]">
+                          @if (p === 'leyendo') {
+                            <span class="ia-shimmer-texto text-[12.5px] font-medium">Leyendo la factura…</span>
+                          } @else {
+                            <span class="ia-msg-in flex items-center gap-1.5 text-[12px] text-[#6b7280]"><tabler-icon [icon]="i.renov" [size]="14" />Los productos entran al inventario al guardar</span>
+                          }
+                          <span class="flex-1"></span>
+                          <button type="button" (click)="cancelarCompra()" [disabled]="p === 'guardando'" class="rounded-[9px] border border-[#e5e5e5] bg-white px-[13px] py-[7px] text-[13px] font-medium text-[#4b5563] transition-colors duration-150 hover:bg-[#f5f5f5]">Cancelar</button>
+                          <button type="button" (click)="confirmarCompra()" [disabled]="p !== 'revisar'"
+                            class="flex items-center gap-1.5 rounded-[9px] bg-[#0a0a0a] px-3.5 py-2 text-[13px] font-medium text-white transition-[opacity,scale,box-shadow] duration-200 hover:shadow-[0_6px_16px_-8px_rgba(0,0,0,0.5)] active:scale-[0.97]"
+                            [style.opacity]="p === 'leyendo' ? 0.35 : 1">
+                            <tabler-icon [icon]="p === 'guardando' ? i.cargando : i.copiado" [size]="15" [class.animate-spin]="p === 'guardando'" />
+                            {{ p === 'guardando' ? 'Guardando…' : 'Confirmar y guardar' }}
+                          </button>
+                        </div>
+                      }
+                    }
+
+                    @if (p === 'guardado' && guardada(); as g) {
+                      <div class="ia-msg-in">
+                        <div class="flex items-center gap-3 px-4 py-3.5">
+                          <span class="ia-pop flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[#e0f7f5] text-[#00605b]"><tabler-icon [icon]="i.copiado" [size]="18" /></span>
+                          <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span class="text-[13.5px] font-semibold">Compra registrada</span>
+                            <span class="text-[12.5px] tabular-nums text-[#6b7280]">{{ g.proveedor }} · {{ moneda(g.total) }} · {{ fechaLarga(fecha()) }}</span>
+                          </span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3.5 border-t border-[#f2f2f2] bg-[#fcfcfc] px-4 py-[9px] text-[12px] text-[#6b7280]">
+                          <span class="flex items-center gap-[5px]"><tabler-icon [icon]="i.hash" [size]="13" />{{ numero() || '—' }}</span>
+                          <span class="flex items-center gap-[5px]">{{ g.lineas }} {{ g.lineas === 1 ? 'producto' : 'productos' }}</span>
+                          <span class="flex min-w-0 items-center gap-[5px]"><tabler-icon [icon]="i.clip" [size]="13" />{{ comprobante()?.archivo?.name ?? '—' }}</span>
+                          <span class="flex-1"></span>
+                          <a routerLink="/products/compras" class="flex items-center gap-[3px] font-medium text-[#111827] no-underline hover:underline">Ver en Compras<tabler-icon [icon]="i.externo" [size]="13" /></a>
+                        </div>
+                      </div>
+                    }
+
+                    @if (p === 'cancelado') {
+                      <div class="ia-msg-in flex items-center gap-2 px-4 py-3 text-[12.5px] text-[#9ca3af]"><tabler-icon [icon]="i.cancelado" [size]="16" />Registro de compra cancelado.</div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Tarjeta de documento (v3) -->
+              @if (doc(); as d) {
+                @for (k of [d.key]; track k) {
+                  <app-documento-interno-card [archivoInicial]="d.archivo" (guardado)="onDocGuardado($event)" (finalizado)="onDocFinalizado()" />
+                }
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Saludo (solo vacío) -->
+        <!-- <div class="absolute inset-x-0 bottom-[calc(50%+62px)] flex justify-center px-6 text-center transition-[opacity,transform] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          [style.opacity]="vacio() ? 1 : 0" [style.transform]="vacio() ? 'none' : 'translateY(-18px)'" [style.pointer-events]="vacio() ? 'auto' : 'none'">
+          @if (vacio()) { <app-ia-saludo [nombre]="nombre()" /> }
+        </div> -->
+
+        <!-- Sugerencias (solo vacío) -->
+        <div class="absolute inset-x-0 top-[calc(50%+40px)] px-6 transition-[opacity,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+          [style.opacity]="vacio() ? 1 : 0" [style.transform]="vacio() ? 'none' : 'translateY(14px)'" [style.pointer-events]="vacio() ? 'auto' : 'none'">
+          <div class="mx-auto flex max-h-[calc(50vh-120px)] max-w-[760px] flex-col overflow-y-auto px-1.5 [scrollbar-width:none]">
+            @for (s of sugerencias; track s.texto; let n = $index) {
+              <button type="button" (click)="enviar(s.texto)" [style.animation-delay.ms]="380 + n * 60"
+                class="ia-card-in flex w-full shrink-0 items-center gap-3.5 rounded-xl px-3 py-[clamp(6px,1.2vh,10px)] text-left text-[14px] text-[#4b5563] transition-[background-color,color,scale] duration-150 hover:bg-[#f5f5f5] hover:text-[#111827] active:scale-[0.99]">
+                <tabler-icon [icon]="s.icono" [size]="18" class="text-[#6b7280]" />{{ s.texto }}
+              </button>
+            }
+            <button type="button" (click)="iniciarCompra()" [style.animation-delay.ms]="380 + 4 * 60"
+              class="ia-card-in flex w-full shrink-0 items-center gap-3.5 rounded-xl px-3 py-[clamp(6px,1.2vh,10px)] text-left text-[14px] text-[#4b5563] transition-[background-color,color,scale] duration-150 hover:bg-[#f5f5f5] hover:text-[#111827] active:scale-[0.99]">
+              <tabler-icon [icon]="i.pago" [size]="18" class="text-[#6b7280]" />Registrar una compra desde una factura
+            </button>
+          </div>
+        </div>
+
+        <!-- Composer -->
+        <div class="pointer-events-none absolute inset-x-0 z-[2] px-6 pb-4 pt-[22px] transition-[bottom] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]" [style.bottom]="vacio() ? 'calc(50% - 64px)' : '0px'">
+          <div class="pointer-events-none absolute inset-0 -z-[1] bg-gradient-to-t from-white from-[72%] to-white/0 transition-opacity duration-[400ms]" [style.opacity]="vacio() ? 0 : 1"></div>
+          <div class="relative mx-auto flex max-w-[760px] flex-col gap-2">
+            <div (dragover)="$event.preventDefault(); arrastre.set(true)" (dragleave)="arrastre.set(false)" (drop)="onComposerDrop($event)"
+              class="pointer-events-auto rounded-[26px] border p-2 transition-[border-color,box-shadow,background-color] duration-200"
+              [class]="arrastre() ? 'border-[#2be0d5] bg-[#f2fcfb]' : enfocado() ? 'border-[#cfcfcf] bg-white' : 'border-[#e5e5e5] bg-white'"
+              [style.box-shadow]="enfocado() ? '0 0 0 4px rgba(10,10,10,0.04), 0 12px 32px -18px rgba(0,0,0,0.35)' : '0 8px 28px -22px rgba(0,0,0,0.3)'">
+              @if (adjunto(); as a) {
+                <div class="mx-0.5 mb-2 mt-0.5 flex flex-wrap gap-2">
+                  <div class="ia-chip-in relative flex w-[220px] items-center gap-[9px] overflow-hidden rounded-[14px] border border-[#ececec] bg-[#fafafa] py-[7px] pl-[7px] pr-[30px]">
+                    @if (a.url) {
+                      <span class="size-[34px] shrink-0 rounded-[9px] bg-cover bg-center" [style.background-image]="'url(' + a.url + ')'"></span>
+                    } @else {
+                      <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[9px] bg-[#fdecec] text-[#b42318]"><tabler-icon [icon]="i.pdf" [size]="17" /></span>
+                    }
+                    <span class="flex min-w-0 flex-1 flex-col gap-px"><span class="truncate text-[12.5px] font-medium">{{ a.archivo.name }}</span><span class="text-[11px] tabular-nums text-[#6b7280]">{{ a.url ? 'Imagen' : 'PDF' }} · {{ tamano(a.archivo.size) }}</span></span>
+                    <button type="button" (click)="adjunto.set(null)" aria-label="Quitar archivo" class="absolute right-1.5 top-1/2 flex -translate-y-1/2 rounded-md p-[3px] text-[#9ca3af] hover:bg-[#ececec] hover:text-[#111827]"><tabler-icon [icon]="i.cerrar" [size]="14" /></button>
+                  </div>
+                </div>
+              }
+              <div class="flex items-end gap-1">
+                <app-ia-menu-mas
+                  variante="completa"
+                  [documentos]="store.documentos()"
+                  (subirArchivos)="adjuntarDesdeMenu()"
+                  (registrarCompra)="iniciarCompra()"
+                  (agregarDocumento)="iniciarDoc()"
+                  (preguntarDocumento)="preguntarDocumento($event)"
+                />
+                <textarea #composer rows="1" [ngModel]="texto()" (ngModelChange)="texto.set($event)" (keydown)="onKeyDown($event)" (focus)="enfocado.set(true)" (blur)="enfocado.set(false)"
+                  placeholder="Pregunta algo o adjunta una factura…"
+                  class="block max-h-[180px] min-h-[38px] min-w-0 flex-1 resize-none border-0 bg-transparent px-1.5 py-2 text-[15px] leading-[22px] outline-none [field-sizing:content] placeholder:text-[#9ca3af]"></textarea>
+                @if (store.generando()) { <span class="ia-msg-in self-center whitespace-nowrap px-1 text-[11.5px] text-[#9ca3af]">Esc para detener</span> }
+                <button type="button" (click)="iniciarCompra()" class="flex h-[38px] shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-[#4b5563] transition-[background-color,color,scale] duration-150 hover:bg-[#f4f4f4] hover:text-[#111827] active:scale-[0.96]">
+                  <tabler-icon [icon]="i.pago" [size]="16" />Registrar compra
+                </button>
+                <button type="button" (click)="accionBoton()" [attr.aria-label]="store.generando() ? 'Detener' : 'Enviar'"
+                  class="flex size-[38px] shrink-0 items-center justify-center rounded-full transition-[background-color,color,scale] duration-200 active:scale-[0.88]"
+                  [class]="store.generando() || puedeEnviar() ? 'bg-[#0a0a0a] text-white' : 'bg-[#ececec] text-[#a3a3a3]'">
+                  <tabler-icon [icon]="store.generando() ? i.detener : i.enviar" [size]="18" />
+                </button>
+              </div>
+            </div>
+            <p class="m-0 text-center text-[11.5px] text-[#9ca3af] transition-opacity duration-[400ms]" [style.opacity]="vacio() ? 0 : 1">El asistente solo consulta datos. Una compra se guarda únicamente cuando la confirmas.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

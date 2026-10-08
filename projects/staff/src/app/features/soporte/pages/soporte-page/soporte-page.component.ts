@@ -134,6 +134,9 @@ interface Chip {
   imports: [FormsModule, TablerIconComponent, CabeceraModuloComponent, PantallaEstadoComponent],
   templateUrl: './soporte-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Alto del área de contenido (`<main>`), no del viewport: así no depende
+  // del topbar ni de la escala `--escala-contenido` (styles.css).
+  host: { class: 'block h-full' },
 })
 export class SoportePageComponent implements OnDestroy {
   private readonly chatService = inject(ChatService);

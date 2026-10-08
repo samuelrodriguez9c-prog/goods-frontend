@@ -1,0 +1,112 @@
+<div
+  role="region"
+  aria-label="Alertas"
+  class="fixed bottom-6 left-1/2 z-[60] h-0 w-[420px] max-w-[calc(100vw-32px)] -translate-x-1/2"
+  (mouseenter)="servicio.pausar()"
+  (mouseleave)="servicio.reanudar()"
+>
+  @if (cerrables() >= 2) {
+    <button
+      type="button"
+      (click)="servicio.cerrarTodas()"
+      class="absolute right-1.5 rounded-full bg-[#1a1a1a]/[0.86] px-[11px] py-1 text-[11.5px] font-medium text-[#d4d4d4] transition-[color,bottom] duration-[420ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:text-white"
+      [style.bottom.px]="cerrarTodasAbajo()"
+    >
+      Cerrar todas · {{ activas().length }}
+    </button>
+  }
+
+  @for (a of alertas(); track a.id) {
+    @let i = pos(a);
+    @let frente = i === 0;
+    @let abierta = frente && expandible(a) && a.abierta;
+    <div
+      #capa
+      class="absolute inset-x-0 bottom-0 origin-top transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+      [attr.data-frente]="frente"
+      [class.pointer-events-none]="!frente"
+      [style.z-index]="a.saliendo ? 60 : 50 - i"
+      [style.transform]="transformar(a, i)"
+      [style.opacity]="opacidad(a, i)"
+    >
+      <div
+        role="status"
+        [attr.aria-live]="a.estado === 'error' ? 'assertive' : 'polite'"
+        class="relative overflow-hidden rounded-[22px] bg-[#1a1a1a] text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.35)] animate-[alerta-entrar_360ms_cubic-bezier(0.2,0.8,0.2,1)_both]"
+      >
+        <div class="transition-opacity duration-200" [style.opacity]="frente || a.saliendo ? 1 : 0">
+          <div
+            class="flex h-11 items-center gap-2.5 pl-3.5 pr-2.5"
+            [class.cursor-pointer]="expandible(a)"
+            (click)="alternar(a, i)"
+          >
+            <app-estado-icono [estado]="a.estado" tema="oscuro" [px]="18" [grosor]="3.6" class="shrink-0" />
+
+            <span class="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap text-[13px]">
+              <strong class="min-w-0 flex-[0_1_auto] truncate font-semibold">{{ a.titulo }}</strong>
+              @if (a.texto && !abierta) {
+                <span class="size-[3px] shrink-0 rounded-full bg-[#8c8c8c]"></span>
+                <span class="min-w-10 flex-[1_1_0] truncate text-[#c7c7c7]">{{ a.texto }}</span>
+              }
+            </span>
+
+            @if (expandible(a)) {
+              <tabler-icon
+                [icon]="ic.chevron"
+                [size]="14"
+                class="shrink-0 text-[#8c8c8c] transition-transform duration-[260ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                [class.rotate-180]="abierta"
+              />
+            }
+
+            <!-- la operación en curso no se puede descartar -->
+            @if (a.estado !== 'cargando') {
+              <button
+                type="button"
+                (click)="cerrar($event, a.id)"
+                aria-label="Cerrar alerta"
+                class="flex size-6 shrink-0 items-center justify-center rounded-full text-[#8c8c8c] transition-colors duration-150 hover:bg-[#2a2a2a] hover:text-white"
+              >
+                <tabler-icon [icon]="ic.cerrar" [size]="14" />
+              </button>
+            }
+          </div>
+
+          <div
+            class="grid transition-[grid-template-rows] duration-[280ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+            [style.grid-template-rows]="abierta ? '1fr' : '0fr'"
+          >
+            <div class="min-h-0 overflow-hidden">
+              <div
+                class="flex flex-col items-start gap-2.5 pb-3.5 pl-[42px] pr-4 transition-opacity duration-200"
+                [style.opacity]="abierta ? 1 : 0"
+              >
+                @if (a.texto) {
+                  <p class="m-0 text-[12.5px] leading-[18px] text-[#c7c7c7] text-pretty">{{ a.texto }}</p>
+                }
+                @if (a.accion && a.estado !== 'cargando') {
+                  <button
+                    type="button"
+                    (click)="ejecutar($event, a)"
+                    class="rounded-full bg-[#2be0d5] px-3 py-[5px] text-xs font-semibold text-[#0a0a0a] transition-[background-color,transform] duration-150 hover:bg-[#8ff0ea] active:scale-[0.97]"
+                  >
+                    {{ a.accion.label }}
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- barra de tiempo: solo la del frente; @if la recrea al cambiar estado/frente -->
+        @if (frente && a.autoCierre) {
+          <span
+            class="absolute inset-x-[22px] bottom-0 h-0.5 origin-left rounded-full bg-[#2be0d5] opacity-90"
+            [style.animation]="'alerta-barra ' + a.autoCierre + 'ms linear both'"
+            [style.animation-play-state]="servicio.pausada() ? 'paused' : 'running'"
+          ></span>
+        }
+      </div>
+    </div>
+  }
+</div>

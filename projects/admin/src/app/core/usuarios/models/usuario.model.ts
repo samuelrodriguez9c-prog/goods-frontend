@@ -18,6 +18,8 @@ export interface Usuario {
     id: number;
     nombre: string;
   };
+  /** Solo si todavía no creó su contraseña (invitación pendiente o vencida). */
+  invitacion?: { venceEn: string | null; vencida: boolean };
 }
 
 /** Mismo shape que `armarRespuestaPaginada` del backend

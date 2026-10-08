@@ -1,0 +1,385 @@
+@let e = empresa();
+@if (pop()) {
+  <div class="fixed inset-0 z-20" (click)="cerrarPop()"></div>
+}
+
+<div class="shrink-0 px-6 pt-4">
+  <div class="flex items-center gap-2">
+    <span class="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Empresa</span>
+    <button type="button" (click)="copiarId()" title="Copiar ID" class="flex items-center gap-1 text-[11px] tabular-nums text-gray-400 hover:text-gray-900">
+      #{{ e.id }}
+      <tabler-icon [icon]="idCopiado() ? i.check : i.copiar" [size]="12" [stroke]="1.75" />
+    </button>
+    <span class="flex-1"></span>
+    <span class="text-[11.5px] tabular-nums text-gray-400">{{ posicion() }}</span>
+    <button type="button" (click)="anterior.emit()" aria-label="Anterior" class="flex rounded-lg p-[5px] text-gray-500 hover:bg-[#f1f1f1] hover:text-gray-900"><tabler-icon [icon]="i.arriba" [size]="16" [stroke]="1.75" /></button>
+    <button type="button" (click)="siguiente.emit()" aria-label="Siguiente" class="flex rounded-lg p-[5px] text-gray-500 hover:bg-[#f1f1f1] hover:text-gray-900"><tabler-icon [icon]="i.abajo" [size]="16" [stroke]="1.75" /></button>
+  </div>
+
+  @for (k of [e.id]; track k) {
+    <div class="animar-ficha mt-1.5 flex items-start gap-4">
+      <div class="min-w-0 flex-1">
+        <h2 class="font-display text-2xl font-semibold leading-[30px] tracking-[-0.015em] text-gray-900 [text-wrap:pretty]">{{ e.nombre }}</h2>
+        <p class="mt-1 text-[13px] text-gray-500">{{ e.rubro ?? 'Sin rubro' }} · {{ e.correoContacto }}</p>
+      </div>
+      @if (paso(); as p) {
+        <button
+          type="button"
+          (click)="p.ejecutar()"
+          [disabled]="ocupado()"
+          class="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] hover:opacity-90 disabled:opacity-50"
+        >
+          {{ ocupado() ? 'Enviando…' : p.texto }}
+          <tabler-icon [icon]="i.flecha" [size]="14" [stroke]="1.75" class="text-[#2be0d5]" />
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Pills -->
+  <div class="relative z-30 mt-3.5 flex flex-wrap items-center gap-1.5">
+    <div class="relative">
+      <button
+        type="button"
+        (click)="abrirPop('estado')"
+        [attr.aria-expanded]="pop() === 'estado'"
+        class="flex h-[30px] items-center gap-[7px] rounded-full pl-[11px] pr-2.5 text-[13px] font-medium text-gray-900 transition-colors hover:bg-[#ebebeb]"
+        [class]="pop() === 'estado' ? 'bg-[#e6e6e6]' : 'bg-[#f4f4f4]'"
+      >
+        <span class="size-[7px] rounded-full" [style.background]="estado().punto"></span>
+        {{ estado().texto }}
+        <tabler-icon [icon]="i.abajo" [size]="13" [stroke]="1.75" class="text-[#8a8a8a]" />
+      </button>
+      @if (pop() === 'estado') {
+        <div class="absolute left-0 top-9 w-[320px] animate-[fade-in-up_0.18s_ease-out] rounded-[14px] bg-white p-1.5 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_-16px_rgba(0,0,0,0.35)]">
+          @if (accion(); as a) {
+            <div class="flex flex-col gap-2.5 p-2.5">
+              <div>
+                <p class="text-[13px] font-semibold text-gray-900">{{ accionCuenta[a].titulo }}</p>
+                <p class="mt-0.5 text-xs leading-[17px] text-gray-500">{{ accionCuenta[a].ayuda }}</p>
+              </div>
+              <textarea
+                rows="2"
+                [value]="motivo()"
+                (input)="motivo.set($any($event.target).value)"
+                [placeholder]="a === 'reactivar' ? 'Motivo (opcional)' : 'Motivo (obligatorio)'"
+                class="resize-none rounded-[9px] border-0 bg-[#f5f5f5] px-[11px] py-[9px] text-[13px] leading-[18px] text-gray-900 outline-none"
+              ></textarea>
+              <div class="flex justify-end gap-1.5">
+                <button type="button" (click)="accion.set(null)" class="rounded-full px-[13px] py-1.5 text-[12.5px] font-medium text-gray-600 hover:bg-[#f1f1f1]">Volver</button>
+                <button
+                  type="button"
+                  (click)="confirmarCuenta()"
+                  [disabled]="a !== 'reactivar' && !motivo().trim()"
+                  class="rounded-full px-[13px] py-1.5 text-[12.5px] font-medium text-white transition-opacity disabled:opacity-40"
+                  [class]="accionCuenta[a].peligro ? 'bg-[#d82c0d]' : 'bg-[#303030]'"
+                >{{ accionCuenta[a].boton }}</button>
+              </div>
+            </div>
+          } @else {
+            <p class="px-2.5 pb-1.5 pt-2 text-xs leading-[17px] text-gray-500">{{ notaEstado() }}</p>
+            @for (a of accionesCuenta(); track a) {
+              <button type="button" (click)="accion.set(a); motivo.set('')" class="flex w-full items-start gap-2.5 rounded-[9px] px-2.5 py-[9px] text-left hover:bg-[#f5f5f5]">
+                <tabler-icon [icon]="a === 'reactivar' ? i.play : a === 'suspender' ? i.pausa : i.ban" [size]="16" [stroke]="1.75" class="mt-px" [class]="accionCuenta[a].peligro ? 'text-[#b42318]' : 'text-gray-900'" />
+                <span class="flex flex-col gap-px">
+                  <span class="text-[13px] font-medium" [class]="accionCuenta[a].peligro ? 'text-[#b42318]' : 'text-gray-900'">{{ accionCuenta[a].texto }}</span>
+                  <span class="text-[11.5px] leading-4 text-[#8a8a8a]">{{ accionCuenta[a].sub }}</span>
+                </span>
+              </button>
+            }
+          }
+        </div>
+      }
+    </div>
+
+    <div class="relative">
+      <button
+        type="button"
+        (click)="abrirPop('plan')"
+        class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-gray-900"
+        [class]="planEditable() ? 'hover:bg-[#ebebeb]' : 'cursor-default'"
+      >
+        <tabler-icon [icon]="i.plan" [size]="14" [stroke]="1.75" class="text-gray-500" />
+        {{ e.planNombre ?? 'Sin plan' }}
+        @if (planActual()?.precioMensual; as precio) {
+          <span class="text-gray-400">{{ plata(precio) }}</span>
+        }
+        @if (planEditable()) {
+          <tabler-icon [icon]="i.abajo" [size]="13" [stroke]="1.75" class="text-[#8a8a8a]" />
+        }
+      </button>
+      @if (pop() === 'plan') {
+        <div class="absolute left-0 top-9 w-[300px] animate-[fade-in-up_0.18s_ease-out] rounded-[14px] bg-white p-1.5 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_-16px_rgba(0,0,0,0.35)]">
+          <p class="px-2.5 pb-1.5 pt-2 text-xs leading-[17px] text-gray-500">Cambiar el plan desde hoy. Las excepciones de módulos se reinician.</p>
+          @for (p of planes(); track p.id) {
+            <button
+              type="button"
+              (click)="planElegido.set(p.id)"
+              class="flex w-full items-center justify-between rounded-[9px] px-2.5 py-2 text-left text-[13px]"
+              [class]="planElegido() === p.id ? 'bg-[#303030] text-white' : 'text-gray-900 hover:bg-[#f5f5f5]'"
+            >
+              <span class="font-medium">{{ p.nombre }}</span>
+              <span class="tabular-nums opacity-70">{{ p.precioMensual ? plata(p.precioMensual) : '—' }}</span>
+            </button>
+          }
+          <div class="flex justify-end gap-1.5 p-2">
+            <button type="button" (click)="cerrarPop()" class="rounded-full px-[13px] py-1.5 text-[12.5px] font-medium text-gray-600 hover:bg-[#f1f1f1]">Cancelar</button>
+            <button type="button" (click)="confirmarPlan()" class="rounded-full bg-[#303030] px-[13px] py-1.5 text-[12.5px] font-medium text-white">Cambiar plan</button>
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (modulos().length) {
+      <button type="button" (click)="pestana.set('modulos')" class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-gray-900 hover:bg-[#ebebeb]">
+        <span class="flex items-end gap-[2px]">
+          @for (m of modulos(); track m.id) {
+            <span class="h-2.5 w-[3px] rounded-full" [class]="m.efectivo ? (m.override ? 'bg-[#00a19a]' : 'bg-[#303030]') : 'bg-[#d4d4d4]'"></span>
+          }
+        </span>
+        {{ conAcceso() }}/{{ modulos().length }} módulos
+        <tabler-icon [icon]="i.derecha" [size]="13" [stroke]="1.75" class="text-[#8a8a8a]" />
+      </button>
+    }
+
+    <span class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-gray-900">
+      <tabler-icon [icon]="i.reloj" [size]="14" [stroke]="1.75" class="text-gray-500" />
+      {{ antiguedad() }}
+    </span>
+  </div>
+
+  <!-- Recorrido -->
+  <div class="mt-4 pb-4">
+    <div class="relative h-4">
+      @for (m of vida().marcas; track m.texto) {
+        <span class="absolute top-0 whitespace-nowrap text-[11px] font-medium text-gray-500" [style.left.%]="m.left" [style.transform]="m.left > 80 ? 'translateX(-100%)' : 'none'">{{ m.texto }}</span>
+      }
+    </div>
+    <div class="relative mt-1 h-1.5 overflow-hidden rounded-full bg-[#f3f3f3]">
+      @for (t of vida().tramos; track $index) {
+        <span class="absolute inset-y-0 transition-all duration-500" [style.left.%]="t.left" [style.width.%]="t.ancho" [style.background]="t.color"></span>
+      }
+    </div>
+    <div class="mt-1 flex justify-between text-[11px] text-gray-400"><span>{{ vida().desde }}</span><span>{{ vida().hasta }}</span></div>
+  </div>
+
+  <app-hoja-pestanas [pestanas]="pestanas()" [activa]="pestana()" (elegir)="elegirPestana($event)" />
+</div>
+
+<div class="min-h-0 flex-1 overflow-y-auto">
+  @for (k of [e.id + pestana()]; track k) {
+    <div class="animar-cuerpo flex flex-col px-6 pb-6 pt-2">
+      @switch (pestana()) {
+        @case ('resumen') {
+          <!-- Ahora -->
+          <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 py-[18px]">
+            <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Ahora</span>
+            <div class="flex items-start gap-2.5">
+              <tabler-icon [icon]="ahora().icono" [size]="18" [stroke]="1.75" [style.color]="ahora().tinta" />
+              <div>
+                <p class="text-[13.5px] font-semibold text-gray-900">{{ ahora().titulo }}</p>
+                <p class="mt-0.5 text-[13px] leading-5 text-gray-500 [text-wrap:pretty]">{{ ahora().texto }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ciclo -->
+          <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+            <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Ciclo</span>
+            @if (ciclo(); as c) {
+              <div class="flex flex-col gap-2">
+                <div class="flex items-baseline gap-2">
+                  <span class="font-display text-lg font-semibold" [style.color]="c.tinta">{{ c.grande }}</span>
+                  <span class="text-[12.5px] text-gray-500">{{ c.chico }}</span>
+                </div>
+                <div class="flex gap-[2px]">
+                  @for (d of c.dias; track $index) {
+                    <span class="h-2 flex-1 rounded-[2px]" [style.background]="d"></span>
+                  }
+                </div>
+                <div class="flex justify-between text-[11px] text-gray-400"><span>{{ c.inicio }}</span><span>{{ c.fin }}</span></div>
+                @if (formPago(); as f) {
+                  <div class="mt-1 flex flex-col gap-2 rounded-xl bg-[#f7f7f7] p-3 shadow-[inset_2px_0_0_#303030]">
+                    <div class="flex gap-2">
+                      <input [value]="f.monto" (input)="parchePago({ monto: $any($event.target).value })" placeholder="Monto" class="w-32 rounded-[9px] border-0 bg-white px-2.5 py-2 text-[13px] tabular-nums outline-none" />
+                      <input [value]="f.ref" (input)="parchePago({ ref: $any($event.target).value })" placeholder="Referencia del comprobante" class="min-w-0 flex-1 rounded-[9px] border-0 bg-white px-2.5 py-2 text-[13px] outline-none" />
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                      @for (m of metodos; track m.valor) {
+                        <button type="button" (click)="parchePago({ metodo: m.valor })" class="rounded-full px-[11px] py-[5px] text-xs font-medium" [class]="f.metodo === m.valor ? 'bg-[#303030] text-white' : 'bg-white text-[#303030]'">{{ m.texto }}</button>
+                      }
+                      <span class="flex-1"></span>
+                      <button type="button" (click)="formPago.set(null)" class="rounded-full px-[13px] py-1.5 text-[12.5px] font-medium text-gray-600 hover:bg-[#ececec]">Cancelar</button>
+                      <button type="button" (click)="registrarPago()" class="rounded-full bg-[#303030] px-[13px] py-1.5 text-[12.5px] font-medium text-white">Registrar</button>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="flex items-center gap-3">
+                    <button type="button" (click)="abrirPago()" class="flex items-center gap-1.5 rounded-full bg-[#f1f1f1] px-[11px] py-[5px] text-xs font-medium text-[#303030] hover:bg-[#e6e6e6]">
+                      <tabler-icon [icon]="i.recibo" [size]="13" [stroke]="1.75" />Registrar pago
+                    </button>
+                    <span class="text-xs text-gray-400">{{ c.ultimo }}</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="text-[13px] text-gray-500">{{ e.estado === 'activa' ? 'Sin suscripción en ciclo.' : 'Empieza a correr cuando la Empresa se activa.' }}</p>
+            }
+          </div>
+
+          <!-- Dueño -->
+          <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+            <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Dueño</span>
+            <div class="flex flex-col gap-2">
+              <div class="grid grid-cols-[minmax(0,1fr)_16px_minmax(0,1fr)] gap-x-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-400">
+                <span>Declarado en el registro</span><span></span><span>Cuenta real</span>
+              </div>
+              @for (r of duenio().filas; track $index) {
+                <div class="grid grid-cols-[minmax(0,1fr)_16px_minmax(0,1fr)] items-center gap-x-2.5 border-b border-dashed border-[#ececec] py-1.5 text-[13px]">
+                  <span class="truncate text-gray-500">{{ r.dec }}</span>
+                  <tabler-icon [icon]="r.igual ? i.check : i.x" [size]="14" [stroke]="2" [class]="r.igual ? 'text-[#087b5d]' : 'text-gray-300'" />
+                  <span class="truncate font-medium text-gray-900">{{ r.real }}</span>
+                </div>
+              }
+              <p class="flex items-center gap-1.5 text-xs" [class]="duenio().ok ? 'text-[#087b5d]' : 'text-gray-500'">
+                <tabler-icon [icon]="duenio().ok ? i.ok : i.alerta" [size]="14" [stroke]="1.75" />{{ duenio().veredicto }}
+              </p>
+              @for (c of duenio().checks; track c.texto) {
+                <p class="flex items-center gap-1.5 text-xs" [class]="c.ok ? 'text-gray-600' : 'text-[#b45309]'">
+                  <tabler-icon [icon]="c.ok ? i.check : i.reloj" [size]="13" [stroke]="1.75" />{{ c.texto }}
+                </p>
+              }
+            </div>
+          </div>
+
+          <!-- Contacto -->
+          <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+            <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Contacto</span>
+            <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2.5">
+              @for (c of campos(); track c.clave) {
+                <label class="flex flex-col gap-1">
+                  <span class="text-[11.5px] text-gray-500">{{ c.etiqueta }}</span>
+                  <input
+                    [value]="c.valor"
+                    (input)="editarCampo(c.clave, $any($event.target).value)"
+                    [placeholder]="c.ph"
+                    class="rounded-[9px] border-0 px-[11px] py-2 text-[13px] text-gray-900 outline-none transition-shadow"
+                    [class]="c.cambiado ? 'bg-white shadow-[0_0_0_1.5px_#00a19a]' : 'bg-[#f5f5f5]'"
+                  />
+                </label>
+              }
+              <div class="flex flex-col gap-1">
+                <span class="text-[11.5px] text-gray-500">Nombre del negocio</span>
+                <span class="flex items-center justify-between rounded-[9px] bg-[#fafafa] px-[11px] py-2 text-[13px] text-gray-500" title="Se corrige desde Altas pendientes">
+                  {{ e.nombre }}<tabler-icon [icon]="i.candado" [size]="13" [stroke]="1.75" class="text-gray-300" />
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+
+        @case ('modulos') {
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-4">
+            <span class="font-display text-[22px] font-semibold tabular-nums text-gray-900">{{ conAcceso() }} de {{ modulos().length }}</span>
+            <span class="text-[13px] text-gray-500">módulos con acceso</span>
+            <span class="ml-auto flex items-center gap-3 text-[11.5px] text-gray-500">
+              <span class="flex items-center gap-1.5"><span class="size-[7px] rounded-full bg-[#303030]"></span>Del plan</span>
+              <span class="flex items-center gap-1.5"><span class="size-[7px] rounded-full bg-[#00a19a]"></span>Extra</span>
+              <span class="flex items-center gap-1.5"><span class="size-[7px] rounded-full bg-[#d82c0d]"></span>Quitado</span>
+            </span>
+          </div>
+          <div class="flex flex-col">
+            @for (m of filasModulos(); track m.id) {
+              <div class="border-t border-[#f4f4f4] py-2.5">
+                <div class="flex items-center gap-3">
+                  <span class="size-[7px] shrink-0 rounded-full" [class]="m.desdePlan ? 'bg-[#303030]' : 'bg-[#e3e3e3]'" [title]="m.desdePlan ? 'Lo da el plan' : 'No lo da el plan'"></span>
+                  <span class="flex min-w-0 flex-1 flex-col gap-px">
+                    <span class="flex items-center gap-2 text-[13px] font-medium text-gray-900">
+                      {{ m.nombre }}
+                      @if (m.tag) {
+                        <span class="rounded-full px-2 py-px text-[11px] font-semibold" [style.background]="m.tagFondo" [style.color]="m.tagTinta">{{ m.tag }}</span>
+                      }
+                    </span>
+                    @if (m.override?.motivo) {
+                      <span class="truncate text-[11.5px] text-gray-400">“{{ m.override?.motivo }}”</span>
+                    }
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    [attr.aria-checked]="m.efectivo"
+                    [attr.aria-label]="m.nombre"
+                    (click)="alternarModulo(m)"
+                    class="relative h-[18px] w-8 shrink-0 rounded-full transition-colors duration-200"
+                    [class]="m.efectivo ? (m.override ? 'bg-[#00a19a]' : 'bg-[#303030]') : 'bg-[#d4d4d4]'"
+                  >
+                    <span class="absolute top-[2px] size-3.5 rounded-full bg-white transition-[left] duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)]" [style.left.px]="m.efectivo ? 16 : 2"></span>
+                  </button>
+                </div>
+                @if (m.editando) {
+                  <div class="ml-[19px] mt-2 flex animate-[fade-in-up_0.18s_ease-out] flex-col gap-2 rounded-xl bg-[#f7f7f7] p-3">
+                    <p class="text-xs text-gray-600">{{ m.efectivo ? '¿Por qué le quitás' : '¿Por qué le das' }} {{ m.nombre }}?</p>
+                    <div class="flex flex-wrap gap-1.5">
+                      @for (r of m.efectivo ? motivosModulo.revocar : motivosModulo.conceder; track r) {
+                        <button type="button" (click)="parcheMod(r)" class="rounded-full bg-white px-2.5 py-1 text-xs text-[#303030] hover:bg-[#ececec]">{{ r }}</button>
+                      }
+                    </div>
+                    <input
+                      [value]="modEditando()?.motivo ?? ''"
+                      (input)="parcheMod($any($event.target).value)"
+                      (keydown.enter)="confirmarModulo(m)"
+                      (keydown.escape)="modEditando.set(null)"
+                      placeholder="Motivo (opcional)"
+                      class="rounded-[9px] border-0 bg-white px-[11px] py-2 text-[13px] outline-none"
+                    />
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" (click)="modEditando.set(null)" class="rounded-full px-[13px] py-1.5 text-[12.5px] font-medium text-gray-600 hover:bg-[#ececec]">Cancelar</button>
+                      <button type="button" (click)="confirmarModulo(m)" class="rounded-full bg-[#303030] px-[13px] py-1.5 text-[12.5px] font-medium text-white">{{ m.efectivo ? 'Quitar acceso' : 'Dar acceso' }}</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          <p class="mt-3 text-xs leading-[17px] text-gray-400">El punto muestra lo que da el plan; el interruptor, el acceso real. Cuando no coinciden aparece la excepción.</p>
+        }
+
+        @case ('actividad') {
+          <div class="flex flex-wrap gap-1.5 py-4">
+            @for (x of filtrosActividad(); track x.texto) {
+              <button
+                type="button"
+                (click)="filtroActividad.set(x.k)"
+                class="flex items-center gap-1.5 rounded-full px-[11px] py-[5px] text-xs font-medium"
+                [class]="filtroActividad() === x.k ? 'bg-[#303030] text-white' : 'bg-[#f1f1f1] text-[#303030] hover:bg-[#e6e6e6]'"
+              >{{ x.texto }}<span class="tabular-nums opacity-60">{{ x.n }}</span></button>
+            }
+          </div>
+          @for (g of actividadPorMes(); track g.mes) {
+            <p class="pb-1.5 pt-3 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">{{ g.mes }}</p>
+            @for (a of g.items; track $index) {
+              <div class="grid grid-cols-[28px_20px_minmax(0,1fr)_auto] items-center gap-x-2.5 border-t border-[#f6f6f6] py-2">
+                <span class="font-display text-[15px] font-semibold tabular-nums text-gray-900">{{ a.dia }}</span>
+                <tabler-icon [icon]="iconoActividad[a.tipo]" [size]="15" [stroke]="1.75" class="text-gray-400" />
+                <span class="text-[13px] leading-[18px] text-gray-900 [text-wrap:pretty]">{{ a.texto }}</span>
+                <span class="whitespace-nowrap text-[11.5px] text-gray-400">{{ a.quien }}</span>
+              </div>
+            }
+          } @empty {
+            <p class="py-8 text-center text-[13px] text-gray-500">Nada de este tipo todavía.</p>
+          }
+        }
+      }
+    </div>
+  }
+</div>
+
+@if (nCambios()) {
+  <div class="flex shrink-0 animate-[fade-in-up_0.2s_ease-out] items-center gap-3 border-t border-[#ebebeb] bg-white px-6 py-3">
+    <span class="flex-1 text-[13px] text-gray-600">{{ nCambios() === 1 ? '1 cambio sin guardar' : nCambios() + ' cambios sin guardar' }}</span>
+    <button type="button" (click)="borrador.set(null)" class="rounded-lg px-3 py-[7px] text-[13px] font-medium text-gray-600 hover:bg-[#f1f1f1]">Descartar</button>
+    <button type="button" (click)="guardar()" class="flex items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000]">
+      <tabler-icon [icon]="i.guardar" [size]="14" [stroke]="1.75" />Guardar cambios
+    </button>
+  </div>
+}

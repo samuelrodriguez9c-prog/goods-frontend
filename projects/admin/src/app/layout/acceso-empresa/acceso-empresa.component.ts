@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import {
   IconAlertTriangle,
@@ -6,6 +7,7 @@ import {
   IconClockPause,
   IconHourglass,
   IconLock,
+  IconMessageCircle,
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { AuthService } from '../../core/auth/auth.service';
@@ -35,7 +37,7 @@ const TITULOS: Record<string, string> = {
 @Component({
   selector: 'app-acceso-empresa',
   standalone: true,
-  imports: [TablerIconComponent],
+  imports: [TablerIconComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (variante() === 'banner') {
@@ -70,6 +72,15 @@ const TITULOS: Record<string, string> = {
             </p>
           }
           <p class="mt-4 text-sm leading-6 text-gray-600">{{ queHacer() }}</p>
+          @if (conChat()) {
+            <a
+              routerLink="/messages"
+              class="mt-5 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-3.5 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700"
+            >
+              <tabler-icon [icon]="iconoChat" [size]="16" [stroke]="2" />
+              Hablar con Goods
+            </a>
+          }
           <p class="mt-5 text-xs text-gray-400">
             Tus datos siguen guardados. Puedes cerrar sesión desde la parte superior.
           </p>
@@ -85,6 +96,9 @@ export class AccesoEmpresaComponent {
 
   protected readonly iconoMora = IconHourglass;
   protected readonly iconoCobro = IconCalendarDue;
+  protected readonly iconoChat = IconMessageCircle;
+  /** El chat con soporte sigue abierto con la cuenta bloqueada (no durante el alta: todavía no hay nada que gestionar ahí). */
+  protected readonly conChat = computed(() => this.acceso().motivo !== 'alta_en_curso');
 
   protected fecha(iso: string): string {
     return new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });

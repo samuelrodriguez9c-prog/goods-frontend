@@ -1,20 +1,15 @@
 <div class="flex h-screen flex-col">
   <app-topbar />
-  <!--
-    El fondo negro (bg-topbar) de este contenedor es lo que se asoma en
-    las esquinas superiores del sidebar/canvas de abajo — ver captura
-    106: el borde inferior del topbar no es recto, el sidebar y el
-    canvas tienen esquina superior redondeada (radio ~12px, medido en
-    la captura) que "muerde" el fondo negro. Ver ADMIN_DISENO.md >
-    "Topbar > Esquinas redondeadas del contenido".
-  -->
   <div class="flex flex-1 overflow-hidden bg-topbar">
     <app-sidebar />
-    <main class="flex-1 overflow-y-auto rounded-tr-xl bg-canvas-bg">
+    <main class="escala-contenido flex-1 overflow-y-auto rounded-tr-xl bg-canvas-bg">
       <!-- Acceso de la Empresa (2026-10-04): banner en mora, o la pantalla
            de bloqueo en vez del contenido si no puede operar. -->
       @if (acceso(); as a) {
-        @if (a.estado === 'bloqueada') {
+        <!-- Con la cuenta bloqueada siguen disponibles el chat con Goods
+             (/messages), las notificaciones y Settings: el backend los
+             permite (AccesoEmpresaInterceptor). -->
+        @if (a.estado === 'bloqueada' && !rutaLibre()) {
           <app-acceso-empresa [acceso]="a" variante="bloqueo" />
         } @else {
           @if (a.estado === 'en_mora') {
@@ -29,5 +24,8 @@
       }
     </main>
   </div>
-  <app-asistente-panel />
+  <app-alerta-pila />
+  <app-alerta-overlay />
+  <app-pista />
+  <app-asistente-dock />
 </div>

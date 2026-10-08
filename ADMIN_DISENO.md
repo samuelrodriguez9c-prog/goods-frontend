@@ -476,6 +476,38 @@ Lo que **no existe hoy** en Goods y aparece en Shopify:
   Goods — vale la pena resolverlo con el cliente/negocio antes de
   construir nada de esto.
 
+## Paridad con staff (2026-10-07)
+
+> Las secciones **Topbar** y **Sidebar** de abajo describen el diseño
+> anterior (calcado de Shopify) y quedan como historia. Desde el
+> 2026-10-07 el admin usa el mismo armado que el panel de staff
+> (`STAFF_DISENO.md`), con estas adaptaciones:
+
+- **Topbar** (`layout/topbar/`): rastro de navegación a la izquierda
+  (`data.breadcrumb`/`icon` en cada ruta), y a la derecha el Asistente de IA
+  (solo con el módulo `asistente_ia`), la campanita (pestañas Todas ·
+  Soporte · Tienda · Cuenta, agrupada por día; `GET /notificaciones`) y el
+  menú de cuenta (Mi perfil · Seguridad · Correos · cerrar sesión
+  manteniendo). Se quitaron el wordmark, el buscador sin lógica y "Salir".
+- **Sidebar** (`layout/sidebar/`): ancho 224 px, ítems de 13 px, píldora
+  deslizante y punto turquesa de "hay cambios" (el backend ahora emite
+  `datos:cambio` también a la sala de la Empresa). **Products es un grupo
+  plegable** (Categorías, Inventario, Proveedores, Compras); Usuarios, Roles y
+  permisos y Solicitudes a Goods pasan a primer nivel; Settings al fondo.
+  Cada ítem respeta `modulosDisponibles` y, si lo pide, el permiso.
+- **Contenido al 90 %** (`.escala-contenido`, igual que staff) y, en el
+  Shell, la pila de alertas, la pista y el botón del Asistente pegado al
+  borde. Con la cuenta bloqueada siguen abiertos Messages, Notificaciones y
+  Settings.
+- **Asistente de IA**: mini chat (`layout/asistente-dock/`) + pantalla
+  completa `/asistente` (fuera del Shell) + `/asistente/documentos`. Lo que
+  en staff es "Registrar pago" acá es **Registrar compra**: la IA lee la
+  factura del proveedor y prellena proveedor, número, fecha y líneas; al
+  confirmar crea el proveedor si es nuevo, sube la factura y guarda la
+  Compra. El panel lateral viejo (`layout/asistente-panel/`) ya no se usa.
+- **Notificaciones** (`/notificaciones`) y **Settings** (Perfil, Correo y
+  contacto, Seguridad, Correos, Cuenta) son las de staff, en tuteo.
+
 ## Topbar
 
 Fuente: captura 106. Se construye por partes (izquierda → centro →

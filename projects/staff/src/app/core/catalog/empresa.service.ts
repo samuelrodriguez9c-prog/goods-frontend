@@ -33,6 +33,8 @@ export interface FiltroEmpresa {
   buscar?: string;
   desde?: string;
   hasta?: string;
+  /** Página (de a 100); ver `traerTodo` para traerlas todas. */
+  page?: number;
 }
 
 /**
@@ -44,6 +46,14 @@ export interface FiltroEmpresa {
  * en el camino"), así que este servicio solo tiene sentido acá, en
  * `staff` — `admin` ni siquiera podría llamarlo (403).
  */
+/** Un renglón del historial de la Empresa (ver `EmpresaActividadService` del backend). */
+export interface ActividadEmpresa {
+  fecha: string;
+  tipo: 'alta' | 'estado' | 'cobro' | 'modulo' | 'solicitud' | 'datos';
+  texto: string;
+  quien: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class EmpresaService {
   private readonly http = inject(HttpClient);
@@ -60,7 +70,7 @@ export class EmpresaService {
    * `FiltroEmpresa`. */
   listar(filtro: EstadoEmpresa | FiltroEmpresa = {}): Observable<RespuestaPaginada<Empresa>> {
     const f: FiltroEmpresa = typeof filtro === 'string' ? { estado: filtro } : filtro;
-    let params = new HttpParams().set('pageSize', 100);
+    let params = new HttpParams().set('pageSize', 100).set('page', f.page ?? 1);
     if (f.estado) {
       params = params.set('estado', f.estado);
     }
@@ -83,6 +93,11 @@ export class EmpresaService {
    * (§3.2) y el asistente de activación (§4). */
   obtenerUno(id: number): Observable<EmpresaConDueno> {
     return this.http.get<EmpresaConDueno>(`${environment.apiUrl}/empresas/${id}`);
+  }
+
+  /** `GET /empresas/:id/actividad` — historial completo (alta, estado, cobros, módulos, solicitudes, datos). */
+  actividad(id: number): Observable<ActividadEmpresa[]> {
+    return this.http.get<ActividadEmpresa[]>(`${environment.apiUrl}/empresas/${id}/actividad`);
   }
 
   /** Legado — activa la Empresa de un tirón (crea el Usuario dueño y

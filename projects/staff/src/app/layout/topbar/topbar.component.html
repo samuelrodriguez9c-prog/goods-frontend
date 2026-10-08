@@ -1,8 +1,8 @@
 <!-- projects/staff/src/app/layout/topbar/topbar.component.html -->
 <header class="relative z-40 flex h-15 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
   <div class="flex min-w-0 items-center gap-3">
-    <!-- <img src="/logo-goods-wordmark.png" alt="Goods" class="h-12 w-auto shrink-0" />
-    <span class="h-[22px] w-px shrink-0 bg-topbar-badge-border"></span>
+    <img src="/logo-goods-nombre.png" alt="Goods" class="h-15 w-auto shrink-0" />
+    <!-- <span class="h-[22px] w-px shrink-0 bg-topbar-badge-border"></span>
     <span class="shrink-0 text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">Staff</span> -->
     <!-- ─── Rastro de navegación (§5.4.4, 2026-10-02) ─── -->
     <app-breadcrumb-trail />
@@ -271,6 +271,8 @@
         </div>
 
         <div class="px-1.5 pb-1.5">
+          <!-- Cerrar sesión "puerta" (2026-10-05): mantener abre la puerta y
+               llena la barra; al completar se cierra y se despide. -->
           <button
             type="button"
             (mousedown)="empezarHold($event)"
@@ -281,23 +283,43 @@
             (keydown)="empezarHold($event)"
             (keyup)="cancelarHold()"
             aria-label="Mantené presionado para cerrar sesión"
-            class="relative flex h-10 w-full select-none items-center gap-3 overflow-hidden rounded-[9px] bg-[#f7f7f7] px-2.5 text-left transition-[opacity,transform] delay-[140ms] duration-[360ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+            class="relative flex h-[46px] w-full touch-none select-none items-center gap-3 overflow-hidden rounded-[11px] bg-[#f7f7f7] px-3 text-left transition-[opacity,transform] delay-[140ms] duration-[360ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] active:scale-[0.985]"
             [class]="menuAbierto() ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0'"
           >
             <span
-              class="absolute inset-y-0 left-0 bg-[#fbe3d6]"
-              [class]="hold() === 'manteniendo' ? 'w-full transition-[width] duration-[900ms] ease-linear' : hold() === 'listo' ? 'w-full' : 'w-0 transition-[width] duration-[260ms] ease-out'"
+              class="absolute inset-y-0 left-0 bg-[linear-gradient(90deg,#ffe9dc,#ffcfb3)]"
+              [style.width.%]="hold() === 'listo' ? 100 : progreso() * 100"
+              [style.box-shadow]="progreso() > 0 && hold() !== 'listo' ? 'inset -2px 0 0 #ff9a62' : 'none'"
             ></span>
-            <tabler-icon
-              [icon]="i.apagar"
-              [size]="14"
-              [stroke]="2"
-              class="relative w-4 text-[#9a3412]"
-              [class]="hold() === 'manteniendo' ? 'rotate-180 transition-transform duration-[900ms] ease-linear' : hold() === 'listo' ? 'rotate-[360deg] transition-transform duration-500' : 'rotate-0 transition-transform duration-[260ms]'"
-            />
-            <span class="relative flex-1 text-[13.5px] font-medium text-[#9a3412]">Cerrar sesión</span>
-            <span class="relative text-[11px] transition-colors duration-200" [class]="hold() ? 'text-[#9a3412]' : 'text-[#b5b5b5]'">
-              {{ hold() === 'listo' ? 'Saliendo…' : hold() ? 'soltá para cancelar' : 'mantené' }}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true" class="relative shrink-0 overflow-visible">
+              <path d="M4 3.5h10v17H4z" stroke="#9a3412" stroke-width="1.8" stroke-linejoin="round" />
+              <g
+                class="origin-[4px_12px]"
+                [style.transform]="hold() === 'listo' ? 'scaleX(1)' : 'scaleX(' + (1 - progreso() * 0.78) + ')'"
+                [class.salir-portazo]="hold() === 'listo'"
+              >
+                <path d="M4 3.5h10v17H4z" fill="#9a3412" opacity="0.9" />
+                <circle cx="11.5" cy="12.5" r="1" fill="#ffe9dc" />
+              </g>
+              <g
+                [style.opacity]="hold() === 'listo' ? 0 : progreso() * 2.2"
+                [style.transform]="'translateX(' + (-7 + progreso() * 7) + 'px)'"
+              >
+                <path d="M10 12h11M17.5 8.5 21 12l-3.5 3.5" stroke="#9a3412" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </g>
+            </svg>
+            <span class="relative flex flex-1 whitespace-pre text-[13.5px] font-semibold text-[#9a3412]">
+              @for (l of letrasSalir(); track $index + l.c) {
+                <span class="inline-block" [class.salir-ola]="hold() === 'listo'" [style.animation-delay.ms]="l.retraso">{{ l.c }}</span>
+              }
+            </span>
+            <span class="relative flex gap-1" aria-hidden="true">
+              @for (d of puntosSalir; track d) {
+                <span
+                  class="size-1.5 rounded-full transition-colors duration-150"
+                  [class]="hold() === 'listo' || progreso() > (d + 1) / 3.3 ? 'bg-[#9a3412]' : 'bg-[#e3c9bb]'"
+                ></span>
+              }
             </span>
           </button>
         </div>

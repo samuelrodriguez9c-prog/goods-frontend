@@ -4,7 +4,7 @@ import { CustomerCreatePageComponent } from './pages/customer-create-page/custom
 import { CustomerDetailPageComponent } from './pages/customer-detail-page/customer-detail-page.component';
 
 export const CUSTOMERS_ROUTES: Routes = [
-  { path: '', component: CustomerListPageComponent },
-  { path: 'new', component: CustomerCreatePageComponent },
-  { path: ':id', component: CustomerDetailPageComponent },
+  { path: '', component: CustomerListPageComponent, data: { breadcrumb: 'Customers', icon: 'user' } },
+  { path: 'new', component: CustomerCreatePageComponent, data: { breadcrumb: 'Nuevo cliente', icon: 'user' } },
+  { path: ':id', component: CustomerDetailPageComponent, data: { breadcrumb: 'Cliente', icon: 'user' } },
 ];

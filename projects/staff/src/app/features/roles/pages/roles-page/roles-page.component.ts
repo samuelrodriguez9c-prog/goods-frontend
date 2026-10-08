@@ -1,10 +1,12 @@
 // projects/staff/src/app/features/roles/pages/roles-page/roles-page.component.ts
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import {
   IconBuildingStore,
+  IconChevronLeft,
+  IconChevronRight,
   IconLock,
   IconPlus,
   IconShieldLock,
@@ -209,6 +211,7 @@ const BORRADOR_VACIO: Borrador = { nombre: '', descripcion: '', baseId: null };
   selector: 'app-roles-page',
   standalone: true,
   imports: [TablerIconComponent, RolPanelComponent, PantallaEstadoComponent, CabeceraModuloComponent, AvisoDatosNuevosComponent],
+  host: { '(window:resize)': 'medirDesplazamiento()' },
   templateUrl: './roles-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -220,6 +223,8 @@ export class RolesPageComponent {
 
   protected readonly iconos = {
     buildingStore: IconBuildingStore,
+    izquierda: IconChevronLeft,
+    derecha: IconChevronRight,
     lock: IconLock,
     plus: IconPlus,
     shieldLock: IconShieldLock,
@@ -255,6 +260,12 @@ export class RolesPageComponent {
   protected readonly borrador = signal<Borrador>({ ...BORRADOR_VACIO });
 
   constructor() {
+    // Re-mide las flechas y la barrita cuando cambian los módulos o la matriz aparece.
+    effect(() => {
+      this.plantillaColumnas();
+      this.matriz();
+      setTimeout(() => this.medirDesplazamiento());
+    });
     this.cargar();
     this.cambiosEnVivoService
       .huboCambio(['rol', 'permiso'])
@@ -362,6 +373,56 @@ export class RolesPageComponent {
       return '44px';
     }
     return cantidad === 3 ? '15px' : '10px';
+  }
+
+  /** Ancho de la columna de un módulo según cuántas acciones tiene
+   *  (2026-10-05): con el mínimo fijo de 88px, un módulo de 9 acciones
+   *  (9 × 10px + huecos) no cabía y sus segmentos se montaban sobre la
+   *  columna de al lado. Ahora cada columna mide lo que necesita. */
+  protected anchoColumna(cantidad: number): number {
+    const segmento = parseInt(this.anchoSegmento(cantidad), 10);
+    return Math.max(88, cantidad * segmento + (cantidad - 1) * 4 + 12);
+  }
+
+  /** `grid-template-columns` compartido por el encabezado y las filas. */
+  protected readonly plantillaColumnas = computed(
+    () => `240px ${this.modulos().map((m) => `minmax(${this.anchoColumna(m.acciones.length)}px, 1fr)`).join(' ')} 130px`,
+  );
+
+  // ── Desplazamiento de la matriz ─────────────────────────────────────────
+  /** Columna bajo el mouse: se resalta en todas las filas. */
+  protected readonly moduloHover = signal<string | null>(null);
+  private readonly matriz = viewChild<ElementRef<HTMLElement>>('matriz');
+  protected readonly hayIzquierda = signal(false);
+  protected readonly hayDerecha = signal(false);
+  /** Qué parte de la matriz se ve (para la barrita de la leyenda). */
+  protected readonly vista = signal({ desde: 0, ancho: 100 });
+
+  protected medirDesplazamiento(): void {
+    const el = this.matriz()?.nativeElement;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    this.hayIzquierda.set(el.scrollLeft > 4);
+    this.hayDerecha.set(el.scrollLeft < max - 4);
+    this.vista.set({
+      desde: (el.scrollLeft / el.scrollWidth) * 100,
+      ancho: Math.min(100, (el.clientWidth / el.scrollWidth) * 100),
+    });
+  }
+
+  protected desplazar(sentido: 1 | -1): void {
+    const el = this.matriz()?.nativeElement;
+    el?.scrollBy({ left: sentido * el.clientWidth * 0.6, behavior: 'smooth' });
+  }
+
+  /** Lleva la columna de un módulo a la vista (chips de la leyenda). */
+  protected irAModulo(id: string): void {
+    const el = this.matriz()?.nativeElement;
+    const col = el?.querySelector<HTMLElement>(`[data-modulo="${id}"]`);
+    if (!el || !col) return;
+    el.scrollTo({ left: col.offsetLeft - 240 - 24, behavior: 'smooth' });
+    this.moduloHover.set(id);
+    setTimeout(() => this.moduloHover.update((m) => (m === id ? null : m)), 1200);
   }
 
   protected descripcionDe(p: Permiso): string {

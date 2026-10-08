@@ -1,0 +1,238 @@
+<!-- projects/admin/src/app/layout/asistente-dock/asistente-dock.component.html -->
+@if (visible()) {
+  <input #archivo type="file" class="hidden" [accept]="accept" (change)="onArchivo($event)" />
+
+  <!-- ─── Mini chat ─── -->
+  @if (abierto()) {
+    <div
+      class="fixed z-[60] flex flex-col overflow-hidden bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_32px_70px_-24px_rgba(0,0,0,0.55)] [animation:ia-mini-in_360ms_cubic-bezier(0.2,0.9,0.25,1.1)]"
+      [style.left.px]="panel().left"
+      [style.top.px]="panel().top"
+      [style.width.px]="panel().width"
+      [style.height.px]="panel().height"
+      [style.border-radius.px]="panel().radio"
+      [style.transform-origin]="panel().origen"
+      [style.transition]="panel().transicion"
+      [style.opacity]="cerrando() ? 0 : 1"
+      [style.transform]="cerrando() ? 'scale(0.92)' : 'none'"
+      role="dialog"
+      aria-label="Asistente de IA"
+    >
+      <!-- Cabecera -->
+      <div class="flex h-14 shrink-0 items-center gap-2.5 border-b border-[#f2f2f2] pl-3.5 pr-2.5">
+        <span class="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]">
+          <app-ia-marca [size]="16" />
+        </span>
+        <span class="flex min-w-0 flex-1 flex-col gap-px">
+          <span class="text-[14px] font-semibold text-[#111827]">Asistente de IA</span>
+          <span class="flex items-center gap-1.5 text-[11.5px] text-[#6b7280]">
+            <span class="relative flex size-1.5">
+              <span class="absolute inset-0 rounded-full bg-[#00a19a] [animation:ia-ping_1.8s_cubic-bezier(0,0,0.2,1)_infinite]"></span>
+              <span class="relative size-1.5 rounded-full bg-[#00a19a]"></span>
+            </span>
+            Conectado a tu tienda
+          </span>
+        </span>
+        <div class="flex items-center gap-0.5">
+          <button type="button" (click)="store.nueva(); composer.focus()" aria-label="Nueva conversación" title="Nueva conversación"
+            class="flex rounded-full p-[7px] text-[#6b7280] transition-colors duration-150 hover:bg-[#f4f4f4] hover:text-[#111827]">
+            <tabler-icon [icon]="i.nueva" [size]="18" [stroke]="1.75" />
+          </button>
+          <button type="button" (click)="maximizar()" aria-label="Abrir en pantalla completa" title="Pantalla completa"
+            class="flex rounded-full p-[7px] text-[#6b7280] transition-[background-color,color,scale] duration-200 hover:scale-[1.08] hover:bg-[#f4f4f4] hover:text-[#111827]">
+            <tabler-icon [icon]="i.maximizar" [size]="18" [stroke]="1.75" />
+          </button>
+          <button type="button" (click)="cerrar()" aria-label="Cerrar" title="Cerrar · Esc"
+            class="flex rounded-full p-[7px] text-[#6b7280] transition-colors duration-150 hover:bg-[#f4f4f4] hover:text-[#111827]">
+            <tabler-icon [icon]="i.cerrar" [size]="18" [stroke]="1.75" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Hilo -->
+      <div #hilo class="min-h-0 flex-1 overflow-y-auto">
+        @if (vacio()) {
+          <div class="flex min-h-full flex-col justify-end gap-[18px] px-3.5 pb-2 pt-6">
+            <!-- <app-ia-saludo [nombre]="nombre()" variante="mini" /> -->
+            <div class="flex flex-col">
+              @for (s of sugerencias; track s.texto; let n = $index) {
+                <button type="button" (click)="enviar(s.texto)" [style.animation-delay.ms]="340 + n * 55"
+                  class="ia-card-in flex w-full items-center gap-3 rounded-[11px] px-2.5 py-2 text-left text-[13.5px] text-[#4b5563] transition-[background-color,color,scale] duration-150 hover:bg-[#f5f5f5] hover:text-[#111827] active:scale-[0.99]">
+                  <tabler-icon [icon]="s.icono" [size]="17" [stroke]="1.75" class="text-[#6b7280]" />
+                  <span class="min-w-0 flex-1">{{ s.texto }}</span>
+                </button>
+              }
+              <button type="button" (click)="registrarCompra()" [style.animation-delay.ms]="340 + 4 * 55"
+                class="ia-card-in flex w-full items-center gap-3 rounded-[11px] px-2.5 py-2 text-left text-[13.5px] text-[#4b5563] transition-[background-color,color,scale] duration-150 hover:bg-[#f5f5f5] hover:text-[#111827] active:scale-[0.99]">
+                <tabler-icon [icon]="i.pago" [size]="17" [stroke]="1.75" class="text-[#6b7280]" />
+                <span class="min-w-0 flex-1">Registrar una compra desde una factura</span>
+                <tabler-icon [icon]="i.maximizar" [size]="14" class="text-[#b4b4b4]" />
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="flex flex-col gap-5 px-4 pb-3.5 pt-[18px]">
+            @for (m of store.mensajes(); track m.id) {
+              @if (m.rol === 'usuario') {
+                <div class="ia-user-in flex justify-end">
+                  <div class="max-w-[86%] whitespace-pre-wrap rounded-[18px_18px_6px_18px] bg-[#303030] px-3.5 py-[9px] text-[14px] leading-[1.5] text-white [text-wrap:pretty]">{{ m.cuerpo }}</div>
+                </div>
+              } @else {
+                <div class="ia-msg-in flex items-start gap-2.5">
+                  <span class="relative flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]">
+                    <app-ia-marca [size]="14" [ritmo]="m.id === store.escribiendoId() ? 'activo' : 'quieto'" />
+                  </span>
+                  <div class="flex min-w-0 flex-1 flex-col gap-2.5 pt-[3px]">
+                    <div class="flex flex-wrap items-end gap-0.5">
+                      <div class="ia-markdown text-[14px] leading-[1.6] text-[#1f2937] [text-wrap:pretty]" [innerHTML]="store.textoDe(m) | markdownLigero"></div>
+                      @if (m.id === store.escribiendoId()) {
+                        <span class="ia-caret"></span>
+                      }
+                    </div>
+                    @if (m.id !== store.escribiendoId()) {
+                      <div class="ia-msg-in flex flex-wrap items-center gap-1">
+                        @if (store.herramientasTexto(m); as f) {
+                          <span class="mr-1 flex items-center gap-[5px] rounded-full bg-[#f4f4f4] px-[9px] py-[3px] text-[11px] text-[#6b7280]">
+                            <tabler-icon [icon]="i.fuentes" [size]="12" />{{ f }}
+                          </span>
+                        }
+                        <button type="button" (click)="copiar(m)" aria-label="Copiar"
+                          class="flex rounded-[7px] p-[5px] text-[#9ca3af] transition-colors duration-150 hover:bg-[#f4f4f4] hover:text-[#111827]">
+                          <tabler-icon [icon]="copiado() === m.id ? i.copiado : i.copiar" [size]="15" />
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            }
+            @if (store.fase() === 'pensando') {
+              <div class="ia-msg-in flex items-start gap-2.5">
+                <span class="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]"><app-ia-marca [size]="14" ritmo="activo" /></span>
+                <app-ia-escribiendo [alto]="30" />
+              </div>
+            }
+            @if (store.error(); as e) {
+              <p class="m-0 rounded-[9px] bg-[#fef2f2] px-2.5 py-[7px] text-[12px] font-medium text-[#b91c1c]">{{ e }}</p>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Composer -->
+      <div class="flex shrink-0 flex-col gap-1.5 px-3 pb-2.5 pt-2">
+        <div
+          class="rounded-[22px] border bg-white p-1.5 transition-[border-color,box-shadow] duration-200"
+          [class.border-[#cfcfcf]]="enfocado()"
+          [class.border-[#e5e5e5]]="!enfocado()"
+          [style.box-shadow]="enfocado() ? '0 0 0 4px rgba(10,10,10,0.04), 0 10px 26px -18px rgba(0,0,0,0.35)' : '0 6px 22px -20px rgba(0,0,0,0.3)'"
+        >
+          <div class="flex items-end gap-0.5">
+            <app-ia-menu-mas
+              variante="mini"
+              [documentos]="store.documentos()"
+              (subirArchivos)="adjuntar()"
+              (registrarCompra)="registrarCompra()"
+              (agregarDocumento)="agregarDocumento()"
+              (preguntarDocumento)="enviar('¿Qué dice &quot;' + $event + '&quot;?')"
+            />
+            <textarea
+              #composer
+              rows="1"
+              [ngModel]="texto()"
+              (ngModelChange)="texto.set($event)"
+              (keydown)="onKeyDown($event)"
+              (focus)="enfocado.set(true)"
+              (blur)="enfocado.set(false)"
+              placeholder="Pregunta algo…"
+              class="block max-h-[120px] min-h-[34px] min-w-0 flex-1 resize-none border-0 bg-transparent px-1.5 py-1.5 text-[14px] leading-[22px] text-[#111827] outline-none [field-sizing:content] placeholder:text-[#9ca3af]"
+            ></textarea>
+            <button type="button" (click)="accionBoton()" [attr.aria-label]="store.generando() ? 'Detener' : 'Enviar'"
+              class="flex size-[34px] shrink-0 items-center justify-center rounded-full transition-[background-color,color,scale] duration-200 active:scale-[0.88]"
+              [class]="store.generando() || puedeEnviar() ? 'bg-[#0a0a0a] text-white' : 'bg-[#ececec] text-[#a3a3a3]'">
+              <tabler-icon [icon]="store.generando() ? i.detener : i.enviar" [size]="17" />
+            </button>
+          </div>
+        </div>
+        <p class="m-0 text-center text-[11px] text-[#9ca3af]">El asistente solo consulta datos.</p>
+      </div>
+    </div>
+  }
+
+  <!-- ─── Botón pegado al borde ─── -->
+  <div
+    class="fixed z-[61] size-[52px]"
+    [style.left.px]="boton().left"
+    [style.top.px]="boton().top"
+    [style.opacity]="maximizando() ? 0 : 1"
+    [style.transition]="boton().transicion"
+    (mouseenter)="hover.set(true)"
+    (mouseleave)="onLeave()"
+  >
+    <div
+      class="pointer-events-none absolute flex flex-col gap-px whitespace-nowrap rounded-[11px] bg-[#0a0a0a] px-[11px] py-[7px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_14px_30px_-12px_rgba(0,0,0,0.6)] transition-[opacity,transform] duration-[380ms] ease-[cubic-bezier(0.2,0.9,0.25,1.15)]"
+      [style.left]="etiqueta()['left'] ?? 'auto'"
+      [style.right]="etiqueta()['right'] ?? 'auto'"
+      [style.top]="etiqueta()['top'] ?? 'auto'"
+      [style.bottom]="etiqueta()['bottom'] ?? 'auto'"
+      [style.transform]="etiqueta().transform"
+      [style.opacity]="etiqueta().opacidad"
+    >
+      <span class="text-[12.5px] font-semibold text-white">Asistente de IA</span>
+      <span class="flex items-center gap-[5px] text-[11px] text-[#8a8a8a]"><tabler-icon [icon]="i.mover" [size]="12" />Arrastra para moverlo</span>
+    </div>
+
+    <button
+      type="button"
+      (pointerdown)="onPointerDown($event)"
+      (keydown)="onBotonKey($event)"
+      aria-label="Abrir asistente de IA"
+      [attr.aria-expanded]="abierto()"
+      class="absolute flex touch-none select-none items-center justify-center border-0 bg-[#0a0a0a] text-[#2be0d5] transition-[left,top,width,height,border-radius,transform,box-shadow] duration-[420ms] ease-[cubic-bezier(0.2,0.9,0.25,1.1)]"
+      [class.cursor-grab]="!drag()"
+      [class.cursor-grabbing]="drag()"
+      [style.left.px]="forma().left"
+      [style.top.px]="forma().top"
+      [style.width.px]="forma().width"
+      [style.height.px]="forma().height"
+      [style.border-radius]="forma().radio"
+      [style.box-shadow]="boton().sombra"
+      [style.transform-origin]="boton().origen"
+      [style.animation]="boton().animacion"
+    >
+      @if (hover() && !drag() && !abierto()) {
+        <span class="pointer-events-none absolute inset-0 border-[1.5px] border-[#2be0d5] [border-radius:inherit] [animation:ia-anillo_900ms_cubic-bezier(0,0,0.2,1)_both]"></span>
+      }
+      @if (abierto()) {
+        <span class="pointer-events-none absolute inset-[3px] rounded-full shadow-[inset_0_0_0_1.5px_rgba(43,224,213,0.55)]"></span>
+        <tabler-icon [icon]="i.chevron" [size]="22" />
+      } @else {
+        <span
+          class="absolute transition-[left,top] duration-[420ms] ease-[cubic-bezier(0.2,0.9,0.25,1.1)]"
+          [style.left.px]="forma().iconoX"
+          [style.top.px]="forma().iconoY"
+          [style.animation]="hover() && !drag() ? 'ia-saluda 760ms cubic-bezier(0.3,0.7,0.4,1)' : 'none'"
+        >
+          <app-ia-marca [size]="26" [brillo]="true" [ritmo]="hover() || drag() ? 'atento' : store.generando() ? 'activo' : 'reposo'" />
+        </span>
+      }
+      @if (pendiente() && !abierto()) {
+        <span class="absolute right-[9px] top-[9px] size-2 rounded-full bg-[#2be0d5] shadow-[0_0_0_2px_#0a0a0a]"></span>
+      }
+    </button>
+
+    <!-- Curvas de unión con el borde (después del botón: tapan su anillo de 1px en la unión) -->
+    @for (c of curvas(); track $index) {
+      <span
+        class="pointer-events-none absolute size-3"
+        [style.left.px]="c.left"
+        [style.top.px]="c.top"
+        [style.background]="c.fondo"
+        [style.opacity]="c.opacidad"
+        [style.transform]="c.escala"
+        [style.transform-origin]="c.origen"
+        [style.transition]="c.transicion"
+      ></span>
+    }
+  </div>
+}

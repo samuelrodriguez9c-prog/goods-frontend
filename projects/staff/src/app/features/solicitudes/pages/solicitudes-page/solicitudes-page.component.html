@@ -1,156 +1,273 @@
-<div class="p-6">
-  <app-cabecera-modulo
-    titulo="Solicitudes"
-    [periodo]="null"
-    [metricas]="metricas()"
-    [badge]="badge()"
-    (metricaClick)="metricaClick($event)"
+<app-cabecera-modulo
+  titulo="Solicitudes"
+  [metricas]="metricas()"
+  [activa]="filtro()"
+  [badge]="badge()"
+  [periodoTitulo]="(hoy | date: 'EEEE d \'de\' MMMM') ?? ''"
+  (metricaClick)="alternarMetrica($event)"
+>
+  <tabler-icon icono [icon]="i.modulo" [size]="20" [stroke]="1.75" />
+  <ng-container acciones>
+    <button type="button" (click)="tomarSiguiente()" class="flex items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] hover:opacity-90">
+      <tabler-icon [icon]="i.tomar" [size]="14" [stroke]="1.75" class="text-[#2be0d5]" />Tomar la siguiente
+    </button>
+  </ng-container>
+  <ng-container lectura>{{ lectura() }}</ng-container>
+</app-cabecera-modulo>
+
+<app-pantalla-estado class="mt-4 flex min-h-0 flex-1 flex-col" [estado]="estadoPantalla()" modulo="Solicitudes" (reintentar)="cargar()" (volver)="volver()">
+  <div esqueleto class="grid flex-1 animate-pulse grid-cols-[minmax(260px,0.8fr)_minmax(0,1.4fr)] gap-4">
+    <div class="flex flex-col gap-2">
+      @for (s of [1, 2, 3, 4, 5]; track s) {
+        <span class="h-12 rounded-xl bg-[#e6e6e6]" [style.opacity]="1 - s * 0.14"></span>
+      }
+    </div>
+    <div class="rounded-2xl bg-white"></div>
+  </div>
+
+  <app-lista-hoja
+    etiquetaLista="Solicitudes"
+    placeholder="Título, Empresa o número"
+    vacioTexto="No hay solicitudes que coincidan."
+    [grupos]="grupos()"
+    [seleccionadaId]="seleccionadaId()"
+    [colapsados]="colapsados()"
+    [resaltadas]="resaltadas()"
+    [buscar]="buscar()"
+    [resultados]="resultados()"
+    [filtroTexto]="filtroTexto()"
+    [cambios]="cambiosEnVivo()"
+    [ordenIcono]="ordenIcono()"
+    [ordenTitulo]="ordenTitulo()"
+    (seleccionar)="seleccionar($event)"
+    (buscarChange)="cambiarBusqueda($event)"
+    (cargarMas)="cargarMas($event)"
+    (alternarOrden)="alternarOrden()"
+    (alternarGrupo)="alternarGrupo($event)"
+    (quitarFiltro)="filtro.set(null)"
+    (limpiar)="limpiar()"
+    (actualizar)="actualizar()"
   >
-    <tabler-icon icono [icon]="i.modulo" [size]="20" [stroke]="1.75" />
-    <ng-container lectura>{{ lectura() }}</ng-container>
-  </app-cabecera-modulo>
-
-  @if (cambiosEnVivo()) {
-    <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
-  }
-
-  <app-pantalla-estado [estado]="estadoPantalla()" modulo="Solicitudes" (reintentar)="cargar()" (volver)="volver()">
-    <div esqueleto class="mt-[22px] flex animate-pulse flex-col gap-2">
-      <span class="h-9 w-2/3 rounded-full bg-gray-100"></span>
-      @for (s of skeletons; track $index) {
-        <span class="h-[68px] w-full rounded-[10px] bg-gray-100"></span>
-      }
-    </div>
-
-    <div class="mt-6 flex flex-wrap items-center gap-2">
-      @for (v of vistas; track v.clave) {
-        <button
-          type="button"
-          (click)="elegirVista(v.clave)"
-          class="rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-all duration-200"
-          [class]="vista() === v.clave ? 'border-primary-button bg-primary-button text-white' : 'border-gray-200 bg-card-bg text-gray-700 hover:bg-canvas-bg'"
-        >
-          {{ v.texto }}
-        </button>
-      }
-
-      <select
-        [ngModel]="tipo()"
-        (ngModelChange)="elegirTipo($event)"
-        aria-label="Tipo de solicitud"
-        class="rounded-full border border-gray-200 bg-card-bg py-1.5 pl-3 pr-8 text-[13px] font-medium text-gray-700 focus:border-gray-400 focus:outline-none"
-      >
-        <option value="">Todos los tipos</option>
-        @for (t of tipos; track t.valor) {
-          <option [value]="t.valor">{{ t.texto }}</option>
+    <div hoja class="flex min-h-0 flex-1 flex-col">
+      @if (sel(); as s) {
+        @if (pop()) {
+          <div class="fixed inset-0 z-20" (click)="pop.set(false); destino.set(null)"></div>
         }
-      </select>
+        <div class="shrink-0 px-6 pt-4">
+          <div class="flex items-center gap-2">
+            <span class="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Solicitud</span>
+            <button type="button" (click)="copiarId()" title="Copiar número" class="text-[11px] tabular-nums text-gray-400 hover:text-gray-900">#{{ s.id }}</button>
+            <span class="flex-1"></span>
+            <span class="text-[11.5px] tabular-nums text-gray-400">{{ lista()?.posicion() }}</span>
+            <button type="button" (click)="lista()?.mover(-1)" aria-label="Anterior" class="flex rounded-lg p-[5px] text-gray-500 hover:bg-[#f1f1f1] hover:text-gray-900"><tabler-icon [icon]="i.arriba" [size]="16" [stroke]="1.75" /></button>
+            <button type="button" (click)="lista()?.mover(1)" aria-label="Siguiente" class="flex rounded-lg p-[5px] text-gray-500 hover:bg-[#f1f1f1] hover:text-gray-900"><tabler-icon [icon]="i.abajo" [size]="16" [stroke]="1.75" /></button>
+          </div>
+          @for (k of [s.id]; track k) {
+            <div class="animar-ficha mt-1.5">
+              <h2 class="font-display text-2xl font-semibold leading-[30px] tracking-[-0.015em] text-gray-900 [text-wrap:pretty]">{{ s.titulo }}</h2>
+              <p class="mt-1 text-[13px] text-gray-500"><strong class="font-semibold text-gray-900">{{ s.empresaNombre }}</strong> · la pidió {{ s.creadaPor?.nombre ?? 'el cliente' }} {{ hace(s.creadoEn) }}</p>
+            </div>
+          }
 
-      <label class="ml-auto flex min-w-[240px] items-center gap-2 rounded-lg border border-gray-200 bg-card-bg px-3 py-[7px] focus-within:border-gray-400">
-        <tabler-icon [icon]="i.buscar" [size]="15" [stroke]="2" class="text-gray-400" />
-        <input
-          type="search"
-          [ngModel]="buscar()"
-          (ngModelChange)="escribirBusqueda($event)"
-          placeholder="Título, descripción o Empresa"
-          class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
-        />
-      </label>
-    </div>
-
-    <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
-      <span class="tabular-nums">{{ listado()?.total ?? 0 }} {{ (listado()?.total ?? 0) === 1 ? 'solicitud' : 'solicitudes' }}</span>
-      @if (hayFiltros()) {
-        <button type="button" (click)="limpiarFiltros()" class="flex items-center gap-1 text-gray-400 hover:text-gray-700">
-          <tabler-icon [icon]="i.limpiar" [size]="12" [stroke]="2" />
-          Limpiar filtros
-        </button>
-      }
-      @if (cargandoLista()) {
-        <span class="ml-auto size-3.5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-500"></span>
-      }
-    </div>
-
-    <div class="mt-3 flex flex-col gap-2 transition-opacity duration-150" [class.opacity-60]="cargandoLista()">
-      @for (s of filas(); track s.id) {
-        <div
-          tabindex="0"
-          role="button"
-          (click)="abrir(s.id)"
-          (keydown.enter)="abrir(s.id)"
-          class="flex cursor-pointer flex-wrap items-center gap-[18px] rounded-[10px] border border-gray-200 bg-card-bg px-[18px] py-3 transition-shadow duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06)] focus-visible:outline-2 focus-visible:outline-gray-400"
-        >
-          <div class="min-w-[260px] flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-[15px] font-semibold leading-[21px] tracking-[-0.01em] text-gray-900">{{ s.titulo }}</span>
-              <span class="rounded-full bg-canvas-bg px-2 py-0.5 text-[11px] font-medium text-gray-500">{{ s.tipoTexto }}</span>
-              @if (s.modulo) {
-                <span class="rounded-full bg-canvas-bg px-2 py-0.5 text-[11px] font-medium text-gray-500">{{ s.modulo.nombre }}</span>
-              }
-              @if (s.interesadas > 1) {
-                <span class="rounded-full bg-[#e0f2fe] px-2 py-0.5 text-[11px] font-semibold text-[#075985]" title="Solicitudes de otras Empresas sumadas a esta">{{ s.interesadas }} negocios lo piden</span>
-              }
-              @if (s.fechaCompromiso && s.estado !== 'entregada') {
-                <span class="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-medium text-[#92400e]">comprometida para el {{ s.fechaCompromisoTexto }}</span>
+          <div class="relative z-30 mt-3.5 flex flex-wrap items-center gap-1.5">
+            <div class="relative">
+              <button type="button" (click)="pop.set(!pop()); destino.set(null)" class="flex h-[30px] items-center gap-[7px] rounded-full pl-[11px] pr-2.5 text-[13px] font-medium text-gray-900 hover:bg-[#ebebeb]" [class]="pop() ? 'bg-[#e6e6e6]' : 'bg-[#f4f4f4]'">
+                <span class="size-[7px] rounded-full" [style.background]="COLOR[s.estado][0]"></span>{{ ESTADO[s.estado].texto }}
+                <tabler-icon [icon]="i.abajo" [size]="13" [stroke]="1.75" class="text-[#8a8a8a]" />
+              </button>
+              @if (pop()) {
+                <div class="absolute left-0 top-9 w-[340px] animate-[fade-in-up_0.18s_ease-out] rounded-[14px] bg-white p-1.5 shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_-16px_rgba(0,0,0,0.35)]">
+                  @if (destino(); as d) {
+                    <div class="flex flex-col gap-2.5 p-2.5">
+                      <div>
+                        <p class="text-[13px] font-semibold text-gray-900">{{ ACCION[d]!.texto.replace('…', '') }}</p>
+                        <p class="mt-0.5 text-xs leading-[17px] text-gray-500">{{ ACCION[d]!.ayuda }}</p>
+                      </div>
+                      @if (d === 'aprobada') {
+                        <div class="grid grid-cols-2 gap-1.5">
+                          @for (a of [{ k: 'para_todos', t: 'Para todos', h: 'Entra al producto, sin costo' }, { k: 'exclusiva', t: 'Exclusiva', h: 'Solo esta Empresa, con costo' }]; track a.k) {
+                            <button
+                              type="button"
+                              (click)="alcance.set($any(a.k))"
+                              class="flex flex-col gap-0.5 rounded-[10px] px-2.5 py-[9px] text-left transition-colors"
+                              [class]="alcance() === a.k ? 'bg-[#0a0a0a]' : 'bg-white shadow-[inset_0_0_0_1px_#ebebeb]'"
+                            >
+                              <span class="text-[12.5px] font-semibold" [class]="alcance() === a.k ? 'text-white' : 'text-gray-900'">{{ a.t }}</span>
+                              <span class="text-[11px]" [class]="alcance() === a.k ? 'text-[#a3a3a3]' : 'text-gray-400'">{{ a.h }}</span>
+                            </button>
+                          }
+                        </div>
+                        @if (alcance() === 'exclusiva') {
+                          <div class="flex gap-1.5">
+                            <input [value]="costo()" (input)="costo.set($any($event.target).value)" placeholder="$ al mes" class="w-[110px] rounded-[9px] border-0 bg-[#f5f5f5] px-2.5 py-2 text-[13px] outline-none" />
+                            <input type="date" [value]="fecha()" (input)="fecha.set($any($event.target).value)" class="min-w-0 flex-1 rounded-[9px] border-0 bg-[#f5f5f5] px-2.5 py-[7px] text-[13px] outline-none" />
+                          </div>
+                        }
+                      }
+                      @if (d === 'entregada' && s.modulo) {
+                        <button type="button" (click)="activarModulo.set(!activarModulo())" class="flex items-center gap-2.5 rounded-[10px] bg-[#f7f7f7] px-2.5 py-[9px] text-left">
+                          <span class="relative h-4 w-[30px] shrink-0 rounded-full transition-colors" [class]="activarModulo() ? 'bg-[#303030]' : 'bg-[#d4d4d4]'">
+                            <span class="absolute top-[2px] size-3 rounded-full bg-white transition-[left] duration-200" [style.left.px]="activarModulo() ? 16 : 2"></span>
+                          </span>
+                          <span class="text-[12.5px] text-gray-900">Activar {{ s.modulo.nombre }} en {{ s.empresaNombre }}</span>
+                        </button>
+                      }
+                      <textarea
+                        rows="3"
+                        [value]="respuesta()"
+                        (input)="respuesta.set($any($event.target).value)"
+                        [placeholder]="ACCION[d]!.motivo === 'si' ? 'Mensaje para el cliente (obligatorio)' : 'Mensaje para el cliente (opcional)'"
+                        class="resize-none rounded-[9px] border-0 bg-[#f5f5f5] px-[11px] py-[9px] text-[13px] leading-[18px] outline-none"
+                      ></textarea>
+                      <div class="flex justify-end gap-1.5">
+                        <button type="button" (click)="destino.set(null)" class="rounded-full px-[13px] py-1.5 text-[12.5px] font-medium text-gray-600 hover:bg-[#f1f1f1]">Volver</button>
+                        <button type="button" (click)="confirmar()" [disabled]="!valido()" class="rounded-full px-[13px] py-1.5 text-[12.5px] font-medium text-white disabled:opacity-40" [class]="ACCION[d]!.peligro ? 'bg-[#d82c0d]' : 'bg-[#303030]'">{{ ACCION[d]!.texto.replace('…', '') }}</button>
+                      </div>
+                    </div>
+                  } @else {
+                    <p class="px-2.5 pb-1.5 pt-2 text-xs leading-[17px] text-gray-500">{{ cerrada() ? 'Está cerrada: ' + ESTADO[s.estado].texto.toLowerCase() + '.' : 'Lo que elijas lo ve ' + s.empresaNombre + ' en su panel.' }}</p>
+                    @for (a of acciones(); track a.estado) {
+                      <button type="button" (click)="iniciar(a.estado)" class="flex w-full items-start gap-2.5 rounded-[9px] px-2.5 py-[9px] text-left hover:bg-[#f5f5f5]">
+                        <tabler-icon [icon]="a.icono" [size]="16" [stroke]="1.75" class="mt-px" [class]="a.peligro ? 'text-[#b42318]' : 'text-gray-900'" />
+                        <span class="flex flex-col gap-px">
+                          <span class="text-[13px] font-medium" [class]="a.peligro ? 'text-[#b42318]' : 'text-gray-900'">{{ a.texto }}</span>
+                          <span class="text-[11.5px] leading-4 text-[#8a8a8a]">{{ a.ayuda }}</span>
+                        </span>
+                      </button>
+                    }
+                  }
+                </div>
               }
             </div>
-            <p class="mt-0.5 text-xs leading-[18px] text-gray-500">
-              <span class="font-medium text-gray-700">{{ s.empresaNombre }}</span>
-              · #{{ s.id }} · última actividad {{ s.actividad }}
-            </p>
-          </div>
-
-          <div class="flex w-[170px] shrink-0 items-center gap-1.5 text-[13px] text-gray-600">
-            <tabler-icon [icon]="i.persona" [size]="15" [stroke]="1.75" class="text-gray-400" />
-            <span class="truncate" [class.text-gray-400]="!s.asignadaA">{{ s.asignadaA?.nombre ?? 'Sin asignar' }}</span>
-          </div>
-
-          <div class="flex w-[150px] shrink-0 flex-col items-end gap-1">
-            <app-status-badge [label]="s.estadoTexto" [tone]="s.estadoTono" dot="filled" />
-            @if (s.espera) {
-              <span class="text-[11px]" [class]="s.esperaLarga ? 'font-medium text-badge-error-solid' : 'text-gray-400'">llegó {{ s.espera }}</span>
+            <button type="button" (click)="alternarAsignacion()" [title]="esMia() ? 'Soltarla' : 'Asignármela'" class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-gray-900 hover:bg-[#ebebeb]">
+              <tabler-icon [icon]="s.asignadaA ? i.mia : i.sinAsignar" [size]="14" [stroke]="1.75" [class]="esMia() ? 'text-[#00a19a]' : s.asignadaA ? 'text-gray-500' : 'text-[#b45309]'" />
+              {{ esMia() ? 'Tuya' : (s.asignadaA?.nombre ?? 'Sin asignar') }}
+            </button>
+            <button type="button" (click)="pestana.set('det')" class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-gray-900 hover:bg-[#ebebeb]">
+              <tabler-icon [icon]="i.empresas" [size]="14" [stroke]="1.75" class="text-gray-500" />{{ s.interesadas === 1 ? '1 empresa' : s.interesadas + ' empresas' }}
+            </button>
+            <span class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-gray-900">
+              <tabler-icon [icon]="iconoTipo[s.tipo]" [size]="14" [stroke]="1.75" class="text-gray-500" />{{ TIPO[s.tipo].texto }}{{ s.modulo ? ' · ' + s.modulo.nombre : '' }}
+            </span>
+            @if (s.alcance) {
+              <span class="flex h-[30px] items-center rounded-full px-[11px] text-[13px] font-medium" [class]="s.alcance === 'exclusiva' ? 'bg-[#0a0a0a] text-[#2be0d5]' : 'bg-[#d9f7f5] text-[#00605b]'">
+                {{ s.alcance === 'exclusiva' ? 'Exclusiva · $' + (s.costoMensual ?? 0).toLocaleString('es-CO') + '/mes' : 'Para todos' }}
+              </span>
             }
           </div>
 
-          <tabler-icon [icon]="i.siguiente" [size]="16" [stroke]="2" class="shrink-0 text-gray-300" />
+          <div class="mt-[18px] flex gap-1 pb-4">
+            @for (p of pasos(); track $index) {
+              <div [title]="p.titulo" class="flex min-w-0 flex-1 flex-col gap-1.5">
+                <span class="h-1 rounded-full transition-colors duration-[400ms]" [style.background]="p.color"></span>
+                <span class="truncate text-[11px]" [class]="p.fuerte ? 'font-semibold text-gray-900' : p.hecho ? 'font-medium text-gray-600' : 'font-medium text-gray-400'">{{ p.texto }}</span>
+              </div>
+            }
+          </div>
+
+          <app-hoja-pestanas [pestanas]="pestanas()" [activa]="pestana()" (elegir)="elegirPestana($event)" />
         </div>
-      } @empty {
-        <div class="rounded-[10px] border border-gray-200 bg-card-bg px-6 py-[22px]">
-          <p class="text-[15px] font-semibold text-gray-900">
-            {{ hayFiltros() ? 'Ninguna solicitud con estos filtros.' : 'No hay solicitudes abiertas.' }}
-          </p>
-          <p class="mt-1 text-[13px] text-gray-500">
-            {{ hayFiltros() ? 'Prueba con otra vista o limpia los filtros.' : 'Cuando una Empresa pida un módulo, un ajuste o campos propios desde su panel, aparece acá.' }}
-          </p>
+
+        <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          @for (k of [s.id + pestana()]; track k) {
+            <div class="animar-cuerpo flex flex-1 flex-col px-6 pb-6 pt-2">
+              @if (pestana() === 'conv') {
+                <div class="flex flex-col gap-3.5 pb-4 pt-3">
+                  @for (ev of eventos(); track ev.id) {
+                    <div class="grid grid-cols-[28px_minmax(0,1fr)] gap-x-2.5" [class]="ev.nuevo ? 'animate-[fade-in-up_0.3s_ease-out]' : ''">
+                      <span class="flex size-7 items-center justify-center rounded-lg text-[11px] font-semibold" [class]="ev.deGoods ? 'bg-[#303030] text-[#2be0d5]' : 'bg-[#e3e3e3] text-gray-700'">{{ ev.ini }}</span>
+                      <div class="flex min-w-0 flex-col items-start gap-[5px]">
+                        <span class="flex flex-wrap items-center gap-x-2 gap-y-1 pt-[5px] text-xs text-[#8a8a8a]">
+                          <strong class="font-semibold text-gray-900">{{ ev.autor }}</strong>{{ ev.accion }}
+                          @if (ev.estado) {
+                            <span class="rounded-full px-2 py-px text-[11px] font-semibold" [style.background]="COLOR[ev.estado][1]" [style.color]="COLOR[ev.estado][2]">{{ ESTADO[ev.estado].texto }}</span>
+                          }
+                          @if (ev.interna) {
+                            <span class="inline-flex items-center gap-[3px] rounded-full bg-[#fbe7c6] px-[7px] py-px text-[11px] font-semibold text-[#8a5300]"><tabler-icon [icon]="i.candado" [size]="11" [stroke]="2" />Interna</span>
+                          }
+                          <span>· {{ ev.fecha }}</span>
+                        </span>
+                        @if (ev.texto) {
+                          <p class="max-w-[560px] whitespace-pre-line rounded-[4px_12px_12px_12px] px-3 py-[9px] text-[13px] leading-[19px] text-gray-900 [text-wrap:pretty]" [class]="ev.burbuja">{{ ev.texto }}</p>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+                <div
+                  class="sticky bottom-0 mt-auto flex flex-col gap-2 rounded-[14px] p-2.5 transition-[background-color,box-shadow] duration-200"
+                  [class]="modoComentario() === 'visible' ? 'bg-[#f7f7f7] shadow-[0_0_0_1px_#ececec]' : 'bg-[#fff8eb] shadow-[0_0_0_1px_#f5d9a8]'"
+                >
+                  <textarea
+                    rows="2"
+                    [value]="comentario()"
+                    (input)="comentario.set($any($event.target).value)"
+                    (keydown.meta.enter)="comentar()"
+                    (keydown.control.enter)="comentar()"
+                    [placeholder]="modoComentario() === 'visible' ? 'Responderle a ' + s.empresaNombre + '…' : 'Nota para el equipo (el cliente no la ve)…'"
+                    class="resize-none border-0 bg-transparent px-1 py-0.5 text-[13px] leading-[19px] text-gray-900 outline-none"
+                  ></textarea>
+                  <div class="flex items-center gap-1.5">
+                    <button type="button" (click)="modoComentario.set('visible')" class="flex items-center gap-[5px] rounded-full px-2.5 py-[5px] text-xs font-medium" [class]="modoComentario() === 'visible' ? 'bg-[#303030] text-white' : 'text-gray-600'">
+                      <tabler-icon [icon]="i.mensaje" [size]="13" [stroke]="1.75" />Al cliente
+                    </button>
+                    <button type="button" (click)="modoComentario.set('interna')" class="flex items-center gap-[5px] rounded-full px-2.5 py-[5px] text-xs font-medium" [class]="modoComentario() === 'interna' ? 'bg-[#303030] text-white' : 'text-gray-600'">
+                      <tabler-icon [icon]="i.candado" [size]="13" [stroke]="1.75" />Interna
+                    </button>
+                    <span class="flex-1"></span>
+                    <button type="button" (click)="comentar()" [disabled]="!comentario().trim()" class="flex items-center gap-1.5 rounded-full bg-[#303030] px-[13px] py-1.5 text-[12.5px] font-medium text-white shadow-[inset_0_-1px_0_#000] disabled:opacity-40 active:scale-[0.97]">
+                      <tabler-icon [icon]="i.enviar" [size]="14" [stroke]="1.75" class="text-[#2be0d5]" />{{ modoComentario() === 'visible' ? 'Responder' : 'Guardar nota' }}
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 py-[18px]">
+                  <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Pedido</span>
+                  <p class="whitespace-pre-line text-[13.5px] leading-[21px] text-gray-900 [text-wrap:pretty]">{{ detalle()?.descripcion }}</p>
+                </div>
+                <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+                  <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Datos</span>
+                  <div class="flex flex-col">
+                    @for (d of datos(); track d.k) {
+                      <div class="flex justify-between gap-3 border-b border-dashed border-[#ececec] py-[7px] text-[13px]"><span class="text-gray-500">{{ d.k }}</span><span class="text-right font-medium text-gray-900">{{ d.v }}</span></div>
+                    }
+                  </div>
+                </div>
+                <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+                  <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">La piden</span>
+                  <div class="flex flex-col">
+                    <div class="flex flex-col gap-px border-b border-dashed border-[#ececec] py-[7px]">
+                      <span class="text-[13px] font-medium text-gray-900">{{ s.empresaNombre }}</span>
+                      <span class="text-[11.5px] text-gray-400">la pidió primero · {{ s.creadoEn | date: 'd MMM' }}</span>
+                    </div>
+                    @for (a of detalle()?.agrupadas ?? []; track a.id) {
+                      <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 border-b border-dashed border-[#ececec] py-[7px]">
+                        <span class="flex min-w-0 flex-col gap-px"><span class="text-[13px] font-medium text-gray-900">{{ a.empresaNombre }}</span><span class="truncate text-[11.5px] text-gray-400">“{{ a.titulo }}”</span></span>
+                        <button type="button" (click)="separar(a.id, a.empresaNombre)" class="text-[11.5px] text-gray-400 hover:text-[#b42318]">Separar</button>
+                      </div>
+                    }
+                  </div>
+                </div>
+                @if (parecidas().length) {
+                  <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+                    <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Parecidas</span>
+                    <div class="flex flex-col">
+                      @for (x of parecidas(); track x.id) {
+                        <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 border-b border-dashed border-[#ececec] py-[7px]">
+                          <span class="flex min-w-0 flex-col gap-px"><span class="truncate text-[13px] font-medium text-gray-900">{{ x.titulo }}</span><span class="text-[11.5px] text-gray-400">{{ x.empresaNombre }} · {{ ESTADO[x.estado].texto }}</span></span>
+                          <button type="button" (click)="agrupar(x)" class="whitespace-nowrap rounded-full bg-[#f1f1f1] px-[11px] py-[5px] text-xs font-medium text-[#303030] hover:bg-[#e6e6e6]">Sumar a esta</button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
         </div>
+      } @else {
+        <p class="m-auto text-[13px] text-gray-500">No hay solicitudes.</p>
       }
     </div>
-
-    @if ((listado()?.totalPaginas ?? 1) > 1) {
-      <div class="mt-4 flex items-center justify-end gap-2 text-xs text-gray-500">
-        <span class="tabular-nums">{{ rango() }}</span>
-        <button type="button" [disabled]="pagina() <= 1 || cargandoLista()" (click)="irAPagina(pagina() - 1)" aria-label="Página anterior" class="rounded-lg border border-gray-200 bg-card-bg p-1.5 text-gray-600 hover:bg-canvas-bg disabled:opacity-40">
-          <tabler-icon [icon]="i.anterior" [size]="15" [stroke]="2" />
-        </button>
-        <button type="button" [disabled]="pagina() >= (listado()?.totalPaginas ?? 1) || cargandoLista()" (click)="irAPagina(pagina() + 1)" aria-label="Página siguiente" class="rounded-lg border border-gray-200 bg-card-bg p-1.5 text-gray-600 hover:bg-canvas-bg disabled:opacity-40">
-          <tabler-icon [icon]="i.siguiente" [size]="15" [stroke]="2" />
-        </button>
-      </div>
-    }
-
-    <p class="mt-5 text-xs leading-[18px] text-gray-400 text-pretty">
-      Un pedido nunca se resuelve con una copia de la app para un cliente: o entra al producto para todos, o queda como
-      módulo u opción exclusiva que se activa solo para esa Empresa. Las notas internas nunca le llegan al cliente.
-    </p>
-  </app-pantalla-estado>
-</div>
-
-@if (abiertaId(); as id) {
-  <app-solicitud-detalle-panel
-    [solicitudId]="id"
-    [puedeGestionar]="puedeGestionar()"
-    (cerrar)="cerrarPanel()"
-    (enviando)="silenciarEco()"
-    (cambio)="onCambio()"
-  />
-}
+  </app-lista-hoja>
+</app-pantalla-estado>
