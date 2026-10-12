@@ -102,6 +102,17 @@
 
   <!-- Settings: link simple, empujado al fondo (igual que staff). -->
   <div class="mt-auto pt-2">
+    @if (conAtajos()) {
+      <button
+        type="button"
+        (click)="atajos.guia.set(true)"
+        title="Atajos de teclado (Ctrl + .)"
+        class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-left text-[13px] font-medium text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
+      >
+        <tabler-icon [icon]="iconAtajos" [size]="18" [stroke]="1.75" svgClass="shrink-0" />
+        <span class="truncate">Atajos</span>
+      </button>
+    }
     <a
       [routerLink]="settingsItem.path"
       [class.bg-nav-active]="ruta() === '/settings'"

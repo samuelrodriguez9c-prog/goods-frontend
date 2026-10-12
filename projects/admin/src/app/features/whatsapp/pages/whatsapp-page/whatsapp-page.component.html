@@ -1,0 +1,435 @@
+@if (cargando()) {
+  <p class="p-8 text-sm text-gray-400">Cargando…</p>
+} @else if (errorCarga()) {
+  <p class="p-8 text-sm text-red-600">{{ errorCarga() }}</p>
+} @else if (conexion(); as cx) {
+  @if (!cx.cuenta) {
+    <!-- Sin número conectado -->
+    <div class="p-8">
+      <div class="max-w-[640px]">
+        <h1 class="text-lg font-semibold text-gray-900">WhatsApp</h1>
+        <p class="mt-2 text-sm text-gray-500">
+          Conecta el número de WhatsApp de tu negocio y responde a tus clientes desde Goods, junto con tu equipo. Puedes seguir
+          usando la app de WhatsApp Business en tu celular con el mismo número: los chats se ven en los dos lados.
+        </p>
+      </div>
+
+      @if (chats().length) {
+        <p class="mt-4 max-w-[640px] rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Tu número está desconectado. Tus chats siguen guardados; vuelve a conectarlo para recibir y responder mensajes.
+        </p>
+      }
+
+      <section class="mt-6 max-w-[640px] rounded-2xl bg-card-bg p-6 shadow-sm">
+        @if (!cx.disponible) {
+          <p class="text-sm font-medium text-gray-900">WhatsApp todavía no está habilitado en Goods</p>
+          <p class="mt-1 text-sm text-gray-500">Estamos terminando el registro con Meta. Te avisamos apenas puedas conectar tu número.</p>
+        } @else if (!puedeConfigurar()) {
+          <p class="text-sm font-medium text-gray-900">Tu número todavía no está conectado</p>
+          <p class="mt-1 text-sm text-gray-500">Solo el dueño del negocio puede conectarlo.</p>
+        } @else {
+          <ol class="grid gap-3 text-sm text-gray-600">
+            <li class="flex gap-3"><span class="grid size-6 shrink-0 place-items-center rounded-full bg-gray-100 text-xs font-semibold text-gray-900">1</span>Toca “Conectar con WhatsApp” y entra con la cuenta de Facebook del negocio.</li>
+            <li class="flex gap-3"><span class="grid size-6 shrink-0 place-items-center rounded-full bg-gray-100 text-xs font-semibold text-gray-900">2</span>Elige tu número de WhatsApp Business y confírmalo con el código que te llega.</li>
+            <li class="flex gap-3"><span class="grid size-6 shrink-0 place-items-center rounded-full bg-gray-100 text-xs font-semibold text-gray-900">3</span>Listo: los mensajes nuevos empiezan a llegar aquí.</li>
+          </ol>
+          <p class="mt-4 rounded-lg bg-gray-50 px-4 py-3 text-xs text-gray-600">
+            WhatsApp está incluido en tu plan. Responderle a un cliente dentro de las 24 horas desde su último mensaje es gratis; las
+            plantillas (escribirle después de ese tiempo o mandar campañas) las cobra Meta directamente a tu negocio, con el medio de
+            pago que registres en tu cuenta de WhatsApp Business.
+          </p>
+
+          @if (cx.registroIntegrado) {
+            <button type="button" (click)="conectarConMeta()" [disabled]="conectando()"
+              class="mt-6 flex items-center gap-2 rounded-lg bg-[#1d8a4b] px-4 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-[#166d3b] disabled:opacity-50">
+              <tabler-icon [icon]="i.wa" [size]="18" [stroke]="2" />
+              {{ conectando() ? 'Conectando…' : 'Conectar con WhatsApp' }}
+            </button>
+          } @else {
+            <p class="mt-6 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600">
+              La conexión directa con Meta todavía no está activa en Goods. Mientras tanto puedes probar con el número de prueba de Meta.
+            </p>
+          }
+
+          @if (errorConexion()) {
+            <p role="alert" class="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{{ errorConexion() }}</p>
+          }
+
+          <div class="mt-6 border-t border-gray-100 pt-4">
+            <button type="button" (click)="modoPrueba.set(!modoPrueba())" [attr.aria-expanded]="modoPrueba()"
+              class="text-sm font-medium text-gray-500 hover:text-gray-900">
+              {{ modoPrueba() ? 'Ocultar' : 'Conectar a mano (número de prueba de Meta)' }}
+            </button>
+            @if (modoPrueba()) {
+              <form class="mt-3 grid gap-3" (ngSubmit)="conectarManual()">
+                <p class="text-xs text-gray-500">
+                  En developers.facebook.com → tu app → WhatsApp → Configuración de la API encuentras el token, el identificador del número y el de la cuenta.
+                </p>
+                <label class="grid gap-1 text-sm font-medium text-gray-700">
+                  Token de acceso
+                  <input name="token" type="password" autocomplete="off" [ngModel]="manual.token()" (ngModelChange)="manual.token.set($event)"
+                    class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
+                </label>
+                <div class="grid items-end gap-3 sm:grid-cols-2">
+                  <label class="grid gap-1 text-sm font-medium text-gray-700">
+                    Identificador del número
+                    <input name="phoneNumberId" inputmode="numeric" [ngModel]="manual.phoneNumberId()" (ngModelChange)="manual.phoneNumberId.set($event)"
+                      class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
+                  </label>
+                  <label class="grid gap-1 text-sm font-medium text-gray-700">
+                    Identificador de la cuenta <span class="font-normal text-gray-400">(opcional)</span>
+                    <input name="wabaId" inputmode="numeric" [ngModel]="manual.wabaId()" (ngModelChange)="manual.wabaId.set($event)"
+                      class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
+                  </label>
+                </div>
+                <button type="submit" [disabled]="conectando() || !manual.token().trim() || !manual.phoneNumberId().trim()"
+                  class="justify-self-start rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40">
+                  {{ conectando() ? 'Conectando…' : 'Conectar' }}
+                </button>
+              </form>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  } @else {
+    <!-- Bandeja -->
+    <div class="flex h-[calc(100dvh-3.5rem)] flex-col p-6">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h1 class="text-lg font-semibold text-gray-900">WhatsApp</h1>
+        <span class="flex items-center gap-1.5 text-sm text-gray-500">
+          <span class="size-2 rounded-full" [class]="cx.cuenta.estado === 'conectada' ? 'bg-[#087b5d]' : 'bg-red-500'"></span>
+          {{ cx.cuenta.nombreVisible ?? 'Tu número' }} · {{ cx.cuenta.numero }}
+          @if (cx.cuenta.modo === 'manual') {
+            <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Conexión de prueba</span>
+          }
+        </span>
+        <nav class="ml-auto flex items-center gap-1" aria-label="Opciones de WhatsApp">
+          <a routerLink="plantillas" class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+            <tabler-icon [icon]="i.plantilla" [size]="16" [stroke]="2" /> Plantillas
+          </a>
+          <a routerLink="automatizaciones" class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+            <tabler-icon [icon]="i.bot" [size]="16" [stroke]="2" /> Respuestas automáticas
+          </a>
+          <a routerLink="campanas" class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+            <tabler-icon [icon]="i.campana" [size]="16" [stroke]="2" /> Campañas
+          </a>
+        </nav>
+        @if (puedeConfigurar()) {
+          <div class="border-l border-gray-200 pl-3">
+            @if (confirmandoDesconexion()) {
+              <span class="text-sm text-gray-600">¿Desconectar el número? Dejarás de recibir mensajes aquí.</span>
+              <button type="button" (click)="desconectar()" class="ml-2 text-sm font-medium text-red-600 hover:underline">Desconectar</button>
+              <button type="button" (click)="confirmandoDesconexion.set(false)" class="ml-2 text-sm text-gray-500 hover:underline">Cancelar</button>
+            } @else {
+              <button type="button" (click)="confirmandoDesconexion.set(true)" class="text-sm text-gray-500 hover:text-gray-900">Desconectar número</button>
+            }
+          </div>
+        }
+      </div>
+
+      @if (cx.cuenta.estado === 'error') {
+        <p role="alert" class="mt-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          WhatsApp dejó de aceptar la conexión de tu número{{ cx.cuenta.ultimoError ? ': ' + cx.cuenta.ultimoError : '' }}.
+          @if (puedeConfigurar()) { Desconéctalo y vuelve a conectarlo. } @else { Avísale al dueño del negocio. }
+        </p>
+      }
+
+      <div class="mt-4 flex min-h-0 flex-1 overflow-hidden rounded-2xl bg-card-bg shadow-sm">
+        <!-- Lista de chats -->
+        <aside class="flex w-full flex-col border-r border-gray-100 lg:flex lg:w-[340px] lg:shrink-0" [class.hidden]="abiertoId()">
+          <div class="border-b border-gray-100 p-3">
+            <label class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 ring-1 ring-gray-200 focus-within:ring-2 focus-within:ring-gray-900">
+              <tabler-icon [icon]="i.buscar" [size]="16" [stroke]="2" class="text-gray-400" />
+              <span class="sr-only">Buscar chats</span>
+              <input [ngModel]="buscar()" (ngModelChange)="cambiarBusqueda($event)" placeholder="Buscar por nombre o número"
+                class="w-full bg-transparent text-sm outline-none placeholder:text-gray-400" />
+            </label>
+            <div class="mt-2 flex gap-1.5" role="radiogroup" aria-label="Filtro">
+              <button type="button" role="radio" [attr.aria-checked]="!soloNoLeidos()" (click)="filtrarNoLeidos(false)"
+                class="rounded-full px-3 py-1 text-xs font-medium" [class]="!soloNoLeidos() ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'">Todos</button>
+              <button type="button" role="radio" [attr.aria-checked]="soloNoLeidos()" (click)="filtrarNoLeidos(true)"
+                class="rounded-full px-3 py-1 text-xs font-medium" [class]="soloNoLeidos() ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'">
+                No leídos{{ conNoLeidos() ? ' (' + conNoLeidos() + ')' : '' }}
+              </button>
+            </div>
+          </div>
+          <ul class="flex-1 overflow-y-auto">
+            @for (c of chats(); track c.id) {
+              <li>
+                <button type="button" (click)="abrir(c)"
+                  class="flex w-full items-start gap-3 px-3 py-3 text-left hover:bg-gray-50"
+                  [class.bg-gray-100]="c.id === abiertoId()">
+                  <span class="grid size-10 shrink-0 place-items-center rounded-full bg-[#d9fdd3] text-sm font-semibold text-[#166d3b]">{{ inicial(c) }}</span>
+                  <span class="min-w-0 flex-1">
+                    <span class="flex items-baseline gap-2">
+                      <span class="min-w-0 flex-1 truncate text-sm text-gray-900" [class.font-semibold]="c.noLeidos" [class.font-medium]="!c.noLeidos">{{ nombre(c) }}</span>
+                      <span class="shrink-0 text-xs tabular-nums" [class]="c.noLeidos ? 'font-medium text-[#1d8a4b]' : 'text-gray-400'">{{ cuandoLista(c.ultimoMensajeEn) }}</span>
+                    </span>
+                    <span class="mt-0.5 flex items-center gap-2">
+                      <span class="min-w-0 flex-1 truncate text-sm" [class]="c.noLeidos ? 'text-gray-900' : 'text-gray-500'">
+                        @if (c.ultimoMensajeDireccion === 'saliente') { <span class="text-gray-400">Tú: </span> }{{ c.ultimoMensajeTexto }}
+                      </span>
+                      @if (c.noLeidos) {
+                        <span class="grid min-w-5 place-items-center rounded-full bg-[#1d8a4b] px-1.5 text-[11px] font-semibold text-white tabular-nums">{{ c.noLeidos }}</span>
+                      }
+                    </span>
+                  </span>
+                </button>
+              </li>
+            } @empty {
+              <li class="px-6 py-12 text-center">
+                @if (buscar() || soloNoLeidos()) {
+                  <p class="text-sm text-gray-500">No hay chats que coincidan.</p>
+                } @else {
+                  <tabler-icon [icon]="i.wa" [size]="28" [stroke]="1.5" class="mx-auto text-gray-300" />
+                  <p class="mt-2 text-sm font-medium text-gray-900">Todavía no hay chats</p>
+                  <p class="mt-1 text-xs text-gray-500">Cuando un cliente le escriba a tu número, el chat aparece aquí.</p>
+                }
+              </li>
+            }
+          </ul>
+        </aside>
+
+        <!-- Chat abierto -->
+        <section class="min-w-0 flex-1 flex-col lg:flex" [class.flex]="abiertoId()" [class.hidden]="!abiertoId()">
+          @if (abierto(); as c) {
+            <header class="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
+              <button type="button" (click)="cerrar()" class="grid size-8 place-items-center rounded-lg hover:bg-gray-100 lg:hidden" aria-label="Volver a los chats">
+                <tabler-icon [icon]="i.volver" [size]="18" [stroke]="2" />
+              </button>
+              <span class="grid size-9 shrink-0 place-items-center rounded-full bg-[#d9fdd3] text-sm font-semibold text-[#166d3b]">{{ inicial(c) }}</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-semibold text-gray-900">{{ nombre(c) }}</p>
+                <p class="truncate text-xs text-gray-500">
+                  {{ identificacion(c.contacto) }}
+                  <span class="mx-1 text-gray-300">|</span>
+                  <span [class.text-amber-700]="!c.ventanaAbierta">{{ ventanaTexto(c) }}</span>
+                </p>
+              </div>
+              <div class="hidden shrink-0 items-center gap-2 sm:flex">
+                @if (asistenteActivo()) {
+                  <button type="button" (click)="alternarAsistente(c)" [disabled]="!puedeResponder()"
+                    [title]="asistenteEnPausa() ? 'El asistente no responde en este chat. Toca para devolvérselo.' : 'El asistente responde en este chat. Toca para pausarlo.'"
+                    class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium disabled:cursor-default"
+                    [class]="asistenteEnPausa() ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-[#e7f6ec] text-[#166d3b] hover:bg-[#d3efdc]'">
+                    <tabler-icon [icon]="i.ia" [size]="13" [stroke]="2" />
+                    {{ asistenteEnPausa() ? 'Asistente en pausa' : 'Asistente respondiendo' }}
+                  </button>
+                }
+                @if (confirmandoPromociones()) {
+                  <span class="text-xs text-gray-600">{{ c.contacto.aceptaPromociones ? '¿Ya no quiere promociones?' : '¿El cliente te dijo que sí quiere promociones?' }}</span>
+                  <button type="button" (click)="cambiarPromociones(c, !c.contacto.aceptaPromociones)" class="text-xs font-medium text-gray-900 underline underline-offset-2">Sí</button>
+                  <button type="button" (click)="confirmandoPromociones.set(false)" class="text-xs text-gray-500">No</button>
+                } @else {
+                  <button type="button" (click)="confirmandoPromociones.set(true)" [disabled]="!puedeResponder()"
+                    class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium disabled:cursor-default"
+                    [class]="c.contacto.aceptaPromociones ? 'bg-[#e7f6ec] text-[#166d3b] hover:bg-[#d3efdc]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                    <tabler-icon [icon]="i.campana" [size]="13" [stroke]="2" />
+                    {{ c.contacto.aceptaPromociones ? 'Acepta promociones' : 'Sin promociones' }}
+                  </button>
+                }
+              </div>
+            </header>
+
+            <div #scroll class="flex-1 overflow-y-auto bg-[#efe7de] px-4 py-4 sm:px-8">
+              @if (hayMas()) {
+                <div class="mb-3 text-center">
+                  <button type="button" (click)="verAnteriores()" class="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-700 shadow-sm">Ver mensajes anteriores</button>
+                </div>
+              }
+              @if (cargandoMensajes()) {
+                <p class="py-8 text-center text-sm text-gray-500">Cargando…</p>
+              }
+              @for (m of mensajes(); track m.id; let idx = $index) {
+                @if (nuevoDia(idx)) {
+                  <p class="my-3 text-center">
+                    <span class="rounded-md bg-white/90 px-2.5 py-1 text-xs text-gray-600 shadow-sm">{{ diaDe(m.enviadoEn) }}</span>
+                  </p>
+                }
+                <div class="mb-1.5 flex" [class.justify-end]="m.direccion === 'saliente'">
+                  <div class="max-w-[75%] rounded-lg px-3 py-1.5 text-sm text-gray-900 shadow-[0_1px_0.5px_rgb(0_0_0/0.13)]"
+                    [class]="m.direccion === 'saliente' ? (m.estado === 'fallido' ? 'bg-red-50' : 'bg-[#d9fdd3]') : 'bg-white'">
+                    @if (m.autor === 'celular') {
+                      <p class="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-[#166d3b]">
+                        <tabler-icon [icon]="i.celular" [size]="12" [stroke]="2" /> Desde el celular
+                      </p>
+                    } @else if (etiquetaOrigen(m); as et) {
+                      <p class="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-[#166d3b]">
+                        <tabler-icon [icon]="et.icono" [size]="12" [stroke]="2" /> {{ et.texto }}
+                      </p>
+                    }
+                    @if (m.plantilla && m.origen !== 'campana') {
+                      <p class="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-gray-500">
+                        <tabler-icon [icon]="i.plantilla" [size]="12" [stroke]="2" /> Plantilla: {{ m.plantilla.nombre }}
+                      </p>
+                    }
+                    @if (m.media?.descargable && (m.tipo === 'image' || m.tipo === 'sticker')) {
+                      @if (adjuntos()[m.id]; as a) {
+                        @if (a.url) {
+                          <a [href]="a.url" target="_blank" rel="noopener" class="mb-1 block">
+                            <img [src]="a.url" [alt]="m.texto || 'Foto'" class="max-h-72 rounded-md object-contain" [class.max-w-40]="m.tipo === 'sticker'" />
+                          </a>
+                        } @else if (a.error) {
+                          <p class="mb-1 text-xs text-gray-500">{{ a.error }}</p>
+                        } @else {
+                          <div class="mb-1 grid h-40 w-56 place-items-center rounded-md bg-black/5 text-xs text-gray-500">Cargando foto…</div>
+                        }
+                      }
+                    } @else if (m.media?.descargable && (m.tipo === 'audio' || m.tipo === 'video')) {
+                      @if (adjuntos()[m.id]?.url; as url) {
+                        @if (m.tipo === 'audio') {
+                          <audio [src]="url" controls class="mb-1 w-64"></audio>
+                        } @else {
+                          <video [src]="url" controls class="mb-1 max-h-72 rounded-md"></video>
+                        }
+                      } @else {
+                        <button type="button" (click)="cargarAdjunto(m)" class="mb-1 flex items-center gap-1.5 rounded-md bg-black/5 px-2.5 py-1.5 text-gray-700 hover:bg-black/10">
+                          @if (iconoTipo(m.tipo); as ic) { <tabler-icon [icon]="ic" [size]="15" [stroke]="2" /> }
+                          {{ adjuntos()[m.id]?.error ?? (adjuntos()[m.id] ? 'Cargando…' : (m.tipo === 'audio' ? 'Escuchar audio' : 'Ver video')) }}
+                        </button>
+                      }
+                    } @else if (m.media?.descargable && m.tipo === 'document') {
+                      <button type="button" (click)="descargar(m)" class="mb-1 flex items-center gap-1.5 rounded-md bg-black/5 px-2.5 py-1.5 text-left text-gray-700 hover:bg-black/10">
+                        <tabler-icon [icon]="i.archivo" [size]="15" [stroke]="2" />
+                        <span class="min-w-0 truncate">{{ m.media?.nombre ?? 'Documento' }}</span>
+                        <span class="shrink-0 text-xs text-gray-500">{{ adjuntos()[m.id]?.error ?? 'Descargar' }}</span>
+                      </button>
+                    } @else if (m.tipo !== 'text') {
+                      <p class="flex items-center gap-1.5 text-gray-600" [class.italic]="m.tipo === 'unsupported'">
+                        @if (iconoTipo(m.tipo); as ic) { <tabler-icon [icon]="ic" [size]="15" [stroke]="2" /> }
+                        @if (m.tipo === 'reaction') { Reaccionó {{ m.texto }} } @else { {{ etiquetaTipo(m) }} }
+                      </p>
+                    }
+                    @if (m.texto && m.tipo !== 'reaction' && !(m.tipo === 'document' && m.texto === m.media?.nombre)) {
+                      <p class="whitespace-pre-wrap break-words" [innerHTML]="formato(m.texto)"></p>
+                    }
+                    <p class="mt-0.5 flex items-center justify-end gap-1 text-[11px] text-gray-500 tabular-nums">
+                      {{ hora(m.enviadoEn) }}
+                      @if (m.direccion === 'saliente') {
+                        @switch (m.estado) {
+                          @case ('pendiente') { <tabler-icon [icon]="i.reloj" [size]="13" [stroke]="2" aria-label="Enviando" /> }
+                          @case ('enviado') { <tabler-icon [icon]="i.check" [size]="14" [stroke]="2" aria-label="Enviado" /> }
+                          @case ('entregado') { <tabler-icon [icon]="i.checks" [size]="14" [stroke]="2" aria-label="Entregado" /> }
+                          @case ('leido') { <tabler-icon [icon]="i.checks" [size]="14" [stroke]="2" class="text-[#2c8ef0]" aria-label="Leído" /> }
+                          @case ('fallido') { <tabler-icon [icon]="i.error" [size]="14" [stroke]="2" class="text-red-600" aria-label="No se envió" /> }
+                        }
+                      }
+                    </p>
+                    @if (m.estado === 'fallido') {
+                      <p class="mt-1 text-xs text-red-700">No se envió{{ m.error ? ': ' + m.error : '' }}</p>
+                      @if ((m.autor === 'equipo' || m.autor === 'bot') && puedeResponder()) {
+                        <button type="button" (click)="reintentar(m)" class="mt-1 text-xs font-medium text-red-700 underline underline-offset-2 hover:text-red-900">Reintentar</button>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <footer class="border-t border-gray-100 p-3">
+              @if (motivoSinResponder(); as motivo) {
+                <p class="flex items-start gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+                  <tabler-icon [icon]="i.candado" [size]="16" [stroke]="2" class="mt-0.5 shrink-0 text-gray-400" />
+                  {{ motivo }}
+                </p>
+              } @else {
+                @if (errorEnvio()) {
+                  <p role="alert" class="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ errorEnvio() }}</p>
+                }
+                @if (ventanaCerrada()) {
+                  <!-- Ventana de 24 h cerrada: solo plantillas aprobadas -->
+                  <div class="grid gap-2">
+                    <p class="flex items-start gap-2 text-sm text-gray-600">
+                      <tabler-icon [icon]="i.candado" [size]="16" [stroke]="2" class="mt-0.5 shrink-0 text-gray-400" />
+                      Pasaron más de 24 horas desde el último mensaje de este cliente. WhatsApp solo deja escribirle con una plantilla aprobada. Meta le cobra cada plantilla a la cuenta de WhatsApp de tu negocio.
+                    </p>
+                    @if (aprobadas() === null) {
+                      <p class="text-xs text-gray-400">Cargando plantillas…</p>
+                    } @else if (!aprobadas()!.length) {
+                      <p class="text-sm text-gray-500">
+                        Todavía no tienes plantillas aprobadas.
+                        @if (puedeConfigurar()) {
+                          <a routerLink="plantillas" class="font-medium text-gray-900 underline underline-offset-2">Crea una</a>.
+                        } @else {
+                          Pídele al dueño del negocio que cree una.
+                        }
+                        Mientras tanto, respóndele desde la app de tu celular.
+                      </p>
+                    } @else {
+                      <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <span class="shrink-0">Plantilla</span>
+                        <select [ngModel]="elegida()?.id ?? ''" (ngModelChange)="elegirPlantilla($event + '')"
+                          class="min-w-0 flex-1 rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900">
+                          <option value="">Elige una plantilla</option>
+                          @for (p of aprobadas(); track p.id) {
+                            <option [value]="p.id">{{ p.nombre }} ({{ categoriaCorta(p) }})</option>
+                          }
+                        </select>
+                      </label>
+                      @if (elegida()) {
+                        @for (k of indicesVariables(); track k) {
+                          <label class="flex items-center gap-2 text-sm text-gray-600">
+                            <span class="w-24 shrink-0">Variable {{ k + 1 }}</span>
+                            <input [ngModel]="variables()[k] || ''" (ngModelChange)="cambiarVariable(k, $event)"
+                              class="min-w-0 flex-1 rounded-lg bg-white px-3 py-2 text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
+                          </label>
+                        }
+                        @if (promocionBloqueada()) {
+                          <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            Esta es una plantilla de promoción y este cliente no ha aceptado recibir promociones. Usa una de servicio, o márcalo como
+                            "Acepta promociones" arriba si te lo dijo.
+                          </p>
+                        }
+                        <div class="flex items-end gap-2">
+                          <p class="flex-1 rounded-lg bg-[#d9fdd3] px-3 py-2 text-sm whitespace-pre-wrap text-gray-900" [innerHTML]="formato(vistaPlantilla())"></p>
+                          <button type="button" (click)="enviarPlantilla()" [disabled]="!plantillaLista() || enviando() || promocionBloqueada()" aria-label="Enviar plantilla"
+                            class="grid size-10 shrink-0 place-items-center rounded-full bg-[#1d8a4b] text-white hover:bg-[#166d3b] disabled:opacity-40">
+                            <tabler-icon [icon]="i.enviar" [size]="18" [stroke]="2" />
+                          </button>
+                        </div>
+                      }
+                    }
+                  </div>
+                } @else {
+                  <div class="relative flex items-end gap-2">
+                    @if (sugerencias().length) {
+                      <ul role="listbox" aria-label="Respuestas rápidas"
+                        class="absolute bottom-full left-0 z-10 mb-2 w-full max-w-md overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-gray-200">
+                        @for (r of sugerencias(); track r.id; let n = $index) {
+                          <li role="option" [attr.aria-selected]="n === sugerenciaActiva()">
+                            <button type="button" (mousedown)="$event.preventDefault()" (click)="usarRapida(r)" (mouseenter)="sugerenciaActiva.set(n)"
+                              class="block w-full px-3 py-2 text-left" [class.bg-gray-100]="n === sugerenciaActiva()">
+                              <span class="font-mono text-xs font-medium text-gray-900">/{{ r.atajo }}</span>
+                              <span class="block truncate text-sm text-gray-500">{{ r.texto }}</span>
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                    }
+                    <label class="sr-only" for="respuesta">Respuesta</label>
+                    <textarea id="respuesta" #cuadro rows="1" [ngModel]="texto()" (ngModelChange)="cambiarTexto($event)" (keydown)="teclear($event)"
+                      maxlength="4096" placeholder="Escribe un mensaje o / para tus respuestas rápidas"
+                      class="max-h-40 min-h-[40px] flex-1 resize-none rounded-lg bg-gray-50 px-3 py-2 text-sm ring-1 ring-gray-200 outline-none [field-sizing:content] focus:ring-2 focus:ring-gray-900"></textarea>
+                    <button type="button" (click)="enviar()" [disabled]="!texto().trim() || enviando()" aria-label="Enviar"
+                      class="grid size-10 shrink-0 place-items-center rounded-full bg-[#1d8a4b] text-white hover:bg-[#166d3b] disabled:opacity-40">
+                      <tabler-icon [icon]="i.enviar" [size]="18" [stroke]="2" />
+                    </button>
+                  </div>
+                  <p class="mt-1.5 text-[11px] text-gray-400">Enter envía · Shift + Enter hace un salto de línea · / respuestas rápidas</p>
+                }
+              }
+            </footer>
+          } @else {
+            <div class="grid flex-1 place-items-center bg-gray-50 p-8 text-center">
+              <div>
+                <tabler-icon [icon]="i.wa" [size]="36" [stroke]="1.25" class="mx-auto text-gray-300" />
+                <p class="mt-2 text-sm text-gray-500">Elige un chat para ver la conversación.</p>
+              </div>
+            </div>
+          }
+        </section>
+      </div>
+    </div>
+  }
+}

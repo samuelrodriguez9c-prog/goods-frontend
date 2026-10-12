@@ -16,6 +16,8 @@ export interface GuardarPlanPayload {
   precioMensual?: number | null;
   caracteristicas?: string[];
   activo?: boolean;
+  /** Días de prueba (2026-10-10; 0 = sin prueba, hasta 90). */
+  diasPrueba?: number;
 }
 
 /** `precio_mensual` es `decimal` en Postgres — TypeORM/pg lo manda como

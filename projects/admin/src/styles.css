@@ -805,3 +805,111 @@ app-topbar {
 .escala-contenido {
   zoom: var(--escala-contenido);
 }
+
+/* Pegar al final de projects/admin/src/styles.css (fuera de @theme).
+   El resto de keyframes que usan Productos ya existen: ficha, entra, brillo,
+   fade-in-up, pop, vivo-entrar, alerta-entrar, alerta-barra, latido. */
+
+/* Pila v3: sacudida al intentar salir con cambios sin guardar.
+   Dos copias idénticas para poder re-dispararla alternando el nombre. */
+@keyframes pila-sacudir-a {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-7px); }
+  40%, 80% { transform: translateX(7px); }
+}
+@keyframes pila-sacudir-b {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-7px); }
+  40%, 80% { transform: translateX(7px); }
+}
+
+/* Lista de productos: la fila recién guardada o cambiada en vivo. */
+@keyframes producto-destello {
+  from { background-color: #e0f7f5; }
+  to { background-color: transparent; }
+}
+
+/* Rango de precio: dos <input type="range"> superpuestos; solo las perillas reciben el puntero. */
+.rango-doble {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;
+  background: transparent;
+}
+.rango-doble::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid #303030;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+.rango-doble::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid #303030;
+  cursor: pointer;
+}
+
+/* ── Productos v5 (handoff-productos-v5). Los keyframes que chocaban con
+   los existentes van con prefijo gp- (gp-entra, gp-brillo, gp-latido). ── */
+/* Pegar al final de projects/admin/src/styles.css (keyframes que usa el módulo Productos v5). */
+@keyframes barra-crece{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes mov-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes gp-entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sube{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes gp-brillo{0%{background-position:-240px 0}100%{background-position:calc(240px + 100%) 0}}
+@keyframes gp-latido{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+@keyframes sacudeA{0%,100%{transform:translateX(-50%)}20%,60%{transform:translateX(calc(-50% - 7px))}40%,80%{transform:translateX(calc(-50% + 7px))}}
+@keyframes sacudeB{0%,100%{transform:translateX(-50%)}20%,60%{transform:translateX(calc(-50% - 7px))}40%,80%{transform:translateX(calc(-50% + 7px))}}
+@keyframes escanea{0%{top:4%}50%{top:90%}100%{top:4%}}
+@keyframes gira{to{transform:rotate(360deg)}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes ping{75%,100%{transform:scale(2);opacity:0}}
+@keyframes tecleo{0%,64%,100%{transform:translateY(0) scale(.78);opacity:.28;background:#0a0a0a}28%{transform:translateY(-4px) scale(1);opacity:1;background:#0a0a0a}40%{background:#00a19a}}
+@keyframes trazo{from{stroke-dashoffset:60}to{stroke-dashoffset:0}}
+@keyframes alerta-in{from{opacity:0;transform:translateY(10px) scale(.98);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}
+@keyframes barra-a{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* Piezas repetidas de formularios y tarjetas del módulo (Tailwind v4: @apply en global). */
+/* Piezas repetidas (Tailwind v4: @utility para poder componerlas con @apply). */
+@utility gp-label {
+  @apply mb-1.5 block text-[12.5px] font-medium text-gray-500;
+}
+@utility gp-input {
+  @apply w-full rounded-[10px] border border-[#e3e3e3] bg-white px-3 py-2 text-[13px] text-gray-900 outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#a3a3a3] focus:border-[#303030] focus:shadow-[0_0_0_3px_rgba(48,48,48,.08)];
+}
+@utility gp-input-num {
+  @apply gp-input text-right font-[Archivo] tabular-nums;
+}
+@utility gp-tarjeta {
+  @apply rounded-[14px] border border-[#efefef] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,.03)];
+}
+@utility gp-seccion {
+  @apply mb-3 font-[Archivo] text-[13px] font-semibold text-gray-900;
+}
+@utility gp-btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[13px] font-medium text-[#303030] transition-colors hover:bg-[#d4d4d4] disabled:opacity-50;
+}
+@utility gp-btn-primario {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-full bg-[#303030] px-3.5 py-1.5 text-[13px] font-medium text-white shadow-[inset_0_-1px_0_rgba(0,0,0,.4),inset_0_1px_0_rgba(255,255,255,.12)] transition-colors hover:bg-[#1a1a1a] disabled:opacity-50;
+}
+@utility gp-btn-icono {
+  @apply flex size-8 items-center justify-center rounded-full text-[#4b5563] transition-colors hover:bg-[#f1f1f1] hover:text-gray-900;
+}
+@utility gp-pastilla {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold;
+}
+@utility gp-cifra {
+  @apply font-[Archivo] font-semibold tabular-nums text-gray-900;
+}
+@utility gp-ia {
+  @apply relative inline-flex size-4 items-center justify-center rounded-full bg-[#0a0a0a] shadow-[0_0_0_1.5px_#fff];
+}

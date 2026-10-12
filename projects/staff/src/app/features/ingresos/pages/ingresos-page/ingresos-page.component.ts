@@ -16,9 +16,11 @@ type Sim = { churn: number; nuevas: number; ticket: number; ajuste: number; exp:
 
 const CAT: Record<TipoMovimiento, Cat | null> = {
   nueva: 'nuevo', reactivacion: 'nuevo', subida: 'exp', extra_alta: 'exp', bajada: 'contr', extra_baja: 'contr', baja: 'perd', vencida: 'perd', cambio: null,
+  descuento_alta: 'contr', descuento_baja: 'exp',
 };
 const TIPO_TXT: Record<TipoMovimiento, string> = {
   nueva: 'Nueva', reactivacion: 'Reactivación', subida: 'Subió de plan', extra_alta: 'Extra', bajada: 'Bajó de plan', extra_baja: 'Quitó extra', baja: 'Baja', vencida: 'Vencida', cambio: 'Cambio de plan',
+  descuento_alta: 'Descuento', descuento_baja: 'Terminó descuento',
 };
 /** Etiqueta · color de barra · fondo chip · tinta chip. */
 export const CATC: Record<Cat, [string, string, string, string]> = {
@@ -164,9 +166,17 @@ export class IngresosPageComponent {
     const r = this.real();
     return `El MRR cerró ${MES_LARGO[+sep.mes.slice(5) - 1]} en ${plata(sep.mrr)} (${sep.mrr >= ago.mrr ? '+' : ''}${pct((sep.mrr - ago.mrr) / (ago.mrr || 1))} vs. ${MES_LARGO[+ago.mes.slice(5) - 1]}). ` +
       `En ${MES_LARGO[+u.mes.slice(5) - 1]} van ${pl(this.datos()?.movimientos.items.length ?? 0, 'movimiento', 'movimientos')} y ${pct(u.cobrado.COP / (u.facturado || u.mrr || 1), 0)} cobrado. ` +
-      `Al ritmo de los últimos 6 meses, en ${MES_LARGO[+masMes(u.mes, 6).slice(5) - 1]} llegarías a ${plata(this.proyectar(r.churn, r.nuevas, r.ticket, 0, r.exp)[5])}.`;
+      `Al ritmo de los últimos 6 meses, en ${MES_LARGO[+masMes(u.mes, 6).slice(5) - 1]} llegarías a ${plata(this.proyectar(r.churn, r.nuevas, r.ticket, 0, r.exp)[5])}.` +
+      this.textoPruebas();
   });
 
+  /** Pruebas en curso (2026-10-10): no suman al MRR hasta que pagan. */
+  private textoPruebas(): string {
+    const p = this.datos()?.actual.pruebas;
+    if (!p || (!p.enCurso && !p.convertidasMes && !p.perdidasMes)) return '';
+    return ` Hay ${pl(p.enCurso, 'empresa', 'empresas')} en prueba (no suman al MRR)` +
+      (p.conversion !== null ? `; este mes pagó el ${p.conversion.toLocaleString('es-CO')} % de las pruebas que terminaron.` : '.');
+  }
   // ── KPIs ──────────────────────────────────────────────────────────────
 
   protected readonly kpis = computed(() => {
@@ -177,7 +187,7 @@ export class IngresosPageComponent {
     const churn = P?.mrr ? -M.mrrPerdido / P.mrr : 0;
     const t = (d: number) => (d > 0 ? '#087b5d' : d < 0 ? '#b42318' : '#6b7280');
     return [
-      { k: 'mrr' as Serie | null, etiqueta: 'MRR', valor: plata(M.mrr), delta: P ? `${signo(M.mrr - P.mrr)} vs. ${MES_CORTO[+P.mes.slice(5) - 1]}` : '', tinta: t(M.mrr - (P?.mrr ?? M.mrr)), ayuda: 'Suma del plan y los extras de cada suscripción activa' },
+      { k: 'mrr' as Serie | null, etiqueta: 'MRR', valor: plata(M.mrr), delta: P ? `${signo(M.mrr - P.mrr)} vs. ${MES_CORTO[+P.mes.slice(5) - 1]}` : '', tinta: t(M.mrr - (P?.mrr ?? M.mrr)), ayuda: 'Plan (menos su descuento) y extras de cada suscripción activa. Las pruebas no suman hasta que pagan.' },
       { k: null, etiqueta: 'ARR', valor: corto(M.mrr * 12), delta: 'MRR × 12', tinta: '#6b7280', ayuda: 'Ingreso anual recurrente' },
       { k: 'clientes' as Serie, etiqueta: 'Clientes', valor: String(M.clientes), delta: P ? `${M.clientes - P.clientes >= 0 ? '+' : '−'}${Math.abs(M.clientes - P.clientes)} en el mes` : '', tinta: t(M.clientes - (P?.clientes ?? M.clientes)), ayuda: 'Empresas con suscripción activa' },
       { k: null, etiqueta: 'ARPA', valor: plata(arpa), delta: `${signo(arpa - arpaP)} por cliente`, tinta: t(arpa - arpaP), ayuda: 'MRR promedio por cliente' },

@@ -4,6 +4,28 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Empresa, EmpresaConDueno, EstadoEmpresa, RespuestaPaginada } from './models/empresa.model';
 
+/** Estado de la conexión de WhatsApp de una Empresa (PROPUESTA_WHATSAPP.md §8). */
+export interface ConexionWhatsapp {
+  cuenta: {
+    numero: string;
+    nombreVisible: string | null;
+    estado: 'conectada' | 'desconectada' | 'error';
+    calidad: string | null;
+    modo: 'registro_integrado' | 'manual';
+    conectadaEn: string;
+    ultimoError: string | null;
+  } | null;
+  /** Cuánto usa el asistente de IA (lo paga Goods) y las campañas; solo conteos. */
+  uso: {
+    asistenteActivo: boolean;
+    respuestasIa24h: number;
+    respuestasIa30d: number;
+    limiteDiario: number;
+    campanas30d: number;
+    mensajesCampana30d: number;
+  };
+}
+
 /** Una decisión de staff sobre un módulo puntual, del cuerpo de `PATCH
  * /empresas/:id/llamada-finalizada` (§11.7 de
  * PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md) — espejo de `ModuloFinalDto`
@@ -100,6 +122,11 @@ export class EmpresaService {
     return this.http.get<ActividadEmpresa[]>(`${environment.apiUrl}/empresas/${id}/actividad`);
   }
 
+  /** `GET /whatsapp/empresas/:id/conexion` — si el número de WhatsApp está conectado (nunca los chats). */
+  whatsapp(id: number): Observable<ConexionWhatsapp> {
+    return this.http.get<ConexionWhatsapp>(`${environment.apiUrl}/whatsapp/empresas/${id}/conexion`);
+  }
+
   /** Legado — activa la Empresa de un tirón (crea el Usuario dueño y
    * dispara el correo, todo en un solo paso). El backend lo mantiene
    * intacto a propósito como código de vuelta (ver §10 Paso 3 punto 8 de
@@ -148,9 +175,11 @@ export class EmpresaService {
    * de módulo que arma `ActivarEmpresaWizardComponent`, pre-cargada con
    * `GestionAlta.modulosSolicitados` pero editable por staff — se crean
    * como `EmpresaModulo` reales en esta misma llamada. */
-  llamadaFinalizada(id: number, modulosFinales?: ModuloFinalPayload[]): Observable<Empresa> {
+  llamadaFinalizada(id: number, modulosFinales?: ModuloFinalPayload[], diasPrueba?: number): Observable<Empresa> {
     return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/llamada-finalizada`, {
       modulosFinales,
+      // Días de prueba acordados en la llamada (2026-10-10). Sin el campo, los del plan.
+      ...(diasPrueba !== undefined ? { diasPrueba } : {}),
     });
   }
 

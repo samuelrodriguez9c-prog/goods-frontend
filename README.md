@@ -52,7 +52,8 @@ desactualiza.
 ```bash
 npm install --legacy-peer-deps
 ng serve admin   # admin de un emprendimiento — http://localhost:4200
-ng serve staff   # panel de staff de Goods — puerto distinto si corren juntos
+ng serve staff   # panel de staff de Goods — http://localhost:4201
+ng serve tienda  # tienda pública de cada negocio — http://localhost:4202/<dirección>
 ```
 
 > El flag `--legacy-peer-deps` hace falta por un conflicto de peers de
@@ -80,6 +81,7 @@ projects/
 │   └── app.ts / app.html           # `<router-outlet />` — el layout real vive en layout/shell
 ├── staff/src/app/             # panel de staff de Goods (administra clientes, no una tienda)
 │   └── app.ts / app.html          # todavía un placeholder — ver PIVOTE_SAAS_MULTITENANT.md §8 punto 5
+├── tienda/src/app/            # tienda pública de cada negocio con "Pedir por WhatsApp" (sin sesión, sin PrimeNG ni shared-ui)
 └── shared-ui/src/lib/         # librería Angular real del workspace, consumida por admin y staff
     ├── status-badge/               # StatusBadgeComponent
     ├── data-table/                  # DataTableComponent + dataTablePt() + SelectionCheckboxComponent
@@ -112,6 +114,7 @@ etc.) está en `ADMIN_DISENO.md`.
 ```bash
 ng build admin
 ng build staff
+ng build tienda
 ng build shared-ui   # solo hace falta a mano si se toca la librería fuera de un build de admin/staff
 ```
 

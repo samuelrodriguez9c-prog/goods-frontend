@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  CrearDescuentoPayload,
   EstadoCuenta,
   FiltroPagos,
   ListadoPagos,
@@ -55,6 +56,15 @@ export class FacturacionService {
 
   darDeBajaCargo(cargoId: number, motivo: string): Observable<EstadoCuenta> {
     return this.http.post<EstadoCuenta>(`${this.base}/cargos/${cargoId}/baja`, { motivo });
+  }
+
+  /** Descuento sobre el plan (permiso `facturacion.descuentos`). Reemplaza al que hubiera. */
+  crearDescuento(empresaId: number, payload: CrearDescuentoPayload): Observable<EstadoCuenta> {
+    return this.http.post<EstadoCuenta>(`${this.base}/empresas/${empresaId}/descuentos`, payload);
+  }
+
+  darDeBajaDescuento(descuentoId: number, motivo: string): Observable<EstadoCuenta> {
+    return this.http.post<EstadoCuenta>(`${this.base}/descuentos/${descuentoId}/baja`, { motivo });
   }
 
   anular(id: number, motivo: string): Observable<PagoDetalle> {

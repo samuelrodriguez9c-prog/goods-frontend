@@ -33,7 +33,19 @@ import { AlertaService } from '../../../../core/ui/alerta.service';
 import { PistaService } from '../../../../core/ui/pista.service';
 import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
 import { Empresa } from '../../../../core/catalog/models/empresa.model';
-import { EstadoCuenta, METODOS_PAGO, MetodoPago, PagoDetalle, PagoResumen, ResumenFacturacion } from '../../../../core/facturacion/models/facturacion.model';
+import {
+  EstadoCuenta,
+  METODOS_PAGO,
+  MOTIVOS_DESCUENTO,
+  MetodoPago,
+  MotivoDescuento,
+  PagoDetalle,
+  PagoResumen,
+  ResumenFacturacion,
+} from '../../../../core/facturacion/models/facturacion.model';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
+import { DIAS_PRUEBA_MAX } from '../../../../core/catalog/models/suscripcion.model';
 import { CabeceraModuloComponent, MetricaCabecera, serieConteo } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { ListaHojaComponent } from '../../../../shared/ui/lista-hoja/lista-hoja.component';
@@ -99,6 +111,8 @@ export class FacturacionPageComponent {
   private readonly alertas = inject(AlertaService);
   private readonly pista = inject(PistaService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+  private readonly suscripciones = inject(SuscripcionService);
 
   protected readonly lista = viewChild(ListaHojaComponent);
   protected readonly hoy = new Date();
@@ -137,6 +151,19 @@ export class FacturacionPageComponent {
   protected readonly copiado = signal(false);
   protected readonly formExtra = signal<{ concepto: string; monto: string } | null>(null);
   protected readonly bajaCargo = signal<{ id: number; motivo: string } | null>(null);
+  // Descuentos y prueba (2026-10-10)
+  protected readonly motivosDescuento = MOTIVOS_DESCUENTO;
+  protected readonly porcentajesRapidos = [10, 20, 30];
+  protected readonly duracionesDescuento: { meses: number | null; texto: string }[] = [
+    { meses: null, texto: 'Sin fin' }, { meses: 3, texto: '3 meses' }, { meses: 6, texto: '6 meses' }, { meses: 12, texto: '12 meses' },
+  ];
+  protected readonly formDescuento = signal<{ porcentaje: string; motivo: MotivoDescuento; meses: number | null; nota: string } | null>(null);
+  protected readonly bajaDescuento = signal<{ id: number; motivo: string } | null>(null);
+  protected readonly formPrueba = signal<{ dias: string; motivo: string } | null>(null);
+  private readonly permisos = computed(() => new Set(this.auth.currentUser()?.permisos ?? []));
+  /** Solo `admin_goods` y `admin` (permiso `facturacion.descuentos`, decisión de gerencia). */
+  protected readonly puedeDescontar = computed(() => this.permisos().has('facturacion.descuentos'));
+  protected readonly puedeExtenderPrueba = computed(() => this.permisos().has('suscripciones.gestionar'));
   protected readonly nuevo = signal<{ empresaId: number; metodo: MetodoPago; ref: string; monto: string; fecha: string } | null>(null);
   protected readonly cuentaNuevo = signal<EstadoCuenta | null>(null);
 
@@ -339,6 +366,9 @@ export class FacturacionPageComponent {
     this.motivo.set('');
     this.formExtra.set(null);
     this.bajaCargo.set(null);
+    this.formDescuento.set(null);
+    this.bajaDescuento.set(null);
+    this.formPrueba.set(null);
     if (!p) return;
     if (this.detalle()?.id !== p.id) this.detalle.set(null);
     const mismaEmpresa = this.cuenta()?.empresa.id === p.empresaId;
@@ -461,8 +491,113 @@ export class FacturacionPageComponent {
           (atrasado ? `La última venció el ${fmt(atrasado.fechaLimite)}, hace ${-dias(atrasado.fechaLimite)} días.` : ''),
       };
     }
+    const prueba = c.suscripcion?.prueba;
+    if (prueba?.enPrueba) {
+      return {
+        icono: IconCalendarEvent, tinta: '#0284c7',
+        titulo: prueba.diasRestantes ? `En prueba · ${pl(prueba.diasRestantes, 'día', 'días')}` : 'Prueba terminada',
+        texto: `Gratis hasta el ${fmt(prueba.hasta)}. Si no paga antes, ese día se corta el acceso (sin gracia). Después paga ${plata(cuota)} al mes.`,
+      };
+    }
     return { icono: IconCircleCheck, tinta: '#087b5d', titulo: 'Al día', texto: venc ? `Próximo cobro de ${plata(cuota)} el ${fmt(venc)}.` : 'Sin cobros pendientes.' };
   });
+
+  // ── Descuentos (2026-10-10) ───────────────────────────────────────────
+
+  /** El descuento activo de la Empresa de la hoja (a lo sumo uno). */
+  protected readonly descuentoActivo = computed(() => this.cuenta()?.descuentos?.find((d) => d.activo) ?? null);
+
+  protected abrirDescuento(): void {
+    const a = this.descuentoActivo();
+    this.formDescuento.set({ porcentaje: a ? String(a.porcentaje) : '10', motivo: a?.motivo ?? 'fidelidad', meses: null, nota: '' });
+  }
+  protected parcheDescuento(c: Partial<{ porcentaje: string; motivo: MotivoDescuento; meses: number | null; nota: string }>): void {
+    this.formDescuento.update((f) => (f ? { ...f, ...c } : f));
+  }
+  private readonly porcentajeForm = computed(() => {
+    const n = Number((this.formDescuento()?.porcentaje ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+  });
+  protected readonly porcentajeValido = computed(() => this.porcentajeForm() > 0 && this.porcentajeForm() <= 100);
+  /** Lo que lee el cliente y cómo queda la cuota, antes de confirmar. */
+  protected readonly vistaDescuento = computed(() => {
+    const f = this.formDescuento();
+    const c = this.cuenta();
+    if (!f || !c) return null;
+    const pct = this.porcentajeForm();
+    const etiqueta = { general: 'Descuento', fidelidad: 'Descuento por fidelidad', buen_pago: 'Descuento por buen pago', promocion: 'Descuento promocional' }[f.motivo];
+    const lineas = c.cuotaMensual?.detalle ?? [];
+    const plan = lineas.filter((l) => l.origen === 'plan').reduce((t, l) => t + l.monto, 0);
+    const otros = lineas.filter((l) => l.origen === 'cargo').reduce((t, l) => t + l.monto, 0);
+    const descuento = Math.round((plan * pct) / 100);
+    const antes = c.cuotaMensual?.total ?? 0;
+    const despues = Math.max(0, plan - descuento + otros);
+    return {
+      concepto: `${etiqueta} (${pct.toLocaleString('es-CO')} %)`,
+      descuento,
+      antes,
+      despues,
+      reemplaza: this.descuentoActivo()?.concepto ?? null,
+      gratis: despues === 0 && plan > 0,
+    };
+  });
+
+  protected darDescuento(): void {
+    const f = this.formDescuento();
+    const c = this.cuenta();
+    const v = this.vistaDescuento();
+    if (!f || !c || !v || !this.porcentajeValido()) return;
+    // Se lee antes de cerrar el formulario: `porcentajeForm` sale de él.
+    const porcentaje = this.porcentajeForm();
+    this.formDescuento.set(null);
+    this.alertas
+      .seguir(
+        this.facturacion.crearDescuento(c.empresa.id, {
+          porcentaje,
+          motivo: f.motivo,
+          nota: f.nota.trim() || undefined,
+          meses: f.meses ?? undefined,
+        }),
+        {
+          titulo: 'Aplicando el descuento', texto: `${c.empresa.nombre} · ${v.concepto}`,
+          exito: { titulo: 'Descuento aplicado', texto: `La cuota pasa a ${plata(v.despues)} desde el próximo cobro. Le avisamos por correo.` },
+          error: { titulo: 'No se pudo aplicar el descuento', texto: 'Intentá de nuevo.' },
+        },
+      )
+      .subscribe({ next: (x) => this.cuenta.set(x), error: () => this.formDescuento.set(f) });
+  }
+
+  protected quitarDescuento(): void {
+    const b = this.bajaDescuento();
+    if (!b || !b.motivo.trim()) return;
+    this.bajaDescuento.set(null);
+    this.alertas
+      .seguir(this.facturacion.darDeBajaDescuento(b.id, b.motivo.trim()), {
+        titulo: 'Quitando el descuento', texto: '',
+        exito: { titulo: 'Descuento quitado', texto: 'Vuelve al precio del plan desde el próximo cobro.' },
+        error: { titulo: 'No se pudo quitar', texto: 'Intentá de nuevo.' },
+      })
+      .subscribe({ next: (x) => this.cuenta.set(x), error: () => undefined });
+  }
+
+  // ── Prueba (2026-10-10) ───────────────────────────────────────────────
+
+  protected readonly diasPruebaMax = DIAS_PRUEBA_MAX;
+  protected extenderPrueba(): void {
+    const f = this.formPrueba();
+    const c = this.cuenta();
+    const dias = parseInt((f?.dias ?? '').replace(/\D/g, ''), 10) || 0;
+    if (!f || !c?.suscripcion || !dias || f.motivo.trim().length < 5) return;
+    const id = this.alertas.mostrar({ titulo: 'Extendiendo la prueba', texto: `${c.empresa.nombre} · ${pl(dias, 'día', 'días')} más` });
+    this.suscripciones.extenderPrueba(c.suscripcion.id, dias, f.motivo.trim()).subscribe({
+      next: () => {
+        this.formPrueba.set(null);
+        this.alertas.resolver(id, { estado: 'success', titulo: 'Prueba extendida', texto: `${c.empresa.nombre} tiene ${pl(dias, 'día', 'días')} más. Le avisamos por correo.` });
+        this.recargarCuenta(c.empresa.id);
+      },
+      error: (err) => this.alertas.resolver(id, { estado: 'error', titulo: 'No se pudo extender', texto: mensajeDeError(err) }),
+    });
+  }
 
   protected abrirExtra(): void {
     this.formExtra.set({ concepto: '', monto: '' });

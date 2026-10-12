@@ -1,6 +1,11 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, signal, untracked } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { EstadoAlerta } from '../../shared/ui/estado-icono/estado-icono.component';
+
+export interface AccionAlerta {
+  label: string;
+  ejecutar: () => void;
+}
 
 export interface AlertaEnLinea {
   id: number;
@@ -8,60 +13,82 @@ export interface AlertaEnLinea {
   titulo: string;
   /** Va en la misma línea: "Título · texto". Completo al expandir. */
   texto?: string;
-  /** Botón opcional; no se muestra mientras `estado === 'cargando'`. */
-  accion?: { label: string; ejecutar: () => void };
+  /** Botón principal (turquesa). No se muestra mientras `estado === 'cargando'`. */
+  accion?: AccionAlerta;
+  /** NUEVO (Productos v5): botón secundario oscuro, ej. "Descartar". */
+  accion2?: AccionAlerta;
   /** ms hasta el auto-cierre. `null` = queda hasta que la cierren. */
   autoCierre: number | null;
-  /** Cuerpo expandido. El error abre expandido. */
   abierta: boolean;
-  /** Sube en cada `resolver()`: el componente reinicia la barra de tiempo. */
   vuelta: number;
-  /** Animando su salida (300 ms) antes de salir del array. */
   saliendo: boolean;
+  /** NUEVO: alerta fija de "Cambios sin guardar". No tiene X ni tiempo; va siempre al fondo. */
+  fija?: boolean;
 }
 
 export interface AlertaOverlay {
   estado: EstadoAlerta;
-  /** `tarjeta` = modal blanco con acciones. `velo` = ícono+texto sobre el velo. */
   variante: 'tarjeta' | 'velo';
   titulo: string;
   dato?: string;
   paso?: string;
-  primario?: { label: string; ejecutar: () => void };
-  secundario?: { label: string; ejecutar: () => void };
+  primario?: AccionAlerta;
+  secundario?: AccionAlerta;
+}
+
+export interface CambiosSinGuardar {
+  titulo: string;
+  texto: string;
+  /** 'warning' normal · 'error' si el borrador no es válido (ej. "Ajuste no válido"). */
+  estado?: 'warning' | 'error';
+  guardar: () => void;
+  descartar: () => void;
 }
 
 type Parcial = Partial<Omit<AlertaOverlay, 'variante'>>;
 
 const SALIDA_MS = 300;
+const ID_CAMBIOS = -1;
 
 /**
  * Único dueño de las alertas del panel (LEEME §12, v2 "Pila oscura").
+ * API anterior intacta (`mostrar`, `resolver`, `cerrar`, `seguir`, overlay).
  *
- * - **en línea** (`enLinea()`): pila abajo al centro. La más nueva al frente;
- *   las demás esperan detrás. **Solo corre el tiempo de la del frente** — las
- *   de atrás no se cierran sin que nadie las lea. La operación en curso y su
- *   resultado siguen siendo la misma alerta: `mostrar()` → `resolver(id, …)`.
- * - **overlay** (`overlay()`): sin cambios.
- *
- * API pública igual que antes (`mostrar`, `resolver`, `cerrar`, `seguir`):
- * ninguna página tiene que cambiar.
+ * Agregado para Productos v5:
+ * - `actualizar(id, cambio)` muta una alerta sin reiniciar su tiempo (progreso "Subiendo 42 %").
+ * - `fijarCambios(cfg)` / `soltarCambios()`: alerta fija "Cambios sin guardar" con
+ *   Guardar / Descartar. Mientras haya otra alerta al frente, la fija espera detrás.
+ *   Al aparecer sola se abre 420 ms después (para que se lea la animación de entrada).
+ * - `sacudir()`: sacude la pila (420 ms) cuando el usuario intenta salir con cambios.
+ * - `desplazamiento`: px extra sobre el borde inferior (la barra de selección masiva usa 54).
+ * - `accion2` en cualquier alerta.
  */
 @Injectable({ providedIn: 'root' })
 export class AlertaService {
   private secuencia = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private timerCambios: ReturnType<typeof setTimeout> | undefined;
   private claveFrente = '';
+  /** El usuario abrió/cerró a mano la fija: ya no la abrimos solos. */
+  private cambiosTocada = false;
 
-  readonly enLinea = signal<AlertaEnLinea[]>([]);
+  private readonly alertas = signal<AlertaEnLinea[]>([]);
+  private readonly cambios = signal<AlertaEnLinea | null>(null);
+
+  /** La fija va primero (fondo de la pila), las normales encima. */
+  readonly enLinea = computed(() => {
+    const c = this.cambios();
+    return c ? [c, ...this.alertas()] : this.alertas();
+  });
   readonly overlay = signal<AlertaOverlay | null>(null);
   readonly pausada = signal(false);
-  /** Alto real de la alerta del frente (lo escribe `AlertaPilaComponent`). */
   readonly altoFrente = signal(44);
+  readonly desplazamiento = signal(0);
+  /** Cambia en cada `sacudir()`: el componente alterna sacudeA / sacudeB. */
+  readonly sacudida = signal(0);
 
   readonly activas = computed(() => this.enLinea().filter((a) => !a.saliendo));
   readonly frente = computed(() => this.activas().at(-1) ?? null);
-  /** Alto total ocupado por la pila (frente + bordes asomando), para que la Pista suba. */
   readonly altoPila = computed(() => {
     const n = this.activas().length;
     return n ? this.altoFrente() + 9 * Math.min(n - 1, 2) : 0;
@@ -72,17 +99,19 @@ export class AlertaService {
   mostrar(alerta: Omit<AlertaEnLinea, 'id' | 'estado' | 'autoCierre' | 'abierta' | 'vuelta' | 'saliendo'> & {
     estado?: EstadoAlerta;
     autoCierre?: number | null;
+    abierta?: boolean;
   }): number {
     const id = ++this.secuencia;
     const estado = alerta.estado ?? 'cargando';
-    this.enLinea.update((xs) => [
+    this.alertas.update((xs) => [
       ...xs,
       {
         ...alerta,
         id,
         estado,
         autoCierre: alerta.autoCierre ?? this.autoCierrePorDefecto(estado),
-        abierta: estado === 'error',
+        // Abre sola si es error o si trae acción + texto (ej. "Imagen subida · Deshacer").
+        abierta: alerta.abierta ?? (estado === 'error' || (!!alerta.accion && !!alerta.texto)),
         vuelta: 0,
         saliendo: false,
       },
@@ -95,14 +124,19 @@ export class AlertaService {
     id: number,
     cambio: Partial<Omit<AlertaEnLinea, 'id' | 'vuelta' | 'saliendo'>> & { estado: EstadoAlerta },
   ): void {
-    this.enLinea.update((xs) =>
+    this.alertas.update((xs) =>
       xs.map((a) =>
         a.id === id
           ? {
               ...a,
+              accion: undefined,
+              accion2: undefined,
               ...cambio,
               autoCierre: cambio.autoCierre ?? this.autoCierrePorDefecto(cambio.estado),
-              abierta: cambio.estado === 'error' ? true : (cambio.abierta ?? a.abierta),
+              abierta:
+                cambio.estado === 'error' || (!!cambio.accion && !!(cambio.texto ?? a.texto))
+                  ? true
+                  : (cambio.abierta ?? a.abierta),
               vuelta: a.vuelta + 1,
             }
           : a,
@@ -111,20 +145,31 @@ export class AlertaService {
     this.sincronizarFrente();
   }
 
+  /** Muta texto/título sin reiniciar el tiempo (no sube `vuelta`). */
+  actualizar(id: number, cambio: Partial<Pick<AlertaEnLinea, 'titulo' | 'texto'>>): void {
+    this.alertas.update((xs) => xs.map((a) => (a.id === id ? { ...a, ...cambio } : a)));
+  }
+
   alternar(id: number): void {
-    this.enLinea.update((xs) => xs.map((a) => (a.id === id ? { ...a, abierta: !a.abierta } : a)));
+    if (id === ID_CAMBIOS) {
+      this.cambiosTocada = true;
+      clearTimeout(this.timerCambios);
+      this.cambios.update((c) => (c ? { ...c, abierta: !c.abierta } : c));
+      return;
+    }
+    this.alertas.update((xs) => xs.map((a) => (a.id === id ? { ...a, abierta: !a.abierta } : a)));
   }
 
   cerrar(id: number): void {
-    this.enLinea.update((xs) => xs.map((a) => (a.id === id ? { ...a, saliendo: true } : a)));
+    if (id === ID_CAMBIOS) return;
+    this.alertas.update((xs) => xs.map((a) => (a.id === id ? { ...a, saliendo: true } : a)));
     this.sincronizarFrente();
-    setTimeout(() => this.enLinea.update((xs) => xs.filter((a) => a.id !== id)), SALIDA_MS);
+    setTimeout(() => this.alertas.update((xs) => xs.filter((a) => a.id !== id)), SALIDA_MS);
   }
 
-  /** Cierra todas menos las que están cargando (no hay nada que descartar). */
   cerrarTodas(): void {
     this.activas()
-      .filter((a) => a.estado !== 'cargando')
+      .filter((a) => a.estado !== 'cargando' && !a.fija)
       .forEach((a) => this.cerrar(a.id));
   }
 
@@ -133,28 +178,18 @@ export class AlertaService {
     clearTimeout(this.timer);
   }
 
-  /** Al salir el mouse, la del frente se va 2 s después (no reinicia completo). */
   reanudar(): void {
     this.pausada.set(false);
     const f = this.frente();
     if (f?.autoCierre != null) this.programar(f.id, 2000);
   }
 
-  /**
-   *   this.alertas.seguir(this.rolService.asignarPermisos(id, ids), {
-   *     titulo: 'Guardando permisos', texto: 'Rol “Soporte”',
-   *     exito: { titulo: 'Permisos guardados' },
-   *     error: { titulo: 'No se pudo guardar', texto: 'El servidor rechazó el cambio.' },
-   *   }).subscribe();
-   *
-   * No traga el error: lo vuelve a lanzar para que la página decida.
-   */
   seguir<T>(
     origen: Observable<T>,
     cfg: {
       titulo: string;
       texto?: string;
-      exito: { titulo: string; texto?: string };
+      exito: { titulo: string; texto?: string; accion?: AccionAlerta };
       error: { titulo: string; texto?: string };
     },
   ): Observable<T> {
@@ -165,6 +200,51 @@ export class AlertaService {
         error: () => this.resolver(id, { estado: 'error', ...cfg.error }),
       }),
     );
+  }
+
+  // ── Cambios sin guardar (fija) ────────────────────────────────────────
+
+  /** Llamar desde un `effect` de la página cada vez que cambie el borrador. `null` = soltar. */
+  fijarCambios(cfg: CambiosSinGuardar | null): void {
+    // Se llama desde un effect() que mira el borrador: sin untracked, leer
+    // `cambios`/`alertas` acá suscribe el effect a lo que este mismo método
+    // escribe y queda en un bucle infinito (la página se congela al primer cambio).
+    untracked(() => this.fijarCambiosAhora(cfg));
+  }
+
+  private fijarCambiosAhora(cfg: CambiosSinGuardar | null): void {
+    if (!cfg) return this.soltarCambios();
+    const previa = this.cambios();
+    const solo = !this.alertas().some((a) => !a.saliendo);
+    this.cambios.set({
+      id: ID_CAMBIOS,
+      fija: true,
+      estado: cfg.estado ?? 'warning',
+      titulo: cfg.titulo,
+      texto: cfg.texto,
+      accion: { label: 'Guardar', ejecutar: cfg.guardar },
+      accion2: { label: 'Descartar', ejecutar: cfg.descartar },
+      autoCierre: null,
+      abierta: previa?.abierta ?? false,
+      vuelta: 0,
+      saliendo: false,
+    });
+    if (!previa && solo && !this.cambiosTocada) {
+      clearTimeout(this.timerCambios);
+      this.timerCambios = setTimeout(() => this.cambios.update((c) => (c ? { ...c, abierta: true } : c)), 420);
+    }
+  }
+
+  soltarCambios(): void {
+    clearTimeout(this.timerCambios);
+    this.cambiosTocada = false;
+    this.cambios.set(null);
+  }
+
+  sacudir(): void {
+    if (!this.cambios()) return;
+    this.sacudida.update((n) => n + 1);
+    this.cambios.update((c) => (c ? { ...c, abierta: true } : c));
   }
 
   // ── Overlay (sin cambios) ─────────────────────────────────────────────
@@ -187,13 +267,11 @@ export class AlertaService {
 
   // ── Interno ───────────────────────────────────────────────────────────
 
-  /** El error no se cierra solo: una alerta que se va sola es una alerta que nadie leyó. */
   private autoCierrePorDefecto(estado: EstadoAlerta): number | null {
     if (estado === 'cargando' || estado === 'error') return null;
     return estado === 'success' ? 6000 : 9000;
   }
 
-  /** Solo la del frente tiene temporizador. Se reprograma si cambia el frente o su estado. */
   private sincronizarFrente(): void {
     const f = this.frente();
     const clave = f ? `${f.id}:${f.estado}:${f.vuelta}` : '';

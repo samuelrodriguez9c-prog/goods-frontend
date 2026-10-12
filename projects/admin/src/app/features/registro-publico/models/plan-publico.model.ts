@@ -10,6 +10,8 @@ export interface PlanPublico {
   nombre: string;
   descripcion: string | null;
   precioMensual: number | null;
+  /** Días de prueba gratis que ofrece el plan (2026-10-10; 0 = sin prueba). */
+  diasPrueba?: number;
   caracteristicas: string[] | null;
   /** Entitlement real de módulos de este plan (Fase 2 de
    * PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md, §11.6) — a diferencia de

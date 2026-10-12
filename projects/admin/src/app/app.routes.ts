@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { moduloGuard } from './core/auth/modulo.guard';
 import { ShellComponent } from './layout/shell/shell.component';
 
 export const routes: Routes = [
@@ -94,6 +95,18 @@ export const routes: Routes = [
         path: 'messages',
         loadChildren: () =>
           import('./features/messages/messages.routes').then((m) => m.MESSAGES_ROUTES),
+      },
+      {
+        // Bandeja de WhatsApp (Fase 1 de PROPUESTA_WHATSAPP.md).
+        path: 'whatsapp',
+        canActivate: [moduloGuard('whatsapp')],
+        loadChildren: () => import('./features/whatsapp/whatsapp.routes').then((m) => m.WHATSAPP_ROUTES),
+      },
+      {
+        // Tienda pública con "Pedir por WhatsApp" (Fase 0 de PROPUESTA_WHATSAPP.md).
+        path: 'tienda',
+        canActivate: [moduloGuard('tienda')],
+        loadChildren: () => import('./features/tienda/tienda.routes').then((m) => m.TIENDA_ROUTES),
       },
       {
         path: 'notificaciones',

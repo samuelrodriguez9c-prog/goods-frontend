@@ -14,6 +14,8 @@
         } @else {
           @if (a.estado === 'en_mora') {
             <app-acceso-empresa [acceso]="a" variante="banner" />
+          } @else if (a.estado === 'en_prueba') {
+            <app-acceso-empresa [acceso]="a" variante="prueba" />
           } @else if (a.proximoCobro) {
             <app-acceso-empresa [acceso]="a" variante="cobro" />
           }

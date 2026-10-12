@@ -1,0 +1,194 @@
+@let f = ficha();
+@if (!f.formulario) {
+  <!-- Lectura -->
+  <div class="grid grid-cols-[minmax(0,1fr)_64px_112px] gap-3.5 px-2.5 pb-1.5 text-[10.5px] font-semibold tracking-[.06em] text-[#9ca3af] uppercase">
+    <span>Producto</span><span class="text-right">Cant.</span><span class="text-right">Importe</span>
+  </div>
+  <div class="flex flex-col border-t border-t-[#f1f1f1]">
+    @for (r of detalle(); track r.k) {
+      @let encima = lineaEncima() === r.k;
+      <div (mouseenter)="lineaEncima.set(r.k)" (mouseleave)="encima && lineaEncima.set(null)" (click)="verProducto.emit(r.productoId)"
+        class="relative flex animate-[mov-in_380ms_cubic-bezier(.2,.8,.2,1)_both] cursor-pointer flex-col gap-2 rounded-xl border-b border-b-[#f1f1f1] px-2.5 py-3 transition-[background-color] duration-200 ease-[ease]"
+        [class]="encima ? 'bg-[#fafafa]' : 'bg-transparent'" [style.animation-delay.ms]="r.retraso">
+        <div class="grid grid-cols-[minmax(0,1fr)_64px_112px] items-center gap-3.5">
+          <span class="flex min-w-0 items-center gap-2.5">
+            @if (f.estado === 'pendiente') {
+              <button type="button" (click)="alternarRevisada(r.k, $event)" title="Marcar como recibido completo"
+                class="flex size-4.5 shrink-0 cursor-pointer items-center justify-center rounded-full text-white transition-[background-color,box-shadow] duration-200 ease-[ease]"
+                [class]="r.revisada ? 'bg-[#303030] shadow-[inset_0_0_0_1.5px_#303030]' : 'bg-white shadow-[inset_0_0_0_1.5px_#d4d4d4]'">
+                @if (r.revisada) {
+                  <tabler-icon [icon]="icono('check')" [size]="11" [stroke]="2" class="animate-[pop_.25s_cubic-bezier(.2,.8,.2,1)]" />
+                }
+              </button>
+            }
+            <app-miniatura-producto [miniatura]="r.miniatura" />
+            <span class="flex min-w-0 flex-col gap-0.5">
+              <span class="truncate text-[13px] font-medium text-[#111827]">{{ r.nombre }}</span>
+              <span class="flex items-center gap-1.5 text-[11.5px] text-[#8a8a8a] tabular-nums">
+                {{ r.precio }} c/u
+                @if (r.variacion; as x) {
+                  <span [title]="x.detalle" class="rounded-full px-1.5 text-[10.5px] leading-[16px] font-semibold"
+                    [class]="x.sube ? chipVariacion.sube : chipVariacion.baja">{{ x.texto }}</span>
+                }
+              </span>
+              <span class="relative mt-1 block h-0.5 w-30 max-w-full rounded-full bg-[#f1f1f1]">
+                <span class="absolute top-0 bottom-0 left-0 origin-left animate-[barra-crece_.7s_cubic-bezier(.2,.8,.2,1)_both] rounded-full bg-[#303030] opacity-70"
+                  [style.width.%]="r.participacion"></span>
+              </span>
+            </span>
+          </span>
+          <span class="flex justify-end">
+            <span class="font-[Archivo] text-[18px] font-semibold tracking-[-0.02em] tabular-nums transition-[color] duration-200 ease-[ease]"
+              [class]="r.revisada ? 'text-[#9ca3af]' : 'text-[#111827]'">{{ r.cantidad }}</span>
+          </span>
+          <span class="flex flex-col items-end gap-0.5">
+            <span class="text-[13.5px] font-semibold text-[#111827] tabular-nums">{{ r.subtotal }}</span>
+            <span class="text-[10.5px] text-[#b5b5b5] tabular-nums">{{ r.porcentaje }}</span>
+          </span>
+        </div>
+        @if (f.estado === 'pendiente' && encima) {
+          <!-- Cómo queda el stock al recibir -->
+          <div class="ml-10 flex animate-[fade-in-up_.18s_ease-out] items-center gap-2.5">
+            <span class="text-[11px] whitespace-nowrap text-[#6b7280]">Stock</span>
+            <span class="relative flex h-[5px] flex-1 rounded-full bg-[#f1f1f1]">
+              <span class="h-full rounded-[99px_0_0_99px] bg-[#303030]" [style.width.%]="r.anchoAhora"></span>
+              <span class="h-full origin-left animate-[barra-crece_.5s_cubic-bezier(.2,.8,.2,1)_both] rounded-[0_99px_99px_0] bg-[#2be0d5]" [style.width.%]="r.anchoSuma"></span>
+              @if (r.posicionMinimo != null) {
+                <span class="absolute -top-[3px] -bottom-[3px] w-[1.5px] bg-[#8a8a8a]" [style.left.%]="r.posicionMinimo"></span>
+              }
+            </span>
+            <span class="text-[11px] whitespace-nowrap text-[#6b7280] tabular-nums">{{ r.ahora }} → <strong class="text-[#111827]">{{ r.despues }}</strong></span>
+            @if (r.cubre) {
+              <span class="text-[10.5px] font-semibold whitespace-nowrap text-[#087b5d]">cubre el mínimo</span>
+            }
+            @if (r.sigueBajo) {
+              <span class="text-[10.5px] font-semibold whitespace-nowrap text-[#8a5a00]">sigue bajo</span>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+} @else {
+  <!-- Formulario -->
+  <div class="grid grid-cols-[minmax(0,1fr)_72px_120px_28px] gap-2.5 px-2.5 pb-1.5 text-[10.5px] font-semibold tracking-[.06em] text-[#9ca3af] uppercase">
+    <span>Producto</span><span class="text-right">Cant.</span><span class="text-right">Costo c/u</span><span></span>
+  </div>
+  @if (desconocidas()) {
+    <p class="mb-1.5 flex items-center gap-2 text-[12px] text-[#8a5a00]">
+      <span class="size-1.5 rounded-full bg-[#ffb904]"></span>{{ desconocidas() }} línea sin producto reconocido · elígelo en el buscador
+    </p>
+  }
+  <div class="flex flex-col border-t border-t-[#f1f1f1]">
+    @for (l of lineas(); track $index) {
+      <div class="relative flex animate-[mov-in_300ms_cubic-bezier(.2,.8,.2,1)_both] flex-col gap-2 border-b border-b-[#f1f1f1] px-2.5 py-3"
+        [class]="l.desconocida ? 'bg-[#fffaeb]' : 'bg-white'">
+        <div class="grid grid-cols-[minmax(0,1fr)_72px_120px_28px] items-center gap-2.5">
+          <span class="relative block min-w-0">
+            <tabler-icon [icon]="icono('search')" [size]="14" [stroke]="2"
+              class="pointer-events-none absolute top-[50%] left-2.5 [transform:translateY(-50%)] text-[#9ca3af]" />
+            <input [value]="l.busqueda" (input)="buscar(l.k, $any($event.target).value)" (focus)="buscando.set(l.k)" (blur)="cerrarBuscador(l.k)"
+              [disabled]="!editable()" placeholder="Busca un producto"
+              class="w-full rounded-[10px] bg-[#fafafa] px-2.5 py-2 pl-[31px] text-[13px] font-medium outline-none transition-[box-shadow,background-color] duration-200 ease-[ease] focus:bg-white! focus:shadow-[0_0_0_1px_#303030,_0_0_0_4px_rgba(48,48,48,.08)]! disabled:cursor-not-allowed"
+              [class]="l.desconocida ? 'shadow-[0_0_0_1px_#ffb904]' : l.sinProducto ? 'shadow-[0_0_0_1px_#d82c0d]' : 'shadow-[0_0_0_1px_#e5e5e5]'" />
+            @if (l.opciones.length) {
+              <div class="absolute top-[calc(100%_+_6px)] right-0 left-0 z-40 animate-[fade-in-up_.15s_ease-out] rounded-xl bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)]">
+                @for (o of l.opciones; track o.p.id) {
+                  <button type="button" (mousedown)="elegirProducto(l.k, o.p, $event)"
+                    class="flex w-full cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-1.5 text-left hover:bg-[#f4f4f4]!">
+                    <app-miniatura-producto [miniatura]="o.miniatura" tamano="opcion" />
+                    <span class="flex min-w-0 flex-col">
+                      <span class="truncate text-[12.5px] font-medium text-[#111827]">{{ o.p.nombre }}</span>
+                      <span class="text-[11px] text-[#8a8a8a]">{{ o.detalle }}</span>
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+          </span>
+          <input [value]="l.cantidad" (input)="cambiarCantidad(l.k, $any($event.target))" [disabled]="!editable()" inputmode="numeric" title="Cantidad"
+            class="w-full rounded-[10px] bg-[#fafafa] px-2.5 py-2 text-right font-[Archivo] text-[14px] font-semibold tabular-nums outline-none transition-[box-shadow,background-color] duration-200 ease-[ease] focus:bg-white! focus:shadow-[0_0_0_1px_#303030,_0_0_0_4px_rgba(48,48,48,.08)]! disabled:cursor-not-allowed"
+            [class]="l.sinCantidad ? 'shadow-[0_0_0_1px_#d82c0d]' : 'shadow-[0_0_0_1px_#e5e5e5]'" />
+          <span class="relative flex items-center">
+            <span class="pointer-events-none absolute left-2.5 text-[12.5px] text-[#9ca3af]">$</span>
+            <input [value]="l.precio" (input)="cambiarPrecio(l.k, $any($event.target))" [disabled]="!editable()" inputmode="numeric" title="Costo unitario"
+              class="w-full rounded-[10px] bg-[#fafafa] px-2.5 py-2 pl-5.5 text-right text-[13px] tabular-nums shadow-[0_0_0_1px_#e5e5e5] outline-none transition-[box-shadow,background-color] duration-200 ease-[ease] focus:bg-white! focus:shadow-[0_0_0_1px_#303030,_0_0_0_4px_rgba(48,48,48,.08)]! disabled:cursor-not-allowed" />
+          </span>
+          <button type="button" (click)="quitarLinea.emit(l.k)" title="Quitar línea"
+            class="flex size-7 cursor-pointer items-center justify-center rounded-full text-[#c4c4c4] hover:bg-[#fff1f0]! hover:text-[#b42318]!">
+            <tabler-icon [icon]="icono('x')" [size]="14" [stroke]="2" />
+          </button>
+        </div>
+        <div class="flex min-h-4.5 flex-wrap items-center gap-1.5 pr-9.5">
+          @if (l.desconocida) {
+            <span class="inline-flex items-center gap-[5px] rounded-full bg-[#fff5e0] px-2 py-[1px] text-[11px] leading-[17px] text-[#8a5a00] tabular-nums">En la factura: «{{ l.textoFactura }}»</span>
+          }
+          @if (l.stock; as st) {
+            <span class="inline-flex items-center gap-[5px] rounded-full bg-[#f4f4f4] px-2 py-[1px] text-[11px] leading-[17px] text-[#4b5563] tabular-nums">
+              <tabler-icon [icon]="icono('stack-2')" [size]="12" [stroke]="2" class="text-[#9ca3af]" />Stock {{ st.ahora }} → <strong class="text-[#111827]">{{ st.despues }}</strong>
+            </span>
+            @if (st.cubre) {
+              <span class="inline-flex items-center gap-[5px] rounded-full bg-[#e8f6f0] px-2 py-[1px] text-[11px] leading-[17px] font-semibold text-[#087b5d] tabular-nums">cubre el mínimo</span>
+            }
+          }
+          @if (l.variacion; as x) {
+            <span [title]="x.detalle" class="rounded-full px-1.5 text-[10.5px] leading-[16px] font-semibold"
+              [class]="x.sube ? chipVariacion.sube : chipVariacion.baja">{{ x.texto }}</span>
+          }
+          @if (l.ia) {
+            <app-chip-asistente />
+          }
+          <span class="ml-auto flex items-baseline gap-1.5">
+            <span class="text-[11px] text-[#9ca3af]">Subtotal</span>
+            <span class="text-[13.5px] font-semibold text-[#111827] tabular-nums">{{ l.subtotal }}</span>
+          </span>
+        </div>
+      </div>
+    }
+  </div>
+  <button type="button" (click)="agregarLinea.emit()"
+    class="mt-2 flex h-10.5 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-dashed border-[#e3e3e3] text-[12.5px] font-medium text-[#4b5563] transition-[background-color,border-color,color] duration-200 ease-[ease] hover:border-[#c4c4c4]! hover:bg-[#fafafa]! hover:text-[#111827]!">
+    <tabler-icon [icon]="icono('plus')" [size]="14" [stroke]="2" />Agregar línea
+  </button>
+}
+
+<!-- Totales -->
+<div class="mt-3 flex flex-wrap items-end justify-between gap-4 border-t border-t-[#ececec] px-2.5 pt-4">
+  <div class="flex flex-wrap gap-6">
+    @for (x of resumen(); track x.k) {
+      <span class="flex flex-col gap-[3px]">
+        <span class="text-[12px] text-[#8a8a8a]">{{ x.k }}</span>
+        <span class="text-[13.5px] font-medium text-[#111827] tabular-nums">{{ x.v }}</span>
+      </span>
+    }
+  </div>
+  <span class="flex flex-col items-end gap-0.5">
+    <span class="text-[12px] text-[#8a8a8a]">Total</span>
+    <span class="font-[Archivo] text-[26px] leading-[30px] font-semibold tracking-[-0.02em] text-[#111827] tabular-nums">{{ cop(f.total) }}</span>
+  </span>
+</div>
+
+@if (recepcion(); as rc) {
+  <!-- Recepción -->
+  <div class="mt-4.5 flex animate-[fade-in-up_.25s_ease-out] flex-col gap-3.5 border-t border-t-[#f1f1f1] pt-4.5">
+    <div class="flex items-start gap-3">
+      <span class="flex size-8.5 shrink-0 items-center justify-center rounded-[10px] bg-[#f4f4f4] text-[#303030]">
+        <tabler-icon [icon]="icono('package-import')" [size]="17" [stroke]="2" />
+      </span>
+      <span class="flex min-w-0 flex-1 flex-col gap-1">
+        <span class="text-[15px] font-semibold tracking-[-0.005em] text-[#111827]">{{ rc.titulo }}</span>
+        <span class="flex flex-wrap items-center gap-2 text-[12px] text-[#8a8a8a]">
+          <span class="relative block h-[3px] w-11 overflow-hidden rounded-full bg-[#e6e6e6]">
+            <span class="absolute top-0 bottom-0 left-0 bg-[#303030] transition-[width] duration-400 ease-[cubic-bezier(.2,.8,.2,1)]" [style.width.%]="rc.progreso"></span>
+          </span>
+          {{ rc.revisadas }}
+          @if (rc.cubren) {
+            <span class="font-semibold text-[#087b5d]">· {{ rc.cubren }}</span>
+          }
+        </span>
+      </span>
+    </div>
+    <app-boton-mantener [compraId]="rc.compraId" [bloqueo]="bloqueo()" (completar)="recibir.emit($event)" (bloqueado)="bloqueado.emit($event)" />
+    <p class="mx-0.5 -mt-1 text-[11.5px] leading-[16px] text-pretty text-[#9ca3af]">{{ rc.nota }}</p>
+  </div>
+}

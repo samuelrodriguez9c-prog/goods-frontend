@@ -1,186 +1,233 @@
 // projects/admin/src/app/layout/topbar/topbar.component.ts
-import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, inject, output, signal } from '@angular/core';
+import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router } from '@angular/router';
+import { filter, map } from 'rxjs';
 import {
-  IconArrowLeft,
-  IconSearch,
-  IconArrowRight,
-  IconArrowUpRight,
-  IconArrowsDiagonal,
-  IconBell,
-  IconBellCheck,
-  IconChecks,
-  IconCrown,
-  IconEraser,
-  TablerIconComponent,
+  IconArrowRight, IconArrowUpRight, IconArrowsDiagonal, IconBell, IconBellCheck, IconCategory, IconChecks, IconChevronRight,
+  IconArrowLeft, IconCrown, IconEraser, IconKeyboard, IconSearch, IconX, TablerIconComponent,
 } from '@tabler/icons-angular';
-import { Subscription, filter, map } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { AsistenteService } from '../../core/asistente/asistente.service';
-import { BreadcrumbTrailComponent } from '../../shared/ui/breadcrumb-trail/breadcrumb-trail.component';
-import { IaMarcaComponent } from '../../shared/ui/ia-marca/ia-marca.component';
 import { AuthService } from '../../core/auth/auth.service';
+import { AccesoEmpresa } from '../../core/auth/models/current-user.model';
 import { Notificacion } from '../../core/notificaciones/models/notificacion.model';
 import { NotificacionService } from '../../core/notificaciones/notificacion.service';
-import {
-  CATEGORIAS,
-  CategoriaNotificacion,
-  agruparPorDia,
-  defTipo,
-  filaNotificacion,
-} from '../../core/notificaciones/notificacion-catalogo';
+import { agruparPorDia, defTipo, filaNotificacion } from '../../core/notificaciones/notificacion-catalogo';
 import { RealtimeService } from '../../core/realtime/realtime.service';
-import { PistaService } from '../../core/ui/pista.service';
+import { AtajosService } from '../../core/ui/atajos.service';
 
-type Pestana = 'todas' | Exclude<CategoriaNotificacion, 'otras'>;
+type Pestana = 'todas' | 'soporte' | 'tienda' | 'cuenta';
+type EstadoPlan = 'al dia' | 'por vencer' | 'en mora';
 const MS_HOLD = 1100;
-/** Al soltar antes de tiempo, la barra vuelve en este tiempo (desde llena). */
-const MS_VUELTA = 320;
-/** Lo que dura la despedida ("Hasta luego, …") antes de cerrar la sesión. */
-const MS_DESPEDIDA = 1100;
+
+/** Lo que el topbar lee de la sesión (`/auth/me`: usuario, `empresa` y `accesoEmpresa`). */
+interface CuentaTopbar {
+  nombre: string; apellido: string; correo: string; rol: 'Dueño' | 'Empleado';
+  empresa: string; logoEmpresa: string | null;
+  plan: string; estadoPlan: EstadoPlan; diasParaVencer: number; montoPlan: string; venceTexto: string;
+}
+
+/** Íconos de ruta (`data.icon`) que no son un nombre registrado en `provideTablerIcons`. */
+const ICONO_RUTA: Record<string, string> = { ia: 'sparkles' };
+const DIA_MS = 864e5;
+const cop = (n: number) => '$' + Math.round(n).toLocaleString('es-CO');
+const fechaCorta = (iso: string) => new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 
 /**
- * Topbar del admin — calcado del de staff (2026-10-07): rastro de
- * navegación a la izquierda; a la derecha el Asistente de IA, la
- * campanita (pestañas Soporte · Tienda · Cuenta, agrupada por día) y el
- * menú de cuenta (Mi perfil · Seguridad · Correos · Cerrar sesión
- * manteniendo). Reemplaza al topbar estilo Shopify (wordmark, buscador
- * sin lógica, botón "Salir").
- *
- * Datos: `GET /notificaciones` + socket `notificacion:nueva`,
- * `marcarLeida`, `marcarTodasLeidas`, `ocultarTodas`.
+ * Topbar del admin (Productos Goods v5).
+ * - Marca: logo Goods + al pasar el cursor se despliega "× [logo de la empresa]" (550 ms).
+ * - Migas: Products › módulo actual (ícono turquesa), desde la URL.
+ * - Buscador central ⌘K · Atajos (Ctrl + .) · Asistente de IA (aro con punto turquesa).
+ * - Campanita: pestañas Todas/Soporte/Tienda/Cuenta, agrupada por día, acción directa, punto leída/no leída.
+ * - Cuenta compacta: solo avatar; al abrir se despliega nombre + línea que alterna
+ *   "Empresa" ↔ "Plan Pro · vence en 3 días" (cada 3 s). Menú: tarjeta de cobro (si vence o está en mora),
+ *   01–04 con píldora deslizante y teclas 1–4, "Cerrar sesión" manteniendo 1,1 s (puerta que se cierra).
  */
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [TablerIconComponent, IaMarcaComponent, BreadcrumbTrailComponent],
+  imports: [TablerIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './topbar.component.html',
 })
 export class TopbarComponent implements OnDestroy {
-  private readonly authService = inject(AuthService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly notificacionService = inject(NotificacionService);
-  private readonly realtimeService = inject(RealtimeService);
-  private readonly pista = inject(PistaService);
-  protected readonly asistenteService = inject(AsistenteService);
+  private readonly realtime = inject(RealtimeService);
+  private readonly asistente = inject(AsistenteService);
+  private readonly atajos = inject(AtajosService);
+
+  /** Se emiten además de la acción propia (atajos / panel del asistente), por si el host quiere reaccionar. */
+  readonly abrirAtajos = output<void>();
+  readonly abrirAsistente = output<void>();
+  readonly buscar = output<string>();
 
   protected readonly i = {
-    campana: IconBell,
-    marcarTodas: IconChecks,
-    expandir: IconArrowsDiagonal,
-    flecha: IconArrowRight,
-    flechaDiag: IconArrowUpRight,
-    limpiar: IconEraser,
-    vacio: IconBellCheck,
-    corona: IconCrown,
+    campana: IconBell, marcarTodas: IconChecks, expandir: IconArrowsDiagonal, flecha: IconArrowRight, flechaDiag: IconArrowUpRight,
+    limpiar: IconEraser, vacio: IconBellCheck, corona: IconCrown, chevron: IconChevronRight, buscar: IconSearch, teclado: IconKeyboard, x: IconX,
     volver: IconArrowLeft,
-    buscar: IconSearch,
   };
 
-  protected readonly currentUser = this.authService.currentUser;
+  // ── Cuenta ──────────────────────────────────────────────────────────────
+  protected readonly cuenta = computed<CuentaTopbar>(() => {
+    const u = this.auth.currentUser();
+    const e = u?.empresa ?? null;
+    const a = u?.accesoEmpresa ?? null;
+    const plan = this.estadoPlan(a);
+    const monto = a?.proximoCobro?.monto ?? e?.plan?.precioMensual ?? null;
+    return {
+      nombre: u?.nombres ?? '…',
+      apellido: u?.apellidos ?? '',
+      correo: u?.correo ?? '',
+      rol: u?.rol.nombre === 'dueno_empresa' ? 'Dueño' : 'Empleado',
+      empresa: e?.nombre ?? 'Mi empresa',
+      logoEmpresa: e?.logoUrl ?? null,
+      plan: a?.estado === 'en_prueba' ? 'de prueba' : (e?.plan?.nombre ?? 'sin plan'),
+      ...plan,
+      montoPlan: monto != null ? cop(monto) : '',
+    };
+  });
 
-  /** Ícono del Asistente de IA: solo si el plan de la Empresa incluye el
-   *  módulo `asistente_ia` (el backend lo exige con `ModuloGuard`). */
-  protected readonly tieneAsistenteIa = computed(() =>
-    (this.currentUser()?.modulosDisponibles ?? []).includes('asistente_ia'),
-  );
+  /** Al día · por vencer (7 días o menos, o fin de la prueba) · en mora. */
+  private estadoPlan(a: AccesoEmpresa | null): Pick<CuentaTopbar, 'estadoPlan' | 'diasParaVencer' | 'venceTexto'> {
+    const limite = a?.estado === 'en_prueba' ? a.pruebaHasta : a?.proximoCobro?.fechaLimite ?? a?.fechaProximoVencimiento;
+    if (!a || !limite) return { estadoPlan: 'al dia', diasParaVencer: 0, venceTexto: '' };
+    const dias = Math.ceil((Date.parse(limite) - Date.now()) / DIA_MS);
+    if (a.estado === 'en_mora') return { estadoPlan: 'en mora', diasParaVencer: Math.max(1, -dias), venceTexto: 'el ' + fechaCorta(limite) };
+    if (dias <= 7) return { estadoPlan: 'por vencer', diasParaVencer: Math.max(1, dias), venceTexto: dias <= 1 ? 'mañana' : 'el ' + fechaCorta(limite) };
+    return { estadoPlan: 'al dia', diasParaVencer: dias, venceTexto: 'el ' + fechaCorta(limite) };
+  }
 
-  /** Breadcrumb + "Volver al panel" del topbar compartido, SOLO en la
-   *  pantalla completa del asistente (`/asistente`, fuera del Shell —
-   *  rediseño 2026-10-01, ver `PROPUESTA_ASISTENTE_IA_RAG.md` §5.4.4).
-   *  Mismo patrón `toSignal` que `SettingsPageComponent.seccionUrl`. */
-  protected readonly enAsistente = toSignal(
-    this.router.events.pipe(
-      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-      map((e) => e.urlAfterRedirects.startsWith('/asistente')),
-    ),
-    { initialValue: this.router.url.startsWith('/asistente') },
-  );
+  /** El ícono del Asistente solo si el plan incluye el módulo (el backend lo exige con `ModuloGuard`). */
+  protected readonly tieneAsistenteIa = computed(() => (this.auth.currentUser()?.modulosDisponibles ?? []).includes('asistente_ia'));
+  protected readonly iniciales = computed(() => {
+    const c = this.cuenta();
+    return (c.nombre.charAt(0) + c.apellido.charAt(0)).toUpperCase() || '?';
+  });
+  protected readonly primerNombre = computed(() => this.cuenta().nombre.split(' ')[0]);
+  protected readonly alertaPlan = computed(() => {
+    const c = this.cuenta();
+    if (c.estadoPlan === 'al dia') return null;
+    const mora = c.estadoPlan === 'en mora', n = Math.min(7, Math.max(1, c.diasParaVencer || 1));
+    const acento = mora ? '#b42318' : '#b7791f';
+    return {
+      mora, acento, n, rotulo: mora ? 'de mora' : n === 1 ? 'día' : 'días',
+      titulo: mora ? 'Pago vencido' : `Tu plan ${c.plan} vence`, sub: mora ? `Venció ${c.venceTexto} · Plan ${c.plan}` : c.venceTexto,
+      punto: mora ? '#ff8f7a' : '#ffb904', halo: mora ? 'rgba(255,143,122,.22)' : 'rgba(255,185,4,.22)',
+      // 7 segmentos: los últimos n encendidos, el borde en el color de acento.
+      segmentos: Array.from({ length: 7 }, (_, k) => {
+        const on = k >= 7 - n, borde = on && k === (mora ? 6 : 7 - n);
+        return { bg: borde ? acento : on ? '#303030' : '#e6e6e6', demora: k * 40 };
+      }),
+    };
+  });
+  protected readonly estadoPlanLinea = computed(() => {
+    const c = this.cuenta();
+    const vence = c.diasParaVencer === 1 ? 'vence mañana' : `vence en ${c.diasParaVencer} días`;
+    return ({ 'al dia': ['#5fe39b', c.venceTexto ? 'renueva ' + c.venceTexto : 'al día'], 'por vencer': ['#ffd24a', vence], 'en mora': ['#ff8f7a', 'en mora'] } as const)[c.estadoPlan];
+  });
+
+  protected readonly menuAbierto = signal(false);
+  protected readonly hoverCuenta = signal(false);
+  protected readonly hoverMarca = signal(false);
+  /** Línea secundaria: false = empresa, true = plan. Alterna mientras el menú está abierto o hay alerta de cobro. */
+  protected readonly volteo = signal(false);
+  protected readonly resaltado = signal(-1);
+  protected readonly hold = signal<false | 'manteniendo' | 'listo'>(false);
+  protected readonly opciones: { texto: string; seccion: string; ruta?: string }[] = [
+    { texto: 'Mi perfil', seccion: 'perfil' },
+    { texto: 'Seguridad', seccion: 'seguridad' },
+    { texto: 'Correos', seccion: 'correos' },
+    { texto: 'Ayuda y soporte', seccion: 'soporte', ruta: '/messages' },
+  ];
+  private ivVolteo?: ReturnType<typeof setInterval>;
+  private tVolteo?: ReturnType<typeof setTimeout>;
+  private holdTimer?: ReturnType<typeof setTimeout>;
+
+  // ── Migas ───────────────────────────────────────────────────────────────
+  private readonly url = toSignal(this.router.events.pipe(filter((e) => e instanceof NavigationEnd), map(() => this.router.url)), { initialValue: this.router.url });
+  /** Pantalla completa del asistente (fuera del Shell): "Volver al panel". */
+  protected readonly enAsistente = computed(() => this.url().startsWith('/asistente'));
+  /** Atajos: el diálogo vive en la lista de Products. */
+  protected readonly conAtajos = computed(() => this.url().split(/[?#]/)[0] === '/products');
+  /**
+   * Migas desde `data.breadcrumb`/`data.icon` de la ruta activa. En Products
+   * va "Products › módulo" (handoff v5); en el resto, solo la pantalla.
+   */
+  protected readonly migas = computed(() => {
+    this.url();
+    let r: ActivatedRouteSnapshot | null = this.router.routerState.snapshot.root;
+    let hoja: ActivatedRouteSnapshot | null = null;
+    while (r) {
+      if (r.data?.['breadcrumb']) hoja = r;
+      r = r.firstChild;
+    }
+    if (!hoja) return [];
+    const icono = (d: ActivatedRouteSnapshot['data']) => ICONO_RUTA[d['icon']] ?? d['icon'] ?? 'category';
+    const ruta = '/' + this.url().split(/[?#]/)[0].split('/').filter(Boolean).join('/');
+    const seg = ruta.split('/').filter(Boolean);
+    if (seg[0] === 'products' && seg.length > 1) {
+      return [
+        { texto: 'Products', icono: 'tag', ruta: '/products', actual: false },
+        { texto: hoja.data['breadcrumb'] as string, icono: icono(hoja.data), ruta, actual: true },
+      ];
+    }
+    return [{ texto: hoja.data['breadcrumb'] as string, icono: icono(hoja.data), ruta, actual: true }];
+  });
 
   // ── Notificaciones ──────────────────────────────────────────────────────
   protected readonly notificaciones = signal<Notificacion[]>([]);
-  private readonly idsOcultos = signal<Set<number>>(new Set());
-  protected readonly visibles = computed(() => this.notificaciones().filter((n) => !this.idsOcultos().has(n.id)));
+  private readonly ocultas = signal<Set<number>>(new Set());
+  protected readonly visibles = computed(() => this.notificaciones().filter((n) => !this.ocultas().has(n.id)));
   protected readonly noLeidas = computed(() => this.visibles().filter((n) => !n.leidaEn).length);
   protected readonly panelAbierto = signal(false);
   protected readonly pestana = signal<Pestana>('todas');
-  /** Sube con cada notificación en vivo: re-dispara la sacudida y el pop. */
   protected readonly timbre = signal(0);
-  /** ids que llegaron en vivo — animan su entrada 1,6 s. */
-  private readonly recientes = signal<ReadonlySet<number>>(new Set());
-
+  /** TODO: ajustar a las categorías reales del catálogo de admin. */
+  private cat = (n: Notificacion): Pestana => {
+    const c = defTipo(n.tipo).cat as string;
+    return c === 'soporte' ? 'soporte' : ['inventario', 'compras', 'pedidos', 'tienda'].includes(c) ? 'tienda' : 'cuenta';
+  };
   protected readonly pestanas = computed(() => {
     const nl = this.visibles().filter((n) => !n.leidaEn);
-    const def: { id: Pestana; texto: string }[] = [
-      { id: 'todas', texto: 'Todas' },
-      { id: 'soporte', texto: CATEGORIAS.soporte.texto },
-      { id: 'tienda', texto: CATEGORIAS.tienda.texto },
-      { id: 'cuenta', texto: CATEGORIAS.cuenta.texto },
-    ];
-    return def.map((p) => ({
-      ...p,
-      cuenta: nl.filter((n) => p.id === 'todas' || defTipo(n.tipo).cat === p.id).length,
+    return ([['todas', 'Todas'], ['soporte', 'Soporte'], ['tienda', 'Tienda'], ['cuenta', 'Cuenta']] as [Pestana, string][]).map(([id, texto]) => ({
+      id, texto, cuenta: nl.filter((n) => id === 'todas' || this.cat(n) === id).length,
     }));
   });
-
   protected readonly grupos = computed(() => {
     const p = this.pestana();
-    const rec = this.recientes();
-    const filas = this.visibles()
-      .filter((n) => p === 'todas' || defTipo(n.tipo).cat === p)
-      .slice(0, 12)
-      .map((n) => ({ ...filaNotificacion(n), nueva: rec.has(n.id) }));
-    return agruparPorDia(filas);
+    return agruparPorDia(this.visibles().filter((n) => p === 'todas' || this.cat(n) === p).slice(0, 12).map((n) => filaNotificacion(n)));
   });
 
-  // ── Menú de cuenta ──────────────────────────────────────────────────────
-  protected readonly menuAbierto = signal(false);
-  protected readonly hoverCuenta = signal(false);
-  /** Índice resaltado en el menú (-1 = ninguno) — mueve la píldora gris. */
-  protected readonly resaltado = signal(-1);
-  /** `false` | `'manteniendo'` | `'listo'` — "Cerrar sesión" se mantiene. */
-  protected readonly hold = signal<false | 'manteniendo' | 'listo'>(false);
-  protected readonly progreso = signal(0);
-  protected readonly opciones = [
-    { texto: 'Mi perfil', seccion: 'perfil', destino: 'Settings · Perfil' },
-    { texto: 'Seguridad', seccion: 'seguridad', destino: 'Settings · Seguridad' },
-    { texto: 'Correos', seccion: 'correos', destino: 'Settings · Correos' },
-  ];
-
-  private notifSub: Subscription | undefined;
-  private holdTimer: ReturnType<typeof setTimeout> | undefined;
-  private holdRaf = 0;
+  private sub?: Subscription;
 
   constructor() {
-    // Carga el perfil (`GET /auth/me`) si todavía no está en memoria —
-    // `currentUser` no se persiste, solo el `accessToken` (ver
-    // `AuthService`), así que tras un F5 hace falta volver a pedirlo antes
-    // de que el topbar tenga algo real que mostrar (nombre/iniciales en
-    // vez de "…"). Esto antes solo vivía en `ShellComponent.ngOnInit` (el
-    // layout raíz), pero `/asistente` (§5.4.4, 2026-10-01) es una ruta de
-    // nivel superior FUERA del Shell que también monta este mismo
-    // `TopbarComponent` — al recargar directo ahí, `ShellComponent` nunca
-    // se instanciaba y el perfil quedaba sin pedirse nunca (bug: el "…"
-    // quedaba fijo en vez de mostrar el nombre real). Centralizado acá,
-    // con un solo punto de verdad, cubre los dos casos.
-    if (this.authService.isAuthenticated() && !this.authService.currentUser()) {
-      this.authService.cargarPerfil().subscribe({ error: () => undefined });
-    }
-    if (this.authService.isAuthenticated()) {
+    if (this.auth.isAuthenticated()) {
+      // El perfil (permisos, módulos, Empresa) lo pide el topbar: es lo
+      // único que montan las tres pantallas (Shell, asistente, documentos),
+      // y al recargar en /asistente el Shell no existe.
+      this.auth.cargarPerfil().subscribe({ error: () => undefined });
       this.cargar();
     }
-    this.notifSub = this.realtimeService.escuchar<Notificacion>('notificacion:nueva').subscribe((n) => {
-      this.cargar(n?.id);
+    this.sub = this.realtime.escuchar<Notificacion>('notificacion:nueva').subscribe(() => {
+      this.cargar();
       this.timbre.update((v) => v + 1);
     });
+    // Con alerta de cobro, la línea alterna sola cada 3,6 s aunque el menú esté cerrado.
+    this.ivVolteo = setInterval(() => { if (this.alertaPlan() && !this.menuAbierto()) this.volteo.update((v) => !v); }, 3600);
   }
 
   ngOnDestroy(): void {
-    this.notifSub?.unsubscribe();
+    this.sub?.unsubscribe();
+    clearInterval(this.ivVolteo);
+    clearTimeout(this.tVolteo);
     clearTimeout(this.holdTimer);
-    clearTimeout(this.pistaTimer);
-    cancelAnimationFrame(this.holdRaf);
+  }
+
+  private cargar(): void {
+    this.notificacionService.listar().subscribe({ next: (r) => this.notificaciones.set(r.data), error: () => undefined });
   }
 
   @HostListener('document:mousedown', ['$event'])
@@ -192,29 +239,13 @@ export class TopbarComponent implements OnDestroy {
 
   @HostListener('document:keydown', ['$event'])
   protected teclado(e: KeyboardEvent): void {
-    if (e.key === 'Escape') {
-      this.panelAbierto.set(false);
-      this.cerrarMenu();
-      return;
-    }
+    if (e.key === 'Escape') { this.panelAbierto.set(false); this.cerrarMenu(); return; }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); document.querySelector<HTMLInputElement>('[data-atajo="global"]')?.focus(); return; }
     const tag = (e.target as HTMLElement).tagName;
     if (this.menuAbierto() && /^[1-9]$/.test(e.key) && tag !== 'INPUT' && tag !== 'TEXTAREA') {
       const o = this.opciones[+e.key - 1];
-      if (o) this.irA(o);
+      if (o) this.irA(o.seccion);
     }
-  }
-
-  private cargar(nuevaId?: number): void {
-    this.notificacionService.listar().subscribe({
-      next: (r) => {
-        this.notificaciones.set(r.data);
-        if (nuevaId) {
-          this.recientes.update((s) => new Set(s).add(nuevaId));
-          setTimeout(() => this.recientes.update((s) => { const x = new Set(s); x.delete(nuevaId); return x; }), 1_600);
-        }
-      },
-      error: () => undefined,
-    });
   }
 
   // ── Campanita ───────────────────────────────────────────────────────────
@@ -222,54 +253,36 @@ export class TopbarComponent implements OnDestroy {
     this.panelAbierto.update((v) => !v);
     this.cerrarMenu();
   }
-
   protected abrir(f: ReturnType<typeof filaNotificacion>): void {
     this.marcar(f.n, true);
     this.panelAbierto.set(false);
-    this.pista.navegar(f.destino.destino);
     this.router.navigate([f.destino.url], { queryParams: f.destino.query });
   }
-
-  /** El punto de la derecha: alterna leída ↔ no leída. */
   protected alternar(n: Notificacion): void {
     this.marcar(n, !n.leidaEn);
   }
-
   private marcar(n: Notificacion, leida: boolean): void {
     if (!!n.leidaEn === leida) return;
     const antes = n.leidaEn;
     this.notificaciones.update((a) => a.map((x) => (x.id === n.id ? { ...x, leidaEn: leida ? new Date().toISOString() : null } : x)));
-    const req = leida ? this.notificacionService.marcarLeida(n.id) : this.notificacionService.marcarNoLeida(n.id);
-    req.subscribe({ error: () => this.notificaciones.update((a) => a.map((x) => (x.id === n.id ? { ...x, leidaEn: antes } : x))) });
+    (leida ? this.notificacionService.marcarLeida(n.id) : this.notificacionService.marcarNoLeida(n.id))
+      .subscribe({ error: () => this.notificaciones.update((a) => a.map((x) => (x.id === n.id ? { ...x, leidaEn: antes } : x))) });
   }
-
   protected marcarTodasLeidas(): void {
-    const n = this.noLeidas();
-    if (!n) return;
-    const antes = this.notificaciones();
-    const ahora = new Date().toISOString();
+    if (!this.noLeidas()) return;
+    const antes = this.notificaciones(), ahora = new Date().toISOString();
     this.notificaciones.update((a) => a.map((x) => (x.leidaEn ? x : { ...x, leidaEn: ahora })));
     this.notificacionService.marcarTodasLeidas().subscribe({ error: () => this.notificaciones.set(antes) });
-    this.pista.hecho(`${n} ${n === 1 ? 'marcada' : 'marcadas'} como ${n === 1 ? 'leída' : 'leídas'}`);
   }
-
   protected limpiar(): void {
     if (!this.visibles().length) return;
-    this.idsOcultos.update((s) => {
-      const x = new Set(s);
-      this.notificaciones().forEach((n) => x.add(n.id));
-      return x;
-    });
+    this.ocultas.set(new Set(this.notificaciones().map((n) => n.id)));
     this.notificacionService.ocultarTodas().subscribe({ error: () => undefined });
-    this.pista.hecho('Campanita limpia · siguen en Notificaciones');
   }
-
   protected verTodas(): void {
     this.panelAbierto.set(false);
-    this.pista.navegar('Notificaciones');
     this.router.navigateByUrl('/notificaciones');
   }
-
   protected tiempoCorto(iso: string): string {
     const m = Math.floor((Date.now() - Date.parse(iso)) / 60_000);
     if (m < 1) return 'ahora';
@@ -281,130 +294,78 @@ export class TopbarComponent implements OnDestroy {
 
   // ── Menú de cuenta ──────────────────────────────────────────────────────
   protected toggleMenu(): void {
-    this.menuAbierto.update((v) => !v);
+    const abrir = !this.menuAbierto();
+    this.menuAbierto.set(abrir);
     this.panelAbierto.set(false);
     this.resaltado.set(-1);
-    if (this.hold() !== 'listo') {
-      cancelAnimationFrame(this.holdRaf);
-      this.hold.set(false);
-      this.progreso.set(0);
+    if (this.hold() !== 'listo') this.hold.set(false);
+    clearTimeout(this.tVolteo);
+    this.volteo.set(false);
+    if (abrir) {
+      // A los 1,4 s muestra el plan y luego alterna cada 3 s mientras siga abierto.
+      this.tVolteo = setTimeout(() => {
+        if (!this.menuAbierto()) return;
+        this.volteo.set(true);
+        const iv = setInterval(() => (this.menuAbierto() ? this.volteo.update((v) => !v) : clearInterval(iv)), 3000);
+      }, 1400);
     }
   }
-
   private cerrarMenu(): void {
     this.menuAbierto.set(false);
     this.resaltado.set(-1);
     if (this.hold() === 'manteniendo') this.cancelarHold();
   }
-
-  protected irA(o: { seccion: string; destino: string }): void {
+  protected irA(seccion: string): void {
     this.cerrarMenu();
-    this.pista.navegar(o.destino);
-    this.router.navigate(['/settings'], { queryParams: { seccion: o.seccion } });
+    const o = this.opciones.find((x) => x.seccion === seccion);
+    if (o?.ruta) this.router.navigateByUrl(o.ruta);
+    else this.router.navigate(['/settings'], { queryParams: { seccion } });
   }
-
-  /** Cerrar sesión "puerta" (2026-10-05): mientras se mantiene, la barra se
-   *  llena, la puerta del ícono se abre y sale la flecha; al completar, la
-   *  puerta se cierra con un rebote y el texto se despide letra por letra.
-   *  `progreso` (0–1) se mueve cuadro a cuadro para que soltar a mitad de
-   *  camino haga retroceder todo desde donde estaba. */
+  /** El plan y los cobros están en Settings › Cuenta. */
+  protected pagar(): void {
+    this.cerrarMenu();
+    this.router.navigate(['/settings'], { queryParams: { seccion: 'cuenta' } });
+  }
+  protected atajosClick(): void {
+    this.atajos.guia.set(true);
+    this.abrirAtajos.emit();
+  }
+  protected asistenteClick(): void {
+    this.asistente.abrirPanel();
+    this.abrirAsistente.emit();
+  }
+  /** Igual que `AsistentePageComponent.volver()`. */
+  protected volver(): void {
+    if (history.length > 1) history.back();
+    else this.router.navigate(['/']);
+  }
   protected empezarHold(e?: Event): void {
     if (e instanceof MouseEvent && e.button > 0) return;
     if (e instanceof KeyboardEvent) {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
-      if (e.repeat) return;
     }
-    if (this.hold() === 'listo' || this.hold() === 'manteniendo') return;
+    if (this.hold()) return;
     this.hold.set('manteniendo');
-    this.animarProgreso(1);
+    clearTimeout(this.holdTimer);
+    this.holdTimer = setTimeout(() => {
+      this.hold.set('listo');
+      setTimeout(() => this.salir(), 700);
+    }, MS_HOLD);
   }
-
   protected cancelarHold(): void {
     if (this.hold() !== 'manteniendo') return;
-    // Soltó casi enseguida (un clic): se le recuerda que hay que mantener,
-    // ya que el botón no tiene otra pista visible.
-    if (this.progreso() < 0.15) {
-      this.pistaHold.set(true);
-      clearTimeout(this.pistaTimer);
-      this.pistaTimer = setTimeout(() => this.pistaHold.set(false), 1600);
-    }
-    this.hold.set(false);
-    this.animarProgreso(-1);
-  }
-
-  /** `true` ~1,6 s después de un clic corto: el texto pasa a "Mantén presionado". */
-  protected readonly pistaHold = signal(false);
-  private pistaTimer: ReturnType<typeof setTimeout> | undefined;
-
-  private animarProgreso(sentido: 1 | -1): void {
-    cancelAnimationFrame(this.holdRaf);
-    let antes = performance.now();
-    const paso = (ahora: number) => {
-      const dt = ahora - antes;
-      antes = ahora;
-      const p = Math.min(1, Math.max(0, this.progreso() + (sentido > 0 ? dt / MS_HOLD : -dt / MS_VUELTA)));
-      this.progreso.set(p);
-      if (sentido > 0 && p >= 1) {
-        this.completarHold();
-        return;
-      }
-      if ((sentido > 0 && this.hold() === 'manteniendo') || (sentido < 0 && p > 0)) {
-        this.holdRaf = requestAnimationFrame(paso);
-      }
-    };
-    this.holdRaf = requestAnimationFrame(paso);
-  }
-
-  private completarHold(): void {
-    this.hold.set('listo');
     clearTimeout(this.holdTimer);
-    this.holdTimer = setTimeout(() => this.logout(), MS_DESPEDIDA);
+    this.hold.set(false);
   }
-
-  /** Texto del botón, letra por letra (la despedida entra en ola). */
-  protected readonly letrasSalir = computed(() => {
-    const nombre = this.currentUser()?.nombres?.split(' ')[0];
-    const texto =
-      this.hold() === 'listo'
-        ? nombre ? `Hasta luego, ${nombre}` : 'Hasta luego'
-        : this.pistaHold() && !this.hold() ? 'Mantén presionado' : 'Cerrar sesión';
-    return [...texto].map((c, i) => ({ c, retraso: i * 28 }));
-  });
-
-  protected readonly puntosSalir = [0, 1, 2];
-
-  protected readonly initials = computed(() => {
-    const u = this.currentUser();
-    if (!u) return '…';
-    const ini = (t: string) => t.trim().charAt(0).toUpperCase();
-    return `${ini(u.nombres)}${ini(u.apellidos)}` || '?';
-  });
-  protected readonly displayName = computed(() => this.currentUser()?.nombres ?? '…');
-  protected readonly nombreCompleto = computed(() => {
-    const u = this.currentUser();
-    return u ? `${u.nombres} ${u.apellidos}`.trim() : '…';
-  });
-  protected readonly correo = computed(() => this.currentUser()?.correo ?? '');
-  /** Corona junto al nombre en el menú: el dueño de la Empresa. */
-  protected readonly esSuperadmin = computed(() => this.currentUser()?.rol?.nombre === 'dueno_empresa');
-
-  protected logout(): void {
+  private salir(): void {
     this.menuAbierto.set(false);
     this.hold.set(false);
-    this.authService.logout();
+    this.auth.logout();
     this.router.navigateByUrl('/login');
   }
 
-  protected abrirAsistenteIa(): void {
-    this.asistenteService.abrirPanel();
-  }
-
-  /** Mismo criterio que `AsistentePageComponent.volver()` (ese método
-   *  se mantiene ahí, propio, para el atajo Esc de esa página — acá es
-   *  solo para el click del botón "Volver al panel" visible en este
-   *  topbar compartido cuando `enAsistente()`). */
-  protected volver(): void {
-    history.length > 1 ? history.back() : this.router.navigate(['/']);
+  protected irMiga(ruta: string): void {
+    this.router.navigateByUrl(ruta);
   }
 }

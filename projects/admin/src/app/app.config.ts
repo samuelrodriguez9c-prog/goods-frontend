@@ -6,6 +6,8 @@ import { providePrimeNG } from 'primeng/config';
 import { authInterceptor } from './core/http/auth.interceptor';
 import {
   IconBell,
+  IconBrandWhatsapp,
+  IconBuildingStore,
   IconBulb,
   IconCategory,
   IconChevronDown,
@@ -87,6 +89,8 @@ export const appConfig: ApplicationConfig = {
     // después del set original.
     provideTablerIcons({
       IconBell,
+      IconBrandWhatsapp,
+      IconBuildingStore,
       IconBulb,
       IconCategory,
       IconChevronDown,

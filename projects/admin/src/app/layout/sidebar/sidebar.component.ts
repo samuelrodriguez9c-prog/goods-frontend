@@ -10,8 +10,9 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map } from 'rxjs';
-import { IconChevronDown, TablerIconComponent } from '@tabler/icons-angular';
+import { IconChevronDown, IconKeyboard, TablerIconComponent } from '@tabler/icons-angular';
 import { AuthService } from '../../core/auth/auth.service';
+import { AtajosService } from '../../core/ui/atajos.service';
 import { CambiosPendientesService } from '../../core/realtime/cambios-pendientes.service';
 
 interface NavItem {
@@ -63,6 +64,9 @@ export class SidebarComponent {
   private readonly router = inject(Router);
   protected readonly cambios = inject(CambiosPendientesService);
   protected readonly iconChevron = IconChevronDown;
+  protected readonly iconAtajos = IconKeyboard;
+  /** Guía de atajos (handoff-productos §4). Hoy el diálogo vive en Products. */
+  protected readonly atajos = inject(AtajosService);
 
   private readonly todos: NavItem[] = [
     { label: 'Dashboard', path: '/', icon: 'home-2', exact: true, codigo: 'dashboard' },
@@ -83,6 +87,10 @@ export class SidebarComponent {
     { label: 'Customers', path: '/customers', icon: 'user', exact: false, codigo: 'customers' },
     { label: 'Discounts', path: '/discounts', icon: 'discount-2', exact: false, codigo: 'discounts' },
     { label: 'Messages', path: '/messages', icon: 'message-circle-2', exact: false, codigo: 'messages' },
+    // WhatsApp Fase 1 (2026-10-11): bandeja del número del negocio.
+    { label: 'WhatsApp', path: '/whatsapp', icon: 'brand-whatsapp', exact: false, codigo: 'whatsapp', permiso: 'whatsapp.ver' },
+    // Tienda pública con "Pedir por WhatsApp" (2026-10-10).
+    { label: 'Tienda en línea', path: '/tienda', icon: 'building-store', exact: false, codigo: 'tienda', permiso: 'tienda.configurar' },
     { label: 'Usuarios', path: '/settings/usuarios', icon: 'users', exact: false, codigo: 'users', permiso: 'usuarios.ver' },
     { label: 'Roles y permisos', path: '/settings/roles', icon: 'shield-lock', exact: false, codigo: 'roles', permiso: 'roles.ver' },
     // Pedirle mejoras a Goods (2026-10-04): no depende del plan.
@@ -109,6 +117,8 @@ export class SidebarComponent {
     { initialValue: this.router.url },
   );
   protected readonly ruta = computed(() => this.url().split(/[?#]/)[0]);
+  /** "Atajos" solo se muestra donde el diálogo está montado (lista de Products). */
+  protected readonly conAtajos = computed(() => this.ruta() === '/products');
 
   private coincide(path: string, exact: boolean): boolean {
     const r = this.ruta();

@@ -12,17 +12,14 @@ import { IconChevronUp, IconX, TablerIconComponent } from '@tabler/icons-angular
 import { AlertaEnLinea, AlertaService } from '../../../core/ui/alerta.service';
 import { EstadoIconoComponent } from '../estado-icono/estado-icono.component';
 
-const PASO = 9; // px que asoma cada alerta de atrás
+const PASO = 9;
 const ALTO_FILA = 44;
 
 /**
- * Pila de alertas en línea — v2 "Pila oscura" (LEEME §12).
- * Va **una sola vez** en el shell. Abajo al centro, misma piel que la Pista.
- *
- * - La más nueva al frente; hasta 2 más asoman detrás (más chicas, sin
- *   contenido). El resto queda oculto hasta que le toque.
- * - Clic en la del frente → expande el texto completo y la acción.
- * - Al cerrar la del frente, la siguiente avanza (solo transform/opacity).
+ * Pila de alertas en línea — v2 "Pila oscura" + extras de Productos v5:
+ * alerta fija de cambios sin guardar (Guardar / Descartar), acción en la fila
+ * cuando está plegada, sacudida y desplazamiento sobre la barra masiva.
+ * Va una sola vez en el shell.
  */
 @Component({
   selector: 'app-alerta-pila',
@@ -38,7 +35,6 @@ export class AlertaPilaComponent {
   protected readonly alertas = this.servicio.enLinea;
   protected readonly activas = this.servicio.activas;
 
-  /** id → posición desde el frente (0 = frente, -1 = saliendo). */
   private readonly posiciones = computed(() => {
     const act = this.activas();
     const m = new Map<number, number>();
@@ -46,8 +42,15 @@ export class AlertaPilaComponent {
     return m;
   });
 
-  protected readonly cerrables = computed(() => this.activas().filter((a) => a.estado !== 'cargando').length);
+  protected readonly cerrables = computed(
+    () => this.activas().filter((a) => a.estado !== 'cargando' && !a.fija).length,
+  );
   protected readonly cerrarTodasAbajo = computed(() => this.servicio.altoPila() + 10);
+  protected readonly abajo = computed(() => 24 + this.servicio.desplazamiento());
+  protected readonly sacudida = computed(() => {
+    const n = this.servicio.sacudida();
+    return n ? `${n % 2 ? 'sacudeA' : 'sacudeB'} .42s ease-in-out` : 'none';
+  });
 
   private readonly capas = viewChildren<ElementRef<HTMLElement>>('capa');
   private readonly ro = new ResizeObserver(() => this.medirFrente());
@@ -65,8 +68,9 @@ export class AlertaPilaComponent {
     return a.saliendo ? -1 : (this.posiciones().get(a.id) ?? -1);
   }
 
+  /** Igual que el prototipo: se expande si hay texto y (acción, error o texto > 38 caracteres). */
   protected expandible(a: AlertaEnLinea): boolean {
-    return !!(a.texto || (a.accion && a.estado !== 'cargando'));
+    return !!a.texto && (!!a.accion || a.estado === 'error' || a.texto.length > 38);
   }
 
   protected transformar(a: AlertaEnLinea, i: number): string {
@@ -89,9 +93,11 @@ export class AlertaPilaComponent {
     this.servicio.cerrar(id);
   }
 
-  protected ejecutar(e: Event, a: AlertaEnLinea): void {
+  protected ejecutar(e: Event, a: AlertaEnLinea, cual: 1 | 2 = 1): void {
     e.stopPropagation();
-    a.accion?.ejecutar();
+    const acc = cual === 1 ? a.accion : a.accion2;
+    if (!a.fija) this.servicio.cerrar(a.id);
+    acc?.ejecutar();
   }
 
   private medirFrente(): void {

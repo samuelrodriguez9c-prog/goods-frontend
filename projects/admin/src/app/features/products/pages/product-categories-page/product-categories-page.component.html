@@ -1,0 +1,499 @@
+<!-- Fila de la lista con sus eventos (se usa en el árbol y en la vista por estado) -->
+<ng-template #filaLista let-f let-nodo="nodo">
+  <app-fila-categoria
+    [fila]="f"
+    (alternar)="alternarNodo(nodo)"
+    (mouseenter)="encima.set(f.id)"
+    (mouseleave)="salirDeFila(f.id)"
+    (click)="abrir(f.id)"
+    (dragstart)="iniciarArrastre($event, f)"
+    (dragend)="terminarArrastre()"
+    (dragover)="arrastrarSobre($event, f.id)"
+    (dragleave)="salirDeDestino($event, f.id)"
+    (drop)="soltar($event, f.id)"
+  />
+</ng-template>
+
+@if (!aPaginaCompleta()) {
+  <app-modulo-cabecera
+    [icono]="icono('category')"
+    titulo="Categorías"
+    [cuenta]="num(s.categorias().length)"
+    [cuentaTitulo]="pl(s.categorias().length, 'categoría', 'categorías')"
+    [lectura]="lectura()"
+  >
+    <button
+      type="button"
+      (click)="exportar()"
+      class="cursor-pointer rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-[background] duration-200 ease-[ease] hover:bg-[#d4d4d4]!"
+    >
+      Exportar
+    </button>
+    <button
+      type="button"
+      (click)="nueva()"
+      [title]="puedeCrear() ? '' : 'Necesitas el permiso categorias.crear'"
+      class="flex items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[opacity] duration-200 ease-[ease] hover:opacity-90!"
+      [class]="puedeCrear() ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'"
+    >
+      <tabler-icon [icon]="icono('plus')" [size]="14" [stroke]="2" />Nueva categoría
+    </button>
+  </app-modulo-cabecera>
+  <app-franja-metricas [periodo]="periodo()" [metricas]="metricas()" (cambiarPeriodo)="periodo.set($event)" (metrica)="elegirMetrica($event)" />
+}
+
+<div class="mt-4 grid min-h-0 flex-1 pb-4 transition-[grid-template-columns] duration-350 ease-[cubic-bezier(.2,.8,.2,1)]" [class]="columnas()">
+  @if (conError()) {
+    <app-estado-pagina
+      tono="error"
+      [icono]="icono('cloud-off')"
+      titulo="No pudimos cargar las categorías"
+      texto="Revisa tu conexión. Si sigue pasando, el servidor puede estar en mantenimiento."
+      accion="Reintentar"
+      (accionar)="s.cargar()"
+    />
+  } @else if (sinCategorias()) {
+    <app-estado-pagina
+      [icono]="icono('category')"
+      titulo="Todavía no tienes categorías"
+      texto="Agrupa tus productos para que tus clientes los encuentren rápido. Puedes tener principales y, dentro, subcategorías."
+      accion="Crear la primera"
+      (accionar)="nueva()"
+    />
+  } @else {
+    @if (!aPaginaCompleta()) {
+      <!-- Lista -->
+      <section class="relative z-[2] -mr-4 flex h-full min-h-0 min-w-0 flex-col">
+        <div class="flex items-center gap-1.5 pr-7 pb-2.5">
+          <label
+            class="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-[#e6e6e6] px-3 transition-[background-color,box-shadow] duration-200 ease-[ease] focus-within:bg-white focus-within:shadow-[0_0_0_1px_#d4d4d4]"
+          >
+            <tabler-icon [icon]="icono('search')" [size]="15" [stroke]="2" class="text-[#8a8a8a]" />
+            <input
+              data-atajo="cbuscar"
+              [value]="busqueda()"
+              (input)="busqueda.set($any($event.target).value)"
+              placeholder="Nombre o descripción"
+              class="min-w-0 flex-1 bg-transparent py-2 text-[13px] text-[#111827] outline-none"
+            />
+            @if (busqueda()) {
+              <button type="button" (click)="busqueda.set('')" class="flex cursor-pointer text-[#8a8a8a]">
+                <tabler-icon [icon]="icono('x')" [size]="13" [stroke]="2" />
+              </button>
+            }
+          </label>
+          <div class="relative">
+            <button
+              type="button"
+              (click)="menu.alternar('agrupar', $event)"
+              title="Agrupar la lista"
+              class="relative flex size-8.5 shrink-0 cursor-pointer items-center justify-center rounded-full text-[#4b5563] transition-[background-color] duration-200 ease-[ease] hover:bg-[#e6e6e6]!"
+              [class]="menu.abierto('agrupar') || agrupacion() !== 'arbol' ? 'bg-[#e3e3e3]' : 'bg-transparent'"
+            >
+              <tabler-icon [icon]="icono('stack-2')" [size]="16" [stroke]="2" />
+              @if (agrupacion() !== 'arbol') {
+                <span class="absolute top-1 right-1 size-[7px] rounded-full bg-[#2be0d5] shadow-[0_0_0_2px_#f1f1f1]"></span>
+              }
+            </button>
+            <div
+              [appPopover]="menu.abierto('agrupar')"
+              (click)="$event.stopPropagation()"
+              class="absolute top-10.5 right-0 z-40 w-75 origin-top-right rounded-2xl bg-white p-3.5 shadow-[0_0_0_1px_rgba(0,0,0,.06),0_24px_48px_-20px_rgba(0,0,0,.35)] [transition:opacity_.18s_ease,_transform_.26s_cubic-bezier(.2,.8,.2,1)]"
+            >
+              <div class="px-1 pb-2.5">
+                <div class="font-[Archivo] text-[15px] font-semibold text-[#111827]">Agrupar la lista</div>
+                <div class="text-[12.5px] leading-[18px] text-[#6b7280]">Cómo se ordenan las categorías en grupos plegables.</div>
+              </div>
+              <div class="flex flex-col gap-1">
+                @for (o of agrupaciones; track o.k) {
+                  @let elegida = agrupacion() === o.k;
+                  <button
+                    type="button"
+                    (click)="elegirAgrupacion(o.k)"
+                    class="grid cursor-pointer grid-cols-[18px_30px_minmax(0,1fr)] items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-[background-color] duration-200 ease-[ease] hover:bg-[#f7f7f7]!"
+                    [class]="elegida ? 'bg-[#f4f4f4]' : 'bg-transparent'"
+                  >
+                    <span
+                      class="flex size-4.5 items-center justify-center rounded-full transition-[box-shadow] duration-200 ease-[ease]"
+                      [class]="elegida ? 'shadow-[inset_0_0_0_1.5px_#303030]' : 'shadow-[inset_0_0_0_1.5px_#d4d4d4]'"
+                    >
+                      <span
+                        class="size-2 rounded-full bg-[#303030] transition-[scale] duration-250 ease-[cubic-bezier(.34,1.56,.64,1)]"
+                        [class.scale-0]="!elegida"
+                      ></span>
+                    </span>
+                    <span class="flex size-7.5 items-center justify-center rounded-[9px] bg-[#f1f1f1] text-[#4b5563]">
+                      <tabler-icon [icon]="icono(o.icono)" [size]="16" [stroke]="2" />
+                    </span>
+                    <span class="flex flex-col gap-[1px]">
+                      <span class="text-[13px] font-semibold text-[#111827]">{{ o.titulo }}</span>
+                      <span class="text-[12px] text-[#8a8a8a]">{{ o.detalle }}</span>
+                    </span>
+                  </button>
+                }
+              </div>
+              <div class="mt-2.5 flex gap-1.5 border-t border-t-[#f1f1f1] pt-2.5">
+                <button
+                  type="button"
+                  (click)="plegarTodos(false)"
+                  class="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#f1f1f1] px-2.5 py-[7px] text-[12.5px] font-medium text-[#303030] hover:bg-[#e6e6e6]!"
+                >
+                  <tabler-icon [icon]="icono('chevrons-down')" [size]="14" [stroke]="2" />Abrir todos
+                </button>
+                <button
+                  type="button"
+                  (click)="plegarTodos(true)"
+                  class="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#f1f1f1] px-2.5 py-[7px] text-[12.5px] font-medium text-[#303030] hover:bg-[#e6e6e6]!"
+                >
+                  <tabler-icon [icon]="icono('chevrons-up')" [size]="14" [stroke]="2" />Plegar todos
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex min-h-6.5 flex-wrap items-center gap-2 pr-7 pb-2 pl-1">
+          <span class="text-[12px] text-[#6b7280] tabular-nums">{{ pl(cuantasVisibles(), 'categoría', 'categorías') }}</span>
+          @for (c of filtros(); track c.label) {
+            <span class="inline-flex animate-[fade-in-up_.2s_ease-out] items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pr-1 pl-2.5 text-[11.5px] font-medium text-[#374151]">
+              {{ c.label }}
+              <button
+                type="button"
+                (click)="quitarFiltro(c.k)"
+                class="flex size-4 cursor-pointer items-center justify-center rounded-full text-[#6b7280] hover:bg-[#d1d5db]! hover:text-[#111827]!"
+              >
+                <tabler-icon [icon]="icono('x')" [size]="11" [stroke]="2" />
+              </button>
+            </span>
+          }
+        </div>
+
+        <div data-atajo="lista" (mouseleave)="encima.set(null)" class="relative min-h-0 flex-1 overflow-y-auto pb-3 [scrollbar-width:none]">
+          @if (cargando()) {
+            <div class="flex flex-col gap-2 pt-3 pr-7">
+              @for (k of esqueleto; track k) {
+                <span class="h-12 animate-[gp-brillo_1.4s_linear_infinite] rounded-xl [background:linear-gradient(90deg,#e6e6e6_0,#ededed_80px,#e6e6e6_160px)] [background-size:320px_100%]"></span>
+              }
+            </div>
+          }
+          @if (sinCoincidencias()) {
+            <div class="animate-[fade-in-up_.2s_ease-out] pt-10 pr-11 pb-10 pl-4 text-center">
+              <p class="text-[13px] text-[#6b7280]">Ninguna categoría coincide con estos filtros.</p>
+              <button
+                type="button"
+                (click)="limpiarFiltros()"
+                class="mt-3 cursor-pointer rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[13px] font-medium text-[#374151] hover:bg-[#d4d4d4]!"
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          }
+          @if (arrastrada() != null) {
+            <div class="pointer-events-none sticky top-1.5 z-30 flex h-0 justify-center overflow-visible pr-7">
+              <span
+                class="flex h-8 animate-[vivo-entrar_260ms_cubic-bezier(.2,.8,.2,1)_both] items-center gap-2 rounded-full bg-[#1a1a1a] px-3.5 text-[12.5px] whitespace-nowrap text-white shadow-[0_10px_24px_-8px_rgba(0,0,0,.4)]"
+              >
+                <tabler-icon [icon]="icono('arrows-move')" [size]="14" [stroke]="2" class="text-[#2be0d5]" />{{ textoArrastre() }}
+              </span>
+            </div>
+          }
+          @if (zonaPrincipal()) {
+            <div
+              (dragover)="arrastrarSobre($event, 0)"
+              (dragleave)="salirDeDestino($event, 0)"
+              (drop)="soltar($event, 0)"
+              class="mt-11 mr-7 mb-2 flex animate-[fade-in-up_.18s_ease-out] items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed p-3.5 text-[12.5px] font-medium text-[#00605b] transition-[background-color,border-color] duration-200 ease-[ease]"
+              [class]="destino() === 0 ? 'border-[#00a39b] bg-[#e0f7f5]' : 'border-[#9fe3de] bg-[#fafafa]'"
+            >
+              <tabler-icon [icon]="icono('folder-up')" [size]="16" [stroke]="2" />Suelta aquí para dejarla como categoría principal
+            </div>
+          }
+
+          @if (hayLista()) {
+            <div>
+              @if (agrupacion() === 'arbol') {
+                <div class="flex flex-col pt-0.5">
+                  @for (nodo of listado(); track nodo.clave) {
+                    <div class="mr-7 border-b border-b-[#e6e6e6] py-1">
+                      <div class="-mr-7">
+                        @if (nodo.principal) {
+                          <ng-container *ngTemplateOutlet="filaLista; context: { $implicit: nodo.principal, nodo: nodo.clave }" />
+                        }
+                      </div>
+                      @if (nodo.hijas.length) {
+                        <app-desplegable [abierto]="nodo.abierto" desborde class="-mr-7">
+                          <div class="flex flex-col gap-0.5 py-0.5">
+                            @for (f of nodo.hijas; track f.id) {
+                              <ng-container *ngTemplateOutlet="filaLista; context: { $implicit: f }" />
+                            }
+                          </div>
+                        </app-desplegable>
+                      }
+                    </div>
+                  }
+                </div>
+              } @else {
+                @for (grupo of listado(); track grupo.clave) {
+                  <div>
+                    <app-cabecera-grupo
+                      [activas]="!!grupo.activas"
+                      [cuenta]="grupo.hijas.length"
+                      [abierto]="grupo.abierto"
+                      (alternar)="alternarNodo(grupo.clave)"
+                    />
+                    <app-desplegable [abierto]="grupo.abierto" desborde>
+                      <div class="flex flex-col gap-0.5 pt-0.5 pb-1">
+                        @for (f of grupo.hijas; track f.id) {
+                          <ng-container *ngTemplateOutlet="filaLista; context: { $implicit: f }" />
+                        }
+                      </div>
+                    </app-desplegable>
+                  </div>
+                }
+              }
+              <p class="mt-3 mr-7 mb-1 flex flex-wrap items-center justify-center gap-1.5 text-center text-[11.5px] text-[#8a8a8a]">
+                <tabler-icon [icon]="icono('hand-move')" [size]="13" [stroke]="2" />
+                {{ puedeEditar() ? 'Arrastra una subcategoría (o una principal sin hijas) sobre otra principal para moverla' : 'Solo lectura · necesitas el permiso categorias.editar' }} ·
+                <kbd class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-[5px] bg-white px-1 font-[inherit] text-[10.5px] font-medium text-[#4b5563] shadow-[inset_0_0_0_1px_#d4d4d4,_0_1px_0_#d4d4d4]">↑</kbd>
+                <kbd class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-[5px] bg-white px-1 font-[inherit] text-[10.5px] font-medium text-[#4b5563] shadow-[inset_0_0_0_1px_#d4d4d4,_0_1px_0_#d4d4d4]">↓</kbd>
+                para moverte
+              </p>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- Hoja -->
+    <section class="relative z-[1] flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_40px_-24px_rgba(0,0,0,.22)]">
+      @if (hoja(); as h) {
+        @let d = borrador()!;
+        <div class="flex min-h-0 flex-1 flex-col">
+          <div class="shrink-0 px-6 pt-4">
+            <div class="flex items-center gap-2">
+              <span class="truncate text-[10.5px] font-semibold tracking-[.08em] text-[#9ca3af] uppercase">{{ h.etiqueta }}</span>
+              <span class="flex-1"></span>
+              @if (h.posicion; as pos) {
+                <span class="text-[11.5px] text-[#9ca3af] tabular-nums">{{ pos.indice + 1 }} de {{ pos.total }}</span>
+                <button
+                  type="button"
+                  (click)="paso(-1)"
+                  title="Anterior (↑)"
+                  class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!"
+                  [class.opacity-35]="pos.indice === 0"
+                >
+                  <tabler-icon [icon]="icono('chevron-up')" [size]="16" [stroke]="2" />
+                </button>
+                <button
+                  type="button"
+                  (click)="paso(1)"
+                  title="Siguiente (↓)"
+                  class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!"
+                  [class.opacity-35]="pos.indice === pos.total - 1"
+                >
+                  <tabler-icon [icon]="icono('chevron-down')" [size]="16" [stroke]="2" />
+                </button>
+              }
+              @if (!h.nueva) {
+                <span class="relative">
+                  <button
+                    type="button"
+                    (click)="menu.alternar('acciones', $event)"
+                    title="Más acciones"
+                    class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!"
+                  >
+                    <tabler-icon [icon]="icono('dots')" [size]="16" [stroke]="2" />
+                  </button>
+                  @if (menu.abierto('acciones')) {
+                    <div
+                      (click)="$event.stopPropagation()"
+                      class="absolute top-8.5 right-0 z-40 w-57.5 animate-[fade-in-up_.18s_ease-out] rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)]"
+                    >
+                      <button
+                        type="button"
+                        (click)="irProductos(h.id)"
+                        class="flex h-8.5 w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] hover:bg-[#f4f4f4]!"
+                      >
+                        <tabler-icon [icon]="icono('tag')" [size]="15" [stroke]="2" class="text-[#6b7280]" />Ver sus productos
+                      </button>
+                      <button
+                        type="button"
+                        (click)="pedirBorrar()"
+                        [title]="puedeEliminar() ? '' : 'Necesitas el permiso categorias.eliminar'"
+                        class="flex h-8.5 w-full items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] text-[#b42318] hover:bg-[#fff1f0]!"
+                        [class]="puedeEliminar() ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'"
+                      >
+                        <tabler-icon [icon]="icono('trash')" [size]="15" [stroke]="2" />Eliminar categoría
+                      </button>
+                    </div>
+                  }
+                </span>
+              }
+              <button
+                type="button"
+                (click)="completa.set(!completa())"
+                [title]="completa() ? 'Volver a la lista' : 'Abrir en página completa'"
+                class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!"
+              >
+                <tabler-icon [icon]="icono(completa() ? 'arrows-minimize' : 'arrows-maximize')" [size]="16" [stroke]="2" />
+              </button>
+              <button
+                type="button"
+                (click)="cerrar()"
+                title="Cerrar"
+                class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!"
+              >
+                <tabler-icon [icon]="icono('x')" [size]="16" [stroke]="2" />
+              </button>
+            </div>
+
+            <div class="mt-1.5 flex animate-[ficha_360ms_cubic-bezier(.2,.8,.2,1)_both] items-start gap-3.5">
+              <app-miniatura [miniatura]="h.miniatura" [tamanoIcono]="24" class="size-13 rounded-[14px]" />
+              <div class="min-w-0 flex-1">
+                <div class="line-clamp-2 font-[Archivo] text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-[#111827]">{{ h.titulo }}</div>
+                <p class="mt-0.5 text-[13px] text-[#6b7280]"><strong class="font-semibold text-[#111827]">{{ h.nombrePadre }}</strong> · {{ h.resumen }}</p>
+              </div>
+              @if (!h.nueva) {
+                <span class="flex flex-col items-end">
+                  <span class="font-[Archivo] text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-[#111827] tabular-nums">{{ h.productos }}</span>
+                  <span class="text-[11.5px] text-[#9ca3af]">{{ h.productos === 1 ? 'producto' : 'productos' }}</span>
+                </span>
+              }
+            </div>
+
+            <!-- Pastillas: estado (editable), padre y subcategorías -->
+            <div class="relative z-30 mt-3.5 flex flex-wrap items-center gap-1.5">
+              <div class="relative">
+                <button
+                  type="button"
+                  (click)="alternarMenuEstado($event)"
+                  class="flex h-7.5 cursor-pointer items-center gap-[7px] rounded-full bg-[#f4f4f4] pr-2.5 pl-[11px] text-[13px] font-medium text-[#111827] transition-[background-color] duration-200 ease-[ease] hover:bg-[#ebebeb]!"
+                >
+                  <span class="size-[7px] rounded-full transition-[background-color] duration-300 ease-[ease]" [class]="puntoEstado(d.activo)"></span>
+                  {{ d.activo ? 'Activa' : 'Inactiva' }}
+                  <tabler-icon [icon]="icono('chevron-down')" [size]="13" [stroke]="2" class="text-[#8a8a8a]" />
+                </button>
+                <div
+                  [appPopover]="menu.abierto('estado')"
+                  (click)="$event.stopPropagation()"
+                  class="absolute top-9 left-0 w-60 origin-top-left rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)] [transition:opacity_.18s_ease,_transform_.22s_cubic-bezier(.2,.8,.2,1)]"
+                >
+                  @for (activo of [true, false]; track activo) {
+                    <button
+                      type="button"
+                      (click)="elegirEstado(activo)"
+                      class="flex w-full cursor-pointer items-center gap-[9px] rounded-[9px] px-2.5 py-[7px] text-left text-[13px] hover:bg-[#f4f4f4]!"
+                    >
+                      <span class="size-[7px] rounded-full" [class]="puntoEstado(activo)"></span>
+                      <span class="flex flex-1 flex-col">
+                        <span>{{ activo ? 'Activa' : 'Inactiva' }}</span>
+                        <span class="text-[11.5px] text-[#8a8a8a]">{{ activo ? 'Visible en la tienda' : 'Oculta en la tienda' }}</span>
+                      </span>
+                      @if (d.activo === activo) {
+                        <tabler-icon [icon]="icono('check')" [size]="14" [stroke]="2" />
+                      }
+                    </button>
+                  }
+                </div>
+              </div>
+              <span class="flex h-7.5 items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-[#111827]">
+                <tabler-icon [icon]="icono(h.esPrincipal ? 'folder-up' : 'folder')" [size]="14" [stroke]="2" class="text-[#6b7280]" />{{ h.nombrePadre }}
+              </span>
+              @if (h.esPrincipal && h.subcategorias.length) {
+                <span class="flex h-7.5 items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-[#111827]">
+                  <tabler-icon [icon]="icono('hierarchy-2')" [size]="14" [stroke]="2" class="text-[#6b7280]" />
+                  {{ pl(h.subcategorias.length, 'subcategoría', 'subcategorías') }}
+                </span>
+              }
+            </div>
+
+            @if (!h.nueva) {
+              <!-- Parte del catálogo -->
+              <div class="mt-4 pb-3.5">
+                <div class="flex items-baseline justify-between text-[12px]">
+                  <span class="text-[#6b7280]">Catálogo <strong class="font-semibold text-[#111827]">{{ pl(h.productos, 'producto', 'productos') }} de {{ num(h.totalCatalogo) }}</strong></span>
+                  <span class="text-[#9ca3af]">{{ h.porcentaje }} % del catálogo</span>
+                </div>
+                <div class="relative mt-1.5 h-2.5 rounded-full bg-[#f3f3f3]">
+                  <span
+                    class="absolute top-0 bottom-0 left-0 rounded-full [transition:width_.5s_cubic-bezier(.2,.8,.2,1),_background-color_.3s]"
+                    [class]="d.activo ? 'bg-[#303030]' : 'bg-[#b5b5b5]'"
+                    [style.width.%]="h.parteCatalogo"
+                  ></span>
+                </div>
+              </div>
+            }
+
+            <app-pestanas-hoja [pestanas]="pestanas()" [activa]="pestana()" (elegir)="irPestana($event)" />
+          </div>
+
+          <div class="min-h-0 flex-1 overflow-y-auto">
+            <div
+              class="mx-auto flex w-full animate-[ficha_380ms_cubic-bezier(.2,.8,.2,1)_40ms_both] flex-col px-5 pb-24"
+              [class]="completa() ? 'max-w-[760px]' : 'max-w-none'"
+            >
+              @if (h.soloLectura) {
+                <div class="mt-2.5 flex items-center gap-2 rounded-xl bg-[#f7f7f7] px-3 py-2.5 text-[12.5px] text-[#4b5563] shadow-[inset_2px_0_0_#9ca3af]">
+                  <tabler-icon [icon]="icono('lock')" [size]="15" [stroke]="2" />Solo lectura · necesitas el permiso categorias.editar
+                </div>
+              }
+              @switch (pestana()) {
+                @case ('general') {
+                  <app-pestana-general
+                    [borrador]="d"
+                    [categoriaId]="h.id"
+                    [soloLectura]="h.soloLectura"
+                    [errorNombre]="errorNombreVisible()"
+                    [subcategorias]="h.subcategorias"
+                    (cambiar)="cambiar($event)"
+                    (nuevaSubcategoria)="nueva('' + h.id)"
+                    (abrir)="abrir($event)"
+                  />
+                }
+                @case ('imagen') {
+                  <app-pestana-imagen
+                    [imagen]="d.imagen"
+                    [tono]="h.tono"
+                    [soloLectura]="h.soloLectura"
+                    (archivo)="subirImagen($event)"
+                    (quitar)="cambiar({ imagen: null })"
+                  />
+                }
+                @case ('productos') {
+                  <app-pestana-productos [categoriaId]="h.id" [esPrincipal]="h.esPrincipal" (verProducto)="irProductos(null, $event)" />
+                }
+                @case ('tienda') {
+                  <app-pestana-tienda [borrador]="d" [tono]="h.tono" [productos]="h.productos" [subcategorias]="h.subcategoriasEnTienda" />
+                }
+              }
+            </div>
+          </div>
+        </div>
+      } @else {
+        <div class="m-auto flex flex-col items-center gap-2 p-6 text-center">
+          <span class="flex size-10 items-center justify-center rounded-full bg-[#f4f4f4] text-[#8a8a8a]">
+            <tabler-icon [icon]="icono('pointer')" [size]="18" [stroke]="2" />
+          </span>
+          <p class="text-[13px] text-[#6b7280]">Elige una categoría de la lista.</p>
+          <p class="text-[12px] text-[#9ca3af]">↑ ↓ para moverte · arrastra una subcategoría para cambiarla de principal</p>
+        </div>
+      }
+    </section>
+  }
+</div>
+
+@if (seleccionados()) {
+  @if (hoja()?.id; as categoriaId) {
+    <app-barra-seleccion [categoriaId]="categoriaId" />
+  }
+}
+
+@if (borrando(); as b) {
+  <app-modal-borrar-categoria
+    [categoriaId]="b.id"
+    [productos]="b.productos"
+    [subcategorias]="b.subcategorias"
+    (confirmar)="borrar(b.id, $event)"
+    (cerrar)="borrando.set(null)"
+  />
+}
