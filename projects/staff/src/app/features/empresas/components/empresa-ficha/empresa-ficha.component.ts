@@ -28,7 +28,7 @@ import {
   IconX,
   TablerIconComponent,
 } from '@tabler/icons-angular';
-import { ActividadEmpresa, EmpresaService } from '../../../../core/catalog/empresa.service';
+import { ActividadEmpresa, EmpresaService, ConexionWhatsapp } from '../../../../core/catalog/empresa.service';
 import { SuscripcionService } from '../../../../core/catalog/suscripcion.service';
 import { ModuloService } from '../../../../core/catalog/modulo.service';
 import { FacturacionService } from '../../../../core/facturacion/facturacion.service';
@@ -103,6 +103,11 @@ export class EmpresaFichaComponent {
   protected readonly detalle = signal<EmpresaConDueno | null>(null);
   protected readonly cuenta = signal<EstadoCuenta | null>(null);
   protected readonly modulos = signal<DesgloseModuloEmpresa[]>([]);
+  protected readonly whatsapp = signal<ConexionWhatsapp | null>(null);
+  /** Solo se muestra si la Empresa tiene el módulo o ya conectó un número. */
+  protected readonly mostrarWhatsapp = computed(
+    () => !!this.whatsapp()?.cuenta || this.modulos().some((m) => m.codigo === 'whatsapp' && m.efectivo),
+  );
   protected readonly pestana = signal<Pestana>('resumen');
   protected readonly pop = signal<'estado' | 'plan' | null>(null);
   protected readonly accion = signal<AccionCuenta | null>(null);
@@ -132,18 +137,21 @@ export class EmpresaFichaComponent {
     this.detalle.set(null);
     this.cuenta.set(null);
     this.modulos.set([]);
+    this.whatsapp.set(null);
     this.actividad.set([]);
     forkJoin({
       detalle: this.empresaService.obtenerUno(id),
       cuenta: this.facturacion.estadoCuenta(id).pipe(catchError(() => of(null))),
       modulos: this.moduloService.listarDesglose(id).pipe(catchError(() => of([]))),
       actividad: this.empresaService.actividad(id).pipe(catchError(() => of([] as ActividadEmpresa[]))),
-    }).subscribe(({ detalle, cuenta, modulos, actividad }) => {
+      whatsapp: this.empresaService.whatsapp(id).pipe(catchError(() => of(null))),
+    }).subscribe(({ detalle, cuenta, modulos, actividad, whatsapp }) => {
       if (this.empresa().id !== id) return;
       this.detalle.set(detalle);
       this.cuenta.set(cuenta);
       this.modulos.set(modulos);
       this.actividad.set(actividad);
+      this.whatsapp.set(whatsapp);
     });
   }
 
@@ -303,8 +311,18 @@ export class EmpresaFichaComponent {
     if (e.estado === 'pendiente') return { icono: this.i.telefono, tinta: '#b45309', titulo: 'Falta la llamada', texto: e.llamadaProgramadaPara ? `Agendada para el ${fmt(e.llamadaProgramadaPara)}.` : 'Está en la cola de Altas pendientes, sin agenda.' };
     if (e.estado === 'informacion_corroborada') return { icono: this.i.enlace, tinta: '#0094d5', titulo: 'Esperando al cliente', texto: 'Ya se llamó. Falta que abra el enlace y defina su contraseña.' };
     if (e.estado === 'activa' && e.acceso?.estado === 'en_mora') return { icono: this.i.alerta, tinta: '#d82c0d', titulo: 'En mora', texto: `Debe ${plata(c?.saldoPendiente ?? 0)}. Sigue operando dentro de la gracia.` };
-    if (e.estado === 'activa' && e.acceso?.estado === 'bloqueada') return { icono: this.i.ban, tinta: '#d82c0d', titulo: 'Sin acceso', texto: e.acceso.motivo === 'sin_plan' ? 'No tiene una suscripción activa.' : 'La suscripción venció.' };
-    if (e.estado === 'activa') return { icono: this.i.ok, tinta: '#087b5d', titulo: 'Operando con normalidad', texto: `Plan ${e.planNombre ?? '—'}${c?.cuotaMensual ? ` · ${plata(c.cuotaMensual.total)} por mes` : ''}.` };
+    if (e.estado === 'activa' && e.acceso?.estado === 'en_prueba') {
+      const hasta = e.acceso.pruebaHasta ?? c?.suscripcion?.prueba?.hasta ?? null;
+      return { icono: this.i.reloj, tinta: '#0284c7', titulo: 'En prueba gratis', texto: `${hasta ? `Hasta el ${fmt(hasta)}` : 'Período de prueba'}. Si no paga antes, ese día se corta el acceso. Se extiende desde Facturación.` };
+    }
+    if (e.estado === 'activa' && e.acceso?.estado === 'bloqueada') {
+      const texto = e.acceso.motivo === 'sin_plan' ? 'No tiene una suscripción activa.' : e.acceso.motivo === 'prueba_terminada' ? 'Terminó la prueba gratis sin pagar.' : 'La suscripción venció.';
+      return { icono: this.i.ban, tinta: '#d82c0d', titulo: 'Sin acceso', texto };
+    }
+    if (e.estado === 'activa') {
+      const desc = e.acceso?.descuentoPorcentaje ? ` (con ${e.acceso.descuentoPorcentaje.toLocaleString('es-CO')} % de descuento)` : '';
+      return { icono: this.i.ok, tinta: '#087b5d', titulo: 'Operando con normalidad', texto: `Plan ${e.planNombre ?? '—'}${c?.cuotaMensual ? ` · ${plata(c.cuotaMensual.total)} por mes${desc}` : ''}.` };
+    }
     return { icono: this.i.pausa, tinta: '#6b7280', titulo: this.estado().texto, texto: e.motivoEstado ?? e.motivoRechazo ?? 'Sin motivo cargado.' };
   });
 
@@ -318,10 +336,13 @@ export class EmpresaFichaComponent {
     const largo = Math.max(1, Math.round((new Date(venc).getTime() - inicio.getTime()) / 86_400_000));
     const pasados = largo - Math.max(0, d);
     const ultimo = this.cuenta()?.ultimoPago;
+    const prueba = s.prueba?.enPrueba ?? false;
     return {
-      grande: s.diasMora > 0 ? `${s.diasMora} días de mora` : d === 0 ? 'Vence hoy' : d < 0 ? `Venció hace ${pl(-d, 'día', 'días')}` : `Vence en ${pl(d, 'día', 'días')}`,
-      chico: `el ${fmtY(venc)}`,
-      tinta: s.diasMora > 0 ? '#d82c0d' : d <= 3 ? '#b45309' : '#111827',
+      grande: prueba
+        ? (d > 0 ? `Prueba · termina en ${pl(d, 'día', 'días')}` : 'Prueba terminada')
+        : s.diasMora > 0 ? `${s.diasMora} días de mora` : d === 0 ? 'Vence hoy' : d < 0 ? `Venció hace ${pl(-d, 'día', 'días')}` : `Vence en ${pl(d, 'día', 'días')}`,
+      chico: prueba ? `el ${fmtY(venc)} · sin pago, ese día se corta` : `el ${fmtY(venc)}`,
+      tinta: prueba ? '#0369a1' : s.diasMora > 0 ? '#d82c0d' : d <= 3 ? '#b45309' : '#111827',
       dias: Array.from({ length: largo }, (_, k) => (k < pasados - 1 ? '#303030' : k === pasados - 1 ? '#2be0d5' : '#ececec')),
       inicio: fmt(inicio.toISOString()),
       fin: fmt(venc),

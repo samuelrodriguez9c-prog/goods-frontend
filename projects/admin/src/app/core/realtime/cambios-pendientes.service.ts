@@ -23,6 +23,7 @@ const ENTIDADES_POR_RUTA: Record<string, string[]> = {
   '/products/compras': ['compra', 'inventario'],
   '/discounts': ['descuento'],
   '/messages': ['chat'],
+  '/whatsapp': ['whatsapp'],
   '/settings/usuarios': ['usuario', 'rol'],
   '/settings/roles': ['rol', 'permiso'],
   '/settings/solicitudes': ['missolicitudes'],

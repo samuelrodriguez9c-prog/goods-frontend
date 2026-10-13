@@ -1,0 +1,67 @@
+<div (click)="cerrar.emit()" class="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(10,10,10,.45)] p-6 animate-[fade-in_.18s_ease-out]">
+  <div (click)="$event.stopPropagation()" role="dialog" aria-label="Atajos de teclado" class="flex max-h-[calc(100vh-48px)] w-[640px] max-w-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_30px_60px_-20px_rgba(0,0,0,.45)] animate-[entra_.22s_cubic-bezier(.2,.8,.2,1)]">
+    <div class="flex items-start gap-2.5 pb-2.5 pl-[18px] pr-3.5 pt-4">
+      <span class="flex min-w-0 flex-1 flex-col gap-[3px]">
+        <span class="font-display text-base font-semibold">Atajos de teclado</span>
+        <span class="text-[12.5px] leading-[1.45] text-[#6b7280]">Funcionan cuando no estás escribiendo en un campo. Pulsa Cambiar y luego la tecla que prefieras; si ya está en uso, se intercambian.</span>
+      </span>
+      <button type="button" (click)="cerrar.emit()" aria-label="Cerrar" class="flex rounded-[7px] p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]"><tabler-icon [icon]="ic.x" [size]="16" /></button>
+    </div>
+
+    <div class="flex flex-col gap-1.5 overflow-y-auto px-[18px] pb-4 pt-1">
+      @for (g of grupos(); track g.k) {
+        <div class="flex flex-col">
+          <button type="button" (click)="alternar(g.k)" class="flex h-9 items-center gap-2.5 rounded-[9px] pl-2.5 pr-2 text-left transition-colors hover:bg-[#f7f7f7]">
+            <tabler-icon [icon]="ic.carpeta" [size]="16" class="shrink-0 text-[#6b7280]" />
+            <span class="flex min-w-0 flex-1 items-baseline gap-2"><span class="text-[13px] font-medium text-[#111827]">{{ g.t }}</span><span class="text-[11.5px] text-[#8a8a8a]">{{ g.sub }}</span></span>
+            @if (g.conPropios) { <span title="Tiene atajos personalizados" class="size-1.5 shrink-0 rounded-full bg-[#2be0d5]"></span> }
+            <tabler-icon [icon]="ic.abajo" [size]="14" class="text-[#8a8a8a] transition-transform duration-[240ms]" [style.transform]="'rotate(' + (g.abierto ? 0 : -90) + 'deg)'" />
+          </button>
+          <div class="grid transition-[grid-template-rows] duration-[280ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-rows]="g.abierto ? '1fr' : '0fr'">
+            <div class="min-h-0 overflow-hidden">
+              @for (f of g.filas; track f.label) {
+                <div class="grid min-h-9 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[9px] py-[3px] pl-[30px] pr-1.5 transition-colors hover:bg-[#f7f7f7]">
+                  <span class="flex min-w-0 items-center gap-2.5">
+                    <tabler-icon [icon]="ic.hija" [size]="14" class="shrink-0 text-[#9ca3af]" />
+                    <span class="text-[13px] text-[#303030]">{{ f.label }}</span>
+                    @if (f.propio) { <span class="text-[11px] font-medium text-[#00807a]">Personalizado</span> }
+                  </span>
+                  <span class="flex shrink-0 items-center gap-[5px]">
+                    @if (f.capturando) {
+                      <span class="inline-flex h-6 items-center rounded-[7px] px-[9px] text-xs text-[#6b7280] shadow-[inset_0_0_0_1px_#303030]">Presiona una tecla</span>
+                    } @else {
+                      @for (t of f.teclas; track $index) {
+                        @if ($index > 0) { <span class="text-[11px] text-[#9ca3af]">{{ f.sep }}</span> }
+                        <kbd class="inline-flex h-6 min-w-6 items-center justify-center whitespace-nowrap rounded-[7px] bg-white px-[7px] font-sans text-xs font-semibold text-[#303030] shadow-[inset_0_0_0_1px_#e0e0e0,0_1px_0_#d4d4d4]">{{ t }}</kbd>
+                      }
+                    }
+                  </span>
+                  <span class="flex min-w-[84px] items-center justify-end gap-1">
+                    @if (f.editable) {
+                      @if (f.propio && !f.capturando) {
+                        <button type="button" (click)="restablecer(f.id)" [title]="f.original" class="flex rounded-[7px] p-[5px] text-[#6b7280] hover:bg-[#ececec] hover:text-[#111827]"><tabler-icon [icon]="ic.volver" [size]="15" /></button>
+                      }
+                      @if (f.propio && f.capturando) {
+                        <button type="button" (click)="restablecer(f.id)" class="h-[26px] whitespace-nowrap rounded-[7px] px-2 text-xs font-medium text-[#303030] hover:bg-[#ececec]">{{ f.original }}</button>
+                      }
+                      <button type="button" (click)="cambiar(f.id!)" class="h-[26px] rounded-[7px] bg-[#f1f1f1] px-2.5 text-xs font-medium text-[#303030] hover:bg-[#e5e5e5]">{{ f.capturando ? 'Cancelar' : 'Cambiar' }}</button>
+                    } @else {
+                      <span class="pr-1 text-[11.5px] text-[#9ca3af]">Fijo</span>
+                    }
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (atajos.personalizados().length; as n) {
+        <div class="mt-1 flex items-center justify-between gap-3 border-t border-[#f1f1f1] px-1.5 pt-2.5">
+          <span class="text-xs text-[#8a8a8a]">{{ n === 1 ? '1 atajo personalizado' : n + ' atajos personalizados' }}</span>
+          <button type="button" (click)="restablecer()" class="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium text-[#303030] hover:bg-[#f1f1f1]"><tabler-icon [icon]="ic.volver" [size]="14" />Restablecer todos a los originales</button>
+        </div>
+      }
+    </div>
+  </div>
+</div>

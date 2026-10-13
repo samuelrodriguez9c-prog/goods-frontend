@@ -414,6 +414,12 @@ export class PlanesPageComponent {
     this.borrador.update((planes) => planes.map((p, i) => (i === indice ? { ...p, ...cambios } : p)));
   }
 
+  /** Días de prueba del plan (2026-10-10): 0 a 90. */
+  protected editarDiasPrueba(indice: number, valor: string): void {
+    const n = Number(String(valor).replace(/[^\d]/g, '') || 0);
+    this.editarPlan(indice, { diasPrueba: Math.max(0, Math.min(90, n)) });
+  }
+
   protected editarPrecio(indice: number, valor: string): void {
     const limpio = valor.replace(/[^\d]/g, '');
     this.editarPlan(indice, { precioMensual: limpio ? Number(limpio) : null });
@@ -481,6 +487,7 @@ export class PlanesPageComponent {
         precioMensual: null,
         caracteristicas: [],
         activo: false,
+        diasPrueba: 7,
         // Un plan recién creado en el borrador todavía no existe en el
         // backend, así que no tiene módulos asignados — se cargan después
         // desde el catálogo, esta pantalla no los edita (§11.6).
@@ -573,6 +580,7 @@ export class PlanesPageComponent {
       precioMensual: plan.precioMensual,
       caracteristicas: plan.caracteristicas ?? [],
       activo: plan.activo,
+      diasPrueba: plan.diasPrueba ?? 7,
     });
 
     this.alertas

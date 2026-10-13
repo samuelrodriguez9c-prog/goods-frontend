@@ -1,0 +1,304 @@
+<div class="flex min-h-0 flex-1 flex-col overflow-hidden px-6 pt-6 leading-[normal]">
+  @if (!completa()) {
+    <app-modulo-cabecera [icono]="icono('truck')" titulo="Proveedores" [cuenta]="num(cuenta())"
+      [cuentaTitulo]="pl(cuenta(), 'proveedor', 'proveedores')" [lectura]="lectura()">
+      <button type="button" (click)="exportar()"
+        class="cursor-pointer rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-[background] duration-200 ease-[ease] hover:bg-[#d4d4d4]!">Exportar</button>
+      <button type="button" (click)="nuevo()" [title]="puedeCrear() ? '' : 'Necesitas el permiso proveedores.crear'"
+        class="flex items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[opacity] duration-200 ease-[ease] hover:opacity-90!"
+        [class]="puedeCrear() ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'">
+        <tabler-icon [icon]="icono('plus')" [size]="14" />Nuevo proveedor
+      </button>
+    </app-modulo-cabecera>
+    <app-franja-metricas [periodo]="periodo()" [metricas]="metricas()" (cambiarPeriodo)="periodo.set($event)" (metrica)="alternarMetrica($event)" />
+  }
+
+  <div class="mt-4 grid min-h-0 flex-1 pb-4 transition-[grid-template-columns] duration-350 ease-[cubic-bezier(.2,.8,.2,1)]"
+    [class]="soloEstado() || completa()
+      ? 'grid-cols-[minmax(0,1fr)]'
+      : hoja() ? 'grid-cols-[minmax(300px,0.86fr)_minmax(0,1.34fr)]' : 'grid-cols-[minmax(320px,1.3fr)_minmax(240px,0.7fr)]'">
+    @if (carga() === 'error') {
+      <app-estado-pagina tono="error" [icono]="icono('cloud-off')" titulo="No pudimos cargar los proveedores"
+        texto="Revisa tu conexión. Si sigue pasando, el servidor puede estar en mantenimiento." accion="Reintentar" (accionar)="catalogo.cargar()" />
+    } @else if (carga() === 'vacio') {
+      <app-estado-pagina tono="vacio" [icono]="icono('truck')" titulo="Todavía no tienes proveedores"
+        texto="Regístralos para armar compras más rápido y saber a quién reponerle cada producto." accion="Crear el primero" (accionar)="nuevo()" />
+    } @else {
+      @if (!completa()) {
+        <!-- Lista -->
+        <section class="relative z-[2] -mr-4 flex h-full min-h-0 min-w-0 flex-col">
+          <div class="flex items-center gap-1.5 pr-7 pb-2.5">
+            <label class="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-[#e6e6e6] px-3 transition-[background-color,box-shadow] duration-200 ease-[ease] has-[input:focus]:bg-white has-[input:focus]:shadow-[0_0_0_1px_#d4d4d4]">
+              <tabler-icon [icon]="icono('search')" [size]="15" class="text-[#8a8a8a]" />
+              <input #buscador [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" (keydown.escape)="$any($event.target).blur()"
+                placeholder="Nombre, NIT o contacto" class="min-w-0 flex-1 bg-transparent py-2 text-[13px] text-[#111827] outline-none" />
+              @if (busqueda()) {
+                <button type="button" (click)="busqueda.set('')" class="flex cursor-pointer text-[#8a8a8a]">
+                  <tabler-icon [icon]="icono('x')" [size]="13" />
+                </button>
+              }
+            </label>
+            <div class="flex gap-0.5 rounded-full bg-[#e6e6e6] p-[3px]">
+              @for (v of vistas; track v.k) {
+                <button type="button" (click)="vista.set(v.k)" [title]="v.titulo"
+                  class="flex h-7 w-7.5 cursor-pointer items-center justify-center rounded-full transition-[background-color,color] duration-200 ease-[ease]"
+                  [class]="v.k === vista() ? 'bg-white text-[#111827] shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)]' : 'bg-transparent text-[#6b7280]'">
+                  <tabler-icon [icon]="icono(v.icono)" [size]="15" />
+                </button>
+              }
+            </div>
+            <div class="relative">
+              <button type="button" (click)="alternarMenu('agrupar', $event)" title="Agrupar la lista"
+                class="relative flex size-8.5 shrink-0 cursor-pointer items-center justify-center rounded-full text-[#4b5563] transition-[background-color] duration-200 ease-[ease] hover:bg-[#e6e6e6]!"
+                [class]="menu() === 'agrupar' || agrupacion() !== 'estado' ? 'bg-[#e3e3e3]' : 'bg-transparent'">
+                <tabler-icon [icon]="icono('stack-2')" [size]="16" />
+                @if (agrupacion() !== 'estado') {
+                  <span class="absolute top-1 right-1 size-[7px] rounded-full bg-[#2be0d5] shadow-[0_0_0_2px_#f1f1f1]"></span>
+                }
+              </button>
+              <div [appPopover]="menu() === 'agrupar'" (click)="$event.stopPropagation()"
+                class="absolute top-10.5 right-0 z-40 w-75 origin-top-right rounded-2xl bg-white p-3.5 shadow-[0_0_0_1px_rgba(0,0,0,.06),0_24px_48px_-20px_rgba(0,0,0,.35)] [transition:opacity_.18s_ease,_transform_.26s_cubic-bezier(.2,.8,.2,1)]">
+                <div class="px-1 pb-2.5">
+                  <div class="font-[Archivo] text-[15px] font-semibold text-[#111827]">Agrupar la lista</div>
+                  <div class="text-[12.5px] leading-[18px] text-[#6b7280]">Cómo se ordenan los proveedores en grupos plegables.</div>
+                </div>
+                <div class="flex flex-col gap-1">
+                  @for (o of agrupaciones; track o.k) {
+                    @let activa = o.k === agrupacion();
+                    <button type="button" (click)="agrupar(o.k)"
+                      class="grid cursor-pointer grid-cols-[18px_30px_minmax(0,1fr)] items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-[background-color] duration-200 ease-[ease] hover:bg-[#f7f7f7]!"
+                      [class]="activa ? 'bg-[#f4f4f4]' : 'bg-transparent'">
+                      <span class="flex size-4.5 items-center justify-center rounded-full transition-[box-shadow] duration-200 ease-[ease]"
+                        [class]="activa ? 'shadow-[inset_0_0_0_1.5px_#303030]' : 'shadow-[inset_0_0_0_1.5px_#d4d4d4]'">
+                        <span class="size-2 rounded-full bg-[#303030] transition-[scale] duration-250 ease-[cubic-bezier(.34,1.56,.64,1)]"
+                          [class]="activa ? 'scale-100' : 'scale-0'"></span>
+                      </span>
+                      <span class="flex size-7.5 items-center justify-center rounded-[9px] bg-[#f1f1f1] text-[#4b5563]">
+                        <tabler-icon [icon]="icono(o.icono)" [size]="16" />
+                      </span>
+                      <span class="flex flex-col gap-[1px]">
+                        <span class="text-[13px] font-semibold text-[#111827]">{{ o.titulo }}</span>
+                        <span class="text-[12px] text-[#8a8a8a]">{{ o.detalle }}</span>
+                      </span>
+                    </button>
+                  }
+                </div>
+                <div class="mt-2.5 flex gap-1.5 border-t border-t-[#f1f1f1] pt-2.5">
+                  <button type="button" (click)="plegarTodos(false)"
+                    class="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#f1f1f1] px-2.5 py-[7px] text-[12.5px] font-medium text-[#303030] hover:bg-[#e6e6e6]!">
+                    <tabler-icon [icon]="icono('chevrons-down')" [size]="14" />Abrir todos
+                  </button>
+                  <button type="button" (click)="plegarTodos(true)"
+                    class="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#f1f1f1] px-2.5 py-[7px] text-[12.5px] font-medium text-[#303030] hover:bg-[#e6e6e6]!">
+                    <tabler-icon [icon]="icono('chevrons-up')" [size]="14" />Plegar todos
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cuenta y filtros activos -->
+          <div class="flex min-h-6.5 flex-wrap items-center gap-2 pr-7 pb-2 pl-1">
+            <span class="text-[12px] text-[#6b7280] tabular-nums">{{ cuentaVisibles() }}</span>
+            @if (metrica(); as m) {
+              <span class="inline-flex animate-[fade-in-up_.2s_ease-out] items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pr-1 pl-2.5 text-[11.5px] font-medium text-[#374151]">
+                {{ filtroMetrica[m] }}
+                <button type="button" (click)="metrica.set(null)"
+                  class="flex size-4 cursor-pointer items-center justify-center rounded-full text-[#6b7280] hover:bg-[#d1d5db]! hover:text-[#111827]!">
+                  <tabler-icon [icon]="icono('x')" [size]="11" />
+                </button>
+              </span>
+            }
+            @if (busqueda()) {
+              <span class="inline-flex animate-[fade-in-up_.2s_ease-out] items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pr-1 pl-2.5 text-[11.5px] font-medium text-[#374151]">
+                «{{ busqueda() }}»
+                <button type="button" (click)="busqueda.set('')"
+                  class="flex size-4 cursor-pointer items-center justify-center rounded-full text-[#6b7280] hover:bg-[#d1d5db]! hover:text-[#111827]!">
+                  <tabler-icon [icon]="icono('x')" [size]="11" />
+                </button>
+              </span>
+            }
+          </div>
+
+          <div class="relative min-h-0 flex-1 overflow-y-auto pb-3 [scrollbar-width:none]">
+            @if (carga() === 'cargando') {
+              <div class="flex flex-col gap-2 pt-3 pr-7">
+                @for (k of [1, 2, 3, 4, 5, 6]; track k) {
+                  <span class="h-12 animate-[gp-brillo_1.4s_linear_infinite] rounded-xl [background:linear-gradient(90deg,#e6e6e6_0,#ededed_80px,#e6e6e6_160px)] [background-size:320px_100%]"></span>
+                }
+              </div>
+            } @else if (grupos().length === 0) {
+              <div class="animate-[fade-in-up_.2s_ease-out] pt-10 pr-11 pb-10 pl-4 text-center">
+                <p class="text-[13px] text-[#6b7280]">Ningún proveedor coincide con estos filtros.</p>
+                <button type="button" (click)="limpiarFiltros()"
+                  class="mt-3 cursor-pointer rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[13px] font-medium text-[#374151] hover:bg-[#d4d4d4]!">Limpiar filtros</button>
+              </div>
+            } @else {
+              <div>
+                @for (g of grupos(); track g.clave) {
+                  <app-grupo-proveedores [grupo]="g" (alternar)="alternarGrupo(g.clave)">
+                    @if (vista() === 'lista') {
+                      <div class="flex flex-col gap-0.5 pt-0.5 pb-1">
+                        @for (f of g.filas; track f.proveedor.id) {
+                          <app-fila-proveedor [fila]="f" [seleccionada]="f.proveedor.id === seleccionado()"
+                            (abrir)="abrir(f.proveedor.id)" (ejecutar)="ejecutar(f.proveedor.id, $event)" />
+                        }
+                      </div>
+                    } @else {
+                      <div class="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-2.5 pt-1.5 pr-7 pb-2">
+                        @for (f of g.filas; track f.proveedor.id) {
+                          <app-tarjeta-proveedor [fila]="f" [seleccionada]="f.proveedor.id === seleccionado()"
+                            (abrir)="abrir(f.proveedor.id)" (ejecutar)="ejecutar(f.proveedor.id, $event)" />
+                        }
+                      </div>
+                    }
+                  </app-grupo-proveedores>
+                }
+                <p class="mt-3 mr-7 mb-1 flex flex-wrap items-center justify-center gap-1.5 text-center text-[11.5px] text-[#8a8a8a]">
+                  <tabler-icon [icon]="icono('bolt')" [size]="13" />
+                  {{ puedeEditar() ? 'La etiqueta de cada fila es la próxima acción: haz clic para resolverla' : 'Solo lectura · necesitas el permiso proveedores.editar' }}
+                </p>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Hoja del proveedor -->
+      <section class="relative z-[1] flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_40px_-24px_rgba(0,0,0,.22)]">
+        @if (hoja(); as h) {
+          <div class="flex min-h-0 flex-1 flex-col">
+            <div class="shrink-0 px-6 pt-4">
+              <div class="flex items-center gap-2">
+                <span class="truncate text-[10.5px] font-semibold tracking-[.08em] text-[#9ca3af] uppercase">{{ h.nuevo ? 'Nuevo proveedor' : 'Proveedor · #' + h.id }}</span>
+                <span class="flex-1"></span>
+                @if (h.navegacion; as nav) {
+                  <span class="text-[11.5px] text-[#9ca3af] tabular-nums">{{ nav.posicion + 1 }} de {{ nav.total }}</span>
+                  <button type="button" (click)="mover(-1)" title="Anterior (↑)"
+                    class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!" [class.opacity-35]="nav.posicion === 0">
+                    <tabler-icon [icon]="icono('chevron-up')" [size]="16" />
+                  </button>
+                  <button type="button" (click)="mover(1)" title="Siguiente (↓)"
+                    class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!" [class.opacity-35]="nav.posicion === nav.total - 1">
+                    <tabler-icon [icon]="icono('chevron-down')" [size]="16" />
+                  </button>
+                }
+                @if (!h.nuevo) {
+                  <span class="relative">
+                    <button type="button" (click)="alternarMenu('acciones', $event)" title="Más acciones"
+                      class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!">
+                      <tabler-icon [icon]="icono('dots')" [size]="16" />
+                    </button>
+                    @if (menu() === 'acciones') {
+                      <div (click)="$event.stopPropagation()"
+                        class="absolute top-8.5 right-0 z-40 w-57.5 animate-[fade-in-up_.18s_ease-out] rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)]">
+                        <button type="button" (click)="compraRapida(h.id)"
+                          class="flex h-8.5 w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] hover:bg-[#f4f4f4]!">
+                          <tabler-icon [icon]="icono('file-plus')" [size]="15" class="text-[#6b7280]" />Nueva compra
+                        </button>
+                        <button type="button" (click)="pedirBaja()" [title]="puedeEliminar() ? '' : 'Necesitas el permiso proveedores.eliminar'"
+                          class="flex h-8.5 w-full items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] text-[#b42318] hover:bg-[#fff1f0]!"
+                          [class]="puedeEliminar() ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'">
+                          <tabler-icon [icon]="icono('trash')" [size]="15" />Eliminar proveedor
+                        </button>
+                      </div>
+                    }
+                  </span>
+                }
+                <button type="button" (click)="expandida.set(!expandida())" [title]="completa() ? 'Volver a la lista' : 'Abrir en página completa'"
+                  class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!">
+                  <tabler-icon [icon]="icono(completa() ? 'arrows-minimize' : 'arrows-maximize')" [size]="16" />
+                </button>
+                <button type="button" (click)="cerrar()" title="Cerrar (Esc)"
+                  class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!">
+                  <tabler-icon [icon]="icono('x')" [size]="16" />
+                </button>
+              </div>
+
+              <app-tarjeta-contacto [borrador]="h.borrador" [nuevo]="h.nuevo" [nombreGuardado]="h.proveedor?.nombre ?? ''" [idTono]="h.idTono"
+                [correoValido]="!correoConError()" [puedeComprar]="puedeComprar()" (copiarNit)="copiarNit()" (nuevaCompra)="compraRapida(h.id)" />
+
+              <div class="relative z-30 mt-3 flex flex-wrap items-center gap-1.5">
+                <div class="relative">
+                  <button type="button" (click)="h.editable && alternarMenu('estado', $event)"
+                    class="flex h-7.5 cursor-pointer items-center gap-[7px] rounded-full bg-[#f4f4f4] pr-2.5 pl-[11px] text-[12.5px] font-medium text-[#111827] transition-[background-color] duration-200 ease-[ease] hover:bg-[#ebebeb]!">
+                    <span class="size-[7px] rounded-full transition-[background-color] duration-300 ease-[ease]" [class]="h.borrador.activo ? 'bg-[#29845a]' : 'bg-[#9ca3af]'"></span>
+                    {{ h.borrador.activo ? 'Activo' : 'Inactivo' }}
+                    <tabler-icon [icon]="icono('chevron-down')" [size]="13" class="text-[#8a8a8a]" />
+                  </button>
+                  <div [appPopover]="menu() === 'estado'" (click)="$event.stopPropagation()"
+                    class="absolute top-9 left-0 w-62.5 origin-top-left rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)] [transition:opacity_.18s_ease,_transform_.22s_cubic-bezier(.2,.8,.2,1)]">
+                    @for (o of estados; track o.titulo) {
+                      <button type="button" (click)="ponerActivo(o.activo)"
+                        class="flex w-full cursor-pointer items-center gap-[9px] rounded-[9px] px-2.5 py-[7px] text-left text-[13px] hover:bg-[#f4f4f4]!">
+                        <span class="size-[7px] rounded-full" [class]="o.activo ? 'bg-[#29845a]' : 'bg-[#9ca3af]'"></span>
+                        <span class="flex flex-1 flex-col">
+                          <span>{{ o.titulo }}</span>
+                          <span class="text-[11.5px] text-[#8a8a8a]">{{ o.detalle }}</span>
+                        </span>
+                        @if (o.activo === h.borrador.activo) {
+                          <tabler-icon [icon]="icono('check')" [size]="14" />
+                        }
+                      </button>
+                    }
+                  </div>
+                </div>
+                <app-accion-proveedor variante="hoja" [accion]="h.accion" (ejecutar)="ejecutar(h.id, $event)" />
+                <span class="flex h-7.5 items-center gap-1.5 rounded-full bg-[#f4f4f4] px-[11px] text-[12.5px] font-medium text-[#374151]">
+                  <tabler-icon [icon]="icono('calendar-event')" [size]="14" class="text-[#6b7280]" />{{ h.proxima }}
+                </span>
+                @if (!h.nuevo) {
+                  <span class="ml-auto flex flex-col items-end">
+                    <span class="font-[Archivo] text-[17px] font-semibold text-[#111827] tabular-nums">{{ h.total }}</span>
+                    <span class="text-[11px] text-[#9ca3af]">{{ h.participacion }} % de lo comprado</span>
+                  </span>
+                }
+              </div>
+
+              <app-pestanas-hoja class="mt-3.5" [pestanas]="pestanas()" [activa]="pestanaActiva()" (elegir)="elegirPestana($event)" />
+            </div>
+
+            <div class="min-h-0 flex-1 overflow-y-auto bg-white">
+              <div class="mx-auto flex w-full flex-col gap-3.5 px-6 pt-4.5 pb-30" [class]="completa() ? 'max-w-[760px]' : 'max-w-none'">
+                @if (!h.editable) {
+                  <div class="flex items-center gap-2 rounded-xl bg-[#f7f7f7] px-3 py-2.5 text-[12.5px] text-[#4b5563]">
+                    <tabler-icon [icon]="icono('lock')" [size]="15" />Solo lectura · necesitas el permiso proveedores.editar
+                  </div>
+                }
+                @switch (pestanaActiva()) {
+                  @case ('general') {
+                    <app-pestana-general [borrador]="h.borrador" [nuevo]="h.nuevo" [editando]="h.editando" [editable]="h.editable" [errores]="erroresVisibles()"
+                      (editar)="editar($event)" (alternarEdicion)="alternarEdicion()" (verCompra)="verCompra($event)" />
+                  }
+                  @case ('compras') {
+                    <app-pestana-compras [proveedorId]="h.id" [(filtro)]="filtroCompras" (verCompra)="verCompra($event)" />
+                  }
+                  @case ('productos') {
+                    <app-pestana-productos [proveedorId]="h.id" [puedeComprar]="puedeComprar()" (reponer)="compraRapida(h.id)" (verProducto)="verProducto($event)" />
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        } @else {
+          <div class="m-auto flex flex-col items-center gap-2 p-6 text-center">
+            <span class="flex size-10 items-center justify-center rounded-full bg-[#f4f4f4] text-[#8a8a8a]">
+              <tabler-icon [icon]="icono('pointer')" [size]="18" />
+            </span>
+            <p class="text-[13px] text-[#6b7280]">Elige un proveedor de la lista.</p>
+            <p class="text-[12px] text-[#9ca3af]">↑ ↓ para moverte · / para buscar · N para crear</p>
+          </div>
+        }
+      </section>
+    }
+  </div>
+
+  @if (modal(); as m) {
+    @if (m.tipo === 'compra') {
+      <app-modal-compra-rapida [proveedorId]="m.proveedorId" (cerrar)="modal.set(null)"
+        (crear)="crearCompra(m.proveedorId, $event)" (armarEnCompras)="armarEnCompras(m.proveedorId)" />
+    } @else {
+      <app-modal-baja [proveedorId]="m.proveedorId" (cerrar)="modal.set(null)" (desactivar)="desactivar(m.proveedorId)" (eliminar)="eliminar(m.proveedorId)" />
+    }
+  }
+</div>

@@ -204,6 +204,22 @@
                         <tabler-icon [icon]="s.icono" [size]="18" [stroke]="1.75" [style.color]="s.tinta" />
                         <div><p class="text-[13.5px] font-semibold text-gray-900">{{ s.titulo }}</p><p class="mt-0.5 text-[13px] text-gray-500">{{ s.texto }}</p></div>
                       </div>
+                      @if (cuenta()?.suscripcion?.prueba?.enPrueba && cuenta()?.suscripcion?.estado === 'activa' && puedeExtenderPrueba()) {
+                        <span></span>
+                        @if (formPrueba(); as fp) {
+                          <div class="flex animate-[fade-in-up_0.18s_ease-out] flex-wrap gap-1.5 rounded-xl bg-[#f7f7f7] p-2.5 shadow-[inset_2px_0_0_#0284c7]">
+                            <input [value]="fp.dias" (input)="formPrueba.set({ dias: $any($event.target).value, motivo: fp.motivo })" inputmode="numeric" placeholder="Días" aria-label="Días a sumar" class="w-16 rounded-[9px] border-0 bg-white px-[11px] py-1.5 text-[13px] tabular-nums outline-none" />
+                            <input [value]="fp.motivo" (input)="formPrueba.set({ dias: fp.dias, motivo: $any($event.target).value })" (keydown.enter)="extenderPrueba()" placeholder="Motivo (queda en la auditoría)" class="min-w-0 flex-1 rounded-[9px] border-0 bg-white px-[11px] py-1.5 text-[13px] outline-none" />
+                            <button type="button" (click)="formPrueba.set(null)" class="rounded-full px-3 text-[12.5px] text-gray-600 hover:bg-[#ececec]">Cancelar</button>
+                            <button type="button" (click)="extenderPrueba()" [disabled]="!fp.dias || fp.motivo.trim().length < 5" class="rounded-full bg-[#303030] px-3 text-[12.5px] font-medium text-white disabled:opacity-40">Extender</button>
+                            <p class="w-full text-[11.5px] text-gray-400">Una prueba dura como máximo {{ diasPruebaMax }} días en total.</p>
+                          </div>
+                        } @else {
+                          <button type="button" (click)="formPrueba.set({ dias: '7', motivo: '' })" class="flex items-center gap-1.5 self-start justify-self-start rounded-full bg-[#f1f1f1] px-[11px] py-[5px] text-xs font-medium text-[#303030] hover:bg-[#e6e6e6]">
+                            <tabler-icon [icon]="i.mas" [size]="13" [stroke]="1.75" />Extender prueba
+                          </button>
+                        }
+                      }
                     </div>
                   }
                   @if (cuenta(); as c) {
@@ -217,9 +233,19 @@
                               @if (l.origen === 'cargo' && l.cargoId) {
                                 <button type="button" (click)="bajaCargo.set({ id: l.cargoId!, motivo: '' })" class="text-[11.5px] text-gray-400 hover:text-[#b42318]">Quitar</button>
                               }
-                              <span class="font-medium tabular-nums text-gray-900">{{ plata(l.monto) }}</span>
+                              @if (l.origen === 'descuento' && l.descuentoId && puedeDescontar()) {
+                                <button type="button" (click)="bajaDescuento.set({ id: l.descuentoId!, motivo: '' })" class="text-[11.5px] text-gray-400 hover:text-[#b42318]">Quitar</button>
+                              }
+                              <span class="font-medium tabular-nums" [class]="l.origen === 'descuento' ? 'text-[#087b5d]' : 'text-gray-900'">{{ plata(l.monto) }}</span>
                             </span>
                           </div>
+                          @if (l.descuentoId && bajaDescuento()?.id === l.descuentoId) {
+                            <div class="flex gap-1.5 py-2">
+                              <input [value]="bajaDescuento()!.motivo" (input)="bajaDescuento.set({ id: l.descuentoId!, motivo: $any($event.target).value })" (keydown.enter)="quitarDescuento()" placeholder="Motivo para quitarlo" class="min-w-0 flex-1 rounded-[9px] border-0 bg-[#f5f5f5] px-[11px] py-1.5 text-[13px] outline-none" />
+                              <button type="button" (click)="bajaDescuento.set(null)" class="rounded-full px-3 text-[12.5px] text-gray-600 hover:bg-[#f1f1f1]">Cancelar</button>
+                              <button type="button" (click)="quitarDescuento()" [disabled]="bajaDescuento()!.motivo.trim().length < 5" class="rounded-full bg-[#d82c0d] px-3 text-[12.5px] font-medium text-white disabled:opacity-40">Quitar</button>
+                            </div>
+                          }
                           @if (l.cargoId && bajaCargo()?.id === l.cargoId) {
                             <div class="flex gap-1.5 py-2">
                               <input [value]="bajaCargo()!.motivo" (input)="bajaCargo.set({ id: l.cargoId!, motivo: $any($event.target).value })" (keydown.enter)="quitarCargo()" placeholder="Motivo de la baja" class="min-w-0 flex-1 rounded-[9px] border-0 bg-[#f5f5f5] px-[11px] py-1.5 text-[13px] outline-none" />
@@ -239,10 +265,59 @@
                             <button type="button" (click)="formExtra.set(null)" class="rounded-full px-3 text-[12.5px] text-gray-600 hover:bg-[#ececec]">Cancelar</button>
                             <button type="button" (click)="agregarExtra()" class="rounded-full bg-[#303030] px-3 text-[12.5px] font-medium text-white">Agregar</button>
                           </div>
+                        } @else if (formDescuento(); as fd) {
+                          <div class="flex animate-[fade-in-up_0.18s_ease-out] flex-col gap-2.5 rounded-xl bg-[#f7f7f7] p-3 shadow-[inset_2px_0_0_#087b5d]">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                              <span class="w-[70px] text-[11.5px] text-gray-500">Descuento</span>
+                              @for (pct of porcentajesRapidos; track pct) {
+                                <button type="button" (click)="parcheDescuento({ porcentaje: '' + pct })" class="rounded-full px-[11px] py-[4px] text-xs font-medium transition-colors" [class]="fd.porcentaje === '' + pct ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] hover:bg-[#ececec]'">{{ pct }} %</button>
+                              }
+                              <label class="flex items-center gap-1 rounded-full bg-white py-[3px] pl-2.5 pr-1.5 text-xs text-gray-500">
+                                <input [value]="fd.porcentaje" (input)="parcheDescuento({ porcentaje: $any($event.target).value })" inputmode="decimal" aria-label="Porcentaje de descuento" class="w-10 border-0 bg-transparent text-right text-xs font-medium tabular-nums text-gray-900 outline-none" />%
+                              </label>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                              <span class="w-[70px] text-[11.5px] text-gray-500">Motivo</span>
+                              @for (m of motivosDescuento; track m.valor) {
+                                <button type="button" [title]="m.ayuda" (click)="parcheDescuento({ motivo: m.valor })" class="rounded-full px-[11px] py-[4px] text-xs font-medium transition-colors" [class]="fd.motivo === m.valor ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] hover:bg-[#ececec]'">{{ m.texto }}</button>
+                              }
+                            </div>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                              <span class="w-[70px] text-[11.5px] text-gray-500">Duración</span>
+                              @for (d of duracionesDescuento; track d.texto) {
+                                <button type="button" (click)="parcheDescuento({ meses: d.meses })" class="rounded-full px-[11px] py-[4px] text-xs font-medium transition-colors" [class]="fd.meses === d.meses ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] hover:bg-[#ececec]'">{{ d.texto }}</button>
+                              }
+                            </div>
+                            <input [value]="fd.nota" (input)="parcheDescuento({ nota: $any($event.target).value })" placeholder="Nota interna (opcional, el cliente no la ve)" class="rounded-[9px] border-0 bg-white px-[11px] py-1.5 text-[13px] outline-none" />
+                            @if (vistaDescuento(); as v) {
+                              <p class="text-[12.5px] leading-[18px] text-gray-600">
+                                El cliente lee <span class="font-medium text-gray-900">"{{ v.concepto }}"</span>
+                                y su cuota pasa de {{ plata(v.antes) }} a <span class="font-semibold text-gray-900">{{ plata(v.despues) }}</span> desde el próximo cobro.
+                                @if (v.reemplaza) { Reemplaza al actual ({{ v.reemplaza }}): no se acumulan. }
+                                @if (v.gratis) { Con 100 % el mes se da por pagado solo, sin cobrarle. }
+                              </p>
+                            }
+                            <div class="flex justify-end gap-1.5">
+                              <button type="button" (click)="formDescuento.set(null)" class="rounded-full px-3 py-1 text-[12.5px] text-gray-600 hover:bg-[#ececec]">Cancelar</button>
+                              <button type="button" (click)="darDescuento()" [disabled]="!porcentajeValido()" class="rounded-full bg-[#303030] px-3 py-1 text-[12.5px] font-medium text-white disabled:opacity-40">Aplicar descuento</button>
+                            </div>
+                          </div>
                         } @else {
-                          <button type="button" (click)="abrirExtra()" class="flex items-center gap-1.5 self-start rounded-full bg-[#f1f1f1] px-[11px] py-[5px] text-xs font-medium text-[#303030] hover:bg-[#e6e6e6]">
-                            <tabler-icon [icon]="i.mas" [size]="13" [stroke]="1.75" />Extra mensual
-                          </button>
+                          <div class="flex flex-wrap gap-1.5">
+                            <button type="button" (click)="abrirExtra()" class="flex items-center gap-1.5 self-start rounded-full bg-[#f1f1f1] px-[11px] py-[5px] text-xs font-medium text-[#303030] hover:bg-[#e6e6e6]">
+                              <tabler-icon [icon]="i.mas" [size]="13" [stroke]="1.75" />Extra mensual
+                            </button>
+                            @if (puedeDescontar() && c.suscripcion) {
+                              <button type="button" (click)="abrirDescuento()" class="flex items-center gap-1.5 self-start rounded-full bg-[#f1f1f1] px-[11px] py-[5px] text-xs font-medium text-[#303030] hover:bg-[#e6e6e6]">
+                                <tabler-icon [icon]="i.mas" [size]="13" [stroke]="1.75" />{{ descuentoActivo() ? 'Cambiar descuento' : 'Descuento' }}
+                              </button>
+                            }
+                          </div>
+                          @if (descuentoActivo(); as d) {
+                            <p class="mt-1.5 text-[11.5px] text-gray-400">
+                              {{ d.concepto }} desde el {{ d.activoDesde | date: 'd MMM y' }}{{ d.activoHasta ? ', hasta el ' + (d.activoHasta | date: 'd MMM y') : ', sin fecha de fin' }}{{ d.creadoPor ? ' · ' + d.creadoPor.nombre : '' }}{{ d.nota ? ' · ' + d.nota : '' }}
+                            </p>
+                          }
                         }
                       </div>
                     </div>

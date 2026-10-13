@@ -64,6 +64,11 @@ export class SuscripcionService {
     return this.http.post<Suscripcion>(`${environment.apiUrl}/suscripciones/${id}/reactivar`, { planId });
   }
 
+  /** `POST /suscripciones/:id/extender-prueba` (2026-10-10): suma días a una prueba en curso (hasta 90 en total). */
+  extenderPrueba(id: number, dias: number, motivo: string): Observable<Suscripcion> {
+    return this.http.post<Suscripcion>(`${environment.apiUrl}/suscripciones/${id}/extender-prueba`, { dias, motivo });
+  }
+
   /** `PATCH /suscripciones/:id/estado`. */
   cambiarEstado(id: number, estado: EstadoAsignableSuscripcion): Observable<Suscripcion> {
     return this.http.patch<Suscripcion>(`${environment.apiUrl}/suscripciones/${id}/estado`, {

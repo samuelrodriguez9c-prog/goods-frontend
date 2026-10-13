@@ -508,6 +508,23 @@ Lo que **no existe hoy** en Goods y aparece en Shopify:
 - **Notificaciones** (`/notificaciones`) y **Settings** (Perfil, Correo y
   contacto, Seguridad, Correos, Cuenta) son las de staff, en tuteo.
 
+## Período de prueba y descuentos (2026-10-10)
+
+Ver `PROPUESTA_PRUEBA_Y_DESCUENTOS.md` (raíz del workspace) y
+`backend/MODULOS_PENDIENTES.md`.
+
+- **Franja de prueba** (`layout/acceso-empresa/`, `variante="prueba"`):
+  mientras `accesoEmpresa.estado === 'en_prueba'`, el Shell muestra "Te
+  quedan N días de prueba gratis" con la fecha de fin; azul, y ámbar los
+  últimos 3 días. Si ya se generó el cobro de fin de prueba, dice cuánto
+  pagar. Terminada sin pago, la pantalla de bloqueo usa el motivo nuevo
+  `prueba_terminada` ("Terminó tu prueba gratis").
+- **Registro público**: cada tarjeta de plan muestra "Incluye N días de
+  prueba gratis" (`PlanPublico.diasPrueba`, 0 = sin prueba).
+- Los descuentos los da Goods desde staff; el cliente los ve como una línea
+  más del cobro ("Descuento por fidelidad (20 %)") en la franja de próximo
+  cobro y en el correo de cambio de cuota.
+
 ## Topbar
 
 Fuente: captura 106. Se construye por partes (izquierda → centro →
@@ -858,6 +875,124 @@ vez de que cada item controle su propio fondo:
 Con esto, el "pellizco" del micro-gap (arriba) ya no puede pasar —
 nunca hay dos pills visibles al mismo tiempo, solo una que se mueve —
 pero se dejó el `gap-0.5` igual, no molesta en nada.
+
+## Tienda en línea (2026-10-10)
+
+Fase 0 de `PROPUESTA_WHATSAPP.md` (raíz). Dos piezas:
+
+- **`admin` → Tienda en línea** (`features/tienda/`, sidebar con el módulo
+  `tienda` y el permiso `tienda.configurar`). Dos columnas: a la izquierda
+  el formulario (dirección con el prefijo fijo de la tienda, WhatsApp con
+  selector de país +57 / +1 / otro, logo, frase bajo el nombre, moneda,
+  mostrar agotados) y "Guardar cambios" solo activo si hay cambios; a la
+  derecha el estado (Publicada / Sin publicar), el enlace con Copiar, Ver
+  tienda y Compartir (abre WhatsApp con el enlace listo para mandar o
+  poner en estados), Pausar, y cuántos productos se ven. No se puede
+  publicar sin WhatsApp.
+- **Proyecto `tienda`** (tercer proyecto Angular, puerto 4202, sin
+  PrimeNG ni `shared-ui` para que cargue rápido en celular). Paleta propia
+  clara (papel `#f5f6f3`, tinta `#1d211e`), Inter + Archivo. Cabecera con
+  logo o inicial, nombre en Archivo y "Escribir al negocio"; buscador si
+  hay más de 8 productos y chips de categoría fijos arriba; grilla de 2
+  columnas en celular (4 en escritorio) con tarjetas cuadradas, precio
+  tachado si hay precio anterior, "Agotado" / "Últimas unidades".
+  "Agregar" se vuelve un contador. Barra inferior con el total → hoja "Tu
+  pedido" con cantidades, nombre y nota opcionales, y la vista previa del
+  mensaje como una burbuja de WhatsApp ("Así le llega a …"): lo que se
+  ve es exactamente lo que se manda. "Enviar pedido por WhatsApp" pide el
+  mensaje al backend (precios y stock del momento) y abre `wa.me`; si algo
+  se agotó, lo dice y actualiza el catálogo. El carrito se recuerda por
+  tienda en el navegador.
+
+## WhatsApp (2026-10-11)
+
+Fase 1 de `PROPUESTA_WHATSAPP.md` (`features/whatsapp/`, sidebar con el
+módulo `whatsapp` y el permiso `whatsapp.ver`).
+
+- **Sin número conectado**: tres pasos y "Conectar con WhatsApp" (abre el
+  registro integrado de Meta con coexistencia, `core/whatsapp/registro-integrado.ts`).
+  Abajo, plegado, "Conectar a mano" para el número de prueba de Meta
+  (token + id del número). Si Goods todavía no configuró Meta, lo dice; si
+  el usuario no es el dueño, dice que solo el dueño puede conectarlo.
+- **Bandeja**: cabecera con el número y "Desconectar número" (con
+  confirmación en línea). A la izquierda los chats (buscador por nombre o
+  número, Todos / No leídos, inicial, último mensaje con "Tú:" si fue
+  nuestro, hora y contador verde de no leídos). A la derecha el chat con
+  el fondo y las burbujas que la gente reconoce de WhatsApp: separador por
+  día, "Desde el celular" en lo que el dueño escribió en la app, reloj /
+  ✓ / ✓✓ / ✓✓ azul / error con el motivo. Bajo el nombre, cuánto queda de
+  la ventana de 24 h; cerrada, la caja de texto se reemplaza por la
+  explicación. Enter envía, Shift + Enter salta de línea. Se actualiza en
+  vivo (`whatsapp:cambio`) y abrir un chat lo marca como leído. En
+  pantallas angostas se ve la lista o el chat, con "Volver".
+
+### Fase 3: plantillas y respuestas automáticas (2026-10-12)
+
+No van como hijos del menú lateral (el conector "árbol" del sidebar es de
+un solo grupo, Products): se entra desde la cabecera de la bandeja,
+"Plantillas" y "Respuestas automáticas", y cada pantalla tiene "← WhatsApp".
+
+- **Plantillas** (`/whatsapp/plantillas`): lista con estado (En revisión
+  ámbar, Aprobada verde, Rechazada rojo con el motivo de Meta traducido,
+  Pausada / Deshabilitada gris), tipo (Servicio / Promoción) e idioma.
+  "Sincronizar con WhatsApp" y "Nueva plantilla": nombre interno, tipo,
+  idioma, mensaje con "+ Agregar variable" (inserta `{{n}}` donde está el
+  cursor), un ejemplo por variable para la revisión de Meta y la vista
+  "Así lo verá el cliente" con los ejemplos puestos. Borrar pide
+  confirmación en línea. Sin `whatsapp.configurar` es solo lectura.
+- **Respuestas automáticas** (`/whatsapp/automatizaciones`): Palabras
+  clave (chips, interruptor, editar, borrar), Fuera de horario
+  (interruptor, mensaje, zona horaria, horario por día con casilla y
+  horas), Bienvenida (interruptor, mensaje y vista previa) y Respuestas
+  rápidas (`/atajo` y texto). `{nombre}` y `{tienda}` en los textos.
+- **Bandeja**: con la ventana de 24 h cerrada, en vez de la caja de texto
+  aparece el selector de plantillas aprobadas, una caja por variable (la
+  primera ya trae el nombre del cliente), la vista previa en burbuja verde
+  y el botón de enviar; sin plantillas aprobadas, el enlace para crearlas.
+  En la caja de texto, "/" abre las respuestas rápidas (↑ ↓, Enter o Tab
+  para elegir, Esc cierra); se inserta el texto con `{nombre}` ya
+  reemplazado. Las burbujas dicen "Respuesta automática" (autor `bot`) y
+  "Plantilla: nombre".
+
+### Asistente de IA, promociones y campañas (2026-10-12)
+
+Decisiones de gerencia de `PROPUESTA_WHATSAPP.md` §10.
+
+- **Respuestas automáticas** arranca con la tarjeta "Asistente de IA":
+  interruptor, "Lo que el asistente debe saber de tu negocio" (envíos,
+  pagos, cambios…), cuándo se hace a un lado y cuántas veces respondió en
+  24 h. Sin la IA configurada en Goods, lo dice y el interruptor queda
+  deshabilitado.
+- **Bandeja**: en la cabecera, "Campañas" junto a Plantillas y Respuestas
+  automáticas. En el chat abierto, dos píldoras: "Asistente respondiendo /
+  en pausa" (tocar lo pausa o se lo devuelve) y "Acepta promociones / Sin
+  promociones" (tocar pide confirmación en línea). Las burbujas dicen
+  "Asistente de IA", "Campaña · plantilla" o "Alta / baja de promociones".
+  En el selector de plantillas cada una dice si es de servicio o de
+  promoción; una de promoción a un cliente que no aceptó queda bloqueada
+  con la explicación. Con la ventana cerrada se aclara que Meta cobra las
+  plantillas a la cuenta del negocio; la pantalla de conectar también lo
+  dice.
+- **Campañas** (`/whatsapp/campanas`): tres cifras (aceptaron, recibieron
+  una en los últimos 7 días, recibirían hoy), "Nueva campaña" (nombre,
+  plantilla de promoción, cada variable como "Nombre del cliente" con
+  respaldo o "Texto fijo", vista previa con el pie de baja, ahora o
+  programada) con un segundo paso de confirmación que dice a cuántos
+  clientes y que Meta cobra cada mensaje. Historial con estado, cancelar
+  las programadas o en curso, y destinatarios / entregados / leídos / no se
+  enviaron / omitidos. Se actualiza solo cada 15 s si hay una en curso.
+- **Plantillas**: la vista previa de una de promoción ya muestra el pie
+  "Responde BAJA para no recibir más promociones".
+- **Formato de WhatsApp** en las burbujas y la vista previa de plantillas:
+  `*negrita*`, `_cursiva_`, `~tachado~` y ```monoespaciado``` se ven como
+  en el celular (`core/whatsapp/formato-whatsapp.ts`; el texto se escapa
+  antes).
+- **Staff** (ficha de la Empresa, pestaña Módulos): bajo el número, tres
+  cajas: asistente de IA activo o apagado, respuestas de la IA en 24 h y
+  30 días (en rojo si llegó al tope del día) y campañas de 30 días.
+- **Tienda pública** (`projects/tienda`): casilla "Quiero recibir novedades
+  y promociones de … por WhatsApp" (desmarcada) debajo de la nota; si se
+  marca, la frase va en el mensaje del pedido y se ve en la vista previa.
 
 ## Pendiente de revisar
 

@@ -1,14 +1,32 @@
-// Espejo mínimo de la entidad `Proveedor` del backend
-// (`modules/proveedor/entities/proveedor.entity.ts`) — solo los campos
-// que el frontend de `admin` necesita hoy (el listado/creación desde el
-// modo documento del Asistente de IA, §5.5 de
-// `PROPUESTA_ASISTENTE_IA_RAG.md`). El resto de campos (nit, correo,
-// telefono, direccion, contactoNombre, notas) existen en el backend pero
-// no hace falta modelarlos acá todavía — no hay ninguna pantalla de
-// gestión de proveedores construida aún (`ProductSuppliersPageComponent`
-// sigue siendo un placeholder).
+// Espejo de la entidad `Proveedor` del backend
+// (`modules/negocio/proveedor/entities/proveedor.entity.ts`). El modo
+// documento del Asistente de IA solo usa id/nombre/activo; la pantalla de
+// Proveedores (Productos v5) usa el resto.
 export interface Proveedor {
   id: number;
   nombre: string;
   activo: boolean;
+  nit?: string | null;
+  correo?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
+  contactoNombre?: string | null;
+  notas?: string | null;
+  /** Días de entrega: 1 = lunes … 6 = sábado. */
+  diasEntrega?: number[];
+  creadoEn?: string;
+  actualizadoEn?: string;
+}
+
+/** Body de POST/PATCH `/proveedores`. Los textos vacíos van como null. */
+export interface ProveedorPayload {
+  nombre?: string;
+  nit?: string | null;
+  correo?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
+  contactoNombre?: string | null;
+  notas?: string | null;
+  activo?: boolean;
+  diasEntrega?: number[];
 }

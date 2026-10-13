@@ -284,6 +284,40 @@
                     </div>
                   </div>
                   <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+                    <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Prueba gratis</span>
+                    <div class="flex flex-col gap-2">
+                      <p class="text-xs text-gray-500">
+                        El plan {{ plan()?.nombre ?? '' }} trae {{ plan()?.diasPrueba ?? 7 }} días. Podés darle más (hasta {{ diasPruebaMax }}) o ninguno. Una sola prueba por negocio.
+                      </p>
+                      <div class="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Días de prueba">
+                        @for (d of opcionesPrueba; track d) {
+                          <button
+                            type="button"
+                            role="radio"
+                            [attr.aria-checked]="diasPruebaEfectivos() === d"
+                            (click)="elegirDiasPrueba(d)"
+                            class="rounded-full px-[11px] py-[5px] text-xs font-medium transition-colors"
+                            [class]="diasPruebaEfectivos() === d ? 'bg-[#303030] text-white' : 'bg-[#f1f1f1] text-[#303030] hover:bg-[#e6e6e6]'"
+                          >
+                            {{ d === 0 ? 'Sin prueba' : d + ' días' }}
+                          </button>
+                        }
+                        <label class="flex items-center gap-1.5 rounded-full bg-[#f1f1f1] py-[3px] pl-[11px] pr-[5px] text-xs text-gray-600">
+                          Otro
+                          <input
+                            type="number"
+                            min="0"
+                            [max]="diasPruebaMax"
+                            [value]="diasPruebaEfectivos()"
+                            (change)="elegirDiasPrueba($any($event.target).value)"
+                            aria-label="Días de prueba"
+                            class="w-14 rounded-full border-0 bg-white px-2 py-0.5 text-xs tabular-nums outline-none"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
                     <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Al confirmar</span>
                     <div class="flex flex-col gap-2">
                       @for (c of consecuencias(); track $index) {

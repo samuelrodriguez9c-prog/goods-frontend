@@ -1,0 +1,352 @@
+@switch (estado()) {
+  @case ('cargando') {
+    <div class="mx-auto max-w-5xl px-4 pt-8" aria-busy="true" aria-label="Cargando la tienda">
+      <div class="flex items-center gap-4">
+        <div class="size-16 animate-pulse rounded-2xl bg-linea"></div>
+        <div class="flex-1 space-y-2">
+          <div class="h-6 w-48 animate-pulse rounded bg-linea"></div>
+          <div class="h-4 w-64 max-w-full animate-pulse rounded bg-linea"></div>
+        </div>
+      </div>
+      <div class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+          <div class="aspect-square animate-pulse rounded-xl bg-linea"></div>
+        }
+      </div>
+    </div>
+  }
+
+  @case ('no-disponible') {
+    <main class="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-16">
+      <h1 class="font-display text-3xl font-bold leading-tight">Esta tienda no está disponible</h1>
+      <p class="mt-3 text-gris">
+        Puede que la dirección esté mal escrita o que el negocio haya pausado su tienda. Si tienes el WhatsApp del negocio, escríbele directamente.
+      </p>
+    </main>
+  }
+
+  @case ('error') {
+    <main class="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-16">
+      <h1 class="font-display text-3xl font-bold leading-tight">No pudimos cargar la tienda</h1>
+      <p class="mt-3 text-gris">Revisa tu conexión a internet y vuelve a intentarlo.</p>
+      <button type="button" (click)="reintentar()"
+        class="mt-6 self-start rounded-full bg-tinta px-5 py-2.5 text-sm font-semibold text-white">
+        Volver a intentar
+      </button>
+    </main>
+  }
+
+  @case ('lista') {
+    @if (tienda(); as t) {
+      <div class="min-h-dvh" [class.pb-28]="unidades() > 0" [attr.inert]="abierto() || detalle() ? '' : null">
+        <header class="mx-auto max-w-5xl px-4 pt-8 pb-4 sm:pt-12">
+          <div class="flex items-start gap-4">
+            @if (t.logoUrl) {
+              <img [src]="t.logoUrl" alt="" class="size-16 shrink-0 rounded-2xl bg-tarjeta object-cover ring-1 ring-linea sm:size-20" />
+            } @else {
+              <div aria-hidden="true"
+                class="grid size-16 shrink-0 place-items-center rounded-2xl bg-tinta font-display text-3xl font-bold text-papel sm:size-20 sm:text-4xl">
+                {{ inicial(t.nombre) }}
+              </div>
+            }
+            <div class="min-w-0 flex-1">
+              <h1 class="font-display text-[1.75rem] font-bold leading-[1.1] tracking-tight text-balance sm:text-4xl">{{ t.nombre }}</h1>
+              @if (t.descripcion) {
+                <p class="mt-1.5 max-w-prose text-[0.95rem] leading-snug text-gris">{{ t.descripcion }}</p>
+              }
+              <a [href]="enlaceChat()" target="_blank" rel="noopener"
+                class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-wa-oscuro underline-offset-4 hover:underline">
+                <tabler-icon [icon]="i.wa" [size]="16" [stroke]="2" />
+                Escribir al negocio
+              </a>
+            </div>
+          </div>
+        </header>
+
+        <nav class="sticky top-0 z-20 border-b border-linea bg-papel/95 backdrop-blur" aria-label="Filtrar productos">
+          <div class="mx-auto max-w-5xl px-4 py-3">
+            @if (conBuscador()) {
+              <label class="mb-3 flex items-center gap-2 rounded-full bg-tarjeta px-4 py-2 ring-1 ring-linea focus-within:ring-2 focus-within:ring-wa">
+                <tabler-icon [icon]="i.buscar" [size]="16" [stroke]="2" class="text-gris" />
+                <span class="sr-only">Buscar</span>
+                <input type="search" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" placeholder="Buscar en {{ t.nombre }}"
+                  class="w-full bg-transparent text-[0.95rem] outline-none placeholder:text-gris/80" />
+              </label>
+            }
+            @if (t.categorias.length) {
+              <div class="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]" role="radiogroup" aria-label="Categoría">
+                <button type="button" role="radio" [attr.aria-checked]="filtro() === null" (click)="filtro.set(null)"
+                  class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+                  [class]="filtro() === null ? 'bg-tinta text-papel' : 'bg-tarjeta text-tinta ring-1 ring-linea'">
+                  Todo
+                </button>
+                @for (c of t.categorias; track c.id) {
+                  <button type="button" role="radio" [attr.aria-checked]="filtro() === c.id" (click)="filtro.set(c.id)"
+                    class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+                    [class]="filtro() === c.id ? 'bg-tinta text-papel' : 'bg-tarjeta text-tinta ring-1 ring-linea'">
+                    {{ c.nombre }}
+                  </button>
+                }
+                @if (hayOtros()) {
+                  <button type="button" role="radio" [attr.aria-checked]="filtro() === 0" (click)="filtro.set(0)"
+                    class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+                    [class]="filtro() === 0 ? 'bg-tinta text-papel' : 'bg-tarjeta text-tinta ring-1 ring-linea'">
+                    Otros
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </nav>
+
+        <main class="mx-auto max-w-5xl px-4 pt-4 pb-10">
+          @if (!t.productos.length) {
+            <p class="py-16 text-center text-gris">Este negocio todavía no tiene productos publicados.</p>
+          } @else if (!visibles().length) {
+            <p class="py-16 text-center text-gris">Nada coincide con “{{ busqueda() }}”.</p>
+          }
+          <ul class="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+            @for (p of visibles(); track p.id) {
+              <li class="flex flex-col">
+                <button type="button" (click)="detalle.set(p)" class="group relative block overflow-hidden rounded-xl bg-tarjeta text-left ring-1 ring-linea"
+                  [attr.aria-label]="'Ver ' + p.nombre">
+                  @if (p.imagenes.length) {
+                    <img [src]="p.imagenes[0]" alt="" loading="lazy"
+                      class="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      [class.opacity-50]="p.agotado" />
+                  } @else {
+                    <div aria-hidden="true" class="grid aspect-square w-full place-items-center bg-[#eaece8] font-display text-4xl font-semibold text-[#c3c9c2]">
+                      {{ inicial(p.nombre) }}
+                    </div>
+                  }
+                  @if (p.agotado) {
+                    <span class="absolute top-2 left-2 rounded-full bg-tinta px-2.5 py-1 text-xs font-semibold text-papel">Agotado</span>
+                  } @else if (p.ultimasUnidades) {
+                    <span class="absolute top-2 left-2 rounded-full bg-tarjeta px-2.5 py-1 text-xs font-semibold text-oferta ring-1 ring-linea">Últimas unidades</span>
+                  }
+                </button>
+                <div class="mt-2.5 flex flex-1 flex-col">
+                  <h2 class="text-[0.95rem] font-medium leading-snug">{{ p.nombre }}</h2>
+                  <p class="mt-1 flex flex-wrap items-baseline gap-x-2">
+                    <span class="font-semibold tabular-nums" [class.text-oferta]="p.precioAntes">{{ monto(p.precio) }}</span>
+                    @if (p.precioAntes) {
+                      <s class="text-sm text-gris tabular-nums">{{ monto(p.precioAntes) }}</s>
+                    }
+                  </p>
+                  <div class="mt-auto pt-3">
+                    @if (p.agotado) {
+                      <p class="py-1.5 text-sm text-gris">Sin unidades por ahora</p>
+                    } @else if (cantidad(p.id)) {
+                      <div class="flex items-center justify-between rounded-full bg-tinta p-1 text-papel">
+                        <button type="button" (click)="cambiar(p, -1)" class="grid size-8 place-items-center rounded-full hover:bg-white/15"
+                          [attr.aria-label]="'Quitar uno de ' + p.nombre">
+                          <tabler-icon [icon]="i.menos" [size]="16" [stroke]="2" />
+                        </button>
+                        <span class="text-sm font-semibold tabular-nums" aria-live="polite">{{ cantidad(p.id) }}</span>
+                        <button type="button" (click)="cambiar(p, 1)" class="grid size-8 place-items-center rounded-full hover:bg-white/15"
+                          [attr.aria-label]="'Agregar otro ' + p.nombre">
+                          <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" />
+                        </button>
+                      </div>
+                    } @else {
+                      <button type="button" (click)="cambiar(p, 1)"
+                        class="flex w-full items-center justify-center gap-1.5 rounded-full bg-tarjeta py-2 text-sm font-semibold ring-1 ring-linea hover:ring-tinta">
+                        <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" />
+                        Agregar
+                      </button>
+                    }
+                  </div>
+                </div>
+              </li>
+            }
+          </ul>
+        </main>
+
+        <footer class="mx-auto max-w-5xl px-4 pb-10 text-xs text-gris">
+          Tienda hecha con <a [href]="goodsUrl" target="_blank" rel="noopener" class="font-medium underline underline-offset-2">Goods</a>
+        </footer>
+      </div>
+
+      <!-- Barra del pedido -->
+      @if (unidades() > 0 && !abierto()) {
+        <div class="fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <button type="button" (click)="abierto.set(true)"
+            class="mx-auto flex w-full max-w-md items-center gap-3 rounded-2xl bg-tinta py-3 pr-3 pl-4 text-left text-papel shadow-[0_8px_24px_-8px_rgb(29_33_30/0.5)]">
+            <span class="relative">
+              <tabler-icon [icon]="i.bolsa" [size]="24" [stroke]="2" />
+              <span class="absolute -top-1.5 -right-2 grid min-w-5 place-items-center rounded-full bg-burbuja px-1 text-[0.7rem] font-bold text-tinta tabular-nums">{{ unidades() }}</span>
+            </span>
+            <span class="flex-1 pl-1">
+              <span class="block text-xs text-papel/70">Tu pedido</span>
+              <span class="block font-semibold tabular-nums">{{ monto(total()) }}</span>
+            </span>
+            <span class="rounded-xl bg-wa px-4 py-2.5 text-sm font-semibold text-white">Ver pedido</span>
+          </button>
+        </div>
+      }
+
+      <!-- Hoja del pedido -->
+      @if (abierto()) {
+        <div class="fixed inset-0 z-40 flex items-end justify-center bg-tinta/40 sm:items-center sm:p-6" (click)="abierto.set(false)">
+          <section #hoja tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="titulo-pedido" (click)="$event.stopPropagation()"
+            class="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-tarjeta outline-none sm:rounded-3xl">
+            <div class="flex items-center justify-between border-b border-linea px-5 py-4">
+              <h2 id="titulo-pedido" class="font-display text-xl font-bold">Tu pedido</h2>
+              <button type="button" (click)="abierto.set(false)" class="grid size-9 place-items-center rounded-full hover:bg-papel" aria-label="Cerrar">
+                <tabler-icon [icon]="i.cerrar" [size]="20" [stroke]="2" />
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-5 py-4">
+              @if (!lineas().length) {
+                <p class="py-8 text-center text-gris">Tu pedido está vacío. Agrega productos desde el catálogo.</p>
+              }
+              <ul class="divide-y divide-linea">
+                @for (l of lineas(); track l.producto.id) {
+                  <li class="py-3">
+                    <div class="flex items-start justify-between gap-3">
+                      <p class="font-medium leading-snug">{{ l.producto.nombre }}</p>
+                      <p class="shrink-0 font-semibold tabular-nums">{{ monto(l.producto.precio * l.cantidad) }}</p>
+                    </div>
+                    <div class="mt-2 flex items-center justify-between">
+                      <p class="text-sm text-gris tabular-nums">{{ monto(l.producto.precio) }} c/u</p>
+                      <div class="flex items-center gap-1 rounded-full ring-1 ring-linea">
+                        <button type="button" (click)="cambiar(l.producto, -1)" class="grid size-8 place-items-center rounded-full hover:bg-papel"
+                          [attr.aria-label]="(l.cantidad === 1 ? 'Quitar ' : 'Quitar uno de ') + l.producto.nombre">
+                          <tabler-icon [icon]="l.cantidad === 1 ? i.quitar : i.menos" [size]="16" [stroke]="2" />
+                        </button>
+                        <span class="w-6 text-center text-sm font-semibold tabular-nums">{{ l.cantidad }}</span>
+                        <button type="button" (click)="cambiar(l.producto, 1)" class="grid size-8 place-items-center rounded-full hover:bg-papel"
+                          [attr.aria-label]="'Agregar otro ' + l.producto.nombre">
+                          <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" />
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                }
+              </ul>
+
+              @if (lineas().length) {
+                <div class="mt-4 grid gap-3">
+                  <label class="grid gap-1 text-sm font-medium">
+                    Tu nombre <span class="sr-only">(opcional)</span>
+                    <input [ngModel]="nombre()" (ngModelChange)="nombre.set($event)" maxlength="80" autocomplete="name" placeholder="Opcional"
+                      class="rounded-xl bg-papel px-3.5 py-2.5 font-normal ring-1 ring-linea outline-none focus:ring-2 focus:ring-wa" />
+                  </label>
+                  <label class="grid gap-1 text-sm font-medium">
+                    Nota para el negocio
+                    <textarea [ngModel]="nota()" (ngModelChange)="nota.set($event)" maxlength="300" rows="2"
+                      placeholder="Opcional: dirección, hora de entrega, sabores…"
+                      class="resize-none rounded-xl bg-papel px-3.5 py-2.5 font-normal ring-1 ring-linea outline-none focus:ring-2 focus:ring-wa"></textarea>
+                  </label>
+                  <label class="flex items-start gap-2.5 text-sm">
+                    <input type="checkbox" [ngModel]="aceptaPromociones()" (ngModelChange)="aceptaPromociones.set($event)"
+                      class="mt-0.5 size-4 shrink-0 accent-wa" />
+                    <span>Quiero recibir novedades y promociones de {{ t.nombre }} por WhatsApp. <span class="text-gris">Puedes darte de baja cuando quieras respondiendo BAJA.</span></span>
+                  </label>
+                </div>
+
+                <p class="mt-5 text-sm font-medium">Así le llega a {{ t.nombre }}</p>
+                <div class="mt-2 rounded-2xl bg-chat p-3">
+                  <div class="relative ml-auto w-fit max-w-[92%] rounded-xl rounded-tr-sm bg-burbuja px-3 py-2 text-[0.9rem] leading-relaxed shadow-[0_1px_0.5px_rgb(0_0_0/0.13)]">
+                    @for (linea of vistaPrevia(); track $index) {
+                      @if (linea.texto) {
+                        <p [class.font-semibold]="linea.negrita" class="break-words">{{ linea.texto }}</p>
+                      } @else {
+                        <p aria-hidden="true">&nbsp;</p>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (errorPedido()) {
+                <p role="alert" class="mt-4 rounded-xl bg-[#fbeae5] px-4 py-3 text-sm text-oferta">{{ errorPedido() }}</p>
+              }
+            </div>
+
+            @if (lineas().length) {
+              <div class="border-t border-linea px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <button type="button" (click)="enviar()" [disabled]="enviando()"
+                  class="flex w-full items-center justify-center gap-2 rounded-2xl bg-wa py-3.5 font-semibold text-white hover:bg-wa-oscuro disabled:opacity-60">
+                  <tabler-icon [icon]="i.wa" [size]="20" [stroke]="2" />
+                  {{ enviando() ? 'Preparando el mensaje…' : 'Enviar pedido por WhatsApp' }}
+                </button>
+                @if (enviado()) {
+                  <p class="mt-3 text-center text-sm text-gris">
+                    ¿Ya enviaste el mensaje?
+                    <button type="button" (click)="vaciar()" class="font-medium text-tinta underline underline-offset-2">Vaciar pedido</button>
+                  </p>
+                } @else {
+                  <p class="mt-3 text-center text-sm text-gris">Se abre WhatsApp con el mensaje listo; tú lo envías.</p>
+                }
+              </div>
+            }
+          </section>
+        </div>
+      }
+
+      <!-- Detalle de un producto -->
+      @if (detalle(); as p) {
+        <div class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/40 sm:items-center sm:p-6" (click)="detalle.set(null)">
+          <section role="dialog" aria-modal="true" [attr.aria-label]="p.nombre" (click)="$event.stopPropagation()"
+            class="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-tarjeta sm:rounded-3xl">
+            <div class="relative">
+              @if (p.imagenes.length) {
+                <div class="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none]">
+                  @for (img of p.imagenes; track $index) {
+                    <img [src]="img" [alt]="p.nombre" class="aspect-square w-full shrink-0 snap-center object-cover" />
+                  }
+                </div>
+                @if (p.imagenes.length > 1) {
+                  <p class="absolute right-3 bottom-3 rounded-full bg-tinta/70 px-2 py-0.5 text-xs text-papel">Desliza para ver {{ p.imagenes.length }} fotos</p>
+                }
+              }
+              <button type="button" (click)="detalle.set(null)" aria-label="Cerrar"
+                class="absolute top-3 right-3 grid size-9 place-items-center rounded-full bg-tarjeta/90 ring-1 ring-linea">
+                <tabler-icon [icon]="i.cerrar" [size]="20" [stroke]="2" />
+              </button>
+            </div>
+            <div class="overflow-y-auto px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+              <h2 class="pr-10 font-display text-2xl font-bold leading-tight">{{ p.nombre }}</h2>
+              <p class="mt-1 flex items-baseline gap-2">
+                <span class="text-lg font-semibold tabular-nums" [class.text-oferta]="p.precioAntes">{{ monto(p.precio) }}</span>
+                @if (p.precioAntes) {
+                  <s class="text-gris tabular-nums">{{ monto(p.precioAntes) }}</s>
+                }
+              </p>
+              @if (p.descripcion) {
+                <p class="mt-3 max-w-prose whitespace-pre-line leading-relaxed text-gris">{{ p.descripcion }}</p>
+              }
+              <div class="mt-5">
+                @if (p.agotado) {
+                  <p class="rounded-xl bg-papel px-4 py-3 text-sm text-gris">Agotado por ahora. Pregúntale al negocio cuándo vuelve.</p>
+                } @else if (cantidad(p.id)) {
+                  <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1 rounded-full ring-1 ring-linea">
+                      <button type="button" (click)="cambiar(p, -1)" class="grid size-10 place-items-center rounded-full hover:bg-papel" aria-label="Quitar uno">
+                        <tabler-icon [icon]="i.menos" [size]="16" [stroke]="2" />
+                      </button>
+                      <span class="w-8 text-center font-semibold tabular-nums">{{ cantidad(p.id) }}</span>
+                      <button type="button" (click)="cambiar(p, 1)" class="grid size-10 place-items-center rounded-full hover:bg-papel" aria-label="Agregar otro">
+                        <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" />
+                      </button>
+                    </div>
+                    <button type="button" (click)="detalle.set(null); abierto.set(true)"
+                      class="flex-1 rounded-full bg-tinta py-3 text-sm font-semibold text-papel">Ver pedido</button>
+                  </div>
+                } @else {
+                  <button type="button" (click)="cambiar(p, 1)"
+                    class="flex w-full items-center justify-center gap-2 rounded-full bg-tinta py-3 font-semibold text-papel">
+                    <tabler-icon [icon]="i.mas" [size]="20" [stroke]="2" />
+                    Agregar al pedido
+                  </button>
+                }
+              </div>
+            </div>
+          </section>
+        </div>
+      }
+    }
+  }
+}

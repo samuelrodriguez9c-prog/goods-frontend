@@ -58,6 +58,8 @@ interface FilaSuscripcion {
   historial: Suscripcion[];
   vigente: boolean;
   mora: boolean;
+  /** En período de prueba (2026-10-10): no factura hasta que paga. */
+  prueba: boolean;
   venc: string | null;
 }
 
@@ -131,10 +133,16 @@ export class SuscripcionesPageComponent {
   private grupoDe(f: FilaSuscripcion): Grupo {
     return !f.vigente ? 'sin' : f.mora || (f.venc !== null && dias(f.venc) <= 7) ? 'pronto' : 'aldia';
   }
-  private precio = (f: FilaSuscripcion) => f.plan?.precioMensual ?? 0;
+  /** Lo que factura por mes según su plan, neto de su descuento (2026-10-10). */
+  private precio = (f: FilaSuscripcion) => {
+    const base = f.plan?.precioMensual ?? 0;
+    const pct = f.empresa.acceso?.descuentoPorcentaje ?? 0;
+    return base - Math.round((base * pct) / 100);
+  };
 
   private readonly vigentes = computed(() => this.filas().filter((f) => f.vigente));
-  protected readonly mrr = computed(() => this.vigentes().reduce((t, f) => t + this.precio(f), 0));
+  /** Las pruebas no suman al MRR hasta que pagan (igual que Ingresos). */
+  protected readonly mrr = computed(() => this.vigentes().filter((f) => !f.prueba).reduce((t, f) => t + this.precio(f), 0));
 
   private readonly filtradas = computed(() => {
     const term = this.buscar().trim().toLowerCase();
@@ -171,6 +179,10 @@ export class SuscripcionesPageComponent {
     let gauge: FilaLista['gauge'];
     if (k === 'sin') gauge = { texto: f.actual.fechaFin ? fmt(f.actual.fechaFin) : '—', ancho: null, color: '', tinta: '#9ca3af' };
     else if (f.mora) gauge = { texto: 'en mora', ancho: 100, color: '#d82c0d', tinta: '#d82c0d' };
+    else if (f.prueba) {
+      const d = Math.max(0, dias(f.venc));
+      gauge = { texto: `prueba · ${d} d`, ancho: Math.max(6, 100 - (d / 30) * 100), color: '#0284c7', tinta: '#0369a1' };
+    }
     else {
       const d = dias(f.venc);
       gauge = { texto: d === 0 ? 'hoy' : d < 0 ? `venció hace ${-d} d` : `en ${d} d`, ancho: Math.max(6, 100 - (d / 30) * 100), color: d <= 7 ? '#b07400' : '#303030', tinta: d <= 7 ? '#b45309' : '#374151' };
@@ -227,7 +239,8 @@ export class SuscripcionesPageComponent {
           const actual = orden.find((s) => s.estado === 'activa') ?? orden[0];
           nuevas.push({
             empresaId, empresa, actual, historial: orden, plan: planes.data.find((p) => p.id === actual.planId) ?? null,
-            vigente: actual.estado === 'activa', mora: empresa.acceso?.estado === 'en_mora', venc: empresa.acceso?.fechaProximoVencimiento ?? null,
+            vigente: actual.estado === 'activa', mora: empresa.acceso?.estado === 'en_mora', prueba: empresa.acceso?.estado === 'en_prueba',
+            venc: empresa.acceso?.fechaProximoVencimiento ?? null,
           });
         });
         if (this.compararAlCargar) {
@@ -320,6 +333,7 @@ export class SuscripcionesPageComponent {
   protected readonly cobroPill = computed(() => {
     const f = this.sel();
     if (!f?.vigente) return f?.actual.fechaFin ? `Sin acceso desde el ${fmt(f.actual.fechaFin)}` : 'No factura';
+    if (f.prueba) return f.venc ? `En prueba hasta el ${fmt(f.venc)}` : 'En prueba';
     return f.mora ? 'En mora' : f.venc ? `Cobra el ${fmt(f.venc)}` : '—';
   });
 
@@ -327,8 +341,9 @@ export class SuscripcionesPageComponent {
   protected readonly peso = computed(() => {
     const f = this.sel();
     const total = this.mrr() || 1;
-    const tramos = [...this.vigentes()].sort((a, b) => this.precio(b) - this.precio(a)).map((x) => ({ id: x.empresaId, nombre: x.empresa.nombre, grow: this.precio(x), actual: x.empresaId === f?.empresaId }));
-    return { pct: f?.vigente ? pct(this.precio(f) / total) : '—', total: `de ${plata(this.mrr())}`, tramos };
+    const tramos = [...this.vigentes().filter((x) => !x.prueba)].sort((a, b) => this.precio(b) - this.precio(a)).map((x) => ({ id: x.empresaId, nombre: x.empresa.nombre, grow: this.precio(x), actual: x.empresaId === f?.empresaId }));
+    // Una prueba no suma al MRR todavía: no tiene peso (2026-10-10).
+    return { pct: f?.vigente && !f.prueba ? pct(this.precio(f) / total) : '—', total: `de ${plata(this.mrr())}`, tramos };
   });
 
   protected readonly extrasCuenta = computed(() => this.modulos().filter((m) => m.override?.tipo === 'concedido').length);
@@ -353,7 +368,10 @@ export class SuscripcionesPageComponent {
     const largo = Math.round((new Date(f.venc).getTime() - ini.getTime()) / 86_400_000);
     const pasados = largo - Math.max(0, d);
     return {
-      con: true, grande: f.mora ? 'En mora' : d === 0 ? 'Cobra hoy' : d < 0 ? `Venció hace ${pl(-d, 'día', 'días')}` : `Cobra en ${pl(d, 'día', 'días')}`, chico: `${plata(this.cuota())} el ${fmtY(f.venc)}`,
+      con: true,
+      grande: f.prueba ? (d > 0 ? `Prueba · termina en ${pl(d, 'día', 'días')}` : 'Prueba terminada')
+        : f.mora ? 'En mora' : d === 0 ? 'Cobra hoy' : d < 0 ? `Venció hace ${pl(-d, 'día', 'días')}` : `Cobra en ${pl(d, 'día', 'días')}`,
+      chico: f.prueba ? `después ${plata(this.cuota())} al mes, desde el ${fmtY(f.venc)}` : `${plata(this.cuota())} el ${fmtY(f.venc)}`,
       dias: Array.from({ length: largo }, (_, k) => (k < pasados - 1 ? '#303030' : k === pasados - 1 ? '#2be0d5' : '#ececec')),
       inicio: fmt(ini.toISOString()), fin: fmt(f.venc),
     };

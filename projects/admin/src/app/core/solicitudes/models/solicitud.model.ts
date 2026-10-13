@@ -79,4 +79,6 @@ export const NOMBRE_MODULO: Record<string, string> = {
   users: 'Usuarios',
   roles: 'Roles y permisos',
   asistente_ia: 'Asistente de IA',
+  tienda: 'Tienda en línea',
+  whatsapp: 'WhatsApp',
 };

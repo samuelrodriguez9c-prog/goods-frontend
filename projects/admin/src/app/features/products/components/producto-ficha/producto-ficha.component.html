@@ -1,0 +1,523 @@
+<section (click)="menu.set(null)" class="relative z-[1] flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_40px_-24px_rgba(0,0,0,.22)]">
+  @if (b(); as b) {
+    <div class="flex min-h-0 flex-1 flex-col">
+      <div class="shrink-0 px-6 pt-4">
+        <!-- Barra superior: posición, ↑ ↓, expandir, más, cerrar -->
+        <div class="flex items-center gap-2">
+          <span class="truncate text-[10.5px] font-semibold uppercase tracking-[.08em] text-[#9ca3af]">{{ esNuevo() ? 'Nuevo producto' : 'Producto' }}</span>
+          <span class="flex-1"></span>
+          @if (posicion().hay) {
+            <span class="text-[11.5px] tabular-nums text-[#9ca3af]">{{ posicion().i + 1 }} de {{ posicion().n }}</span>
+            <button type="button" (click)="s.paso(-1)" title="Anterior (↑)" class="flex rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1] hover:text-[#111827]" [style.opacity]="posicion().i > 0 ? 1 : 0.35"><tabler-icon [icon]="ic.arriba" [size]="16" /></button>
+            <button type="button" (click)="s.paso(1)" title="Siguiente (↓)" class="flex rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1] hover:text-[#111827]" [style.opacity]="posicion().i < posicion().n - 1 ? 1 : 0.35"><tabler-icon [icon]="ic.abajo" [size]="16" /></button>
+          }
+          <button type="button" (click)="s.completa.set(!s.completa())" [title]="s.completa() ? 'Volver a la lista' : 'Abrir en página completa'" class="flex rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1] hover:text-[#111827]">
+            <tabler-icon [icon]="s.completa() ? ic.min : ic.max" [size]="16" />
+          </button>
+          @if (!esNuevo()) {
+            <span class="relative">
+              <button type="button" (click)="alternarMenu('mas', $event)" title="Más acciones" class="flex rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1] hover:text-[#111827]"><tabler-icon [icon]="ic.dots" [size]="16" /></button>
+              @if (menu() === 'mas') {
+                <div (click)="$event.stopPropagation()" class="absolute right-0 top-[34px] z-40 w-[230px] rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)] animate-[fade-in-up_.18s_ease-out]">
+                  <button
+                    type="button"
+                    (click)="menu.set(null); s.pedirEliminar([p()!.id])"
+                    [title]="s.puede('productos.eliminar') ? '' : 'Necesitas el permiso productos.eliminar'"
+                    class="flex h-[34px] w-full items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] text-[#b42318] hover:bg-[#fff1f0]"
+                    [class.opacity-45]="!s.puede('productos.eliminar')"
+                  >
+                    <tabler-icon [icon]="ic.trash" [size]="15" />Eliminar producto
+                  </button>
+                </div>
+              }
+            </span>
+          }
+          <button type="button" (click)="s.cerrarFicha()" title="Cerrar" class="flex rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1] hover:text-[#111827]"><tabler-icon [icon]="ic.x" [size]="16" /></button>
+        </div>
+
+        <!-- Título + precio -->
+        <div class="mt-1.5 flex items-start gap-3.5 animate-[ficha_360ms_cubic-bezier(.2,.8,.2,1)_both]">
+          <span class="flex size-[52px] shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-[#fafafa] font-display text-xl font-semibold text-[#9ca3af] shadow-[inset_0_0_0_1px_#d4d4d4]">
+            @if (imagenes()[0]?.url) {
+              <span class="block size-full bg-cover bg-center" [style.background-image]="'url(' + imagenes()[0].url + ')'"></span>
+            } @else {
+              <span>{{ ((b.nombre || '?').trim()[0] || '?').toUpperCase() }}</span>
+            }
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="line-clamp-2 font-display text-[26px] font-semibold leading-8 tracking-[-0.02em] text-[#111827]">{{ esNuevo() ? 'Nuevo producto' : b.nombre || p()?.nombre }}</div>
+            <p class="m-0 mt-0.5 text-[13px] text-[#6b7280]">
+              @if (esNuevo()) {
+                Completa el nombre y el precio para crearlo
+              } @else {
+                <strong class="font-semibold text-[#111827]">{{ categoriaEtiqueta() }}</strong> · {{ (p()?.sku || 'Sin SKU') }} · actualizado {{ p()?.actualizadoEn | slice: 0 : 10 }}
+              }
+            </p>
+          </div>
+          @if (!esNuevo()) {
+            <span class="whitespace-nowrap font-display text-[26px] font-semibold leading-8 tracking-[-0.02em] tabular-nums text-[#111827]">{{ cop(+b.precio || 0) }}</span>
+          }
+        </div>
+
+        <!-- Chips: estado (popover), destacado, slug -->
+        <div class="relative z-30 mt-3.5 flex flex-wrap items-center gap-1.5">
+          <div class="relative">
+            <button type="button" (click)="alternarMenu('estado', $event)" class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] pl-[11px] pr-2.5 text-[13px] font-medium text-[#111827] transition-colors hover:bg-[#ebebeb]">
+              <span class="size-[7px] rounded-full transition-colors duration-300" [style.background]="EST[b.estado].dot"></span>{{ EST[b.estado].t }}
+              <tabler-icon [icon]="ic.abajo" [size]="13" class="text-[#8a8a8a]" />
+            </button>
+            <div
+              (click)="$event.stopPropagation()"
+              class="absolute left-0 top-9 w-60 origin-top-left rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)] transition-[opacity,transform] duration-200"
+              [class]="menu() === 'estado' ? 'pointer-events-auto scale-100 opacity-100' : 'pointer-events-none -translate-y-1 scale-[0.98] opacity-0'"
+            >
+              @for (e of estados; track e) {
+                <button type="button" (click)="s.editar('estado', e); menu.set(null)" class="flex h-[34px] w-full items-center gap-[9px] rounded-[9px] px-2.5 text-left text-[13px] hover:bg-[#f4f4f4]">
+                  <span class="size-[7px] rounded-full" [style.background]="EST[e].dot"></span><span class="flex-1">{{ EST[e].t }}</span>
+                  @if (b.estado === e) { <tabler-icon [icon]="ic.check" [size]="14" /> }
+                </button>
+              }
+            </div>
+          </div>
+          <button type="button" (click)="!soloLectura() && s.editar('destacado', !b.destacado)" class="flex h-[30px] items-center gap-[7px] rounded-full px-[11px] text-[13px] font-medium text-[#111827] transition-colors duration-[250ms] hover:brightness-[.97]" [style.background]="b.destacado ? '#fff6d1' : '#f4f4f4'">
+            @if (b.destacado) {
+              <tabler-icon [icon]="ic.starOn" [size]="14" class="text-[#ffb904] animate-[pop_.38s_cubic-bezier(.2,.8,.2,1)]" />Destacado
+            } @else {
+              <tabler-icon [icon]="ic.star" [size]="14" class="text-[#6b7280]" />No destacado
+            }
+          </button>
+          @if (!esNuevo() && b.slug) {
+            <span class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-[#111827]"><tabler-icon [icon]="ic.hash" [size]="14" class="text-[#6b7280]" />{{ b.slug.length > 24 ? b.slug.slice(0, 24) + '…' : b.slug }}</span>
+          }
+        </div>
+
+        <!-- Medidor de stock con marca del mínimo -->
+        @if (medidor(); as g) {
+          <div class="mt-4 pb-3.5">
+            <div class="flex items-baseline justify-between text-xs">
+              <span class="text-[#6b7280]">Stock <strong class="font-semibold text-[#111827]">{{ g.txt }}</strong>@if (g.res) { · {{ g.res }} }</span>
+              <span [style.color]="g.notaC">{{ g.nota }}</span>
+            </div>
+            <div class="relative mt-1.5 h-2.5 rounded-full bg-[#f3f3f3]">
+              <span class="absolute inset-y-0 left-0 rounded-full transition-[width,background-color] duration-500" [style.width]="g.w" [style.background]="g.c"></span>
+              @if (g.minL) {
+                <span title="Stock mínimo" class="absolute -bottom-1 -top-1 w-0.5 rounded-full bg-[#00a19a] transition-[left] duration-500" [style.left]="g.minL"></span>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Pestañas: subrayado que se desliza -->
+        <div class="relative -mx-6 grid grid-cols-6 border-b border-[#ebebeb] px-4">
+          @for (t of pestanas; track t[0]) {
+            <button type="button" (click)="s.pestana.set(t[0])" class="relative flex h-[42px] items-center justify-center gap-1.5 whitespace-nowrap text-[13px] transition-colors hover:text-[#111827]" [style.color]="s.pestana() === t[0] ? '#111827' : '#6b7280'" [class.font-semibold]="s.pestana() === t[0]" [class.font-medium]="s.pestana() !== t[0]">
+              {{ t[1] }}
+              @if (errPestana()[t[0]]) { <span class="size-1.5 rounded-full bg-[#d82c0d]"></span> }
+            </button>
+          }
+          <span class="absolute -bottom-px left-4 h-0.5 w-[calc((100%-32px)/6)] rounded-sm bg-[#303030] transition-transform duration-[320ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.transform]="'translateX(' + indicePestana() * 100 + '%)'"></span>
+        </div>
+      </div>
+
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        <div class="mx-auto flex w-full flex-col px-5 pb-24 animate-[ficha_380ms_cubic-bezier(.2,.8,.2,1)_40ms_both]" [style.max-width]="s.completa() ? '760px' : 'none'">
+          @if (soloLectura()) {
+            <div class="mt-2.5 flex items-center gap-2 rounded-xl bg-[#f7f7f7] px-3 py-2.5 text-[12.5px] text-[#4b5563]">
+              <tabler-icon [icon]="ic.lock" [size]="15" />Solo lectura · Necesitas el permiso {{ esNuevo() ? 'productos.crear' : 'productos.editar' }}
+            </div>
+          }
+
+          @switch (s.pestana()) {
+            <!-- ── GENERAL ── -->
+            @case ('general') {
+              <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
+                <div class="flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.id, t: 'Identidad', d: 'Cómo se llama y cómo lo encuentras.' }" />
+                  <label class="flex flex-col gap-2">
+                    <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Nombre', req: true, d: 'Así lo verán tus clientes en la tienda y tu equipo en el panel.' }" />
+                    <input [value]="b.nombre" (input)="s.editar('nombre', $any($event.target).value)" [disabled]="soloLectura()" placeholder="Ej. Pan integral" class="w-full rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] outline-none transition-[box-shadow,background-color] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]" [style.box-shadow]="anillo('nombre')" />
+                    @if (err('nombre')) { <ng-container *ngTemplateOutlet="error; context: { m: err('nombre') }" /> }
+                  </label>
+                  <label class="flex flex-col gap-2">
+                    <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'SKU', d: 'Código interno para encontrarlo rápido. No se repite.' }" />
+                    <input [value]="b.sku" (input)="s.editar('sku', $any($event.target).value)" [disabled]="soloLectura()" placeholder="PAN-001" class="w-full rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] uppercase outline-none transition-[box-shadow,background-color] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]" [style.box-shadow]="anillo('sku')" />
+                    @if (err('sku')) { <ng-container *ngTemplateOutlet="error; context: { m: err('sku') }" /> }
+                  </label>
+                  <label class="flex flex-col gap-2">
+                    <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Marca', d: 'Quién lo fabrica. Si es tuyo, usa el nombre de tu negocio.' }" />
+                    <input [value]="b.marca" (input)="s.editar('marca', $any($event.target).value)" [disabled]="soloLectura()" class="w-full rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] outline-none shadow-[0_0_0_1px_#e5e5e5] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]" />
+                  </label>
+                </div>
+
+                <div class="flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.ajustes, t: 'Organización', d: 'Dónde aparece y si se puede vender.' }" />
+                  <div class="relative flex flex-col gap-2">
+                    <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Categoría', d: 'Agrupa el producto en la tienda y en los reportes.' }" />
+                    <button type="button" (click)="alternarMenu('categoria', $event)" class="flex items-center gap-2 rounded-[10px] bg-white px-3 py-[9px] text-left text-[13px] text-[#111827] shadow-[0_0_0_1px_#e5e5e5] transition-shadow hover:shadow-[0_0_0_1px_#b5b5b5]">
+                      <tabler-icon [icon]="ic.folder" [size]="15" class="text-[#8a8a8a]" /><span class="flex-1 truncate">{{ categoriaEtiqueta() }}</span><tabler-icon [icon]="ic.selector" [size]="15" class="text-[#9ca3af]" />
+                    </button>
+                    <div
+                      (click)="$event.stopPropagation()"
+                      class="absolute inset-x-0 top-[calc(100%+6px)] z-30 max-h-[280px] origin-top overflow-y-auto rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)] transition-[opacity,transform] duration-200"
+                      [class]="menu() === 'categoria' ? 'pointer-events-auto scale-100 opacity-100' : 'pointer-events-none -translate-y-1 scale-[0.98] opacity-0'"
+                    >
+                      <button type="button" (click)="s.editar('categoriaId', ''); menu.set(null)" class="flex h-8 w-full items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] hover:bg-[#f4f4f4]">
+                        <tabler-icon [icon]="ic.sinFolder" [size]="14" class="text-[#9ca3af]" /><span class="flex-1">Sin categoría</span>@if (b.categoriaId === '') { <tabler-icon [icon]="ic.check" [size]="14" /> }
+                      </button>
+                      @for (c of s.arbol(); track c.id) {
+                        <button type="button" (click)="s.editar('categoriaId', '' + c.id); menu.set(null)" class="flex h-8 w-full items-center gap-2 rounded-[9px] pr-2.5 text-left text-[13px] hover:bg-[#f4f4f4]" [style.padding-left.px]="c.categoriaPadreId ? 30 : 10">
+                          <tabler-icon [icon]="c.categoriaPadreId ? ic.hija : ic.folder" [size]="14" class="text-[#9ca3af]" /><span class="flex-1">{{ c.nombre }}</span>@if (b.categoriaId === '' + c.id) { <tabler-icon [icon]="ic.check" [size]="14" /> }
+                        </button>
+                      }
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <span class="flex flex-col gap-0.5"><span class="text-[13px] font-semibold text-[#303030]">Estado</span><span class="text-xs leading-4 text-[#8a8a8a]">{{ DESC_ESTADO[b.estado] }}</span></span>
+                    <div class="relative grid grid-cols-3 rounded-[10px] bg-[#ebebeb] p-[3px]">
+                      <span class="absolute inset-y-[3px] left-[3px] w-[calc((100%-6px)/3)] rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,.08)] transition-transform duration-[320ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.transform]="'translateX(' + estados.indexOf(b.estado) * 100 + '%)'"></span>
+                      @for (e of estados; track e) {
+                        <button type="button" (click)="!soloLectura() && s.editar('estado', e)" class="relative z-[1] flex h-[30px] items-center justify-center gap-1.5 text-[12.5px] transition-colors" [style.color]="b.estado === e ? '#111827' : '#6b7280'" [class.font-semibold]="b.estado === e" [class.font-medium]="b.estado !== e">
+                          <span class="size-1.5 rounded-full transition-opacity" [style.background]="EST[e].dot" [style.opacity]="b.estado === e ? 1 : 0.5"></span>{{ EST[e].t }}
+                        </button>
+                      }
+                    </div>
+                  </div>
+                  <div (click)="!soloLectura() && s.editar('destacado', !b.destacado)" class="flex cursor-pointer items-center gap-3">
+                    <span class="flex flex-col gap-0.5"><span class="text-[13px] font-semibold text-[#303030]">Destacado</span><span class="text-xs leading-4 text-[#8a8a8a]">Aparece primero en la tienda y en las recomendaciones.</span></span>
+                    <span class="flex-1"></span>
+                    <span class="relative h-5 w-[34px] shrink-0 rounded-full transition-colors" [style.background]="b.destacado ? '#303030' : '#d4d4d4'">
+                      <span class="absolute top-0.5 size-4 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,.2)] transition-[left] duration-[220ms]" [style.left.px]="b.destacado ? 16 : 2"></span>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="col-span-full flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <div class="flex items-start gap-3">
+                    <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f4f4f4] text-[#303030]"><tabler-icon [icon]="ic.texto" [size]="17" /></span>
+                    <span class="flex min-w-0 flex-1 flex-col gap-0.5"><span class="text-[15px] font-semibold tracking-[-0.005em] text-[#111827]">Descripción</span><span class="text-xs leading-[17px] text-[#8a8a8a]">Cuéntale al cliente qué lo hace especial. El Asistente de IA la usa para recomendarlo.</span></span>
+                    <button type="button" (click)="mejorarConIA()" [disabled]="soloLectura()" class="flex shrink-0 items-center gap-2 rounded-full bg-[#0a0a0a] py-1.5 pl-[7px] pr-[13px] text-xs font-semibold text-white transition-[transform,background-color] hover:bg-[#262626] active:scale-[.97]">
+                      <!-- marca del Asistente: anillo abierto + punto turquesa (igual que asistente-dock) -->
+                      <span class="flex size-5 items-center justify-center rounded-full bg-[#1f1f1f]">
+                        <span class="relative block size-[11px]">
+                          <span class="absolute inset-0 rounded-full bg-[conic-gradient(from_85deg,#fff_0deg_280deg,transparent_280deg)] [mask:radial-gradient(farthest-side,transparent_calc(100%-2.6px),#000_calc(100%-2.1px))]"></span>
+                          <span class="absolute right-[-0.5px] top-[0.5px] size-1 rounded-full bg-[#2be0d5]"></span>
+                        </span>
+                      </span>
+                      Mejorar con IA
+                    </button>
+                  </div>
+                  <div class="relative">
+                    <textarea [value]="b.descripcion" (input)="s.editar('descripcion', $any($event.target).value)" [disabled]="soloLectura()" maxlength="2000" rows="4" placeholder="Ej. Pan de harina integral con miel de caña, sin conservantes. Ideal para el desayuno." class="block w-full resize-y rounded-[10px] border-0 bg-[#fafafa] px-3 pb-6 pt-[9px] text-[13px] leading-5 outline-none shadow-[0_0_0_1px_#e5e5e5] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]"></textarea>
+                    <span class="pointer-events-none absolute bottom-2 right-3 text-[11px] tabular-nums text-[#9ca3af]">{{ b.descripcion.length }} / 2000</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ── MULTIMEDIA ── -->
+            @case ('multimedia') {
+              <div class="flex min-h-[calc(100vh-260px)] flex-col gap-3 pt-4">
+                <div class="flex flex-1 flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.foto, t: 'Imágenes', d: 'La primera es la portada. Arrastra para cambiar el orden.' }" />
+                  @if (esNuevo()) {
+                    <div class="flex min-h-[420px] flex-1 flex-col items-center justify-center gap-[22px] rounded-[14px] bg-[#fafafa] bg-[radial-gradient(#e2e2e2_1px,transparent_1px)] bg-[length:16px_16px] px-5 py-8 text-center">
+                      <ng-container *ngTemplateOutlet="abanico; context: { icon: ic.lock, color: '#9ca3af' }" />
+                      <span class="flex max-w-[360px] flex-col gap-1.5">
+                        <span class="font-display text-[19px] font-semibold tracking-[-0.01em] text-[#111827]">Primero, guarda el producto</span>
+                        <span class="text-pretty text-[13px] leading-[19px] text-[#6b7280]">Las fotos se guardan dentro de él. Apenas lo guardes, esta zona se abre para que arrastres sus imágenes.</span>
+                      </span>
+                    </div>
+                  } @else if (!imagenes().length) {
+                    <label (drop)="$event.preventDefault(); subir($event.dataTransfer?.files ?? null)" (dragover)="$event.preventDefault()" class="flex min-h-[420px] flex-1 cursor-pointer flex-col items-center justify-center gap-5 rounded-[14px] bg-[#fafafa] bg-[radial-gradient(#e2e2e2_1px,transparent_1px)] bg-[length:16px_16px] px-5 py-8 text-center shadow-[inset_0_0_0_1.5px_#e5e5e5] transition-shadow hover:shadow-[inset_0_0_0_1.5px_#2be0d5]">
+                      <ng-container *ngTemplateOutlet="abanico; context: { icon: ic.subir, color: '#00807a' }" />
+                      <span class="flex max-w-[360px] flex-col gap-1.5">
+                        <span class="font-display text-[19px] font-semibold tracking-[-0.01em] text-[#111827]">Suelta aquí las fotos del producto</span>
+                        <span class="text-pretty text-[13px] leading-[19px] text-[#6b7280]">La primera será la portada. JPG, PNG o WebP · hasta 8 MB cada una · varias a la vez.</span>
+                      </span>
+                      <span class="rounded-full bg-[#303030] px-3.5 py-[7px] text-[13px] font-medium text-white">Elegir imágenes</span>
+                      <input type="file" accept="image/*" multiple (change)="elegirArchivos($any($event.target))" class="hidden" />
+                    </label>
+                  } @else {
+                    <label (drop)="$event.preventDefault(); subir($event.dataTransfer?.files ?? null)" (dragover)="$event.preventDefault()" class="flex cursor-pointer items-center gap-3.5 rounded-xl bg-white p-4 shadow-[0_0_0_1px_#e5e5e5] transition-shadow hover:shadow-[0_0_0_1px_#b5b5b5]">
+                      <span class="flex size-10 items-center justify-center rounded-full bg-[#f1f1f1] text-[#4b5563]"><tabler-icon [icon]="ic.subir" [size]="19" /></span>
+                      <span class="flex flex-col gap-0.5"><span class="text-[13px] font-semibold text-[#303030]">Arrastra imágenes o <span class="text-[#00807a]">elígelas</span></span><span class="text-xs text-[#8a8a8a]">JPG, PNG o WebP · hasta 8 MB cada una · varias a la vez</span></span>
+                      <input type="file" accept="image/*" multiple (change)="elegirArchivos($any($event.target))" class="hidden" />
+                    </label>
+                    <div class="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-2.5">
+                      @for (im of imagenes(); track im.id; let n = $index) {
+                        <div
+                          draggable="true"
+                          (dragstart)="arrastrando.set(n)"
+                          (dragover)="$event.preventDefault()"
+                          (drop)="soltarImagen(n, $event)"
+                          (dragend)="arrastrando.set(null)"
+                          class="relative flex aspect-square cursor-grab items-center justify-center overflow-hidden rounded-xl bg-[#f1f1f1] transition-[opacity,transform] hover:scale-[1.02]"
+                          [style.opacity]="arrastrando() === n ? 0.4 : 1"
+                        >
+                          <span class="absolute inset-0 bg-cover bg-center" [style.background-image]="'url(' + im.url + ')'"></span>
+                          @if (n === 0) { <span class="absolute bottom-1.5 left-1.5 rounded-full bg-[#1a1a1a]/[.82] px-2 py-0.5 text-[10.5px] font-semibold text-white">Portada</span> }
+                          <button type="button" (click)="pedirQuitarImagen(im.id, $event)" title="Eliminar imagen" class="absolute right-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-white/[.94] text-[#b42318]"><tabler-icon [icon]="ic.trash" [size]="13" /></button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- ── PRECIO ── -->
+            @case ('precio') {
+              @let r = rentabilidad();
+              <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
+                <div class="flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.tag, t: 'Precio de venta', d: 'Lo que cobras y lo que te cuesta.' }" />
+                  @for (f of [
+                    { k: 'precio', t: 'Precio', req: true, d: 'Lo que paga el cliente, con impuestos incluidos.', ph: '0' },
+                    { k: 'precioComparacion', t: 'Precio de comparación', req: false, d: 'El precio de antes. Se muestra tachado junto al actual.', ph: 'Opcional' },
+                    { k: 'costo', t: 'Costo', req: false, d: 'Lo que te cuesta a ti. Nunca se muestra en la tienda.', ph: 'Opcional' }
+                  ]; track f.k) {
+                    <label class="flex flex-col gap-2">
+                      <ng-container *ngTemplateOutlet="etiqueta; context: { t: f.t, req: f.req, d: f.d }" />
+                      <span class="flex items-center rounded-[10px] bg-[#fafafa] pl-3 transition-shadow" [style.box-shadow]="anillo($any(f.k))">
+                        <span class="text-[13px] text-[#9ca3af]">$</span>
+                        <input [value]="dinero($any(f.k))" (input)="poner($any(f.k), $any($event.target).value, $any($event.target))" [disabled]="soloLectura()" inputmode="numeric" [placeholder]="f.ph" class="min-w-0 flex-1 border-0 bg-transparent py-[9px] pl-1 pr-3 text-[13px] tabular-nums outline-none" />
+                      </span>
+                      @if (err($any(f.k))) { <ng-container *ngTemplateOutlet="error; context: { m: err($any(f.k)) }" /> }
+                    </label>
+                  }
+                </div>
+                <div class="flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.pie, t: 'Rentabilidad', d: 'Se calcula en vivo mientras escribes.' }" />
+                  <div class="flex flex-col gap-0.5"><span class="text-xs text-[#8a8a8a]">Margen</span><span class="font-display text-[34px] font-semibold leading-[38px] tracking-[-0.02em] transition-colors duration-300" [style.color]="r.color">{{ r.margen }}</span></div>
+                  @if (r.barra; as bar) {
+                    <div class="flex flex-col gap-2">
+                      <div class="flex h-2.5 overflow-hidden rounded-full bg-[#ebebeb]"><span class="h-full bg-[#b5b5b5] transition-[width] duration-500" [style.width]="bar.costo"></span><span class="h-full transition-[width] duration-500" [style.width]="bar.gana" [style.background]="bar.c"></span></div>
+                      <div class="flex justify-between text-xs text-[#6b7280]">
+                        <span class="flex items-center gap-1.5"><span class="size-2 rounded-[3px] bg-[#b5b5b5]"></span>Costo {{ bar.costoTxt }}</span>
+                        <span class="flex items-center gap-1.5"><span class="size-2 rounded-[3px]" [style.background]="bar.c"></span>Ganas {{ r.ganancia }}</span>
+                      </div>
+                    </div>
+                  }
+                  <div class="grid grid-cols-2 gap-3 border-t border-[#ebebeb] pt-3">
+                    <span class="flex flex-col"><span class="text-xs text-[#8a8a8a]">Ganancia por unidad</span><span class="text-[15px] font-semibold tabular-nums" [style.color]="r.color">{{ r.ganancia }}</span></span>
+                    <span class="flex flex-col"><span class="text-xs text-[#8a8a8a]">Descuento visible</span><span class="text-[15px] font-semibold tabular-nums">{{ r.descuento }}</span></span>
+                  </div>
+                  @if (r.pierde) { <ng-container *ngTemplateOutlet="aviso; context: { bg: '#fff1f0', ibg: '#ffe0dd', fg: '#b42318', icon: ic.alerta, m: 'El costo es mayor que el precio: pierdes plata en cada unidad.' }" /> }
+                  @if (r.sinCosto) { <ng-container *ngTemplateOutlet="aviso; context: { bg: '#f6f6f6', ibg: '#ebebeb', fg: '#4b5563', icon: ic.info, m: 'Agrega el costo para ver el margen y el valor del inventario.' }" /> }
+                  @if (r.compBaja) { <ng-container *ngTemplateOutlet="aviso; context: { bg: '#fff8e6', ibg: '#ffefc2', fg: '#8a5a00', icon: ic.info, m: 'El precio de comparación debe ser mayor para verse tachado.' }" /> }
+                </div>
+              </div>
+            }
+
+            <!-- ── INVENTARIO ── -->
+            @case ('inventario') {
+              @let iv = inv();
+              <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
+                <div class="flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.cajas, t: 'Unidades', d: 'Lo que tienes y lo que ya está comprometido.' }" />
+                  @if (esNuevo()) { <p class="m-0 text-[12.5px] leading-[18px] text-[#6b7280]">El inventario se crea con 0 unidades al guardar. Después registra la entrada con una compra o un ajuste.</p> }
+                  <div class="flex flex-col gap-2.5">
+                    <div class="flex items-baseline justify-between"><span class="flex flex-col"><span class="text-[13px] font-semibold text-[#303030]">Disponible</span><span class="text-xs text-[#8a8a8a]">En la bodega ahora</span></span><span class="font-display text-2xl font-semibold">{{ iv.disp }}</span></div>
+                    <div class="flex items-baseline justify-between border-t border-[#ebebeb] pt-2.5"><span class="flex flex-col"><span class="text-[13px] font-semibold text-[#303030]">Reservado</span><span class="text-xs text-[#8a8a8a]">Apartado por pedidos sin despachar</span></span><span class="font-display text-2xl font-semibold text-[#0284c7]">{{ iv.res }}</span></div>
+                    <div class="flex items-baseline justify-between border-t border-[#ebebeb] pt-2.5"><span class="flex flex-col"><span class="text-[13px] font-semibold text-[#303030]">Vendible</span><span class="text-xs text-[#8a8a8a]">Disponible menos reservado</span></span><span class="font-display text-2xl font-semibold" [style.color]="iv.vendC">{{ iv.vend }}</span></div>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.campana, t: 'Alerta de stock', d: 'Te avisamos antes de quedarte sin producto.' }" />
+                  <label class="flex flex-col gap-2">
+                    <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Stock mínimo', d: 'Cuando baje de aquí, llega un aviso a la campanita.' }" />
+                    <input [value]="b.stockMinimo" (input)="poner('stockMinimo', $any($event.target).value, $any($event.target))" [disabled]="soloLectura() || !s.puede('inventario.editar')" inputmode="numeric" class="w-full rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] outline-none shadow-[0_0_0_1px_#e5e5e5] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]" />
+                  </label>
+                  <span class="flex items-center gap-2 text-[12.5px] text-[#6b7280]">Ahora: <strong class="font-semibold" [style.color]="iv.estadoC">{{ iv.estado }}</strong></span>
+                  @if (!esNuevo()) {
+                    <button type="button" (click)="abrirAjuste()" [title]="s.puede('inventario.editar') ? '' : 'Necesitas el permiso inventario.editar'" class="mt-auto flex items-center justify-center gap-1.5 rounded-lg bg-primary-button px-3 py-2 text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000]" [class.opacity-45]="!s.puede('inventario.editar')">
+                      <tabler-icon [icon]="ic.ajustes" [size]="14" />Ajustar stock
+                    </button>
+                  }
+                </div>
+                @if (!esNuevo() && s.puede('inventario.ver')) {
+                  <div class="col-span-full flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                    <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.historial, t: 'Movimientos', d: 'Entradas, salidas y ajustes, del más reciente al más antiguo.' }" />
+                    <div class="flex flex-col rounded-xl bg-white px-3.5 py-1 shadow-[0_0_0_1px_#ececec]">
+                      @if (movimientos() === null) {
+                        @for (k of [1, 2, 3]; track k) { <span class="my-2 h-7 rounded-lg bg-[linear-gradient(90deg,#efefef_0,#f6f6f6_80px,#efefef_160px)] bg-[length:320px_100%] animate-[brillo_1.4s_linear_infinite]"></span> }
+                      } @else {
+                        @for (m of movimientos(); track m.id) {
+                          @let v = movVM(m);
+                          <div class="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 border-b border-dashed border-[#ececec] py-[9px] last:border-0">
+                            <span class="flex size-7 items-center justify-center rounded-full" [style.background]="v.bg" [style.color]="v.fg"><tabler-icon [icon]="v.icon" [size]="14" /></span>
+                            <span class="flex min-w-0 flex-col"><span class="text-[13px] font-medium text-[#111827]">{{ v.motivo }}@if (v.ref) { · <span class="text-[#00807a]">{{ v.ref }}</span> }</span><span class="text-[11.5px] text-[#9ca3af]">{{ v.fecha }}</span></span>
+                            <span class="text-[13px] font-semibold tabular-nums" [style.color]="v.fg">{{ v.titulo }}</span>
+                          </div>
+                        } @empty {
+                          <p class="m-0 py-3 text-[13px] text-[#6b7280]">Sin movimientos todavía.</p>
+                        }
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- ── ENVÍO ── -->
+            @case ('envio') {
+              @let c = caja();
+              <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
+                <div class="flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.peso, t: 'Peso', d: 'Se usa para calcular el costo del envío.' }" />
+                  <label class="flex flex-col gap-2">
+                    <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Peso empacado', d: 'Incluye la caja o la bolsa.' }" />
+                    <span class="flex items-center rounded-[10px] bg-white pr-3 shadow-[0_0_0_1px_#e5e5e5]">
+                      <input [value]="b.pesoGramos" (input)="poner('pesoGramos', $any($event.target).value, $any($event.target))" [disabled]="soloLectura()" inputmode="numeric" placeholder="0" class="min-w-0 flex-1 border-0 bg-transparent px-3 py-[9px] text-[13px] outline-none" />
+                      <span class="text-xs text-[#9ca3af]">gramos</span>
+                    </span>
+                  </label>
+                  <div class="flex flex-col gap-2">
+                    <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Medidas del paquete', d: 'Largo, ancho y alto de la caja ya empacada, en centímetros.' }" />
+                    <div class="grid grid-cols-3 gap-2">
+                      @for (m of [['largoCm', 'Largo'], ['anchoCm', 'Ancho'], ['altoCm', 'Alto']]; track m[0]) {
+                        <label class="flex flex-col gap-[5px]">
+                          <span class="text-[11.5px] text-[#6b7280]">{{ m[1] }}</span>
+                          <input [value]="$any(b)[m[0]]" (input)="poner($any(m[0]), $any($event.target).value, $any($event.target))" [disabled]="soloLectura()" inputmode="decimal" placeholder="0" class="w-full rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] outline-none shadow-[0_0_0_1px_#e5e5e5] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]" />
+                        </label>
+                      }
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-col items-center justify-center gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <svg width="180" height="150" class="overflow-visible">
+                    <polygon [attr.points]="c.left" fill="#e3e3e3" stroke="#303030" stroke-width="1.2" stroke-linejoin="round" />
+                    <polygon [attr.points]="c.right" fill="#d4d4d4" stroke="#303030" stroke-width="1.2" stroke-linejoin="round" />
+                    <polygon [attr.points]="c.top" fill="#ffffff" stroke="#303030" stroke-width="1.2" stroke-linejoin="round" />
+                  </svg>
+                  <span class="flex flex-col items-center gap-0.5"><span class="font-display text-base font-semibold">{{ c.txt }}</span><span class="text-xs text-[#8a8a8a]">{{ c.peso }} · {{ c.vol }}</span></span>
+                </div>
+              </div>
+            }
+
+            <!-- ── TIENDA / SEO ── -->
+            @case ('tienda') {
+              @let v = vitrina();
+              <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
+                <div class="flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.mundo, t: 'Dirección en la tienda', d: 'El enlace que compartes con tus clientes.' }" />
+                  <label class="flex flex-col gap-2">
+                    <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'URL del producto', d: 'Se genera con el nombre. Cámbiala solo si la quieres más corta.' }" />
+                    <span class="flex items-center rounded-[10px] bg-[#fafafa] pl-3" [style.box-shadow]="anillo('slug')">
+                      <span class="whitespace-nowrap text-[13px] text-[#9ca3af]">…/p/</span>
+                      <input [value]="b.slug" (input)="s.editar('slug', $any($event.target).value)" [disabled]="soloLectura()" placeholder="pan-integral" class="min-w-0 flex-1 border-0 bg-transparent py-[9px] pl-0.5 pr-3 text-[13px] outline-none" />
+                    </span>
+                    @if (err('slug')) { <ng-container *ngTemplateOutlet="error; context: { m: err('slug') }" /> }
+                  </label>
+                  <button type="button" (click)="regenerarSlug()" class="flex items-center gap-1.5 self-start rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] hover:shadow-[0_0_0_1px_#b5b5b5]"><tabler-icon [icon]="ic.regen" [size]="13" />Regenerar desde el nombre</button>
+                  <!-- TODO: dominio real de la tienda de la Empresa (hoy no viene en CurrentUser) -->
+                  <span class="mt-auto flex min-w-0 items-center gap-1.5 rounded-[10px] bg-white px-3 py-[9px] text-xs text-[#4b5563] shadow-[0_0_0_1px_#ececec]"><tabler-icon [icon]="ic.link" [size]="14" class="shrink-0 text-[#8a8a8a]" /><span class="truncate">…/p/{{ b.slug || 'nombre-del-producto' }}</span></span>
+                </div>
+                <div class="flex flex-col items-center gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                  <ng-container *ngTemplateOutlet="cabeza; context: { icon: ic.ojo, t: 'Vista previa', d: 'Así se ve en el catálogo de la tienda.' }" />
+                  <div class="w-[210px] overflow-hidden rounded-[14px] bg-white shadow-[0_10px_24px_-14px_rgba(0,0,0,.3)]">
+                    <div class="relative flex aspect-square items-center justify-center bg-[#f4f4f4] text-[#9ca3af]">
+                      @if (v.img) { <span class="absolute inset-0 bg-cover bg-center" [style.background-image]="'url(' + v.img + ')'"></span> } @else { <tabler-icon [icon]="ic.foto" [size]="48" /> }
+                      @if (v.off) { <span class="absolute left-2.5 top-2.5 rounded-full bg-[#d82c0d] px-2 py-0.5 text-[11.5px] font-semibold text-white">{{ v.off }}</span> }
+                      @if (v.noDisponible) { <span class="absolute right-2.5 top-2.5 rounded-full bg-[#303030] px-2 py-0.5 text-[11px] font-medium text-white">No disponible</span> }
+                    </div>
+                    <div class="flex flex-col gap-1 px-3.5 pb-3.5 pt-3">
+                      <span class="text-[11px] text-[#9ca3af]">{{ v.cat }}</span>
+                      <span class="text-[13.5px] font-semibold leading-[1.3]">{{ v.nombre }}</span>
+                      <span class="flex items-baseline gap-1.5"><span class="font-display text-base font-semibold">{{ v.precio }}</span>@if (v.comp) { <span class="text-xs text-[#9ca3af] line-through">{{ v.comp }}</span> }</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="m-auto flex flex-col items-center gap-2 p-6 text-center">
+      <span class="flex size-10 items-center justify-center rounded-full bg-[#f4f4f4] text-[#8a8a8a]"><tabler-icon [icon]="ic.puntero" [size]="18" /></span>
+      <p class="m-0 text-[13px] text-[#6b7280]">Elige un producto de la lista.</p>
+      <p class="m-0 text-xs text-[#9ca3af]">↑ ↓ para moverte · doble clic en precio o stock para editarlos ahí mismo</p>
+    </div>
+  }
+</section>
+
+<!-- Modal: ajustar stock -->
+@if (ajuste(); as a) {
+  @let v = ajusteVM()!;
+  <div (click)="ajuste.set(null)" class="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(10,10,10,.45)] p-6 animate-[fade-in_.18s_ease-out]">
+    <div (click)="$event.stopPropagation()" class="flex w-[420px] max-w-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_30px_60px_-20px_rgba(0,0,0,.45)] animate-[entra_.22s_cubic-bezier(.2,.8,.2,1)]">
+      <div class="flex items-start gap-2.5 pb-2.5 pl-[18px] pr-3.5 pt-4">
+        <span class="flex min-w-0 flex-1 flex-col gap-[3px]"><span class="font-display text-base font-semibold">Ajustar stock</span><span class="text-[12.5px] leading-[1.45] text-[#6b7280]">{{ p()?.nombre }} · ahora {{ v.antes }}</span></span>
+        <button type="button" (click)="ajuste.set(null)" class="flex rounded-[7px] p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]"><tabler-icon [icon]="ic.x" [size]="16" /></button>
+      </div>
+      <div class="flex flex-col gap-3.5 px-[18px] pb-4 pt-1">
+        <div class="flex gap-0.5 rounded-[9px] bg-[#f1f1f1] p-0.5">
+          @for (o of [['+', 'Sumar'], ['-', 'Restar']]; track o[0]) {
+            <button type="button" (click)="cambiarAjuste({ signo: $any(o[0]) })" class="h-[34px] flex-1 rounded-[7px] text-[13px] font-medium transition-colors" [style.background]="a.signo === o[0] ? '#fff' : 'transparent'" [style.color]="a.signo === o[0] ? '#111827' : '#6b7280'" [style.box-shadow]="a.signo === o[0] ? '0 1px 2px rgba(0,0,0,.08)' : 'none'">{{ o[1] }}</button>
+          }
+        </div>
+        <label class="flex flex-col gap-1.5"><span class="text-xs font-medium text-[#374151]">Cantidad</span>
+          <input appAutofoco [value]="a.cantidad" (input)="cantidadAjuste($any($event.target))" (keydown.enter)="aplicarAjuste()" inputmode="numeric" placeholder="0" class="h-10 rounded-[9px] border border-[#e5e5e5] px-3 text-base font-medium outline-none focus:border-[#303030] focus:shadow-[0_0_0_3px_rgba(48,48,48,.08)]" />
+        </label>
+        <div class="flex flex-col gap-1.5">
+          <span class="text-xs font-medium text-[#374151]">Motivo</span>
+          <div class="flex flex-wrap gap-1.5">
+            @for (m of MOTIVOS; track m) {
+              <button type="button" (click)="cambiarAjuste({ motivo: m })" class="rounded-full px-3 py-1.5 text-[12.5px] font-medium" [style.background]="a.motivo === m ? '#303030' : '#f1f1f1'" [style.color]="a.motivo === m ? '#fff' : '#303030'">{{ m }}</button>
+            }
+          </div>
+          @if (a.motivo === 'Otro') {
+            <input [value]="a.otro" (input)="cambiarAjuste({ otro: $any($event.target).value })" placeholder="¿Qué pasó?" class="h-9 rounded-[9px] border border-[#e5e5e5] px-3 text-[13px] outline-none focus:border-[#303030]" />
+          }
+        </div>
+        @if (v.q) {
+          <div class="flex items-center justify-between rounded-[10px] bg-[#f7f7f7] px-3 py-2.5 text-[13px]"><span class="text-[#6b7280]">Queda</span><strong class="font-display text-lg font-semibold tabular-nums" [style.color]="v.malo ? '#d82c0d' : '#111827'">{{ v.antes }} → {{ v.despues }}</strong></div>
+        }
+        @if (v.malo) { <ng-container *ngTemplateOutlet="aviso; context: { bg: '#fff1f0', ibg: '#ffe0dd', fg: '#b42318', icon: ic.alerta, m: 'No puedes restar más de lo que hay.' }" /> }
+        @if (v.bajo) { <ng-container *ngTemplateOutlet="aviso; context: { bg: '#fff8e6', ibg: '#ffefc2', fg: '#8a5a00', icon: ic.info, m: 'Quedará bajo el mínimo (' + v.min + '): llegará un aviso a la campanita.' }" /> }
+      </div>
+      <div class="flex justify-end gap-2 border-t border-[#f1f1f1] px-[18px] py-3">
+        <button type="button" (click)="ajuste.set(null)" class="rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030]">Cancelar</button>
+        <button type="button" (click)="aplicarAjuste()" [disabled]="!v.q || v.malo" class="rounded-lg bg-primary-button px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] disabled:opacity-45">Guardar ajuste</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- piezas repetidas -->
+<ng-template #cabeza let-icon="icon" let-t="t" let-d="d">
+  <div class="flex items-start gap-3">
+    <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f4f4f4] text-[#303030]"><tabler-icon [icon]="icon" [size]="17" /></span>
+    <span class="flex min-w-0 flex-1 flex-col gap-0.5"><span class="text-[15px] font-semibold tracking-[-0.005em] text-[#111827]">{{ t }}</span><span class="text-xs leading-[17px] text-[#8a8a8a]">{{ d }}</span></span>
+  </div>
+</ng-template>
+<ng-template #etiqueta let-t="t" let-req="req" let-d="d">
+  <span class="flex flex-col gap-0.5">
+    <span class="flex items-center gap-2 text-[13px] font-semibold text-[#303030]">
+      {{ t }}
+      @if (req) {
+        <span class="rounded-md bg-[#ffe6e5] px-[7px] py-px text-[11px] font-medium leading-[17px] text-[#c4320a]">Requerido</span>
+      } @else {
+        <span class="rounded-md bg-[#f1f1f1] px-[7px] py-px text-[11px] font-medium leading-[17px] text-[#6b7280]">Opcional</span>
+      }
+    </span>
+    <span class="text-xs leading-4 text-[#8a8a8a]">{{ d }}</span>
+  </span>
+</ng-template>
+<ng-template #error let-m="m">
+  <span class="flex items-center gap-[5px] text-xs text-[#b42318] animate-[fade-in-up_.2s_ease-out]"><tabler-icon [icon]="ic.error" [size]="13" />{{ m }}</span>
+</ng-template>
+<ng-template #aviso let-bg="bg" let-ibg="ibg" let-fg="fg" let-icon="icon" let-m="m">
+  <p class="m-0 flex items-center gap-2.5 text-pretty rounded-xl py-[9px] pl-[9px] pr-3 text-[12.5px] leading-[17px] animate-[fade-in-up_.2s_ease-out]" [style.background]="bg" [style.color]="fg">
+    <span class="flex size-6 shrink-0 items-center justify-center rounded-lg" [style.background]="ibg"><tabler-icon [icon]="icon" [size]="14" /></span>{{ m }}
+  </p>
+</ng-template>
+<ng-template #abanico let-icon="icon" let-color="color">
+  <div class="relative h-[118px] w-[168px] shrink-0">
+    <span class="absolute left-2 top-4 flex size-[92px] rotate-[-9deg] items-center justify-center rounded-2xl bg-white text-[#c4c4c4] shadow-[0_0_0_1px_#ececec,0_10px_24px_-16px_rgba(0,0,0,.35)]"><tabler-icon [icon]="ic.foto" [size]="24" /></span>
+    <span class="absolute right-2 top-4 flex size-[92px] rotate-[8deg] items-center justify-center rounded-2xl bg-white text-[#c4c4c4] shadow-[0_0_0_1px_#ececec,0_10px_24px_-16px_rgba(0,0,0,.35)]"><tabler-icon [icon]="ic.camara" [size]="24" /></span>
+    <span class="absolute left-[34px] top-1 flex size-[100px] items-center justify-center rounded-[18px] bg-white shadow-[0_0_0_1px_#e5e5e5,0_18px_34px_-18px_rgba(0,0,0,.4)]" [style.color]="color"><tabler-icon [icon]="icon" [size]="30" /></span>
+  </div>
+</ng-template>

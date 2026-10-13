@@ -35,6 +35,8 @@ import { Empresa } from '../../../../core/catalog/models/empresa.model';
 import { Plan } from '../../../../core/catalog/models/plan.model';
 import { ModuloCatalogo } from '../../../../core/catalog/models/modulo.model';
 import { AlertaService } from '../../../../core/ui/alerta.service';
+import { mensajeDeError } from '../../../../core/facturacion/facturacion.service';
+import { DIAS_PRUEBA_MAX } from '../../../../core/catalog/models/suscripcion.model';
 import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
 import { CabeceraModuloComponent, MetricaCabecera, serieAcumulada } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
@@ -126,6 +128,10 @@ export class AltasPendientesPageComponent {
   protected readonly segundos = signal(0);
   protected readonly guionHecho = signal<ReadonlySet<number>>(new Set());
   protected readonly extras = signal<ReadonlySet<number>>(new Set());
+  /** Días de prueba acordados en la llamada (2026-10-10). `null` = los del plan. */
+  protected readonly diasPrueba = signal<number | null>(null);
+  protected readonly diasPruebaMax = DIAS_PRUEBA_MAX;
+  protected readonly opcionesPrueba = [0, 7, 15, 30];
   protected readonly rechazoAbierto = signal(false);
   protected readonly motivoRechazo = signal('');
   private crono?: ReturnType<typeof setInterval>;
@@ -328,6 +334,7 @@ export class AltasPendientesPageComponent {
     this.motivoRechazo.set('');
     this.guionHecho.set(new Set());
     this.extras.set(new Set(this.pedidos().map((m) => m.id)));
+    this.diasPrueba.set(null);
     this.pararCrono();
   }
 
@@ -502,11 +509,22 @@ export class AltasPendientesPageComponent {
     return hecho.length ? hecho : [`Datos de ${x?.nombre ?? ''} corroborados`];
   });
 
+  /** Días de prueba con los que arranca: los elegidos o los del plan. */
+  protected readonly diasPruebaEfectivos = computed(() => this.diasPrueba() ?? this.plan()?.diasPrueba ?? 7);
+  protected elegirDiasPrueba(valor: number | string): void {
+    const n = Math.round(Number(String(valor).replace(/\D/g, '')));
+    this.diasPrueba.set(Number.isFinite(n) ? Math.max(0, Math.min(DIAS_PRUEBA_MAX, n)) : 0);
+  }
+
   protected readonly consecuencias = computed(() => {
     const x = this.sel();
     const n = this.extrasPosibles().filter((m) => m.elegido);
+    const d = this.diasPruebaEfectivos();
     return [
       `Se crea la cuenta de ${this.dueno()} con plan ${this.plan()?.nombre ?? '—'}${this.plan()?.precioMensual ? ` (${plata(this.plan()!.precioMensual!)}/mes)` : ''}.`,
+      d > 0
+        ? `Arranca con ${pl(d, 'día', 'días')} de prueba gratis cuando confirme su cuenta. Si no paga antes de que termine, se corta el acceso ese día.`
+        : 'Arranca sin prueba: el primer cobro es al mes de confirmar su cuenta.',
       n.length ? `Queda con ${pl(n.length, 'extra', 'extras')}: ${n.map((m) => m.nombre).join(', ')}.` : 'Sin módulos extra.',
       `Le llega el enlace a ${x?.duenoCorreo ?? x?.correoContacto ?? ''} para definir su contraseña.`,
     ];
@@ -515,19 +533,16 @@ export class AltasPendientesPageComponent {
   protected confirmarLlamada(): void {
     const x = this.sel()!;
     const modulos = [...this.extras()].map((moduloId) => ({ moduloId, tipo: 'concedido' as const }));
-    this.alertas
-      .seguir(this.empresaService.llamadaFinalizada(x.id, modulos.length ? modulos : undefined), {
-        titulo: 'Confirmando la llamada', texto: x.nombre,
-        exito: { titulo: 'Enlace enviado', texto: `${x.nombre} pasa a esperar al cliente.` },
-        error: { titulo: 'No se pudo confirmar', texto: 'No se cambió nada. Intentá de nuevo.' },
-      })
-      .subscribe({
-        next: (e) => {
-          this.cola.update((xs) => xs.map((y) => (y.id === x.id ? { ...y, ...e, estado: 'informacion_corroborada' } : y)));
-          this.fase.set('esperando');
-        },
-        error: () => undefined,
-      });
+    const id = this.alertas.mostrar({ titulo: 'Confirmando la llamada', texto: x.nombre });
+    this.empresaService.llamadaFinalizada(x.id, modulos.length ? modulos : undefined, this.diasPruebaEfectivos()).subscribe({
+      next: (e) => {
+        this.alertas.resolver(id, { estado: 'success', titulo: 'Enlace enviado', texto: `${x.nombre} pasa a esperar al cliente.` });
+        this.cola.update((xs) => xs.map((y) => (y.id === x.id ? { ...y, ...e, estado: 'informacion_corroborada' } : y)));
+        this.fase.set('esperando');
+      },
+      // El backend explica por qué (ej. "este negocio ya usó su prueba gratis").
+      error: (err) => this.alertas.resolver(id, { estado: 'error', titulo: 'No se pudo confirmar', texto: mensajeDeError(err, 'No se cambió nada. Intentá de nuevo.') }),
+    });
   }
 
   protected readonly espera2 = computed(() => {

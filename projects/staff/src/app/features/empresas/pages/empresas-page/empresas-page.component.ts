@@ -146,6 +146,8 @@ export class EmpresasPageComponent {
     if (EN_ALTA.includes(f.estado)) return 'accion';
     if (f.estado === 'activa') {
       const venc = f.acceso?.fechaProximoVencimiento;
+      // En prueba (2026-10-10): solo pide atención cuando le quedan ≤3 días.
+      if (f.acceso?.estado === 'en_prueba') return venc && dias(venc) <= 3 ? 'accion' : 'aldia';
       return f.acceso?.estado !== 'ok' || (venc && dias(venc) <= 3) ? 'accion' : 'aldia';
     }
     return 'inactivas';
@@ -185,8 +187,13 @@ export class EmpresasPageComponent {
   private subGrupo(k: Grupo, l: FilaEmpresa[]): string {
     if (k === 'accion') {
       const alta = l.filter((f) => EN_ALTA.includes(f.estado)).length;
-      const pago = l.length - alta;
-      return [alta && pl(alta, 'en alta', 'en alta'), pago && pl(pago, 'con el pago encima', 'con el pago encima')].filter(Boolean).join(' · ');
+      const prueba = l.filter((f) => f.acceso?.estado === 'en_prueba').length;
+      const pago = l.length - alta - prueba;
+      return [
+        alta && pl(alta, 'en alta', 'en alta'),
+        prueba && pl(prueba, 'con la prueba por terminar', 'con la prueba por terminar'),
+        pago && pl(pago, 'con el pago encima', 'con el pago encima'),
+      ].filter(Boolean).join(' · ');
     }
     if (k === 'aldia') {
       const planes = new Map<string, number>();
@@ -207,7 +214,11 @@ export class EmpresasPageComponent {
       gauge = { texto: d <= 0 ? 'hoy' : `${d} d`, ancho: Math.min(100, Math.max(6, (d / 14) * 100)), color: tarde ? '#d82c0d' : d >= 5 ? '#b07400' : '#303030', tinta: tarde ? '#d82c0d' : d >= 5 ? '#b45309' : '#374151' };
     } else if (f.estado === 'activa' && f.acceso?.fechaProximoVencimiento) {
       const d = dias(f.acceso.fechaProximoVencimiento);
-      const mora = f.acceso.estado !== 'ok';
+      const mora = f.acceso.estado !== 'ok' && f.acceso.estado !== 'en_prueba';
+      if (f.acceso.estado === 'en_prueba') {
+        gauge = { texto: `prueba · ${Math.max(0, d)} d`, ancho: Math.max(6, 100 - (d / 30) * 100), color: '#0284c7', tinta: '#0369a1' };
+        return { id: f.id, nombre: f.nombre, sub: `${f.rubro ?? 'Sin rubro'} · ${f.planNombre ?? ESTADO_EMPRESA[f.estado].texto}`, punto: ESTADO_EMPRESA[f.estado].punto, gauge };
+      }
       gauge = { texto: mora ? 'en mora' : d === 0 ? 'vence hoy' : d < 0 ? `venció hace ${-d} d` : `en ${d} d`, ancho: mora ? 100 : Math.max(6, 100 - (d / 30) * 100), color: mora ? '#d82c0d' : d <= 3 ? '#b07400' : '#303030', tinta: mora ? '#d82c0d' : d <= 3 ? '#b45309' : '#374151' };
     } else {
       gauge = { texto: f.estadoCambiadoEn ? fmt(f.estadoCambiadoEn) : '—', ancho: null, color: '', tinta: '#9ca3af' };

@@ -1,0 +1,340 @@
+<div class="flex min-h-0 flex-1 flex-col overflow-hidden px-6 pt-6">
+  @if (!completa()) {
+    <app-modulo-cabecera [icono]="icono('file-invoice')" titulo="Compras" [cuenta]="num(catalogo.compras().length)"
+      [cuentaTitulo]="pl(catalogo.compras().length, 'compra', 'compras')" [lectura]="lectura()">
+      <button type="button" (click)="exportar()"
+        class="cursor-pointer rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-[background] duration-200 ease-[ease] hover:bg-[#d4d4d4]!">Exportar</button>
+      <button type="button" (click)="abrirIa()" title="El Asistente lee la factura y llena la compra"
+        class="flex items-center gap-2 rounded-lg bg-white py-[5px] pr-3 pl-1.5 text-[13px] font-medium text-[#111827] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow] duration-200 ease-[ease] hover:shadow-[0_0_0_1px_#d4d4d4,_0_6px_16px_-10px_rgba(0,0,0,.3)]!"
+        [class]="puedeCrear() ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'">
+        <span class="flex size-5.5 shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]"><app-glifo-asistente [tamano]="11" /></span>
+        Leer factura
+      </button>
+      <button type="button" (click)="nueva()" [title]="puedeCrear() ? 'Nueva compra (N)' : 'Necesitas el permiso compras.crear'"
+        class="flex items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[opacity] duration-200 ease-[ease] hover:opacity-90!"
+        [class]="puedeCrear() ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'">
+        <tabler-icon [icon]="icono('plus')" [size]="14" [stroke]="2" />Nueva compra
+      </button>
+    </app-modulo-cabecera>
+    <app-franja-metricas class="text-[#111827]" [periodo]="periodo()" [metricas]="metricas()"
+      (cambiarPeriodo)="periodo.set($any($event))" (metrica)="alternarMetrica($event)" />
+  }
+
+  <div class="mt-4 grid min-h-0 flex-1 pb-4 transition-[grid-template-columns] duration-350 ease-[cubic-bezier(.2,.8,.2,1)]"
+    [class]="soloEstado() || completa()
+      ? 'grid-cols-[minmax(0,1fr)]'
+      : ficha() ? 'grid-cols-[minmax(300px,0.86fr)_minmax(0,1.34fr)]' : 'grid-cols-[minmax(320px,1.3fr)_minmax(240px,0.7fr)]'">
+    @if (carga() === 'error') {
+      <app-estado-pagina tono="error" class="text-[#111827]" [icono]="icono('cloud-off')" titulo="No pudimos cargar las compras"
+        texto="Revisa tu conexión. Si sigue pasando, el servidor puede estar en mantenimiento." accion="Reintentar" (accionar)="catalogo.cargar()" />
+    } @else if (carga() === 'vacio') {
+      <app-estado-pagina tono="vacio" class="text-[#111827]" [icono]="icono('file-invoice')" titulo="Todavía no registras compras"
+        texto="Registra lo que le compras a tus proveedores; el stock entra cuando marcas la compra como recibida.">
+        <div class="mt-1 flex gap-2">
+          <button type="button" (click)="abrirIa()"
+            class="flex cursor-pointer items-center gap-2 rounded-lg bg-white py-[5px] pr-3 pl-1.5 text-[13px] font-medium text-[#111827] shadow-[0_0_0_1px_#e5e5e5]">
+            <span class="flex size-5.5 shrink-0 items-center justify-center rounded-full bg-[#0a0a0a]"><app-glifo-asistente [tamano]="11" /></span>
+            Leer una factura
+          </button>
+          <button type="button" (click)="nueva()"
+            class="cursor-pointer rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000]">Crear la primera</button>
+        </div>
+      </app-estado-pagina>
+    } @else {
+      @if (!completa()) {
+        <!-- Lista -->
+        <section class="relative z-[2] -mr-4 flex h-full min-h-0 min-w-0 flex-col">
+          <div class="flex items-center gap-1.5 pr-7 pb-2.5">
+            <label class="flex min-w-35 flex-1 items-center gap-2 rounded-full bg-[#e6e6e6] px-3 transition-[background-color,box-shadow] duration-200 ease-[ease] has-[input:focus]:bg-white has-[input:focus]:shadow-[0_0_0_1px_#d4d4d4]">
+              <tabler-icon [icon]="icono('search')" [size]="15" [stroke]="2" class="text-[#8a8a8a]" />
+              <input #buscador size="1" [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" placeholder="Código, factura, proveedor o producto"
+                class="min-w-0 flex-1 bg-transparent py-2 text-[13px] text-[#111827] outline-none" />
+              @if (busqueda()) {
+                <button type="button" (click)="busqueda.set('')" class="flex cursor-pointer text-[#8a8a8a]">
+                  <tabler-icon [icon]="icono('x')" [size]="13" [stroke]="2" />
+                </button>
+              }
+            </label>
+
+            <app-menu-lista [icono]="icono('arrows-sort')" [titulo]="tituloOrden()" [abierto]="menu() === 'orden'" [marcado]="orden() !== 'fecha'"
+              panel="w-55 p-3" (alternar)="alternarMenu('orden', $event)">
+              @for (o of ordenes; track o.k) {
+                <button type="button" (click)="ordenar(o.k)"
+                  class="flex h-8.5 w-full cursor-pointer items-center gap-[9px] rounded-[9px] px-2.5 text-left text-[13px] text-[#111827] hover:bg-[#f4f4f4]!">
+                  <tabler-icon [icon]="icono(o.icono)" [size]="15" [stroke]="2" class="text-[#6b7280]" />
+                  <span class="flex-1">{{ o.titulo }}</span>
+                  @if (orden() === o.k) {
+                    <tabler-icon [icon]="icono('check')" [size]="14" [stroke]="2" />
+                  }
+                </button>
+              }
+            </app-menu-lista>
+
+            <app-menu-lista [icono]="icono('adjustments-horizontal')" titulo="Filtros" [abierto]="menu() === 'filtros'" [marcado]="conFiltros()"
+              panel="w-75 p-3" (alternar)="alternarMenu('filtros', $event)">
+              <app-filtros-compras [(rango)]="filtroRango" [(documento)]="filtroDocumento" [(proveedor)]="filtroProveedor" [opciones]="opcionesProveedor()"
+                (limpiar)="limpiarFiltrosPanel()" />
+            </app-menu-lista>
+
+            <app-menu-lista [icono]="icono('stack-2')" titulo="Agrupar la lista" [abierto]="menu() === 'agrupar'" [marcado]="agrupacion() !== 'estado'"
+              panel="w-75 p-3.5" (alternar)="alternarMenu('agrupar', $event)">
+              <div class="px-1 pb-2.5">
+                <div class="font-[Archivo] text-[15px] font-semibold text-[#111827]">Agrupar la lista</div>
+                <div class="text-[12.5px] leading-[18px] text-[#6b7280]">Cómo se ordenan las compras en grupos plegables.</div>
+              </div>
+              <div class="flex flex-col gap-1">
+                @for (o of agrupaciones; track o.k) {
+                  @let activa = o.k === agrupacion();
+                  <button type="button" (click)="agrupar(o.k)"
+                    class="grid cursor-pointer grid-cols-[18px_30px_minmax(0,1fr)] items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-[background-color] duration-200 ease-[ease] hover:bg-[#f7f7f7]!"
+                    [class]="activa ? 'bg-[#f4f4f4]' : 'bg-transparent'">
+                    <span class="flex size-4.5 items-center justify-center rounded-full transition-[box-shadow] duration-200 ease-[ease]"
+                      [class]="activa ? 'shadow-[inset_0_0_0_1.5px_#303030]' : 'shadow-[inset_0_0_0_1.5px_#d4d4d4]'">
+                      <span class="size-2 rounded-full bg-[#303030] transition-[scale] duration-250 ease-[cubic-bezier(.34,1.56,.64,1)]"
+                        [class]="activa ? 'scale-100' : 'scale-0'"></span>
+                    </span>
+                    <span class="flex size-7.5 items-center justify-center rounded-[9px] bg-[#f1f1f1] text-[#4b5563]">
+                      <tabler-icon [icon]="icono(o.icono)" [size]="16" [stroke]="2" />
+                    </span>
+                    <span class="flex flex-col gap-[1px]">
+                      <span class="text-[13px] font-semibold text-[#111827]">{{ o.titulo }}</span>
+                      <span class="text-[12px] text-[#8a8a8a]">{{ o.detalle }}</span>
+                    </span>
+                  </button>
+                }
+              </div>
+              <div class="mt-2.5 flex gap-1.5 border-t border-t-[#f1f1f1] pt-2.5">
+                <button type="button" (click)="plegarTodos(false)"
+                  class="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#f1f1f1] px-2.5 py-[7px] text-[12.5px] font-medium text-[#303030] hover:bg-[#e6e6e6]!">
+                  <tabler-icon [icon]="icono('chevrons-down')" [size]="14" [stroke]="2" />Abrir todos
+                </button>
+                <button type="button" (click)="plegarTodos(true)"
+                  class="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#f1f1f1] px-2.5 py-[7px] text-[12.5px] font-medium text-[#303030] hover:bg-[#e6e6e6]!">
+                  <tabler-icon [icon]="icono('chevrons-up')" [size]="14" [stroke]="2" />Plegar todos
+                </button>
+              </div>
+            </app-menu-lista>
+          </div>
+
+          <!-- Cuenta y filtros activos -->
+          <div class="flex min-h-6.5 flex-wrap items-center gap-2 pr-7 pb-2 pl-1">
+            <span class="text-[12px] text-[#6b7280] tabular-nums">{{ cuentaVisibles() }}</span>
+            @for (c of chips(); track c.clave) {
+              <span class="inline-flex animate-[fade-in-up_.2s_ease-out] items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pr-1 pl-2.5 text-[11.5px] font-medium text-[#374151]">
+                {{ c.label }}
+                <button type="button" (click)="quitarChip(c.clave)"
+                  class="flex size-4 cursor-pointer items-center justify-center rounded-full text-[#6b7280] hover:bg-[#d1d5db]! hover:text-[#111827]!">
+                  <tabler-icon [icon]="icono('x')" [size]="11" [stroke]="2" />
+                </button>
+              </span>
+            }
+          </div>
+
+          <div class="relative min-h-0 flex-1 overflow-y-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            @if (carga() === 'cargando') {
+              <div class="flex flex-col gap-2 pt-3 pr-7">
+                @for (k of [1, 2, 3, 4, 5, 6]; track k) {
+                  <span class="h-12 animate-[gp-brillo_1.4s_linear_infinite] rounded-xl [background:linear-gradient(90deg,#e6e6e6_0,#ededed_80px,#e6e6e6_160px)] [background-size:320px_100%]"></span>
+                }
+              </div>
+            } @else if (grupos().length) {
+              <div>
+                @for (g of grupos(); track g.clave) {
+                  <app-grupo-compras [grupo]="g" (alternar)="alternarGrupo(g.clave)">
+                    @for (f of g.filas; track f.id) {
+                      <app-fila-compra [fila]="f" [seleccionada]="f.id === seleccion()" [puedeRecibir]="puedeEditar() && !(f.id === seleccion() && sucio())"
+                        (abrir)="abrir(f.id)" (recibir)="pedirRecibir(f.id)" />
+                    }
+                  </app-grupo-compras>
+                }
+                <p class="mt-3 mr-7 mb-1 flex flex-wrap items-center justify-center gap-1.5 text-center text-[11.5px] text-[#8a8a8a]">
+                  <tabler-icon [icon]="icono('package-import')" [size]="13" [stroke]="2" />
+                  {{ puedeEditar() ? 'Pasa el cursor por una pendiente para recibirla' : 'Solo lectura · necesitas el permiso compras.editar' }} ·
+                  <kbd class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-[5px] bg-white px-1 font-[inherit] text-[10.5px] font-medium text-[#4b5563] shadow-[inset_0_0_0_1px_#d4d4d4,0_1px_0_#d4d4d4]">↑</kbd>
+                  <kbd class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-[5px] bg-white px-1 font-[inherit] text-[10.5px] font-medium text-[#4b5563] shadow-[inset_0_0_0_1px_#d4d4d4,0_1px_0_#d4d4d4]">↓</kbd>
+                  para moverte
+                </p>
+              </div>
+            } @else if (carga() === 'lista') {
+              <div class="animate-[fade-in-up_.2s_ease-out] pt-10 pr-11 pb-10 pl-4 text-center">
+                <p class="text-[13px] text-[#6b7280]">Ninguna compra coincide con estos filtros.</p>
+                <button type="button" (click)="limpiarTodo()"
+                  class="mt-3 cursor-pointer rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[13px] font-medium text-[#374151] hover:bg-[#d4d4d4]!">Limpiar filtros</button>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Hoja de la compra -->
+      <section class="relative z-[1] flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_40px_-24px_rgba(0,0,0,.22)]">
+        @if (ficha(); as f) {
+          @let h = cabecera();
+          <div class="flex min-h-0 flex-1 flex-col">
+            <div class="shrink-0 px-6 pt-4">
+              <div class="flex items-center gap-2">
+                <span class="text-[10.5px] font-semibold tracking-[.08em] whitespace-nowrap text-[#9ca3af] uppercase">{{ h.etiqueta }}</span>
+                <span class="flex-1"></span>
+                @if (navegacion(); as nav) {
+                  <span class="text-[11.5px] text-[#9ca3af] tabular-nums">{{ nav.posicion + 1 }} de {{ nav.total }}</span>
+                  <button type="button" (click)="mover(-1)" title="Anterior (↑)"
+                    class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!" [class.opacity-35]="nav.posicion === 0">
+                    <tabler-icon [icon]="icono('chevron-up')" [size]="16" [stroke]="2" />
+                  </button>
+                  <button type="button" (click)="mover(1)" title="Siguiente (↓)"
+                    class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!" [class.opacity-35]="nav.posicion === nav.total - 1">
+                    <tabler-icon [icon]="icono('chevron-down')" [size]="16" [stroke]="2" />
+                  </button>
+                }
+                @if (!f.esNueva) {
+                  <span class="relative">
+                    <button type="button" (click)="alternarMenu('acciones', $event)" title="Más acciones"
+                      class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!">
+                      <tabler-icon [icon]="icono('dots')" [size]="16" [stroke]="2" />
+                    </button>
+                    @if (menu() === 'acciones') {
+                      <div (click)="$event.stopPropagation()"
+                        class="absolute top-8.5 right-0 z-40 w-57.5 animate-[fade-in-up_.18s_ease-out] rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)]">
+                        <button type="button" (click)="verProveedor()"
+                          class="flex h-8.5 w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] text-[#111827] hover:bg-[#f4f4f4]!">
+                          <tabler-icon [icon]="icono('truck')" [size]="15" [stroke]="2" class="text-[#6b7280]" />Ver proveedor
+                        </button>
+                        @if (h.archivo) {
+                          <button type="button" (click)="verFactura()"
+                            class="flex h-8.5 w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] text-[#111827] hover:bg-[#f4f4f4]!">
+                            <tabler-icon [icon]="icono('file-invoice')" [size]="15" [stroke]="2" class="text-[#6b7280]" />Ver factura
+                          </button>
+                        }
+                        @if (f.estado === 'pendiente') {
+                          <button type="button" (click)="pedirCancelar()"
+                            class="flex h-8.5 w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] text-[#b42318] hover:bg-[#fff1f0]!">
+                            <tabler-icon [icon]="icono('circle-x')" [size]="15" [stroke]="2" />Cancelar compra
+                          </button>
+                        }
+                      </div>
+                    }
+                  </span>
+                }
+                <button type="button" (click)="expandida.set(!expandida())" [title]="completa() ? 'Volver a la lista' : 'Abrir en página completa'"
+                  class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!">
+                  <tabler-icon [icon]="icono(completa() ? 'arrows-minimize' : 'arrows-maximize')" [size]="16" [stroke]="2" />
+                </button>
+                <button type="button" (click)="cerrar()" title="Cerrar (Esc)"
+                  class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!">
+                  <tabler-icon [icon]="icono('x')" [size]="16" [stroke]="2" />
+                </button>
+              </div>
+
+              <div class="mt-1.5 flex animate-[ficha_360ms_cubic-bezier(.2,.8,.2,1)_both] items-center gap-3.5">
+                <span class="flex size-13 shrink-0 items-center justify-center rounded-[15px] font-[Archivo] text-[18px] font-semibold transition-[background-color,color] duration-300 ease-[ease]"
+                  [class]="h.tono ? '' : f.proveedor ? avatarCancelada : 'bg-[#f4f4f4] text-[#9ca3af]'"
+                  [style.background]="h.tono?.[0]" [style.color]="h.tono?.[1]">{{ h.iniciales }}</span>
+                <div class="min-w-0 flex-1">
+                  <div class="truncate font-[Archivo] text-[24px] leading-[30px] font-semibold tracking-[-0.02em]"
+                    [class]="f.proveedor ? 'text-[#111827]' : 'text-[#b5b5b5]'">{{ h.titulo }}</div>
+                  <p class="mt-0.5 text-[12.5px] text-[#6b7280] tabular-nums">{{ h.detalle }}</p>
+                </div>
+                <span class="flex flex-col items-end">
+                  <span class="font-[Archivo] text-[24px] leading-[30px] font-semibold tracking-[-0.02em] whitespace-nowrap text-[#111827] tabular-nums">{{ h.total }}</span>
+                  <span class="text-[11.5px] whitespace-nowrap text-[#9ca3af]">{{ h.cantidades }}</span>
+                </span>
+              </div>
+
+              <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                <span class="flex h-7 items-center gap-1.5 rounded-full px-[11px] text-[12.5px] font-medium" [class]="chipEstado[f.estado]">{{ h.estado }}</span>
+                @if (f.atrasada) {
+                  <span class="flex h-7 items-center gap-1.5 rounded-full bg-[#fff1f0] px-[11px] text-[12.5px] font-medium text-[#b42318]">
+                    <tabler-icon [icon]="icono('alarm')" [size]="14" [stroke]="2" />Atrasada · {{ f.dias }} días
+                  </span>
+                }
+                @if (h.archivo) {
+                  <button type="button" (click)="verFactura()"
+                    class="flex h-7 max-w-55 cursor-pointer items-center gap-1.5 rounded-full bg-[#f4f4f4] px-[11px] text-[12.5px] font-medium text-[#303030] hover:bg-[#ebebeb]!">
+                    <tabler-icon [icon]="icono('paperclip')" [size]="14" [stroke]="2" class="text-[#6b7280]" /><span class="truncate">{{ h.archivo }}</span>
+                  </button>
+                }
+                @if (f.esNueva) {
+                  <button type="button" (click)="abrirIa()"
+                    class="flex h-7 cursor-pointer items-center gap-[7px] rounded-full bg-[#0a0a0a] pr-3 pl-[5px] text-[12.5px] font-medium text-white transition-[transform] duration-200 ease-[cubic-bezier(.2,.8,.2,1)] hover:[transform:translateY(-1px)]">
+                    <span class="flex size-4.5 items-center justify-center rounded-full bg-[#1f1f1f]"><app-glifo-asistente [tamano]="9" /></span>
+                    Que el Asistente lea la factura
+                  </button>
+                }
+              </div>
+
+              <app-pestanas-hoja class="mt-3.5" [cuentaTabular]="false" [pestanas]="pestanas()" [activa]="pestana()" (elegir)="pestana.set($any($event))" />
+            </div>
+
+            <div class="min-h-0 flex-1 overflow-y-auto bg-white">
+              <div class="mx-auto flex w-full flex-col gap-3.5 px-6 pt-4.5 pb-30" [class]="completa() ? 'max-w-[760px]' : 'max-w-none'">
+                <app-seguimiento-compra [ficha]="f" />
+                @if (h.candado) {
+                  <div class="flex items-center gap-2 rounded-xl bg-[#f7f7f7] px-3 py-2.5 text-[12.5px] text-[#4b5563]">
+                    <tabler-icon [icon]="icono('lock')" [size]="15" [stroke]="2" />{{ h.candado }}
+                  </div>
+                }
+                @switch (pestana()) {
+                  @case ('lineas') {
+                    <app-pestana-lineas [ficha]="f" [editable]="!soloLectura()" [intento]="intento()" [errores]="errores()" [bloqueo]="bloqueoRecibir()"
+                      [(revisadas)]="revisadas" (cambiarLinea)="cambiarLinea($event)" (agregarLinea)="agregarLinea()" (quitarLinea)="quitarLinea($event)"
+                      (verProducto)="verProducto($event)" (recibir)="recibirMantenido($event)" (bloqueado)="recibirBloqueado($event)" />
+                  }
+                  @case ('datos') {
+                    <app-pestana-datos [ficha]="f" [editable]="!soloLectura()" [faltaProveedor]="intento() && !!errores()['prov']"
+                      (cambiarCampo)="cambiarCampo($event)" (buscarProveedor)="buscarProveedor($event)" (elegirProveedor)="elegirProveedor($event)"
+                      (crearProveedor)="crearProveedor($event)" (adjuntar)="adjuntar($event)" (quitarArchivo)="quitarArchivo()" (verFactura)="verFactura()" />
+                  }
+                  @case ('actividad') {
+                    <app-pestana-actividad [ficha]="f" [(abiertoEvento)]="eventoAbierto" />
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        } @else {
+          <div class="m-auto flex flex-col items-center gap-2 p-6 text-center">
+            <span class="flex size-10 items-center justify-center rounded-full bg-[#f4f4f4] text-[#8a8a8a]">
+              <tabler-icon [icon]="icono('pointer')" [size]="18" [stroke]="2" />
+            </span>
+            <p class="text-[13px] text-[#6b7280]">Elige una compra de la lista.</p>
+            <p class="text-[12px] text-[#9ca3af]">↑ ↓ para moverte · / para buscar · N para crear</p>
+          </div>
+        }
+      </section>
+    }
+  </div>
+</div>
+
+<!-- Modales -->
+@switch (modal()?.tipo) {
+  @case ('recibir') {
+    @if (compraModal(); as c) {
+      <app-modal-recibir [compra]="c" (cerrar)="modal.set(null)" (confirmar)="confirmarModal()" />
+    }
+  }
+  @case ('cancelar') {
+    @if (compraModal(); as c) {
+      <app-marco-modal [titulo]="'Cancelar la compra ' + codigo(c.id)" [ancho]="460" textoCerrar="Volver" textoConfirmar="Cancelar compra" [peligro]="true"
+        (cerrar)="modal.set(null)" (confirmar)="confirmarModal()">
+        <p class="leading-[1.5] text-pretty text-[#4b5563]">Queda en solo lectura y no suma stock. No se puede reactivar.</p>
+      </app-marco-modal>
+    }
+  }
+  @case ('ia') {
+    <app-marco-modal titulo="Cargar desde la factura con IA" [ancho]="560" (cerrar)="modal.set(null)">
+      <div class="flex flex-col gap-3">
+        <label (drop)="leerFacturaIa($event)" (dragover)="$event.preventDefault()"
+          class="flex cursor-pointer flex-col items-center gap-2.5 rounded-2xl border-[1.5px] border-dashed border-[#d4d4d4] bg-[#fafafa] px-4 py-7.5 text-center transition-[border-color,background-color] duration-200 ease-[ease] hover:border-[#0a0a0a]! hover:bg-white!">
+          <span class="flex size-11.5 shrink-0 items-center justify-center rounded-full bg-[#0a0a0a] shadow-[0_10px_24px_-10px_rgba(0,0,0,.5)]"><app-glifo-asistente [tamano]="22" /></span>
+          <span class="text-[11.5px] font-medium text-[#6b7280]">Asistente de IA</span>
+          <span class="font-semibold">Arrastra la factura o <span class="text-[#00605b]">elígela</span></span>
+          <span class="text-[12px] text-[#6b7280]">PDF o foto (JPG, PNG). Leemos proveedor, número, fecha y líneas.</span>
+          <input type="file" accept="application/pdf,image/*" (change)="leerFacturaIa($event)" class="hidden" />
+        </label>
+      </div>
+    </app-marco-modal>
+  }
+  @case ('factura') {
+    <app-modal-factura [compra]="compra()" [borrador]="formulario() ? borrador() : null" (cerrar)="modal.set(null)" />
+  }
+}

@@ -1,0 +1,128 @@
+@if (compras().length) {
+  <div class="flex flex-col gap-1.5">
+    @for (c of compras(); track c.id) {
+      <button type="button" (click)="irCompra.emit(c.id)"
+        class="flex cursor-pointer items-center gap-2.5 rounded-xl bg-[#e0f2fe] py-[9px] pr-3 pl-[9px] text-left text-[#0369a1] hover:[filter:brightness(.98)]">
+        <span class="flex size-6 shrink-0 items-center justify-center rounded-lg bg-[#cdeafd]">
+          <tabler-icon [icon]="icono('truck')" [size]="14" [stroke]="2" />
+        </span>
+        <span class="flex min-w-0 flex-1 flex-col">
+          <span class="text-[12.5px] font-semibold">{{ c.texto }}</span>
+          <span class="text-[11.5px] opacity-80">{{ c.detalle }}</span>
+        </span>
+        <tabler-icon [icon]="icono('arrow-right')" [size]="14" [stroke]="2" />
+      </button>
+    }
+  </div>
+}
+
+<!-- Ajustar stock -->
+<div class="flex flex-col gap-4 rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+  <div class="flex items-start gap-3">
+    <span class="flex size-8.5 shrink-0 items-center justify-center rounded-[10px] bg-[#f4f4f4] text-[#303030]">
+      <tabler-icon [icon]="icono('adjustments')" [size]="17" [stroke]="2" />
+    </span>
+    <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span class="text-[15px] font-semibold tracking-[-0.005em] text-[#111827]">Ajustar stock</span>
+      <span class="text-[12px] leading-[17px] text-[#8a8a8a]">Registra una entrada o salida que no viene de una venta ni de una compra.</span>
+    </span>
+  </div>
+
+  <div class="relative grid grid-cols-[repeat(2,minmax(0,1fr))] rounded-[10px] bg-[#f1f1f1] p-[3px]">
+    <span class="absolute top-[3px] bottom-[3px] left-[3px] w-[calc((100%_-_6px)_/_2)] rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)] transition-[translate] duration-280 ease-[cubic-bezier(.2,.8,.2,1)]"
+      [class.translate-x-full]="ajuste().signo === '-'"></span>
+    @for (s of signos; track s.signo) {
+      <button type="button" (click)="elegirSigno(s.signo)"
+        class="relative flex h-8 cursor-pointer items-center justify-center gap-1.5 text-[13px] transition-[color] duration-200 ease-[ease]"
+        [class]="ajuste().signo === s.signo ? 'font-semibold text-[#111827]' : 'font-medium text-[#6b7280]'">
+        <tabler-icon [icon]="icono(s.icono)" [size]="14" [stroke]="2" />{{ s.titulo }}
+      </button>
+    }
+  </div>
+
+  <div class="flex flex-wrap items-center gap-3">
+    <label class="flex h-10 items-center gap-2 rounded-[10px] bg-white px-3 shadow-[0_0_0_1px_#e5e5e5]">
+      <span class="text-[12px] text-[#6b7280]">Cantidad</span>
+      <input [value]="ajuste().cantidad" (input)="escribirCantidad($event)" (keydown.enter)="guardar.emit()" inputmode="numeric" placeholder="0"
+        class="w-16 bg-transparent text-right font-[Archivo] text-[17px] font-semibold text-[#111827] tabular-nums outline-none">
+    </label>
+    <span class="flex items-center gap-2 font-[Archivo] text-[17px] font-semibold tabular-nums">
+      <span class="text-[#6b7280]">{{ num(stock().disponible) }}</span>
+      <tabler-icon [icon]="icono('arrow-right')" [size]="15" [stroke]="2" class="text-[#b5b5b5]" />
+      <span class="transition-[color] duration-200 ease-[ease]"
+        [class]="invalido() ? 'text-[#b42318]' : delta() ? 'text-[#111827]' : 'text-[#b5b5b5]'">{{ delta() ? num(resultado()) : '—' }}</span>
+    </span>
+  </div>
+
+  <div class="flex flex-col gap-2.5">
+    <div class="flex items-baseline justify-between">
+      <span class="text-[12px] font-semibold text-[#374151]">Motivo</span>
+      <span class="text-[11.5px] text-[#9ca3af]">{{ ajuste().signo === '+' ? '¿Por qué entra stock?' : '¿Por qué sale stock?' }}</span>
+    </div>
+    <div class="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2">
+      @for (m of motivos(); track ajuste().signo + m.nombre) {
+        @let elegido = ajuste().motivo === m.nombre;
+        <button type="button" (click)="elegirMotivo(m.nombre)"
+          class="relative flex animate-[mov-in_320ms_cubic-bezier(.2,.8,.2,1)_both] cursor-pointer items-center gap-2.5 rounded-xl py-2.5 pr-3 pl-2.5 text-left [transition:box-shadow_.25s_cubic-bezier(.2,.8,.2,1),_background-color_.2s] hover:bg-white!"
+          [class]="elegido ? 'bg-white shadow-[0_0_0_1.5px_#303030,0_6px_16px_-10px_rgba(0,0,0,.35)]' : 'bg-[#fcfcfc] shadow-[0_0_0_1px_#e8e8e8]'">
+          <span class="flex size-7.5 shrink-0 items-center justify-center rounded-[9px] transition-[background-color,color] duration-250 ease-[ease]"
+            [class]="elegido ? 'bg-[#303030] text-white' : 'bg-[#f1f1f1] text-[#4b5563]'">
+            <tabler-icon [icon]="icono(m.icono)" [size]="15" [stroke]="2" />
+          </span>
+          <span class="flex min-w-0 flex-col gap-[1px]">
+            <span class="text-[12.5px] font-semibold text-[#111827]">{{ m.nombre }}</span>
+            <span class="text-[11px] leading-[14px] text-[#8a8a8a]">{{ m.detalle }}</span>
+          </span>
+          <span class="absolute top-2 right-2 flex size-4 items-center justify-center rounded-full bg-[#303030] text-white [transition:opacity_.2s,_scale_.3s_cubic-bezier(.34,1.56,.64,1)]"
+            [class]="elegido ? 'opacity-100 scale-100' : 'opacity-0 scale-40'">
+            <tabler-icon [icon]="icono('check')" [size]="10" [stroke]="2" />
+          </span>
+        </button>
+      }
+    </div>
+    @if (ajuste().motivo === 'Otro') {
+      <label class="flex h-9.5 animate-[fade-in-up_.2s_ease-out] items-center gap-2 rounded-[10px] bg-white px-3 shadow-[0_0_0_1px_#d4d4d4]">
+        <tabler-icon [icon]="icono('pencil')" [size]="14" [stroke]="2" class="text-[#8a8a8a]" />
+        <input #otro [value]="ajuste().otro || ''" (input)="escribirOtro($event)" placeholder="Ej.: ajuste por inventario de cierre"
+          class="min-w-0 flex-1 bg-transparent text-[13px] outline-none">
+      </label>
+    }
+  </div>
+
+  @if (invalido()) {
+    <p class="flex items-center gap-2.5 rounded-xl bg-[#fff1f0] py-[9px] pr-3 pl-[9px] text-[12.5px] leading-[17px] text-[#b42318]">
+      <span class="flex size-6 shrink-0 items-center justify-center rounded-lg bg-[#ffe0dd]">
+        <tabler-icon [icon]="icono('ban')" [size]="14" [stroke]="2" />
+      </span>
+      No puedes sacar más de lo que hay ({{ stock().disponible }})
+    </p>
+  }
+</div>
+
+<!-- Stock mínimo -->
+<div class="flex flex-col gap-4 rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+  <div class="flex items-start gap-3">
+    <span class="flex size-8.5 shrink-0 items-center justify-center rounded-[10px] bg-[#f4f4f4] text-[#303030]">
+      <tabler-icon [icon]="icono('bell-ringing')" [size]="17" [stroke]="2" />
+    </span>
+    <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span class="text-[15px] font-semibold tracking-[-0.005em] text-[#111827]">Stock mínimo</span>
+      <span class="text-[12px] leading-[17px] text-[#8a8a8a]">Por debajo de esta cantidad el producto pasa a “Bajo el mínimo”.</span>
+    </span>
+  </div>
+  <div class="flex flex-wrap items-center gap-3">
+    <span class="flex items-center gap-0.5 rounded-[10px] bg-[#f1f1f1] p-[3px]">
+      <button type="button" (click)="pasoMinimo(-1)" class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-[#303030] hover:bg-white!">
+        <tabler-icon [icon]="icono('minus')" [size]="14" [stroke]="2" />
+      </button>
+      <input [value]="minimo()" (input)="escribirMinimo($event)" (keydown.enter)="guardar.emit()" inputmode="numeric"
+        class="h-8 w-14 rounded-lg bg-white text-center font-[Archivo] text-[16px] font-semibold tabular-nums shadow-[0_1px_2px_rgba(0,0,0,.08)] outline-none">
+      <button type="button" (click)="pasoMinimo(1)" class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-[#303030] hover:bg-white!">
+        <tabler-icon [icon]="icono('plus')" [size]="14" [stroke]="2" />
+      </button>
+    </span>
+    <span class="min-w-40 flex-1 text-[12.5px] leading-[18px] text-pretty text-[#6b7280]">
+      {{ minimoNumero() ? 'Te avisamos en la campanita cuando baje de ' + minimoNumero() + '.' : 'Sin mínimo: no recibirás avisos de stock bajo.' }}
+    </span>
+  </div>
+</div>

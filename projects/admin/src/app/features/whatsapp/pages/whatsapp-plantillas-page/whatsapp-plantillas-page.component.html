@@ -1,0 +1,159 @@
+<div class="p-8">
+  <div class="flex max-w-[720px] flex-wrap items-end justify-between gap-4">
+    <div>
+      <a routerLink="/whatsapp" class="text-sm text-gray-500 hover:text-gray-900">← WhatsApp</a>
+      <h1 class="mt-2 text-lg font-semibold text-gray-900">Plantillas</h1>
+      <p class="mt-2 text-sm text-gray-500">
+        Pasadas 24 horas desde el último mensaje de un cliente, WhatsApp solo deja escribirle con una plantilla aprobada por Meta.
+        Úsalas para avisar que un pedido está listo, confirmar una entrega o retomar una conversación.
+      </p>
+    </div>
+    @if (puedeConfigurar()) {
+      <div class="flex gap-2">
+        <button type="button" (click)="sincronizar()" [disabled]="sincronizando()"
+          class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50 disabled:opacity-50">
+          <tabler-icon [icon]="i.sincronizar" [size]="16" [stroke]="2" [class.animate-spin]="sincronizando()" />
+          Sincronizar con WhatsApp
+        </button>
+        @if (!form()) {
+          <button type="button" (click)="nueva()" class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700">
+            <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" /> Nueva plantilla
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  @if (aviso(); as a) {
+    <p role="status" class="mt-4 max-w-[720px] rounded-lg px-4 py-3 text-sm" [class]="a.ok ? 'bg-[#e7f6ec] text-[#166d3b]' : 'bg-red-50 text-red-700'">{{ a.texto }}</p>
+  }
+
+  @if (form(); as f) {
+    <section class="mt-6 max-w-[720px] rounded-2xl bg-card-bg p-5 shadow-sm">
+      <h2 class="text-sm font-semibold text-gray-900">Nueva plantilla</h2>
+      <div class="mt-4 grid gap-4">
+        <label class="grid gap-1 text-sm font-medium text-gray-700">
+          Nombre interno
+          <input [ngModel]="f.nombre" (ngModelChange)="parche({ nombre: $event })" maxlength="512" placeholder="pedido_listo"
+            class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
+          <span class="text-xs font-normal text-gray-400">Solo lo ves tú. Se guarda en minúsculas y con guion bajo en vez de espacios.</span>
+        </label>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="grid gap-1 text-sm font-medium text-gray-700">
+            Tipo
+            <select [ngModel]="f.categoria" (ngModelChange)="parche({ categoria: $event })"
+              class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900">
+              <option value="UTILITY">Servicio (pedidos, entregas, citas)</option>
+              <option value="MARKETING">Promoción (ofertas, novedades)</option>
+            </select>
+          </label>
+          <label class="grid gap-1 text-sm font-medium text-gray-700">
+            Idioma
+            <select [ngModel]="f.idioma" (ngModelChange)="parche({ idioma: $event })"
+              class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900">
+              <option value="es">Español</option>
+              <option value="en_US">Inglés</option>
+            </select>
+          </label>
+        </div>
+        @if (f.categoria === 'MARKETING') {
+          <p class="-mt-2 text-xs text-gray-500">
+            Sirven para campañas y solo se mandan a clientes que aceptaron recibir promociones. Goods les agrega al final "Responde BAJA
+            para no recibir más promociones". Meta cobra cada envío a la cuenta de WhatsApp de tu negocio.
+          </p>
+        }
+
+        <div class="grid gap-1">
+          <div class="flex items-center justify-between">
+            <label for="cuerpo" class="text-sm font-medium text-gray-700">Mensaje</label>
+            <button type="button" (click)="insertarVariable()" class="text-sm font-medium text-gray-600 hover:text-gray-900">+ Agregar variable</button>
+          </div>
+          <textarea id="cuerpo" #cuerpo rows="4" maxlength="1024" [ngModel]="f.cuerpo" (ngModelChange)="parche({ cuerpo: $event })"
+            [placeholder]="'Hola ' + v(1) + ', tu pedido ' + v(2) + ' ya está listo para recoger.'"
+            class="rounded-lg bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900"></textarea>
+          <span class="text-xs text-gray-400">
+            Las variables ({{ v(1) }}, {{ v(2) }}…) se llenan al enviar, por ejemplo con el nombre del cliente. No pueden ir al principio ni al final del mensaje.
+          </span>
+        </div>
+
+        @if (indices().length) {
+          <div class="grid gap-2">
+            <p class="text-sm font-medium text-gray-700">Ejemplos para la revisión de Meta</p>
+            @for (k of indices(); track k) {
+              <label class="flex items-center gap-3 text-sm text-gray-600">
+                <span class="w-12 shrink-0 font-mono text-xs">{{ v(k + 1) }}</span>
+                <input [ngModel]="f.ejemplos[k] || ''" (ngModelChange)="cambiarEjemplo(k, $event)" placeholder="Ej.: Ana"
+                  class="flex-1 rounded-lg bg-white px-3 py-2 text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
+              </label>
+            }
+          </div>
+        }
+
+        @if (f.cuerpo.trim()) {
+          <div class="rounded-xl bg-[#efe7de] p-4">
+            <p class="mb-1 text-xs text-gray-600">Así lo verá el cliente</p>
+            <p class="max-w-[85%] rounded-lg bg-white px-3 py-2 text-sm whitespace-pre-wrap text-gray-900 shadow-sm">{{ vistaPrevia() }}</p>
+          </div>
+        }
+
+        @if (errorForm()) {
+          <p role="alert" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ errorForm() }}</p>
+        }
+        <div class="flex gap-2">
+          <button type="button" (click)="crear()" [disabled]="!puedeCrear()"
+            class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40">
+            {{ creando() ? 'Enviando…' : 'Enviar a revisión' }}
+          </button>
+          <button type="button" (click)="form.set(null)" class="rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100">Cancelar</button>
+        </div>
+      </div>
+    </section>
+  }
+
+  @if (cargando()) {
+    <p class="mt-6 text-sm text-gray-400">Cargando…</p>
+  } @else if (error()) {
+    <p class="mt-6 text-sm text-red-600">{{ error() }}</p>
+  } @else {
+    <ul class="mt-6 grid max-w-[720px] gap-3">
+      @for (p of plantillas(); track p.id) {
+        <li class="rounded-2xl bg-card-bg p-5 shadow-sm">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-mono text-sm font-medium text-gray-900">{{ p.nombre }}</span>
+            <span class="rounded-full px-2 py-0.5 text-xs font-medium" [class]="estados[p.estado].clase">{{ estados[p.estado].texto }}</span>
+            <span class="text-xs text-gray-400">{{ categoria(p.categoria) }} · {{ idioma(p.idioma) }}</span>
+            @if (puedeConfigurar()) {
+              <span class="ml-auto">
+                @if (confirmandoBorrar() === p.id) {
+                  <span class="text-sm text-gray-600">¿Borrarla también de WhatsApp?</span>
+                  <button type="button" (click)="borrar(p)" class="ml-2 text-sm font-medium text-red-600 hover:underline">Borrar</button>
+                  <button type="button" (click)="confirmandoBorrar.set(null)" class="ml-2 text-sm text-gray-500 hover:underline">Cancelar</button>
+                } @else {
+                  <button type="button" (click)="confirmandoBorrar.set(p.id)" class="text-gray-400 hover:text-red-600" aria-label="Borrar plantilla">
+                    <tabler-icon [icon]="i.borrar" [size]="16" [stroke]="2" />
+                  </button>
+                }
+              </span>
+            }
+          </div>
+          <p class="mt-2 text-sm whitespace-pre-wrap text-gray-700">{{ p.cuerpo }}</p>
+          @if (p.estado === 'rechazada') {
+            <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+              Meta no la aprobó{{ motivo(p.motivoRechazo) }}. Puedes borrarla y crear otra con un texto distinto.
+            </p>
+          } @else if (p.estado === 'pendiente') {
+            <p class="mt-2 text-xs text-gray-500">Meta la está revisando. Cuando la apruebe ya la puedes usar en los chats.</p>
+          }
+        </li>
+      } @empty {
+        <li class="rounded-2xl bg-card-bg px-6 py-10 text-center shadow-sm">
+          <p class="text-sm font-medium text-gray-900">Todavía no tienes plantillas</p>
+          <p class="mt-1 text-sm text-gray-500">
+            @if (puedeConfigurar()) { Crea la primera, por ejemplo para avisar que un pedido está listo. } @else { El dueño del negocio las crea. }
+          </p>
+        </li>
+      }
+    </ul>
+  }
+</div>
