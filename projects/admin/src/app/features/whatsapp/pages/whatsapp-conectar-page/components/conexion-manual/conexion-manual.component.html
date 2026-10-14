@@ -10,26 +10,26 @@
         <label class="grid gap-1 text-[12.5px] font-medium text-[#374151]">
           Token de acceso
           <input type="password" name="token" autocomplete="off" [value]="token()" (input)="token.set($any($event.target).value)"
-            class="h-9 rounded-lg border-0 bg-[#f7f7f7] px-3 text-[13px] font-normal text-[#111827] shadow-[inset_0_0_0_1px_#e5e7eb] outline-none focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#303030]" />
+            class="wa-input font-normal" />
         </label>
         <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2.5">
           <label class="grid gap-1 text-[12.5px] font-medium text-[#374151]">
             Identificador del número
             <input name="phoneNumberId" inputmode="numeric" autocomplete="off" [value]="phoneNumberId()" (input)="phoneNumberId.set($any($event.target).value)"
-              class="h-9 rounded-lg border-0 bg-[#f7f7f7] px-3 text-[13px] font-normal text-[#111827] shadow-[inset_0_0_0_1px_#e5e7eb] outline-none focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#303030]" />
+              class="wa-input font-normal" />
           </label>
           <label class="grid gap-1 text-[12.5px] font-medium text-[#374151]">
             Identificador de la cuenta (opcional)
             <input name="wabaId" inputmode="numeric" autocomplete="off" [value]="wabaId()" (input)="wabaId.set($any($event.target).value)"
-              class="h-9 rounded-lg border-0 bg-[#f7f7f7] px-3 text-[13px] font-normal text-[#111827] shadow-[inset_0_0_0_1px_#e5e7eb] outline-none focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#303030]" />
+              class="wa-input font-normal" />
           </label>
         </div>
-        <button type="submit" [disabled]="conectando() || !token().trim() || !phoneNumberId().trim()"
-          class="mt-0.5 flex h-8 cursor-pointer items-center gap-2 justify-self-start rounded-full border-0 bg-white px-3.5 text-[12.5px] font-medium text-[#303030] shadow-[inset_0_0_0_1px_#e3e3e3] transition-[background,opacity] duration-200 hover:bg-[#f7f7f7] disabled:cursor-default disabled:opacity-50 disabled:hover:bg-white">
+        <button type="submit" [disabled]="conectando() || !valido()"
+          class="flex items-center gap-2 justify-self-start rounded-lg border-0 bg-[#f1f1f1] px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-colors duration-200 hover:bg-[#e6e6e6] disabled:cursor-default disabled:opacity-50 disabled:hover:bg-[#f1f1f1]">
           @if (conectando()) {
-            <span class="size-3.5 animate-[gira_.8s_linear_infinite] rounded-full border-2 border-[#e3e3e3] border-t-[#303030]"></span>Conectando…
+            <span class="size-3.5 animate-spin rounded-full border-2 border-[#d4d4d4] border-t-[#303030]"></span>Conectando…
           } @else {
-            Conectar a mano
+            Conectar con estos datos
           }
         </button>
       </form>

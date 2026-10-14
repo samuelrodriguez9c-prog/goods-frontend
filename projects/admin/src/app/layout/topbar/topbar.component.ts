@@ -16,6 +16,7 @@ import { NotificacionService } from '../../core/notificaciones/notificacion.serv
 import { agruparPorDia, defTipo, filaNotificacion } from '../../core/notificaciones/notificacion-catalogo';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AtajosService } from '../../core/ui/atajos.service';
+import { WhatsappService } from '../../core/whatsapp/whatsapp.service';
 import { IaMarcaComponent } from '../../shared/ui/ia-marca/ia-marca.component';
 
 type Pestana = 'todas' | 'soporte' | 'tienda' | 'cuenta';
@@ -60,6 +61,7 @@ export class TopbarComponent implements OnDestroy {
   private readonly realtime = inject(RealtimeService);
   private readonly asistente = inject(AsistenteService);
   private readonly atajos = inject(AtajosService);
+  private readonly whatsapp = inject(WhatsappService);
 
   /** Se emiten además de la acción propia (atajos / panel del asistente), por si el host quiere reaccionar. */
   readonly abrirAtajos = output<void>();
@@ -172,6 +174,8 @@ export class TopbarComponent implements OnDestroy {
     const seg = ruta.split('/').filter(Boolean);
     // WhatsApp (rediseño 2026-10-13): "WhatsApp › sección", también en la Bandeja.
     if (seg[0] === 'whatsapp') {
+      // Sin número conectado (pantalla "Conectar número") no hay sección.
+      if (this.whatsapp.sinNumero()) return [{ texto: 'WhatsApp', icono: 'brand-whatsapp', ruta: '/whatsapp', actual: true }];
       return [
         { texto: 'WhatsApp', icono: 'brand-whatsapp', ruta: '/whatsapp', actual: false },
         { texto: hoja.data['breadcrumb'] as string, icono: icono(hoja.data), ruta, actual: true },

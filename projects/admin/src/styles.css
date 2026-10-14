@@ -956,3 +956,19 @@ app-topbar {
 @keyframes wa-punto { 0%, 60%, 100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
 @keyframes wa-halo { 0%, 100% { transform: scale(1); opacity: .6; } 50% { transform: scale(2.4); opacity: 0; } }
 @keyframes wa-drum { from { opacity: 0; transform: scaleY(.55); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
+
+/* WhatsApp · Conectar número (handoff-whatsapp-conectar, 2026-10-14).
+ * `wa-entra` ya existe más arriba. Punto que viaja por el puente
+ * celular → Goods mientras conecta. */
+@keyframes wa-viaja {
+  0% { left: 0; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { left: calc(100% - 8px); opacity: 0; }
+}
+
+@layer components {
+  .wa-input {
+    @apply h-9 rounded-lg border-0 bg-[#f7f7f7] px-3 text-[13px] text-gray-900 shadow-[inset_0_0_0_1px_#e5e7eb] outline-none transition-shadow focus:bg-white focus:shadow-[inset_0_0_0_1px_#303030,0_0_0_3px_rgba(48,48,48,.08)];
+  }
+}

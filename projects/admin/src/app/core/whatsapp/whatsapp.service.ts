@@ -1,5 +1,5 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import {
   AudienciaCampanas,
@@ -21,6 +21,10 @@ import {
 export class WhatsappService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/whatsapp`;
+
+  /** La pantalla "Conectar número" está a la vista (no hay número): el
+   *  topbar muestra solo "WhatsApp" en la miga, sin la sección. */
+  readonly sinNumero = signal(false);
 
   conexion() {
     return this.http.get<EstadoConexion>(`${this.base}/conexion`);
