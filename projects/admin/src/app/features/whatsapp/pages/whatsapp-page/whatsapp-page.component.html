@@ -1,0 +1,102 @@
+<div class="relative flex h-[calc(100vh-150px)] min-h-[480px] gap-3 text-[13px] leading-[normal]" data-screen-label="Bandeja">
+  @if (!angosto() || !abierto()) {
+  <app-lista-chats [class]="angosto() ? 'w-full' : 'w-[316px]'"
+    [chats]="chats()" [total]="total()" [abiertoId]="abiertoId()" [filtro]="store.filtroBandeja()" [busca]="busca()"
+    [ahora]="ahora()" [asistenteActivo]="asistenteActivo()" [hayMas]="hayMasChats()" [escribiendo]="escribiendo()"
+    (elegir)="abrir($event)" (cambiarFiltro)="cambiarFiltro($event)" (cambiarBusca)="cambiarBusca($event)" (masChats)="masChats()" />
+  }
+
+  <section class="min-w-0 flex-1 flex-col overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.04)]"
+    [class]="angosto() && !abierto() ? 'hidden' : 'flex'">
+    @if (abierto(); as c) {
+      <app-cabecera-chat [chat]="c" [ahora]="ahora()" [enIa]="enIa()" [asistenteActivo]="asistenteActivo()" [puedeResponder]="puedeResponder()"
+        [panelAbierto]="panelVisible()" [angosto]="angosto()" [compacto]="compacto()"
+        (modo)="cambiarModo($event)" (alternarPanel)="alternarPanel()" (volver)="cerrarChat()" />
+
+      <div #scroll class="relative flex-1 overflow-y-auto bg-[#efe7de] px-[22px] pt-3.5 pb-[18px]">
+        @if (traspaso(); as motivo) {
+          <div class="pointer-events-none sticky top-0 z-[5] mb-1.5 flex justify-center">
+            <div class="pointer-events-auto flex max-w-full animate-[wa-entra_.3s_ease-out] items-center gap-2 rounded-full bg-white py-1 pr-1 pl-2.5 shadow-[0_0_0_1px_rgba(0,0,0,.05),0_6px_16px_-8px_rgba(0,0,0,.25)]">
+              <app-ia-marca [size]="16" [fondo]="true" />
+              <span class="min-w-0 truncate text-[12px] text-[#4b5563]"><b class="font-semibold text-[#303030]">La IA te pasó este chat</b> · {{ motivo }}</span>
+              <button type="button" (click)="entendido()"
+                class="h-6 shrink-0 cursor-pointer rounded-full border-0 bg-[#f1f1f1] px-2.5 text-[11.5px] font-semibold text-[#303030] hover:bg-[#e6e6e6]">Entendido</button>
+            </div>
+          </div>
+        }
+        @if (hayMas()) {
+          <div class="mb-3 text-center">
+            <button type="button" (click)="verAnteriores()"
+              class="cursor-pointer rounded-full border-0 bg-white/90 px-3 py-1 text-[12px] font-medium text-[#374151] shadow-[0_1px_.5px_rgba(0,0,0,.1)]">Ver mensajes anteriores</button>
+          </div>
+        }
+        @if (cargandoMensajes()) {
+          <p class="m-0 py-8 text-center text-[13px] text-[#6b7280]">Cargando…</p>
+        }
+        @for (it of items(); track it.id) {
+          @if (it.dia) {
+            <p class="my-2.5 text-center"><span class="rounded-[7px] bg-white/85 px-2.5 py-[3px] text-[11.5px] font-medium text-[#6b7280]">{{ it.dia }}</span></p>
+          }
+          @switch (it.k) {
+            @case ('msg') {
+              <app-burbuja-mensaje [m]="it.m" [adjunto]="adjuntos()[it.m.id]" [puedeReintentar]="puedeReintentar(it.m)"
+                (cargar)="cargarAdjunto(it.m)" (descargar)="descargar(it.m)" (reintentar)="reintentar(it.m)" />
+            }
+            @case ('sistema') {
+              <p class="my-2.5 flex animate-[wa-entra_.3s_ease-out] justify-center">
+                <span class="flex items-center gap-1.5 rounded-full bg-[#303030] py-[5px] pr-3 pl-2 text-[12px] font-medium text-white">
+                  <span class="flex size-[18px] items-center justify-center rounded-full bg-[#2be0d5] text-[#003331]"><tabler-icon [icon]="i.check" [size]="12" /></span>{{ it.texto }}
+                </span>
+              </p>
+            }
+            @case ('marca') {
+              <div class="my-3 flex animate-[wa-entra_.3s_ease-out] items-center gap-2.5">
+                <span class="h-px flex-1 bg-black/[.09]"></span>
+                <span class="flex max-w-[80%] items-center gap-1.5 rounded-[7px] bg-white/85 px-[9px] py-[3px] text-[11.5px] text-[#6b7280]">
+                  <app-ia-marca [size]="15" [fondo]="true" />
+                  <span class="truncate"><b class="font-semibold text-[#303030]">La IA te pasó el chat</b> · {{ it.texto }}</span>
+                  <span class="shrink-0 text-[#9ca3af] tabular-nums">{{ it.hora }}</span>
+                </span>
+                <span class="h-px flex-1 bg-black/[.09]"></span>
+              </div>
+            }
+          }
+        }
+        @if (escribiendo().includes(c.id)) {
+          <!-- La IA está armando la respuesta (llega por tiempo real). -->
+          <div class="mt-1 flex">
+            <span class="flex animate-[wa-entra_.25s_ease-out] items-center gap-[3px] rounded-[10px] bg-[#d9fdd3] px-3 py-2.5 shadow-[0_1px_.5px_rgba(0,0,0,.1)]"
+              title="La IA está escribiendo">
+              @for (n of [0, 1, 2]; track n) {
+                <span class="size-[5px] animate-[wa-punto_1.2s_ease-in-out_infinite] rounded-full bg-[#111827]" [style.animation-delay.ms]="n * 150"></span>
+              }
+            </span>
+          </div>
+        }
+      </div>
+
+      <app-compositor [sugerencia]="sugerencia()" [(texto)]="texto" [motivo]="motivoSinResponder()" [error]="errorEnvio()" [enviando]="enviando()"
+        [abierta]="ventanaAbierta()" [enIa]="enIa()" [rapidas]="rapidas()" [cliente]="cliente()" [datosPlantilla]="datosPlantilla()"
+        [productos]="mostrador()?.productos ?? null" [interes]="mostrador()?.interes ?? []" [borrador]="borrador()"
+        [altoMensajes]="altoMensajes()" [aprobadas]="aprobadas()" [aceptaPromociones]="c.contacto.aceptaPromociones"
+        [puedeConfigurar]="puedeConfigurar()"
+        (enviar)="enviar($event)" (mostrarProducto)="enviarProducto($event)" (agregar)="sumarAlPedido($event.productoId, $event.cantidad)"
+        (enviarPlantilla)="enviarPlantilla($event)" (editarRapidas)="store.ir('automatico')" (abrirMostrador)="cargarMostrador(c.id)" />
+    } @else {
+      <div class="grid flex-1 place-items-center bg-[#fafafa] p-8 text-center">
+        <div>
+          <tabler-icon [icon]="i.wa" [size]="36" [stroke]="1.25" class="mx-auto text-[#d1d5db]" />
+          <p class="m-0 mt-2 text-[13px] text-[#6b7280]">Elige un chat para ver la conversación.</p>
+        </div>
+      </div>
+    }
+  </section>
+
+  @if (abierto(); as c) {
+    <app-panel-cliente [chat]="c" [ficha]="ficha()" [productos]="mostrador()?.productos ?? []" [interes]="mostrador()?.interes ?? []"
+      [borrador]="borrador()" [ahora]="ahora()" [visible]="panelVisible()" [fijo]="panelFijo()" [creando]="creandoPedido()"
+      [puedeResponder]="puedeResponder()" [puedeCrearPedido]="puedeCrearPedido()" [ventanaAbierta]="ventanaAbierta()"
+      (alternarPromociones)="alternarPromociones()" (cambiarCantidad)="sumarAlPedido($event.productoId, $event.delta, false)"
+      (crearPedido)="crearPedido()" (mostrarProducto)="enviarProducto($event)" />
+  }
+</div>

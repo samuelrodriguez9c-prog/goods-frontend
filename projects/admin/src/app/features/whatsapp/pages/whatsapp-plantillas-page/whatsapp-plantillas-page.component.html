@@ -1,0 +1,45 @@
+@if (cargando()) {
+  <div class="flex animate-pulse flex-wrap items-start gap-4">
+    <div class="h-[420px] min-w-0 flex-[1_1_420px] rounded-[14px] bg-white/70"></div>
+    <div class="h-[520px] max-w-[440px] flex-[1_1_360px] rounded-[14px] bg-white/70"></div>
+  </div>
+} @else if (error(); as e) {
+  <p role="alert" class="m-0 rounded-[14px] bg-white p-6 text-center text-[13px] text-[#b42318]">{{ e }}</p>
+} @else {
+  <div class="flex flex-wrap items-start gap-4 text-[13px] leading-[normal]">
+    <app-lista-plantillas
+      [plantillas]="plantillas()"
+      [elegidaId]="form() ? null : (sel()?.id ?? null)"
+      [puedeConfigurar]="puedeConfigurar()"
+      [sincronizando]="sincronizando()"
+      [(filtro)]="store.filtroPlantillas"
+      [(q)]="q"
+      (elegir)="seleccionar($event)"
+      (sincronizar)="sincronizar()" />
+
+    <section class="sticky top-0 flex max-w-[440px] flex-[1_1_360px] flex-col overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.04)] transition-shadow duration-300">
+      @for (k of [clave()]; track k) {
+        @if (form(); as f) {
+          <app-formulario-plantilla [inicial]="f.inicial" (creada)="creada($event)" (cancelar)="form.set(null)" />
+        } @else if (sel(); as p) {
+          <app-detalle-plantilla
+            [plantilla]="p"
+            [campanas]="campanas()"
+            [puedeConfigurar]="puedeConfigurar()"
+            [borrando]="borrando()"
+            (corregir)="corregir($event)"
+            (duplicar)="duplicar($event)"
+            (borrar)="borrar($event)"
+            (cambiarTipos)="cambiarTipos($event)" />
+        } @else {
+          <div class="px-6 py-10 text-center">
+            <p class="m-0 text-[13px] font-medium text-[#111827]">Aquí ves cada plantilla</p>
+            <p class="m-0 mt-1 text-[12.5px] text-[#9ca3af]">
+              @if (puedeConfigurar()) { Toca «Nueva plantilla» para crear la primera. } @else { Cuando el negocio cree una, aparece aquí. }
+            </p>
+          </div>
+        }
+      }
+    </section>
+  </div>
+}

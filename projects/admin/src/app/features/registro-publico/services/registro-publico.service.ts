@@ -58,4 +58,26 @@ export class RegistroPublicoService {
       payload,
     );
   }
+
+  /** Página "escribinos" de los correos de alta (`/registro/mensaje`). */
+  verContacto(token: string): Observable<ContactoAlta> {
+    return this.http.get<ContactoAlta>(`${environment.apiUrl}/empresas/registro-publico/contacto`, {
+      params: { token },
+    });
+  }
+
+  enviarContacto(token: string, texto: string): Observable<{ ok: true }> {
+    return this.http.post<{ ok: true }>(`${environment.apiUrl}/empresas/registro-publico/contacto`, {
+      token,
+      texto,
+    });
+  }
+}
+
+export interface ContactoAlta {
+  empresa: string;
+  numeroSolicitud: string;
+  puedeEscribir: boolean;
+  estado: string;
+  mensajes: { texto: string; creadoEn: string }[];
 }

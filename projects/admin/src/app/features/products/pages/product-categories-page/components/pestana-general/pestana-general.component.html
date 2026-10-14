@@ -1,0 +1,141 @@
+@let d = borrador();
+<app-tarjeta-hoja icono="id" titulo="Identidad" descripcion="Cómo se llama y qué agrupa.">
+  <label class="flex flex-col gap-2">
+    <app-etiqueta-campo titulo="Nombre" marca="requerido" ayuda="Así la verán tus clientes en la tienda. No se puede repetir." />
+    <input
+      #nombreInput
+      [value]="d.nombre"
+      (input)="cambiar.emit({ nombre: $any($event.target).value })"
+      [disabled]="soloLectura()"
+      placeholder="Ej. Panes de sal"
+      class="w-full rounded-[10px] bg-[#fafafa] px-3 py-[9px] text-[13px] outline-none transition-[box-shadow,background-color] duration-200 ease-[ease] focus:bg-white! focus:shadow-[0_0_0_1px_#303030,_0_0_0_4px_rgba(48,48,48,.08)]!"
+      [class]="errorNombre() ? 'shadow-[0_0_0_1px_#d82c0d]' : 'shadow-[0_0_0_1px_#e5e5e5]'"
+    />
+    @if (errorNombre()) {
+      <span class="flex animate-[fade-in-up_.2s_ease-out] items-center gap-[5px] text-[12px] text-[#b42318]">
+        <tabler-icon [icon]="icono('alert-circle')" [size]="13" [stroke]="2" />{{ errorNombre() }}
+      </span>
+    }
+  </label>
+  <label class="flex flex-col gap-2">
+    <app-etiqueta-campo titulo="Descripción" marca="opcional" ayuda="Una frase que la presente en la tienda." />
+    <span class="relative block">
+      <textarea
+        [value]="d.descripcion"
+        (input)="cambiar.emit({ descripcion: $any($event.target).value })"
+        [disabled]="soloLectura()"
+        maxlength="500"
+        rows="3"
+        placeholder="Ej. Pan de mesa, tradicional y de masa madre."
+        class="block w-full resize-y rounded-[10px] bg-[#fafafa] px-3 pt-[9px] pb-6 text-[13px] leading-[20px] shadow-[0_0_0_1px_#e5e5e5] outline-none transition-[box-shadow,background-color] duration-200 ease-[ease] focus:bg-white! focus:shadow-[0_0_0_1px_#303030,_0_0_0_4px_rgba(48,48,48,.08)]!"
+      ></textarea>
+      <span class="pointer-events-none absolute right-3 bottom-2 text-[11px] text-[#9ca3af] tabular-nums">{{ (d.descripcion || '').length }} / 500</span>
+    </span>
+  </label>
+</app-tarjeta-hoja>
+
+<app-tarjeta-hoja icono="adjustments" titulo="Organización" descripcion="Dónde va en el árbol y si se ve en la tienda.">
+  <div class="relative flex flex-col gap-2">
+    <app-etiqueta-campo titulo="Categoría padre" marca="opcional" ayuda="Déjala sin padre para que sea principal. Máximo 2 niveles." />
+    <button
+      type="button"
+      (click)="alternarPadre($event)"
+      class="flex items-center gap-2 rounded-[10px] bg-white px-3 py-[9px] text-left text-[13px] text-[#111827] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow] duration-200 ease-[ease] hover:shadow-[0_0_0_1px_#b5b5b5]!"
+      [class]="(padreBloqueado() || soloLectura() ? 'cursor-not-allowed' : 'cursor-pointer') + (padreBloqueado() ? ' opacity-55' : '')"
+    >
+      <tabler-icon [icon]="icono(esPrincipal() ? 'folder-up' : 'folder')" [size]="15" [stroke]="2" class="text-[#8a8a8a]" />
+      <span class="flex-1 truncate">{{ nombrePadre() }}</span>
+      <tabler-icon [icon]="icono('selector')" [size]="15" [stroke]="2" class="text-[#9ca3af]" />
+    </button>
+    @if (padreBloqueado()) {
+      <span class="flex items-center gap-[5px] text-[12px] text-[#6b7280]">
+        <tabler-icon [icon]="icono('info-circle')" [size]="13" [stroke]="2" />Tiene subcategorías, así que debe seguir siendo principal.
+      </span>
+    }
+    <div
+      [appPopover]="menu.abierto('padre')"
+      (click)="$event.stopPropagation()"
+      class="absolute top-[calc(100%_+_6px)] right-0 left-0 z-30 max-h-70 overflow-y-auto rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)] [transform-origin:top_center] [transition:opacity_.18s_ease,_transform_.22s_cubic-bezier(.2,.8,.2,1)]"
+    >
+      @for (o of opcionesPadre(); track o.valor) {
+        <button
+          type="button"
+          (click)="elegirPadre(o.valor)"
+          class="flex h-8 w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] hover:bg-[#f4f4f4]!"
+        >
+          <tabler-icon [icon]="icono(o.icono)" [size]="14" [stroke]="2" class="text-[#9ca3af]" />
+          <span class="flex-1">{{ o.nombre }}</span>
+          @if (o.valor === d.categoriaPadreId) {
+            <tabler-icon [icon]="icono('check')" [size]="14" [stroke]="2" />
+          }
+        </button>
+      }
+    </div>
+  </div>
+  <div class="flex flex-col gap-2">
+    <app-etiqueta-campo
+      titulo="Estado"
+      [ayuda]="d.activo ? 'Se muestra en la tienda con sus productos.' : 'Se oculta de la tienda. Sus productos siguen en el admin.'"
+    />
+    <!-- Control segmentado Activa / Inactiva -->
+    <div class="relative grid grid-cols-[repeat(2,minmax(0,1fr))] rounded-[10px] bg-[#ebebeb] p-[3px]">
+      <span
+        class="absolute top-[3px] bottom-[3px] left-[3px] w-[calc((100%_-_6px)_/_2)] rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,.08)] transition-[translate] duration-320 ease-[cubic-bezier(.2,.8,.2,1)]"
+        [class.translate-x-full]="!d.activo"
+      ></span>
+      @for (activo of [true, false]; track activo) {
+        <button
+          type="button"
+          (click)="elegirEstado(activo)"
+          class="relative z-[1] flex h-7.5 cursor-pointer items-center justify-center gap-1.5 text-[12.5px] transition-[color] duration-200 ease-[ease]"
+          [class]="d.activo === activo ? 'font-semibold text-[#111827]' : 'font-medium text-[#6b7280]'"
+        >
+          <span
+            class="size-1.5 rounded-full transition-[opacity] duration-200 ease-[ease]"
+            [class]="puntoEstado(activo) + (d.activo === activo ? '' : ' opacity-0')"
+          ></span>
+          {{ activo ? 'Activa' : 'Inactiva' }}
+        </button>
+      }
+    </div>
+  </div>
+</app-tarjeta-hoja>
+
+@if (esPrincipal() && categoriaId() != null) {
+  <app-tarjeta-hoja
+    icono="hierarchy-2"
+    titulo="Subcategorías"
+    descripcion="Arrástralas en la lista para moverlas a otra principal."
+    class="col-[1_/_-1]"
+  >
+    <button
+      accion
+      type="button"
+      (click)="nuevaSubcategoria.emit()"
+      class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] hover:shadow-[0_0_0_1px_#b5b5b5]!"
+    >
+      <tabler-icon [icon]="icono('plus')" [size]="13" [stroke]="2" />Nueva subcategoría
+    </button>
+    @if (subcategorias().length) {
+      <div class="flex flex-col rounded-xl px-1.5 py-1 shadow-[0_0_0_1px_#ececec]">
+        @for (k of subcategorias(); track k.id) {
+          <button
+            type="button"
+            (click)="abrir.emit(k.id)"
+            class="grid cursor-pointer grid-cols-[28px_minmax(0,1fr)_auto_14px] items-center gap-3 rounded-[9px] p-2 text-left hover:bg-[#f7f7f7]!"
+          >
+            <app-miniatura [miniatura]="k.miniatura" [tamanoIcono]="14" class="size-7 rounded-lg" />
+            <span class="flex min-w-0 items-center gap-[7px] text-[13px] font-medium text-[#111827]">
+              <span class="size-1.5 shrink-0 rounded-full" [class]="puntoEstado(k.activa)"></span>
+              <span class="truncate">{{ k.nombre }}</span>
+            </span>
+            <span class="text-[12px] text-[#6b7280] tabular-nums">{{ k.productos }}</span>
+            <tabler-icon [icon]="icono('chevron-right')" [size]="14" [stroke]="2" class="text-[#c4c4c4]" />
+          </button>
+        }
+      </div>
+    } @else {
+      <p class="text-[12.5px] leading-[18px] text-[#6b7280]">Todavía no tiene subcategorías. Sus productos se muestran directamente en ella.</p>
+    }
+  </app-tarjeta-hoja>
+}

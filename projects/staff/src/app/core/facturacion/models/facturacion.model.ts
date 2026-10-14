@@ -78,7 +78,7 @@ export interface FiltroPagos {
 export interface ResumenFacturacion {
   mesActual: { desde: string; pagos: number; cobrado: TotalesPorMoneda };
   mesAnterior: { desde: string; pagos: number; cobrado: TotalesPorMoneda };
-  cartera: { porVencer7Dias: number; enMora: number; vencidas: number };
+  cartera: { porVencer7Dias: number; enMora: number; vencidas: number; enPrueba: number };
   /** Cobros generados sin pagar (COP). `atrasados`: ya pasó su fecha límite. */
   porCobrar: { cobros: number; monto: number; atrasados: number };
 }
@@ -103,9 +103,48 @@ export interface Cobro {
 
 export interface LineaCobro {
   concepto: string;
+  /** Negativo en las líneas de descuento. */
   monto: number;
-  origen: 'plan' | 'cargo';
+  origen: 'plan' | 'cargo' | 'descuento';
   cargoId?: number;
+  descuentoId?: number;
+}
+
+/** Cómo lo lee el cliente: "Descuento" (`general`) o "Descuento por fidelidad"… (2026-10-10). */
+export type MotivoDescuento = 'general' | 'fidelidad' | 'buen_pago' | 'promocion';
+
+export const MOTIVOS_DESCUENTO: { valor: MotivoDescuento; texto: string; ayuda: string }[] = [
+  { valor: 'general', texto: 'Sin motivo', ayuda: 'El cliente lee "Descuento"' },
+  { valor: 'fidelidad', texto: 'Fidelidad', ayuda: 'El cliente lee "Descuento por fidelidad"' },
+  { valor: 'buen_pago', texto: 'Buen pago', ayuda: 'El cliente lee "Descuento por buen pago"' },
+  { valor: 'promocion', texto: 'Promoción', ayuda: 'El cliente lee "Descuento promocional"' },
+];
+
+/** Descuento sobre el plan de una Empresa (2026-10-10): uno activo a la vez, hasta 100 %. */
+export interface DescuentoEmpresa {
+  id: number;
+  porcentaje: number;
+  motivo: MotivoDescuento;
+  /** Lo que lee el cliente ("Descuento por fidelidad"). */
+  etiqueta: string;
+  /** "Descuento por fidelidad (20 %)". */
+  concepto: string;
+  /** Nota interna (el cliente no la ve). */
+  nota: string | null;
+  activoDesde: string;
+  activoHasta: string | null;
+  activo: boolean;
+  motivoBaja: string | null;
+  creadoPor: PersonaRef | null;
+}
+
+export interface CrearDescuentoPayload {
+  porcentaje: number;
+  motivo?: MotivoDescuento;
+  nota?: string;
+  /** Cuántos cobros dura, desde el próximo. Sin esto ni `hasta`: indefinido. */
+  meses?: number;
+  hasta?: string;
 }
 
 /** Un extra que se cobra cada mes junto con el plan (2026-10-04). */
@@ -131,6 +170,8 @@ export interface EstadoCuenta {
     fechaProximoVencimiento: string | null;
     diasMora: number;
     diasParaVencer: number | null;
+    /** Período de prueba (2026-10-10). `enPrueba`: todavía sin pagar. */
+    prueba: { hasta: string; enPrueba: boolean; diasRestantes: number; convertidaEn: string | null } | null;
   } | null;
   totales: { pagosValidos: number; pagado: TotalesPorMoneda };
   ultimoPago: PagoResumen | null;
@@ -139,6 +180,8 @@ export interface EstadoCuenta {
   /** Lo que paga por mes hoy (plan + extras). `null` sin suscripción en ciclo. */
   cuotaMensual: { total: number; detalle: LineaCobro[] } | null;
   cargos: CargoRecurrente[];
+  /** El activo primero, después la historia. */
+  descuentos: DescuentoEmpresa[];
   cobros: Cobro[];
   pagos: PagoDetalle[];
 }

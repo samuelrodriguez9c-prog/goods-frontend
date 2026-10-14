@@ -1,0 +1,261 @@
+@if (categoriaId() == null) {
+  <div class="flex flex-col gap-3.5 rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),_0_12px_28px_-22px_rgba(0,0,0,.28)]">
+    <p class="text-[12.5px] leading-[18px] text-[#6b7280]">Guarda la categoría primero. Después podrás agregarle productos desde aquí.</p>
+  </div>
+} @else {
+  <!-- Resumen -->
+  <div class="flex flex-wrap overflow-hidden rounded-[14px] border border-[#ebebeb] bg-white">
+    @for (x of resumen(); track x.label) {
+      <div class="-mr-[1px] flex min-w-0 flex-[1_1_140px] flex-col gap-[3px] border-r border-r-[#ebebeb] px-4 py-3">
+        <span class="text-[12px] font-semibold text-[#6b7280]">{{ x.label }}</span>
+        <span
+          class="truncate font-[Archivo] text-[20px] leading-[24px] font-semibold tabular-nums"
+          [class]="x.alerta ? 'text-[#b42318]' : 'text-[#303030]'"
+        >{{ x.valor }}</span>
+        <span class="truncate text-[11.5px] text-[#9ca3af]">{{ x.detalle }}</span>
+      </div>
+    }
+  </div>
+
+  <div class="relative flex flex-col gap-3.5 rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),_0_12px_28px_-22px_rgba(0,0,0,.28)]">
+    <!-- Búsqueda, orden y Agregar -->
+    <div class="flex items-center gap-1.5">
+      <label
+        class="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-[#f4f4f4] px-3 transition-[background-color,box-shadow] duration-200 ease-[ease] focus-within:bg-white focus-within:shadow-[0_0_0_1px_#d4d4d4]"
+      >
+        <tabler-icon [icon]="icono('search')" [size]="15" [stroke]="2" class="text-[#8a8a8a]" />
+        <input
+          [value]="estado.busqueda()"
+          (input)="estado.busqueda.set($any($event.target).value)"
+          placeholder="Buscar por nombre o SKU"
+          class="min-w-0 flex-1 bg-transparent py-2 text-[13px] text-[#111827] outline-none"
+        />
+        @if (estado.busqueda().trim()) {
+          <button type="button" (click)="estado.busqueda.set('')" class="flex cursor-pointer text-[#8a8a8a]">
+            <tabler-icon [icon]="icono('x')" [size]="13" [stroke]="2" />
+          </button>
+        }
+      </label>
+      <div class="relative">
+        <button
+          type="button"
+          (click)="menu.alternar('orden', $event)"
+          class="flex h-8.5 cursor-pointer items-center gap-1.5 rounded-full bg-[#f4f4f4] px-3 text-[12.5px] font-medium whitespace-nowrap text-[#303030] hover:bg-[#ebebeb]!"
+        >
+          <tabler-icon [icon]="icono('arrows-sort')" [size]="14" [stroke]="2" class="text-[#6b7280]" />
+          {{ etiquetaOrden() }}
+          <tabler-icon [icon]="icono('chevron-down')" [size]="12" [stroke]="2" class="text-[#8a8a8a]" />
+        </button>
+        <div
+          [appPopover]="menu.abierto('orden')"
+          (click)="$event.stopPropagation()"
+          class="absolute top-[calc(100%_+_6px)] right-0 z-40 w-55 origin-top-right rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)] [transition:opacity_.18s_ease,_transform_.22s_cubic-bezier(.2,.8,.2,1)]"
+        >
+          @for (o of ordenes; track o.k) {
+            <button
+              type="button"
+              (click)="elegirOrden(o.k)"
+              class="flex w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 py-[7px] text-left text-[13px] hover:bg-[#f4f4f4]!"
+            >
+              <span class="flex flex-1 flex-col">
+                <span>{{ o.label }}</span>
+                <span class="text-[11.5px] text-[#8a8a8a]">{{ o.detalle }}</span>
+              </span>
+              @if (o.k === estado.orden()) {
+                <tabler-icon [icon]="icono('check')" [size]="14" [stroke]="2" />
+              }
+            </button>
+          }
+        </div>
+      </div>
+      <button
+        type="button"
+        (click)="alternarAgregar()"
+        [title]="puedeEditar() ? '' : 'Necesitas el permiso productos.editar'"
+        class="flex h-8.5 items-center gap-1.5 rounded-full bg-[#303030] px-[13px] text-[12.5px] font-medium whitespace-nowrap text-white shadow-[inset_0_-1px_0_#000]"
+        [class]="puedeEditar() ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'"
+      >
+        <tabler-icon [icon]="icono('plus')" [size]="14" [stroke]="2" />Agregar
+      </button>
+    </div>
+
+    @if (estado.agregando()) {
+      <!-- Agregar productos de otras categorías -->
+      <div class="flex animate-[fade-in-up_.2s_ease-out] flex-col gap-3 rounded-xl p-3.5 shadow-[0_0_0_1px_#ececec]">
+        <div class="flex items-start gap-2.5">
+          <span class="flex size-7.5 shrink-0 items-center justify-center rounded-[9px] bg-[#f4f4f4] text-[#303030]">
+            <tabler-icon [icon]="icono('folder-plus')" [size]="16" [stroke]="2" />
+          </span>
+          <span class="flex min-w-0 flex-1 flex-col gap-[1px]">
+            <span class="text-[13.5px] font-semibold text-[#111827]">Agregar productos</span>
+            <span class="text-[12px] leading-[16px] text-[#8a8a8a]">
+              Tráelos a <strong class="font-semibold text-[#303030]">{{ nombreCategoria(categoriaId()) }}</strong> desde otra categoría o desde los que no tienen.
+            </span>
+          </span>
+          <button
+            type="button"
+            (click)="alternarAgregar()"
+            title="Cerrar"
+            class="flex cursor-pointer rounded-lg p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]! hover:text-[#111827]!"
+          >
+            <tabler-icon [icon]="icono('x')" [size]="15" [stroke]="2" />
+          </button>
+        </div>
+        <label class="flex items-center gap-2 rounded-full bg-[#f4f4f4] px-3">
+          <tabler-icon [icon]="icono('search')" [size]="15" [stroke]="2" class="text-[#8a8a8a]" />
+          <input
+            #buscadorAgregar
+            [value]="estado.busquedaAgregar()"
+            (input)="estado.busquedaAgregar.set($any($event.target).value)"
+            placeholder="Buscar por nombre o SKU"
+            class="min-w-0 flex-1 bg-transparent py-2 text-[13px] outline-none"
+          />
+        </label>
+        <div class="flex flex-col">
+          @for (x of candidatosVisibles(); track x.id) {
+            <div class="grid grid-cols-[28px_minmax(0,1fr)_auto_auto] items-center gap-2.5 rounded-[9px] pt-1.5 pr-1.5 pb-1.5 pl-1 hover:bg-[#f7f7f7]!">
+              <app-miniatura [miniatura]="miniatura(x)" [tamanoIcono]="14" class="size-7 rounded-lg" />
+              <span class="flex min-w-0 flex-col">
+                <span class="truncate text-[13px] font-medium text-[#111827]">{{ x.nombre }}</span>
+                <span class="text-[11.5px]" [class]="x.categoriaId == null ? 'text-[#b42318]' : 'text-[#8a8a8a]'">{{ nombreCategoria(x.categoriaId) }}</span>
+              </span>
+              <span class="text-[12px] text-[#6b7280] tabular-nums">{{ f.cop(x.precio) }}</span>
+              <button
+                type="button"
+                (click)="agregar(x)"
+                class="flex cursor-pointer items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[12px] font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] hover:shadow-[0_0_0_1px_#303030]!"
+              >
+                <tabler-icon [icon]="icono('plus')" [size]="12" [stroke]="2" />Agregar
+              </button>
+            </div>
+          } @empty {
+            <span class="px-1 py-2 text-[12.5px] text-[#6b7280]">No hay productos que coincidan fuera de esta categoría.</span>
+          }
+          @if (candidatosOcultos()) {
+            <span class="px-1 pt-1.5 text-[11.5px] text-[#9ca3af]">+{{ candidatosOcultos() }} más · sigue escribiendo para afinar</span>
+          }
+        </div>
+      </div>
+    }
+
+    @if (!todos().length) {
+      <div class="flex flex-col items-center gap-2 px-3 py-7 text-center">
+        <span class="flex size-10 items-center justify-center rounded-full bg-[#f4f4f4] text-[#8a8a8a]">
+          <tabler-icon [icon]="icono('box-off')" [size]="18" [stroke]="2" />
+        </span>
+        <span class="text-[13px] text-[#6b7280]">Esta categoría no tiene productos.</span>
+        <span class="text-[12px] text-[#9ca3af]">Usa «Agregar» para traer productos que ya existen.</span>
+      </div>
+    } @else {
+      <div class="flex items-center gap-2 px-1.5">
+        <span
+          (click)="seleccionarTodo()"
+          title="Seleccionar todo lo visible"
+          class="flex size-[15px] cursor-pointer items-center justify-center rounded-[5px] text-white transition-[background-color] duration-150 ease-[ease]"
+          [class]="haySeleccion() ? 'bg-[#303030] shadow-[inset_0_0_0_1.5px_#303030]' : 'bg-white shadow-[inset_0_0_0_1.5px_#c4c4c4]'"
+        >
+          @if (todosMarcados()) {
+            <tabler-icon [icon]="icono('check')" [size]="11" [stroke]="2" />
+          } @else if (haySeleccion()) {
+            <tabler-icon [icon]="icono('minus')" [size]="11" [stroke]="2" />
+          }
+        </span>
+        <span class="text-[12px] text-[#6b7280] tabular-nums">{{ f.pl(cuantosVisibles(), 'producto', 'productos') }}</span>
+      </div>
+      @if (!grupos().length) {
+        <p class="px-1.5 py-4 text-[13px] text-[#6b7280]">Ningún producto coincide con «{{ estado.busqueda() }}».</p>
+      }
+      <div class="-mt-1.5 flex flex-col gap-1">
+        @for (g of grupos(); track g.id) {
+          <div>
+            @if (g.titulo) {
+              <button
+                type="button"
+                (click)="estado.alternarGrupo(g.id)"
+                class="flex w-full cursor-pointer items-center gap-2 px-1.5 pt-2.5 pb-1.5 text-left"
+              >
+                <tabler-icon [icon]="icono(g.icono)" [size]="14" [stroke]="2" class="text-[#8a8a8a]" />
+                <span class="truncate text-[12.5px] font-semibold text-[#111827]">{{ g.titulo }}</span>
+                <span class="rounded-full bg-[#efefef] px-[7px] text-[11px] leading-[17px] font-semibold text-[#4b5563]">{{ g.productos.length }}</span>
+                @if (g.bajo) {
+                  <span class="text-[11.5px] text-[#b42318]">· {{ f.pl(g.bajo, 'con stock bajo', 'con stock bajo') }}</span>
+                }
+                <span class="flex-1"></span>
+                <tabler-icon
+                  [icon]="icono('chevron-down')"
+                  [size]="14"
+                  [stroke]="2"
+                  class="text-[#8a8a8a] transition-[rotate] duration-240 ease-[cubic-bezier(.2,.8,.2,1)]"
+                  [class.-rotate-90]="!g.abierto"
+                />
+              </button>
+            }
+            <app-desplegable [abierto]="g.abierto">
+              <div class="flex flex-col rounded-xl p-1 shadow-[0_0_0_1px_#ececec]">
+                @for (x of g.productos; track x.id) {
+                  @let marcado = estado.seleccion().has(x.id);
+                  @let encima = encimaDe() === x.id;
+                  <div
+                    (mouseenter)="encimaDe.set(x.id)"
+                    (mouseleave)="salir(x.id)"
+                    (click)="verProducto.emit(x.id)"
+                    class="grid cursor-pointer grid-cols-[16px_30px_minmax(0,1fr)_auto_64px_24px] items-center gap-2.5 rounded-[9px] px-1.5 py-[7px] transition-[background-color] duration-150 ease-[ease] hover:bg-[#f7f7f7]!"
+                    [class]="marcado ? 'bg-[#f4f4f4]' : 'bg-transparent'"
+                  >
+                    <span class="flex h-6.5 items-center justify-center">
+                      @if (haySeleccion() || encima) {
+                        <span
+                          (click)="$event.stopPropagation(); estado.alternarSeleccion(x.id)"
+                          class="flex size-[15px] animate-[fade-in-up_.15s_ease-out] items-center justify-center rounded-[5px] text-white"
+                          [class]="marcado ? 'bg-[#303030] shadow-[inset_0_0_0_1.5px_#303030]' : 'bg-white shadow-[inset_0_0_0_1.5px_#c4c4c4]'"
+                        >
+                          @if (marcado) {
+                            <tabler-icon [icon]="icono('check')" [size]="11" [stroke]="2" />
+                          }
+                        </span>
+                      } @else {
+                        <span class="h-6.5 w-[3px] rounded-full" [class]="punto[x.estado]"></span>
+                      }
+                    </span>
+                    <span class="flex">
+                      <app-miniatura [miniatura]="miniatura(x)" [tamanoIcono]="15" class="size-7.5 rounded-lg" />
+                    </span>
+                    <span class="flex min-w-0 flex-col gap-[1px]">
+                      <span class="truncate text-[13px] font-medium text-[#111827]">{{ x.nombre }}</span>
+                      <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ x.sku || 'Sin SKU' }} · {{ estadoTexto(x) }}</span>
+                    </span>
+                    <span class="text-[12.5px] font-medium whitespace-nowrap text-[#303030] tabular-nums">{{ f.cop(x.precio) }}</span>
+                    <span class="flex flex-col items-end gap-[5px]">
+                      <span class="text-[11.5px] font-semibold tabular-nums" [class]="stockAlDia(x) ? 'text-[#303030]' : 'text-[#b42318]'">
+                        {{ f.num(stock(x).disponible) }}
+                      </span>
+                      <span class="relative block h-1 w-16 overflow-hidden rounded-full bg-[#efefef]">
+                        <span
+                          class="absolute top-0 bottom-0 left-0 rounded-full transition-[width] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]"
+                          [class]="stockAlDia(x) ? 'bg-[#303030]' : 'bg-[#d82c0d]'"
+                          [style.width.%]="barraStock(x)"
+                        ></span>
+                      </span>
+                    </span>
+                    <span class="flex justify-center">
+                      @if (encima && puedeEditar() && !haySeleccion()) {
+                        <button
+                          type="button"
+                          (click)="$event.stopPropagation(); quitar(x)"
+                          title="Quitar de la categoría"
+                          class="flex size-6 animate-[fade-in_.15s] cursor-pointer items-center justify-center rounded-full text-[#8a8a8a] hover:bg-[#fff1f0]! hover:text-[#b42318]!"
+                        >
+                          <tabler-icon [icon]="icono('folder-minus')" [size]="14" [stroke]="2" />
+                        </button>
+                      }
+                    </span>
+                  </div>
+                }
+              </div>
+            </app-desplegable>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}

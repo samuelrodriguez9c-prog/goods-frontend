@@ -1,6 +1,7 @@
+import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { IconPlus, IconTrash, TablerIconComponent } from '@tabler/icons-angular';
+import { IconMailForward, IconPlus, IconTrash, TablerIconComponent } from '@tabler/icons-angular';
 import { forkJoin } from 'rxjs';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { RolAsignable } from '../../../../core/roles/models/rol.model';
@@ -12,14 +13,12 @@ interface FormularioEmpleado {
   nombres: string;
   apellidos: string;
   correo: string;
-  password: string;
 }
 
 const FORMULARIO_VACIO: FormularioEmpleado = {
   nombres: '',
   apellidos: '',
   correo: '',
-  password: '',
 };
 
 /**
@@ -39,7 +38,7 @@ const FORMULARIO_VACIO: FormularioEmpleado = {
 @Component({
   selector: 'app-settings-users-page',
   standalone: true,
-  imports: [TablerIconComponent, ModalComponent],
+  imports: [TablerIconComponent, ModalComponent, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './settings-users-page.component.html',
 })
@@ -49,6 +48,11 @@ export class SettingsUsersPageComponent {
 
   protected readonly iconPlus = IconPlus;
   protected readonly iconDelete = IconTrash;
+  protected readonly iconReenviar = IconMailForward;
+
+  // Reenviar invitación: id en vuelo y a quién ya se le reenvió (texto de confirmación).
+  protected readonly reenviandoA = signal<number | null>(null);
+  protected readonly reenviadoA = signal<number | null>(null);
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -110,7 +114,7 @@ export class SettingsUsersPageComponent {
 
   protected guardar(): void {
     const f = this.formulario();
-    if (!f.nombres.trim() || !f.apellidos.trim() || !f.correo.trim() || !f.password || this.guardando()) {
+    if (!f.nombres.trim() || !f.apellidos.trim() || !f.correo.trim() || this.guardando()) {
       return;
     }
     this.guardando.set(true);
@@ -119,17 +123,38 @@ export class SettingsUsersPageComponent {
       nombres: f.nombres.trim(),
       apellidos: f.apellidos.trim(),
       correo: f.correo.trim(),
-      password: f.password,
+      // Sin contraseña: el backend le manda la invitación por correo.
     };
     this.usuarioService.crearEmpleado(payload).subscribe({
       next: (usuario) => {
         this.guardando.set(false);
         this.modalAbierto.set(false);
-        this.usuarios.update((actuales) => [...actuales, usuario]);
+        const vence = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+        this.usuarios.update((actuales) => [...actuales, { ...usuario, invitacion: { venceEn: vence, vencida: false } }]);
       },
       error: (err: unknown) => {
         this.guardando.set(false);
         this.errorGuardar.set(this.mensajeDeError(err));
+      },
+    });
+  }
+
+  // --- Reenviar invitación ---
+
+  protected reenviar(usuario: Usuario): void {
+    if (this.reenviandoA() !== null) return;
+    this.reenviandoA.set(usuario.id);
+    this.usuarioService.reenviarInvitacion(usuario.id).subscribe({
+      next: ({ venceEn }) => {
+        this.reenviandoA.set(null);
+        this.reenviadoA.set(usuario.id);
+        this.usuarios.update((lista) =>
+          lista.map((u) => (u.id === usuario.id ? { ...u, invitacion: { venceEn, vencida: false } } : u)),
+        );
+      },
+      error: (err: unknown) => {
+        this.reenviandoA.set(null);
+        this.error.set(this.mensajeDeError(err));
       },
     });
   }

@@ -13,8 +13,17 @@ export interface Suscripcion {
   estado: string;
   fechaInicio: string | null;
   fechaFin: string | null;
+  fechaProximoVencimiento?: string | null;
+  /** Período de prueba (2026-10-10): en prueba mientras `pruebaConvertidaEn` sea null. */
+  pruebaHasta?: string | null;
+  pruebaConvertidaEn?: string | null;
   creadoEn: string;
 }
+
+/** En prueba: tuvo prueba y ningún pago la convirtió todavía. */
+export const enPrueba = (s: Pick<Suscripcion, 'pruebaHasta' | 'pruebaConvertidaEn'> | null | undefined) => !!s?.pruebaHasta && !s.pruebaConvertidaEn;
+/** Tope de días de prueba (decisión de gerencia 2026-10-10). */
+export const DIAS_PRUEBA_MAX = 90;
 
 /**
  * Espejo de `SuscripcionPago` del backend

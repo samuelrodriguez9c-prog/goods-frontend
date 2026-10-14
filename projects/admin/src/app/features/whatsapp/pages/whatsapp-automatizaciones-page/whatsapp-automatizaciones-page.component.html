@@ -1,0 +1,66 @@
+@if (cargando()) {
+  <div class="flex h-[40vh] items-center justify-center">
+    <span class="size-5 animate-[gira_.8s_linear_infinite] rounded-full border-2 border-[#e3e3e3] border-t-[#303030]"></span>
+  </div>
+} @else if (error()) {
+  <div class="py-4">
+    <p class="m-0 text-[13px] text-[#d82c0d]">{{ error() }}</p>
+    <button type="button" (click)="reintentar()"
+      class="mt-3 cursor-pointer rounded-full border-0 bg-[#303030] px-3.5 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000]">Reintentar</button>
+  </div>
+} @else if (datos(); as d) {
+  <div class="flex flex-wrap items-start gap-4">
+    <div class="flex max-w-[420px] min-w-0 flex-[1_1_340px] flex-col gap-3">
+      <app-pasos-respuesta [pasos]="pasos()" [elegido]="pasoSel()" [golpe]="respuestaSim()?.paso ?? null" [ocupado]="alternando()"
+        (elegir)="pasoSel.set($event)" (alternar)="alternar($event)" />
+      <app-simulador-respuesta [(texto)]="simTexto" [(nuevo)]="simNuevo" [(abierto)]="simAbierto" [respuesta]="respuestaSim()" />
+    </div>
+
+    <section class="min-w-0 flex-[1_1_420px] rounded-2xl bg-white p-5 shadow-[0_0_0_1px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.04)]">
+      @for (k of [pasoSel()]; track k) {
+        <div class="animar-panel">
+          <div class="flex items-center gap-2.5">
+            @if (k === 'ia') {
+              <!-- El asistente de IA lleva su marca (como en el asistente de admin). -->
+              <app-ia-marca [size]="34" [fondo]="true" />
+            } @else {
+              <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f3f3f3]">
+                <tabler-icon [icon]="iconos[k]" [size]="18" [stroke]="2" class="flex text-[#111827]" />
+              </span>
+            }
+            <div class="min-w-0 flex-1">
+              <h2 class="m-0 font-[Archivo,sans-serif] text-[17px] font-semibold tracking-[-0.01em] text-[#111827]">{{ infoPaso().titulo }}</h2>
+              <p class="mt-px mb-0 text-[12.5px] text-[#6b7280]">{{ infoPaso().desc }}</p>
+            </div>
+          </div>
+          @if (!puedeConfigurar()) {
+            <p class="mt-3 mb-0 rounded-[9px] bg-[#f7f7f7] px-[11px] py-[9px] text-[12px] leading-normal text-[#6b7280]">
+              Puedes verlas, pero solo el dueño del negocio las cambia.
+            </p>
+          }
+          <div class="mt-4">
+            @switch (k) {
+              @case ('palabras') {
+                <app-editor-palabras [reglas]="d.palabrasClave" [puedeConfigurar]="puedeConfigurar()" [llenar]="llenar" [abrirNueva]="pedirNuevaPalabra()"
+                  (nuevaAbierta)="pedirNuevaPalabra.set(false)" (cambio)="recargar()" />
+              }
+              @case ('ia') {
+                <app-editor-asistente [(instrucciones)]="instrucciones" [(motivos)]="motivos" [disponible]="d.asistente.disponible" [puedeConfigurar]="puedeConfigurar()"
+                  [respuestas]="usoIa().respuestas" [limite]="usoIa().limite" [sinAyudaPct]="usoIa().sinAyudaPct" [pasados]="usoIa().pasados" />
+              }
+              @case ('fuera') {
+                <app-editor-fuera-horario [(texto)]="fueraTexto" [(zona)]="zona" [(horario)]="horario" [puedeConfigurar]="puedeConfigurar()" />
+              }
+              @case ('bienvenida') {
+                <app-editor-bienvenida [(texto)]="bienvenidaTexto" [puedeConfigurar]="puedeConfigurar()" [llenar]="llenar" />
+              }
+            }
+          </div>
+        </div>
+      }
+
+      <app-respuestas-rapidas class="mt-5 border-t border-[#f3f4f6] pt-4" [respuestas]="d.respuestasRapidas" [puedeConfigurar]="puedeConfigurar()"
+        (cambio)="recargar()" />
+    </section>
+  </div>
+}

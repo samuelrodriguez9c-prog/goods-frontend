@@ -42,6 +42,18 @@ export interface AsistenteMensaje {
  * hubo match) — el usuario SIEMPRE la revisa/edita en el modo documento
  * del panel antes de confirmar, nunca se guarda tal cual.
  */
+/** Documento propio de la Empresa (políticas, manuales) que el asistente
+ * busca por similitud — `POST/GET/PATCH/DELETE /asistente/documentos`. */
+export interface AsistenteDocumento {
+  id: number;
+  empresaId: number;
+  titulo: string;
+  contenido: string;
+  creadoPorUsuarioId: number;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
 export interface ItemFacturaExtraido {
   nombreDetectado: string;
   cantidad: number | null;

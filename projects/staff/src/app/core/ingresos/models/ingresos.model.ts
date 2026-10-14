@@ -10,7 +10,10 @@ export type TipoMovimiento =
   | 'vencida'
   // Extras que se cobran con el plan (cargos recurrentes, 2026-10-04).
   | 'extra_alta'
-  | 'extra_baja';
+  | 'extra_baja'
+  // Descuentos sobre el plan (2026-10-10): dar uno contrae el MRR, quitarlo lo expande.
+  | 'descuento_alta'
+  | 'descuento_baja';
 
 export interface MovimientoIngresos {
   fecha: string;
@@ -36,6 +39,8 @@ export interface MesIngresos {
   subidas: number;
   extrasAltas: number;
   extrasBajas: number;
+  descuentosAltas: number;
+  descuentosBajas: number;
   bajadas: number;
   bajas: number;
   vencidas: number;
@@ -43,6 +48,8 @@ export interface MesIngresos {
   mrrExpansion: number;
   mrrContraccion: number;
   mrrPerdido: number;
+  /** MRR de planes por plan al cierre de ese mes (sin extras). */
+  porPlan: { planId: number; plan: string; empresas: number; mrr: number; participacion: number }[];
 }
 
 export interface PlanIngresos {
@@ -77,6 +84,8 @@ export interface ResumenIngresos {
     enRiesgo: { empresas: number; mrr: number };
     /** Extras vigentes (ya incluidos en `mrr`). */
     extras: { cargos: number; empresas: number; mrr: number };
+    /** Períodos de prueba (2026-10-10): no suman al MRR hasta que pagan. */
+    pruebas: { enCurso: number; terminanEn7Dias: number; convertidasMes: number; perdidasMes: number; conversion: number | null };
   };
   serie: MesIngresos[];
   porPlan: PlanIngresos[];

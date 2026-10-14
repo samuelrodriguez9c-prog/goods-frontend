@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { moduloGuard } from './core/auth/modulo.guard';
 import { ShellComponent } from './layout/shell/shell.component';
 
 export const routes: Routes = [
@@ -38,6 +39,30 @@ export const routes: Routes = [
       ),
   },
   {
+    // Enlace "escribinos" de los correos de alta: quien se registró
+    // todavía no tiene cuenta ni chat. El token del correo dice qué
+    // Empresa es (ver ContactoAltaService del backend).
+    path: 'registro/mensaje',
+    loadComponent: () =>
+      import(
+        './features/registro-publico/pages/mensaje-alta-page/mensaje-alta-page.component'
+      ).then((m) => m.MensajeAltaPageComponent),
+  },
+  {
+    // Botón "No fui yo" del correo de contraseña cambiada. Pide confirmar
+    // con un clic (POST): los escáneres de enlaces de los correos abren
+    // los GET solos y no deberían poder bloquear una cuenta.
+    path: 'cuenta/no-fui-yo',
+    loadComponent: () =>
+      import('./core/auth/pages/no-fui-yo/no-fui-yo.component').then((m) => m.NoFuiYoComponent),
+  },
+  {
+    // Asistente de IA a pantalla completa (2026-10-07, igual que staff):
+    // fuera del Shell, monta su propio topbar con "Volver al panel".
+    path: 'asistente',
+    loadChildren: () => import('./features/asistente/asistente.routes').then((m) => m.ASISTENTE_ROUTES),
+  },
+  {
     path: '',
     component: ShellComponent,
     canActivate: [authGuard],
@@ -70,6 +95,23 @@ export const routes: Routes = [
         path: 'messages',
         loadChildren: () =>
           import('./features/messages/messages.routes').then((m) => m.MESSAGES_ROUTES),
+      },
+      {
+        // Bandeja de WhatsApp (Fase 1 de PROPUESTA_WHATSAPP.md).
+        path: 'whatsapp',
+        canActivate: [moduloGuard('whatsapp')],
+        loadChildren: () => import('./features/whatsapp/whatsapp.routes').then((m) => m.WHATSAPP_ROUTES),
+      },
+      {
+        // Tienda pública con "Pedir por WhatsApp" (Fase 0 de PROPUESTA_WHATSAPP.md).
+        path: 'tienda',
+        canActivate: [moduloGuard('tienda')],
+        loadChildren: () => import('./features/tienda/tienda.routes').then((m) => m.TIENDA_ROUTES),
+      },
+      {
+        path: 'notificaciones',
+        loadChildren: () =>
+          import('./features/notificaciones/notificaciones.routes').then((m) => m.NOTIFICACIONES_ROUTES),
       },
       {
         path: 'settings',

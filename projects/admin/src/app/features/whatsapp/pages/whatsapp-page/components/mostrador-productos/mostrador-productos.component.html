@@ -1,0 +1,92 @@
+<div class="animar-popover flex max-h-[min(460px,calc(100vh-220px))] flex-col overflow-y-auto rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,.06),0_24px_48px_-20px_rgba(0,0,0,.35)]"
+  [style.max-height.px]="maxAlto()">
+  <!-- Cabecera: título, pestañas, buscador -->
+  <div class="flex flex-wrap items-center gap-x-2.5 gap-y-2 px-3 pt-3 pb-2.5">
+    <span class="font-display text-[15px] font-semibold tracking-[-0.01em] text-[#111827]">Mostrador</span>
+    <div class="flex gap-0.5 rounded-full bg-[#f1f1f1] p-0.5">
+      @for (t of pestanas(); track t.k) {
+        <button type="button" (click)="cambiarPestana(t.k)"
+          class="flex h-[26px] cursor-pointer items-center gap-[5px] rounded-full border-0 px-2.5 text-[11.5px] font-medium transition-[background,color] duration-150"
+          [class]="tab() === t.k ? 'bg-white text-[#111827] shadow-[0_1px_2px_rgba(0,0,0,.1)]' : 'bg-transparent text-[#6b7280]'">
+          {{ t.label }}<span class="text-[10.5px] text-[#9ca3af] tabular-nums">{{ t.n }}</span>
+        </button>
+      }
+    </div>
+    <span class="flex-1"></span>
+    <label class="flex h-[30px] min-w-[140px] flex-[0_1_200px] items-center gap-1.5 rounded-full bg-[#f1f1f1] px-[11px]">
+      <tabler-icon [icon]="i.buscar" [size]="13" class="text-[#8a8a8a]" />
+      <span class="sr-only">Buscar producto</span>
+      <input #buscador [value]="q()" (input)="buscar($any($event.target).value)" placeholder="Nombre o SKU"
+        class="min-w-0 flex-1 border-0 bg-transparent text-[12.5px] text-[#111827] caret-[#111827] outline-none placeholder:text-[#757575]" />
+    </label>
+  </div>
+
+  <!-- Lista maestra + detalle -->
+  <div class="grid min-h-0 grid-cols-[repeat(auto-fit,minmax(240px,1fr))] border-t border-[#f1f1f1]">
+    <div class="flex max-h-[248px] min-h-0 flex-col gap-px overflow-y-auto p-2">
+      @for (p of lista(); track p.id; let k = $index) {
+        <button type="button" (click)="elegir(k)" (dblclick)="mostrar.emit(p.id)"
+          class="flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-[9px] border-0 px-2.5 text-left transition-colors duration-150 hover:bg-[#f7f7f7]"
+          [class]="sel()?.id === p.id ? 'bg-[#f1f1f1]' : 'bg-transparent'">
+          <span class="size-1.5 shrink-0 rounded-full" [class]="interes().includes(p.id) ? 'bg-[#2be0d5]' : 'bg-transparent'"></span>
+          <span class="min-w-0 flex-1 truncate text-[12.5px]"
+            [class]="(sel()?.id === p.id ? 'font-semibold text-[#111827]' : 'font-medium text-[#374151]') + (p.stock === 0 ? ' opacity-45' : '')">{{ p.nombre }}</span>
+          @if (borrador()[p.id]; as n) {
+            <span class="shrink-0 rounded-full bg-[#303030] px-1.5 py-px text-[10px] font-semibold text-white tabular-nums">×{{ n }}</span>
+          }
+          <span class="shrink-0 text-[12px] text-[#9ca3af] tabular-nums">{{ cop(p.precio) }}</span>
+        </button>
+      } @empty {
+        <p class="m-0 flex-1 px-2.5 py-7 text-center text-[12.5px] text-[#9ca3af]">Nada en el mostrador con ese nombre.</p>
+      }
+    </div>
+
+    @if (detalle(); as d) {
+      <div class="flex min-w-0 flex-col gap-3.5 bg-[#fafafa] px-4 pt-4 pb-3.5 shadow-[inset_1px_0_0_#f1f1f1]">
+        <div class="flex flex-col gap-1.5">
+          @if (d.pregunto) {
+            <span class="flex items-center gap-[5px] text-[11px] font-medium text-[#00605b]">
+              <tabler-icon [icon]="i.pregunto" [size]="13" />{{ cliente() || 'El cliente' }} preguntó por esto
+            </span>
+          }
+          <span class="font-display text-[15px] leading-[1.3] font-semibold tracking-[-0.01em] text-pretty text-[#111827]">{{ d.p.nombre }}</span>
+          <span class="flex items-center gap-1.5 text-[11.5px]" [class]="d.tinta">
+            <span class="size-1.5 rounded-full" [class]="d.punto"></span>{{ d.linea }}
+          </span>
+        </div>
+        <div class="flex items-end justify-between gap-3">
+          <span class="flex flex-col gap-0.5">
+            <span class="font-display text-[26px] leading-none font-semibold tracking-[-0.03em] text-[#111827] tabular-nums">{{ d.total }}</span>
+            <span class="text-[11px] text-[#9ca3af]">{{ d.unidad }}</span>
+          </span>
+          <div class="flex h-[30px] shrink-0 items-center rounded-full bg-white shadow-[inset_0_0_0_1px_#e3e3e3]">
+            <button type="button" (click)="sumar(-1)" aria-label="Uno menos"
+              class="flex size-[30px] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[#4b5563] hover:bg-[#f1f1f1]"><tabler-icon [icon]="i.menos" [size]="13" /></button>
+            <span class="min-w-[22px] text-center text-[12.5px] font-semibold text-[#111827] tabular-nums">{{ cant() }}</span>
+            <button type="button" (click)="sumar(1)" aria-label="Uno más"
+              class="flex size-[30px] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[#4b5563] hover:bg-[#f1f1f1]"><tabler-icon [icon]="i.mas" [size]="13" /></button>
+          </div>
+        </div>
+        <div class="mt-auto grid grid-cols-2 gap-1.5">
+          <button type="button" (click)="alPedido()" title="Shift + Enter"
+            class="flex h-[34px] cursor-pointer items-center justify-center gap-[5px] rounded-full border-0 bg-white px-3 text-[12px] font-medium text-[#111827] shadow-[inset_0_0_0_1px_#e3e3e3] hover:bg-[#f1f1f1]">
+            <tabler-icon [icon]="i.pedido" [size]="14" />Al pedido
+          </button>
+          <button type="button" (click)="mostrarSel()" title="Enter"
+            class="flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-full border-0 bg-[#303030] px-3 text-[12px] font-semibold text-white shadow-[inset_0_-1px_0_#000]">
+            <tabler-icon [icon]="i.enviar" [size]="13" />Mostrar
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Atajos -->
+  <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 px-3.5 pt-[7px] pb-[9px] text-[10.5px] text-[#9ca3af]">
+    <span class="flex items-center gap-1"><kbd class="kbd-mini">↑</kbd><kbd class="kbd-mini">↓</kbd>elegir</span>
+    <span class="flex items-center gap-1"><kbd class="kbd-mini">Enter</kbd>mostrar</span>
+    <span class="flex items-center gap-1"><kbd class="kbd-mini">Shift</kbd><kbd class="kbd-mini">Enter</kbd>al pedido</span>
+    <span class="flex-1"></span>
+    <span>Precio y stock en vivo</span>
+  </div>
+</div>

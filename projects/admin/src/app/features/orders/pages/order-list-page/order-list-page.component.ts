@@ -1,22 +1,17 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 /**
- * Placeholder — el listado real usa el composite `DataTableComponent` +
- * `StatusBadgeComponent` (ver `shared/ui/`), con datos de
- * `OrdersApiService` (pendiente en `services/`) en vez de los mocks que
- * hoy viven en la página de showcase (`features/dev-showcase`).
+ * Pedidos: lista (con franja de métricas, filtros y agrupar) + hoja del pedido con pestañas Productos, Cliente y entrega y Actividad; el pedido nuevo también se arma en la hoja.
+ * ?pedido=ID abre la hoja · ?nuevo=1&cliente=ID abre uno nuevo
+ *
+ * Mismo patrón que los módulos de Productos v5 (cabecera con métricas,
+ * lista a la izquierda unida a la hoja de la derecha). Los componentes de
+ * esta página viven en `components/`, uno por carpeta. Se completa con el
+ * handoff de Pedidos y Clientes (BRIEF_HANDOFF_PEDIDOS_Y_CLIENTES.md).
  */
 @Component({
   selector: 'app-order-list-page',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="p-8">
-      <h1 class="text-lg font-semibold text-gray-900">Orders</h1>
-      <p class="mt-2 text-sm text-gray-500">
-        TODO: listado real de pedidos (ver ADMIN_DISENO.md &gt; "Pedidos / Órdenes").
-      </p>
-    </div>
-  `,
+  templateUrl: './order-list-page.component.html',
 })
 export class OrderListPageComponent {}

@@ -15,6 +15,7 @@ import {
   IconMessage,
   IconMessageCirclePlus,
   IconReceipt,
+  IconShieldX,
   IconUserCheck,
 } from '@tabler/icons-angular';
 import { Notificacion, TipoNotificacion } from './models/notificacion.model';
@@ -117,6 +118,28 @@ export const TIPOS: Record<TipoNotificacion, DefTipo> = {
     icono: IconBulb,
     accion: 'Ver solicitud',
     ruta: (d) => ({ url: '/solicitudes', query: d['solicitudId'] ? { id: d['solicitudId'] } : undefined, destino: 'Solicitudes' }),
+  },
+  seguridad_reporte: {
+    cat: 'empresas',
+    etiqueta: 'Seguridad',
+    icono: IconShieldX,
+    accion: 'Ver Empresa',
+    ruta: (d) =>
+      d['empresaId']
+        ? { url: '/empresas', query: { empresa: d['empresaId'] }, destino: 'Empresas' }
+        : { url: '/usuarios', destino: 'Usuarios' },
+    accionable: true,
+  },
+  alta_mensaje: {
+    cat: 'empresas',
+    etiqueta: 'Mensaje de alta',
+    icono: IconMessage,
+    accion: 'Ver alta',
+    ruta: (d) =>
+      d['estado'] === 'rechazada'
+        ? { url: '/empresas', query: { empresa: d['empresaId'] }, destino: 'Empresas' }
+        : { url: '/altas-pendientes', query: { empresa: d['empresaId'] }, destino: 'Altas pendientes' },
+    accionable: true,
   },
   // Categoría cliente: /notificaciones/staff no debería devolver nunca
   // estos tipos — se tipan igual para no romper si el backend cambia.

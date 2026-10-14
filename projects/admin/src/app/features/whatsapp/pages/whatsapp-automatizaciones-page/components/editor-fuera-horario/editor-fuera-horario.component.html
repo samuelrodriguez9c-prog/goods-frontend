@@ -1,0 +1,67 @@
+<div class="flex flex-col gap-3.5">
+  <label class="grid gap-[5px] text-[12.5px] font-medium text-[#374151]">
+    Mensaje
+    <textarea rows="3" title="{nombre} pone el nombre del cliente y {tienda} el enlace de tu tienda en línea." [value]="texto()" (input)="texto.set($any($event.target).value)" [readOnly]="!puedeConfigurar()"
+      class="resize-y rounded-[9px] border-0 bg-[#f7f7f7] px-3 py-2.5 text-[13px] leading-normal font-normal text-[#111827] shadow-[inset_0_0_0_1px_#e5e7eb] outline-none focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#303030] read-only:focus:bg-[#f7f7f7] read-only:focus:shadow-[inset_0_0_0_1px_#e5e7eb]"></textarea>
+  </label>
+  <div>
+    <div class="mb-2 flex items-center">
+      <span class="flex-1 text-[12.5px] font-medium text-[#374151]">Horario de atención</span>
+      @if (puedeConfigurar()) {
+        <span class="relative flex items-center text-[#9ca3af] hover:text-[#374151]">
+          <select [value]="zona()" (change)="zona.set($any($event.target).value)" aria-label="Zona horaria del negocio" title="Zona horaria del negocio"
+            class="cursor-pointer appearance-none border-0 bg-transparent py-0 pr-4 pl-0 text-right text-[11.5px] text-[inherit] outline-none">
+            @for (z of zonas(); track z.v) {
+              <option [value]="z.v" [selected]="z.v === zona()">{{ z.t }}</option>
+            }
+          </select>
+          <tabler-icon [icon]="iChevron" [size]="12" [stroke]="2" class="pointer-events-none absolute right-0 flex" />
+        </span>
+      } @else {
+        <span class="text-[11.5px] text-[#9ca3af]">{{ etiqueta() }}</span>
+      }
+    </div>
+    <div class="flex flex-col gap-[5px]">
+      @for (d of dias(); track d.k) {
+        <div class="flex items-center gap-2.5">
+          <button type="button" (click)="alternarDia(d.k)" [attr.aria-pressed]="!!d.r" [attr.aria-label]="d.nombre + (d.r ? ': abierto' : ': cerrado')"
+            [title]="puedeConfigurar() ? (d.r ? 'Cerrar el ' : 'Abrir el ') + d.nombre.toLowerCase() : ''"
+            class="w-[42px] shrink-0 rounded-md border-0 py-1 text-[12px] font-semibold transition-[background,color] duration-200"
+            [class]="(d.r ? 'bg-[#303030] text-white ' : 'bg-[#f1f1f1] text-[#9ca3af] ') + (puedeConfigurar() ? 'cursor-pointer' : 'cursor-default')">{{ d.corto }}</button>
+          <span class="relative h-[22px] flex-1 rounded-md bg-[#f5f5f5]" [class.cursor-pointer]="puedeConfigurar() && !!d.r" (click)="editar(d.k)">
+            <span class="absolute inset-y-0 rounded-md transition-[left,width,opacity] duration-300"
+              [class]="(d.malo ? 'bg-[#fca5a5] ' : 'bg-[#2be0d5] ') + (d.r ? 'opacity-100' : 'opacity-0')"
+              [style.left.%]="d.left" [style.width.%]="d.width"></span>
+            @if (d.hoy) {
+              <span title="Ahora" class="absolute -top-[3px] -bottom-[3px] w-0.5 rounded-[2px] bg-[#303030]" [style.left.%]="ahoraPct()"></span>
+            }
+          </span>
+          <button type="button" (click)="editar(d.k)" [disabled]="!puedeConfigurar() || !d.r" [attr.aria-expanded]="editando() === d.k"
+            [attr.aria-label]="'Cambiar las horas del ' + d.nombre.toLowerCase()"
+            class="w-[92px] shrink-0 rounded-md border-0 bg-transparent p-0 text-right text-[12px] tabular-nums transition-colors duration-200 enabled:cursor-pointer enabled:hover:text-[#111827] disabled:cursor-default"
+            [class]="d.malo ? 'text-[#b42318]' : d.r ? 'text-[#374151]' : 'text-[#b0b0b0]'">{{ d.rango }}</button>
+        </div>
+        @if (editando() === d.k && d.r; as r) {
+          <div class="flex animate-[wa-entra_.22s_ease-out] flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5 pb-1.5 pl-[52px]">
+            <label class="flex items-center gap-1.5 text-[11.5px] text-[#6b7280]">
+              Abre
+              <input type="time" [value]="r.desde" (change)="cambiarHora(d.k, 'desde', $any($event.target).value)" [attr.aria-label]="d.nombre + ' abre'"
+                class="campo h-7 text-[12px] tabular-nums" />
+            </label>
+            <label class="flex items-center gap-1.5 text-[11.5px] text-[#6b7280]">
+              Cierra
+              <input type="time" [value]="r.hasta" (change)="cambiarHora(d.k, 'hasta', $any($event.target).value)" [attr.aria-label]="d.nombre + ' cierra'"
+                class="campo h-7 text-[12px] tabular-nums" />
+            </label>
+            @if (d.malo) {
+              <span class="text-[11.5px] text-[#b42318]">Tiene que cerrar después de abrir.</span>
+            }
+          </div>
+        }
+      }
+      <div class="flex pr-[102px] pl-[52px] text-[10.5px] text-[#b0b0b0] tabular-nums">
+        <span class="flex-1">0 h</span><span class="flex-1">6 h</span><span class="flex-1">12 h</span><span class="flex-1">18 h</span><span>24 h</span>
+      </div>
+    </div>
+  </div>
+</div>

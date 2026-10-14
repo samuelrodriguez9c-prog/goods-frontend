@@ -36,6 +36,15 @@ export interface CurrentUser {
    * mostrar el aviso de mora o la pantalla de bloqueo. `null` si la cuenta
    * no tiene Empresa. */
   accesoEmpresa: AccesoEmpresa | null;
+  /** Nombre, logo (el de su tienda) y plan vigente — topbar (Productos v5). `null` sin Empresa. */
+  empresa?: EmpresaResumen | null;
+}
+
+export interface EmpresaResumen {
+  id: number;
+  nombre: string;
+  logoUrl: string | null;
+  plan: { nombre: string; precioMensual: number | null } | null;
 }
 
 export type MotivoBloqueo =
@@ -44,12 +53,14 @@ export type MotivoBloqueo =
   | 'suspendida'
   | 'cancelada'
   | 'sin_plan'
-  | 'suscripcion_vencida';
+  | 'suscripcion_vencida'
+  | 'prueba_terminada';
 
 export interface AccesoEmpresa {
   operativa: boolean;
-  /** `en_mora`: venció el pago pero sigue operando durante la gracia. */
-  estado: 'ok' | 'en_mora' | 'bloqueada';
+  /** `en_mora`: venció el pago pero sigue operando durante la gracia.
+   *  `en_prueba` (2026-10-10): período de prueba gratis, opera hasta `pruebaHasta`. */
+  estado: 'ok' | 'en_mora' | 'en_prueba' | 'bloqueada';
   motivo: MotivoBloqueo | null;
   /** Texto listo para mostrar. */
   mensaje: string;
@@ -59,6 +70,8 @@ export interface AccesoEmpresa {
   suscripcionEstado: string | null;
   fechaProximoVencimiento: string | null;
   corteEn: string | null;
+  /** Solo en prueba: hasta cuándo es gratis (sin pago, ese día se corta). */
+  pruebaHasta?: string | null;
   diasGracia: number;
   /** Cobro pendiente más próximo (se genera 7 días antes de renovar). */
   proximoCobro: { monto: number; moneda: string; fechaLimite: string } | null;

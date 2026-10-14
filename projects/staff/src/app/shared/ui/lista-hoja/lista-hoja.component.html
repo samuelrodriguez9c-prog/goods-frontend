@@ -1,0 +1,155 @@
+<section [attr.aria-label]="etiquetaLista()" class="relative z-[2] -mr-4 flex h-full min-h-0 min-w-0 flex-col">
+  <div class="flex items-center gap-1.5 pb-2.5 pr-7">
+    <label class="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-[#e6e6e6] px-3 transition-colors focus-within:bg-white focus-within:shadow-[0_0_0_1px_#d4d4d4]">
+      <tabler-icon [icon]="iconBuscar" [size]="15" [stroke]="1.75" class="text-[#8a8a8a]" />
+      <input
+        type="text"
+        [value]="buscar()"
+        (input)="buscarChange.emit($any($event.target).value)"
+        [placeholder]="placeholder()"
+        class="min-w-0 flex-1 border-0 bg-transparent py-2 text-[13px] text-gray-900 outline-none"
+      />
+    </label>
+    <button
+      type="button"
+      (click)="alternarOrden.emit()"
+      [title]="ordenTitulo()"
+      [attr.aria-label]="ordenTitulo()"
+      class="flex size-[34px] shrink-0 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-[#e6e6e6]"
+    >
+      <tabler-icon [icon]="ordenIcono()" [size]="16" [stroke]="1.75" />
+    </button>
+  </div>
+
+  <div class="flex min-h-[26px] items-center gap-2 pb-2 pl-1 pr-7">
+    <span class="text-xs tabular-nums text-gray-500">{{ resultados() }}</span>
+    @if (filtroTexto(); as f) {
+      <span class="inline-flex animate-[fade-in-up_0.2s_ease-out] items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pl-2.5 pr-1 text-[11.5px] font-medium text-gray-700">
+        {{ f }}
+        <button type="button" (click)="quitarFiltro.emit()" aria-label="Quitar filtro" class="flex size-4 items-center justify-center rounded-full text-gray-500 hover:bg-gray-300 hover:text-gray-900">
+          <tabler-icon [icon]="iconX" [size]="11" [stroke]="2" />
+        </button>
+      </span>
+    }
+    <span class="ml-auto inline-flex items-center gap-1.5 whitespace-nowrap text-[11.5px] font-medium text-gray-600">
+      <span class="relative flex size-[7px]">
+        @if (cambios()) {
+          <span class="absolute inset-0 animate-ping rounded-full bg-[#2be0d5]"></span>
+        }
+        <span class="relative size-[7px] rounded-full bg-[#2be0d5]"></span>
+      </span>
+      {{ cambios() ? 'Cambios sin ver' : 'En vivo' }}
+    </span>
+  </div>
+
+  <div tabindex="0" (keydown)="teclas($event)" class="relative min-h-0 flex-1 overflow-y-auto pb-3 outline-none [scrollbar-width:none]">
+    @if (cambios()) {
+      <div class="pr-7"><app-aviso-datos-nuevos [cantidad]="cambios()" (actualizar)="actualizar.emit()" /></div>
+    }
+
+    @for (g of grupos(); track g.clave) {
+      <div>
+        <button
+          type="button"
+          (click)="alternarGrupo.emit(g.clave)"
+          [attr.aria-expanded]="!colapsados().has(g.clave)"
+          class="sticky top-0 z-[3] flex w-[calc(100%-28px)] items-center gap-2.5 border-0 bg-[#f1f1f1] pb-2 pl-1 pr-2 pt-3.5 text-left"
+        >
+          <span class="flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors" [style.background]="g.fondo" [style.color]="g.color">
+            <tabler-icon [icon]="g.icono" [size]="13" [stroke]="2" />
+          </span>
+          <span class="flex min-w-0 flex-1 flex-col gap-px">
+            <span class="flex items-center gap-[7px]">
+              <span class="text-[13px] font-semibold text-gray-900">{{ g.titulo }}</span>
+              <span class="rounded-full bg-[#e3e3e3] px-[7px] text-[11px] font-semibold leading-[17px] tabular-nums text-gray-600">{{ g.filas.length }}</span>
+            </span>
+            <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ g.sub }}</span>
+          </span>
+          <span class="flex size-6 shrink-0 items-center justify-center rounded-full text-[#8a8a8a] transition-colors hover:bg-[#e3e3e3]">
+            <tabler-icon
+              [icon]="iconChevron"
+              [size]="14"
+              [stroke]="2"
+              class="transition-transform duration-[240ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+              [class.-rotate-90]="colapsados().has(g.clave)"
+            />
+          </span>
+        </button>
+
+        <div
+          class="grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+          [style.grid-template-rows]="colapsados().has(g.clave) ? '0fr' : '1fr'"
+        >
+          <div class="min-h-0 overflow-hidden">
+            <div class="flex flex-col gap-0.5 pb-1 pt-0.5">
+              @for (f of g.filas; track f.id) {
+                <div
+                  (mouseenter)="hover.set(f.id)"
+                  (mouseleave)="hover.set(null)"
+                  class="relative transition-[margin] duration-[260ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                  [class.mr-7]="!unida(f)"
+                >
+                  <button
+                    type="button"
+                    (click)="seleccionar.emit(f.id)"
+                    [attr.aria-current]="f.id === seleccionadaId()"
+                    class="relative flex w-full items-center gap-2.5 border-0 py-2.5 pl-3 text-left transition-[background-color,box-shadow,border-radius,padding] duration-[260ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                    [class]="
+                      (unida(f) ? 'rounded-l-xl rounded-r-none bg-white pr-[30px] ' : 'rounded-xl bg-transparent pr-3.5 ') +
+                      (resaltadas().has(f.id) ? 'fila-resaltada' : '')
+                    "
+                  >
+                    <span class="h-7 w-[3px] shrink-0 rounded-full" [style.background]="f.punto"></span>
+                    <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span class="truncate text-[13.5px] text-gray-900" [class.font-semibold]="f.id === seleccionadaId()" [class.font-medium]="f.id !== seleccionadaId()">{{ f.nombre }}</span>
+                      <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ f.sub }}</span>
+                    </span>
+                    <span class="flex w-16 shrink-0 flex-col items-end gap-[5px]">
+                      <span class="whitespace-nowrap text-[11.5px] font-semibold tabular-nums" [style.color]="f.gauge.tinta">{{ f.gauge.texto }}</span>
+                      @if (f.gauge.ancho !== null) {
+                        <span class="relative block h-1 w-16 overflow-hidden rounded-full" [class]="unida(f) ? 'bg-[#efefef]' : 'bg-[#e2e2e2]'">
+                          <span
+                            class="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[600ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                            [style.width.%]="f.gauge.ancho"
+                            [style.background]="f.gauge.color"
+                          ></span>
+                        </span>
+                      }
+                    </span>
+                  </button>
+                  @if (unida(f)) {
+                    <span class="esquina-concava-arriba pointer-events-none absolute -top-3 right-4 size-3"></span>
+                    <span class="esquina-concava-abajo pointer-events-none absolute -bottom-3 right-4 size-3"></span>
+                  }
+                </div>
+              }
+              @if (g.mas) {
+                <button
+                  type="button"
+                  (click)="cargarMas.emit(g.clave)"
+                  [disabled]="g.cargandoMas"
+                  class="mr-7 mt-1 rounded-xl px-3 py-2 text-left text-[12.5px] font-medium text-[#00807a] hover:bg-[#e8e8e8] disabled:text-gray-400"
+                >
+                  {{ g.cargandoMas ? 'Cargando…' : g.mas }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (vacia()) {
+      <div class="px-4 py-10 pr-11 text-center">
+        <p class="text-[13px] text-gray-500">{{ vacioTexto() }}</p>
+        <button type="button" (click)="limpiar.emit()" class="mt-3 rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[13px] font-medium text-gray-700 hover:bg-[#d4d4d4]">
+          Limpiar filtros
+        </button>
+      </div>
+    }
+  </div>
+</section>
+
+<section class="relative z-[1] flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_18px_40px_-24px_rgba(0,0,0,0.22)]">
+  <ng-content select="[hoja]" />
+</section>

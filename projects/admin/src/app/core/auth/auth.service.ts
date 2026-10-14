@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { NavigationTrailService } from '../navigation/navigation-trail.service';
 import { CurrentUser } from './models/current-user.model';
 
 const CLAVE_ACCESS_TOKEN = 'goods.accessToken';
@@ -26,6 +27,7 @@ interface RespuestaTokens {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly navigationTrailService = inject(NavigationTrailService);
 
   private readonly _accessToken = signal<string | null>(
     localStorage.getItem(CLAVE_ACCESS_TOKEN),
@@ -84,6 +86,11 @@ export class AuthService {
    * contraseña (ver `AuthService.resetPassword` del backend), así que
    * quien restablece su contraseña siempre vuelve a `/login` a entrar de
    * nuevo, nunca queda logueado automáticamente. */
+  /** "No fui yo" del correo de contraseña cambiada (página /cuenta/no-fui-yo). */
+  reportarCambioPassword(token: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reportar-cambio-password`, { token });
+  }
+
   resetPassword(token: string, password: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reset-password`, {
       token,
@@ -111,6 +118,24 @@ export class AuthService {
     this._accessToken.set(null);
     this._refreshToken.set(null);
     this._currentUser.set(null);
+    // Rastro de navegación del topbar: una sesión nueva no hereda el de la anterior.
+    this.navigationTrailService.reiniciar();
+  }
+
+  /** `POST /auth/forgot-password` — Settings · Seguridad ("Cambiar
+   *  contraseña" manda el enlace al correo de la cuenta logueada). */
+  solicitarRecuperacionPassword(correo: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/forgot-password`, { correo });
+  }
+
+  /** `POST /auth/send-verification` — reenvía el código de verificación de correo. */
+  reenviarVerificacionCorreo(correo: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/send-verification`, { correo });
+  }
+
+  /** `POST /auth/verify-email` — confirma el código de 6 dígitos. */
+  verificarCorreoConCodigo(correo: string, codigo: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/verify-email`, { correo, codigo });
   }
 
   private guardarTokens(tokens: RespuestaTokens): void {

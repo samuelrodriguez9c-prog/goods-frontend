@@ -1,0 +1,84 @@
+@let fv = f();
+<div class="flex items-center gap-2.5 px-3.5 pt-3.5 pb-3">
+  <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f3f3f3] text-[#374151]"><tabler-icon [icon]="i.megafono" [size]="17" /></span>
+  <span class="min-w-0 flex-1">
+    <span class="block font-display text-[14.5px] font-semibold tracking-[-0.01em] text-[#111827]">{{ editando() ? 'Editar campaña' : 'Nueva campaña' }}</span>
+    <span class="mt-0.5 block text-[11.5px] text-[#9ca3af]">{{ subtitulo() }}</span>
+  </span>
+  @if (editando()) {
+    <span class="flex shrink-0 items-center gap-[5px] rounded-full bg-[#eff6ff] py-[3px] pr-[9px] pl-[7px] text-[11px] font-semibold text-[#1d4ed8]"><span class="size-1.5 rounded-full bg-[#3b82f6]"></span>Programada</span>
+  } @else {
+    <span class="shrink-0 rounded-full bg-[#f3f3f3] px-[9px] py-[3px] text-[11px] font-semibold text-[#6b7280]">Borrador</span>
+  }
+  <button type="button" (click)="cerrar.emit()" title="Cerrar" aria-label="Cerrar"
+    class="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[#6b7280] hover:bg-[#f1f1f1] hover:text-[#111827]">
+    <tabler-icon [icon]="i.cerrar" [size]="15" />
+  </button>
+</div>
+<div class="flex flex-col gap-3.5 px-3.5 pt-1">
+  <label class="grid gap-1 text-[12px] font-medium text-[#374151]">
+    <span class="flex flex-col gap-px"><span><span class="text-[#9ca3af]">1 ·</span> Nombre</span><span class="text-[11px] leading-[1.4] font-normal text-[#9ca3af]">Solo lo ves tú, para encontrarla después en la lista. Ej.: Promo puente festivo.</span></span>
+    <input [ngModel]="fv.nombre" (ngModelChange)="parche({ nombre: $event })" maxlength="120" autocomplete="off" class="campo h-9 text-[13px]" />
+  </label>
+  @if (!promos().length) {
+    <p class="m-0 rounded-[10px] bg-[#f7f7f7] px-3 py-2.5 text-[12px] leading-[1.45] text-[#4b5563]">
+      Necesitas una plantilla de tipo Promoción aprobada por Meta.
+      <a routerLink="/whatsapp/plantillas" class="font-medium text-[#111827] underline underline-offset-2">Crea una</a>; Meta suele aprobarlas en minutos.
+    </p>
+  } @else if (conSelector()) {
+    <label class="grid gap-1 text-[12px] font-medium text-[#374151]">
+      <span class="flex flex-col gap-px"><span><span class="text-[#9ca3af]">{{ campos().plantilla }} ·</span> Plantilla</span><span class="text-[11px] leading-[1.4] font-normal text-[#9ca3af]">Solo aparecen las de promoción aprobadas por Meta.</span></span>
+      <select [ngModel]="fv.plantillaId ?? ''" (ngModelChange)="elegirPlantilla($event)" class="campo h-9 font-[ui-monospace,monospace] text-[12.5px]">
+        <option value="" disabled>Elige una plantilla</option>
+        @for (p of promos(); track p.id) {<option [value]="p.id">{{ p.nombre }}</option>}
+      </select>
+    </label>
+  }
+  @for (x of fv.variables; track $index; let k = $index) {
+    @if (x.tipo === 'texto') {
+      <div class="grid gap-1">
+        <label [for]="'wa-ca-var-' + k" class="flex flex-col gap-px"><span class="text-[12px] font-medium text-[#374151]"><span class="text-[#9ca3af]">{{ campos().variables[k] }} ·</span> {{ k === primerTexto() ? 'Oferta' : 'Dato ' + (k + 1) }}</span>
+          @if (k === primerTexto()) {<span class="text-[11px] leading-[1.4] text-[#9ca3af]">Lo que el cliente lee en el mensaje. Corto y concreto: qué y cuánto. Ej.: 20% en pinturas.</span>}
+        </label>
+        <input [id]="'wa-ca-var-' + k" [ngModel]="x.valor" (ngModelChange)="cambiarVariable(k, $event)" maxlength="200" autocomplete="off" class="campo h-9 text-[13px]" />
+        <span class="text-[11px] text-[#9ca3af]">Va en la variable {{ k + 1 }} de <span class="font-[ui-monospace,monospace]">{{ plantilla()?.nombre }}</span>.@if (fv.variables[0]?.tipo === 'nombre') { La 1 es el nombre de cada cliente.}</span>
+      </div>
+    }
+  }
+  <div class="grid gap-1">
+    <span class="flex flex-col gap-px"><span class="text-[12px] font-medium text-[#374151]"><span class="text-[#9ca3af]">{{ campos().cuando }} ·</span> Cuándo</span><span class="text-[11px] leading-[1.4] text-[#9ca3af]">Los sábados en la mañana suelen leerse más. Puedes cancelar antes de que salga.</span></span>
+    <div class="grid grid-cols-2 gap-1.5">
+      @for (o of opcionesCuando(); track o.k) {
+        <button type="button" (click)="parche({ cuando: o.k })" [attr.aria-pressed]="fv.cuando === o.k"
+          class="flex cursor-pointer flex-col items-start gap-px rounded-[9px] border-0 px-2.5 py-2 text-left"
+          [class]="fv.cuando === o.k ? 'bg-white shadow-[inset_0_0_0_1.5px_#303030]' : 'bg-[#f7f7f7] shadow-[inset_0_0_0_1px_#ececec]'">
+          <span class="text-[12.5px] font-semibold text-[#111827]">{{ o.t }}</span><span class="text-[11px] text-[#6b7280]">{{ o.s }}</span>
+        </button>
+      }
+    </div>
+    @if (fv.cuando === 'programar') {
+      <input type="datetime-local" [min]="ahoraLocal()" [ngModel]="fv.fecha" (ngModelChange)="parche({ fecha: $event })" aria-label="Fecha y hora de envío"
+        class="campo mt-1 h-9 text-[13px]" />
+    }
+  </div>
+  @if (plantilla()) {
+    <div class="rounded-xl bg-[#efe7de] px-3 py-3.5">
+      <p class="m-0 mb-1.5 text-[11px] text-[#8b8b8b]">Así le llega a Ana</p>
+      <div class="max-w-[90%] rounded-[9px] bg-white px-2.5 pt-[7px] pb-[5px] text-[13px] leading-[1.45] break-words whitespace-pre-wrap text-[#111827] shadow-[0_1px_.5px_rgba(0,0,0,.1)]">{{ vistaPrevia() }}<span class="mt-1.5 block text-[11.5px] text-[#8b8b8b]">{{ pie() }}.</span></div>
+    </div>
+  }
+</div>
+<div class="mx-3.5 mt-3.5 flex items-center gap-2.5 rounded-[11px] bg-[#303030] px-[13px] py-[11px] text-white">
+  <span class="flex-1"><span class="block text-[11.5px] text-[#a3a3a3]">{{ alcance() }} clientes × ≈ {{ COSTO }}</span><span class="block font-display text-[18px] font-semibold">≈ {{ costoTotal() }} COP</span></span>
+  <span class="text-right text-[11px] leading-[1.35] text-[#a3a3a3]">lo cobra Meta<br />a tu cuenta</span>
+</div>
+@if (error(); as e) {
+  <p role="alert" class="mx-3.5 mt-3 mb-0 rounded-[10px] bg-[#fef3f2] px-3 py-2.5 text-[12px] text-[#7a271a]">{{ e }}</p>
+}
+<div class="px-3.5 pt-3 pb-3.5">
+  <button type="button" (click)="enviar()" [disabled]="!listo() || enviando()"
+    class="flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border-0 text-[13px] font-semibold shadow-[inset_0_-1px_0_rgba(0,0,0,.25)] transition-colors duration-200 active:scale-[.99] disabled:cursor-default disabled:opacity-40"
+    [class]="boton().clase">
+    <tabler-icon [icon]="boton().icono" [size]="16" />{{ boton().t }}
+  </button>
+</div>

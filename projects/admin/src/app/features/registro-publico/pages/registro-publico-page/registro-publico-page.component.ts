@@ -41,6 +41,7 @@ import {
 } from '@tabler/icons-angular';
 import { ModuloPublico, PlanPublico } from '../../models/plan-publico.model';
 import { RegistroPublicoService } from '../../services/registro-publico.service';
+import { EMISOR_FACTURA } from '../../emisor-factura';
 
 /** COP sin decimales y con "." de miles — ver el comentario original. */
 function formatCop(value: number): string {
@@ -213,6 +214,8 @@ export class RegistroPublicoPageComponent implements OnInit {
   protected readonly rubros = RUBROS;
   protected readonly uiModulo = uiModulo;
   protected readonly formatNumero = formatNumero;
+  /** Emisor de la pre-factura (datos de ejemplo por ahora, ver `emisor-factura.ts`). */
+  protected readonly emisor = EMISOR_FACTURA;
   private readonly fechaHoy = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
   /** Folio y hora de emisión: llegan al enviar (`id` de la Empresa creada). */
   private readonly folioId = signal<number | null>(null);

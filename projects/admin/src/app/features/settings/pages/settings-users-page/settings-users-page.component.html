@@ -10,7 +10,7 @@
       class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700"
     >
       <tabler-icon [icon]="iconPlus" [size]="16" [stroke]="2" />
-      Dar de alta empleado
+      Invitar a alguien
     </button>
   </div>
 
@@ -32,7 +32,18 @@
         <tbody>
           @for (usuario of usuarios(); track usuario.id) {
             <tr class="border-b border-gray-50 last:border-0">
-              <td class="px-6 py-3 text-gray-900">{{ usuario.nombres }} {{ usuario.apellidos }}</td>
+              <td class="px-6 py-3 text-gray-900">
+                {{ usuario.nombres }} {{ usuario.apellidos }}
+                @if (usuario.invitacion; as inv) {
+                  <span
+                    class="ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-[11px] font-medium"
+                    [class]="inv.vencida ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'"
+                    [title]="inv.venceEn ? 'El enlace vence el ' + (inv.venceEn | date: 'd MMM, HH:mm') : ''"
+                  >
+                    {{ inv.vencida ? 'Invitación vencida' : 'Invitación pendiente' }}
+                  </span>
+                }
+              </td>
               <td class="px-6 py-3 text-gray-500">{{ usuario.correo }}</td>
               <td class="px-6 py-3">
                 <select
@@ -47,7 +58,22 @@
                   }
                 </select>
               </td>
-              <td class="px-6 py-3 text-right">
+              <td class="whitespace-nowrap px-6 py-3 text-right">
+                @if (usuario.invitacion) {
+                  @if (reenviadoA() === usuario.id) {
+                    <span class="mr-2 text-xs text-emerald-700">Invitación reenviada</span>
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="reenviar(usuario)"
+                      [disabled]="reenviandoA() === usuario.id"
+                      class="mr-1 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg disabled:opacity-50"
+                    >
+                      <tabler-icon [icon]="iconReenviar" [size]="15" [stroke]="1.75" />
+                      {{ reenviandoA() === usuario.id ? 'Reenviando…' : 'Reenviar invitación' }}
+                    </button>
+                  }
+                }
                 <button
                   type="button"
                   (click)="abrirEliminar(usuario)"
@@ -72,7 +98,7 @@
 </div>
 
 @if (modalAbierto()) {
-  <app-modal titulo="Dar de alta empleado" (cerrar)="cerrarModal()">
+  <app-modal titulo="Invitar a alguien de tu equipo" (cerrar)="cerrarModal()">
     <form class="flex flex-col gap-4" (submit)="$event.preventDefault(); guardar()">
       <label class="flex flex-col gap-1 text-sm">
         <span class="font-medium text-gray-700">Nombres</span>
@@ -101,16 +127,11 @@
           (input)="actualizarCampo('correo', $any($event.target).value)"
         />
       </label>
-      <label class="flex flex-col gap-1 text-sm">
-        <span class="font-medium text-gray-700">Contraseña inicial</span>
-        <input
-          type="password"
-          class="rounded-lg border border-gray-200 px-3 py-2 text-sm"
-          [value]="formulario().password"
-          (input)="actualizarCampo('password', $any($event.target).value)"
-        />
-        <span class="text-xs text-gray-400">Mínimo 8 caracteres. Tu empleado puede cambiarla después.</span>
-      </label>
+      <!-- Invitación (2026-10-06): la contraseña la crea la persona invitada
+           desde el correo; quien la invita nunca la conoce. -->
+      <p class="rounded-lg bg-canvas-bg px-3 py-2.5 text-xs leading-5 text-gray-600">
+        Le enviamos un correo para que cree su contraseña. El enlace vale 48 horas y se usa una sola vez.
+      </p>
 
       @if (errorGuardar()) {
         <p class="text-sm text-red-600">{{ errorGuardar() }}</p>
@@ -129,7 +150,7 @@
           [disabled]="guardando()"
           class="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
         >
-          {{ guardando() ? 'Guardando…' : 'Dar de alta' }}
+          {{ guardando() ? 'Enviando…' : 'Enviar invitación' }}
         </button>
       </div>
     </form>

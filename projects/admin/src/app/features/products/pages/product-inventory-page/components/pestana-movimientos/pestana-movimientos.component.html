@@ -1,0 +1,216 @@
+<div class="flex flex-wrap items-center gap-2.5">
+  <!-- Tipo -->
+  <div class="relative grid flex-[1_1_300px] grid-cols-[repeat(4,minmax(0,1fr))] rounded-xl bg-[#efefef] p-[3px]">
+    <span class="absolute top-[3px] bottom-[3px] left-[3px] w-[calc((100%_-_6px)_/_4)] rounded-[9px] bg-white shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)] transition-[transform] duration-340 ease-[cubic-bezier(.2,.8,.2,1)]"
+      [style.transform]="'translateX(' + indiceFiltro() * 100 + '%)'"></span>
+    @for (op of filtros; track op.k) {
+      @let activo = op.k === filtro();
+      <button type="button" (click)="elegirFiltro(op.k)"
+        class="relative flex h-7.5 cursor-pointer items-center justify-center gap-1.5 text-[12.5px] whitespace-nowrap transition-[color] duration-200 ease-[ease]"
+        [class]="activo ? 'font-semibold text-[#111827]' : 'font-medium text-[#6b7280]'">
+        {{ op.titulo }}
+        <span class="min-w-4.5 rounded-full px-[5px] text-[10.5px] leading-[16px] font-semibold text-[#9ca3af] tabular-nums transition-[background-color] duration-250 ease-[ease]"
+          [class]="activo ? 'bg-[#f1f1f1]' : ''">{{ cuentas()[op.k] }}</span>
+      </button>
+    }
+  </div>
+  <!-- Período -->
+  <div class="relative grid grid-cols-[repeat(4,minmax(0,1fr))] rounded-full bg-white p-[3px] shadow-[0_0_0_1px_#e5e5e5]">
+    <span class="absolute top-[3px] bottom-[3px] left-[3px] w-[calc((100%_-_6px)_/_4)] rounded-full bg-[#303030] transition-[transform] duration-340 ease-[cubic-bezier(.2,.8,.2,1)]"
+      [style.transform]="'translateX(' + indiceRango() * 100 + '%)'"></span>
+    @for (r of rangos; track r.k) {
+      <button type="button" (click)="elegirRango(r.k)"
+        class="relative h-6.5 cursor-pointer px-2.5 text-[12px] font-medium whitespace-nowrap transition-[color] duration-250 ease-[ease]"
+        [class]="r.k === rango() ? 'text-white' : 'text-[#4b5563]'">{{ r.titulo }}</button>
+    }
+  </div>
+</div>
+
+<!-- Cambio neto, saldo y flujo -->
+@let f = flujo();
+@let g = grafico();
+<div class="flex flex-col gap-3.5 rounded-2xl border border-[#ebebeb] bg-white px-4 pt-4 pb-3.5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+  <div class="flex items-end justify-between gap-3">
+    <span class="flex flex-col gap-0.5">
+      <span class="text-[12px] text-[#6b7280]">Cambio neto</span>
+      <span class="font-[Archivo] text-[24px] leading-[28px] font-semibold tracking-[-0.01em] tabular-nums transition-[color] duration-300 ease-[ease]"
+        [class]="f.tendencia === 'sube' ? 'text-[#087b5d]' : f.tendencia === 'baja' ? 'text-[#b42318]' : 'text-[#6b7280]'">{{ f.neto }}</span>
+    </span>
+    <span class="text-[12px] text-[#9ca3af]">{{ f.nota }}</span>
+  </div>
+  @if (g.cronologico.length) {
+    <div class="relative h-21">
+      <svg width="100%" height="84" viewBox="0 0 300 74" preserveAspectRatio="none" class="block overflow-visible">
+        <defs>
+          <linearGradient id="ivg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#303030" stop-opacity=".12"></stop>
+            <stop offset="1" stop-color="#303030" stop-opacity="0"></stop>
+          </linearGradient>
+        </defs>
+        <path [attr.d]="g.area" fill="url(#ivg)" class="transition-[d] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]"></path>
+        <path [attr.d]="g.linea" fill="none" stroke="#303030"
+          class="[stroke-width:1.6] [stroke-linejoin:round] [vector-effect:non-scaling-stroke] transition-[d] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]"></path>
+      </svg>
+      @if (g.minimo != null) {
+        <span class="absolute right-0 left-0 border-t border-dashed border-t-[#e0a800] transition-[top] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" [style.top.%]="g.minimo"></span>
+        <span class="absolute right-0 bg-white px-0.5 text-[10.5px] font-medium text-[#8a5a00] [transform:translateY(-110%)]" [style.top.%]="g.minimo">mín. {{ stock().minimo }}</span>
+      }
+      @if (punto(); as p) {
+        <span class="pointer-events-none absolute -mt-[5px] -ml-[5px] size-2.5 animate-[pop_.25s_cubic-bezier(.2,.8,.2,1)] rounded-full shadow-[0_0_0_3px_#fff,0_2px_6px_rgba(0,0,0,.25)] transition-[left,top] duration-250 ease-[cubic-bezier(.2,.8,.2,1)]"
+          [class]="barraTipo[p.tipo]" [style.left.%]="p.izquierda" [style.top.%]="p.arriba"></span>
+        <span class="pointer-events-none absolute rounded-[7px] bg-[#1a1a1a] px-[7px] py-0.5 text-[11px] font-semibold whitespace-nowrap text-white tabular-nums [transform:translate(-50%,-150%)] transition-[left,top] duration-250 ease-[cubic-bezier(.2,.8,.2,1)]"
+          [style.left.%]="p.izquierda" [style.top.%]="p.arriba">{{ p.texto }}</span>
+      }
+    </div>
+    <div class="-mt-1.5 flex justify-between text-[10.5px] text-[#9ca3af]">
+      <span>{{ g.desde }}</span>
+      <span>Hoy</span>
+    </div>
+  }
+  <div class="flex flex-col gap-[7px]">
+    <div class="flex h-2 gap-[3px] overflow-hidden rounded-full bg-[#f3f3f3]">
+      <span class="rounded-full bg-[#29845a] transition-[width] duration-600 ease-[cubic-bezier(.2,.8,.2,1)]" [style.width.%]="f.anchoEntra"></span>
+      <span class="rounded-full bg-[#d82c0d] transition-[width] duration-600 ease-[cubic-bezier(.2,.8,.2,1)]" [style.width.%]="f.anchoSale"></span>
+    </div>
+    <div class="flex justify-between text-[12px] tabular-nums">
+      <span class="flex items-center gap-1.5 text-[#6b7280]">
+        <span class="size-[7px] rounded-full bg-[#29845a]"></span>
+        Entradas <strong class="font-semibold text-[#087b5d]">{{ f.entra }}</strong>
+      </span>
+      <span class="flex items-center gap-1.5 text-[#6b7280]">
+        Salidas <strong class="font-semibold text-[#b42318]">{{ f.sale }}</strong>
+        <span class="size-[7px] rounded-full bg-[#d82c0d]"></span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="flex items-center justify-between px-1">
+  <span class="text-[12px] text-[#6b7280] tabular-nums">{{ cuenta() }}</span>
+  <span class="text-[11.5px] text-[#9ca3af]">Clic en un movimiento para ver el detalle</span>
+</div>
+
+@if (dias().length) {
+  <div class="flex flex-col gap-4.5">
+    @for (d of dias(); track d.clave) {
+      <div class="flex flex-col gap-1.5">
+        <div class="sticky top-0 z-[2] flex items-baseline gap-2 bg-white px-1 pt-1.5 pb-1">
+          <span class="text-[12.5px] font-semibold text-[#111827]">{{ d.titulo }}</span>
+          <span class="text-[11.5px] text-[#9ca3af]">{{ d.detalle }}</span>
+          <span class="h-[1px] flex-1 self-center bg-[#ececec]"></span>
+          <span class="text-[11.5px] font-semibold tabular-nums"
+            [class]="d.tendencia === 'sube' ? 'text-[#087b5d]' : d.tendencia === 'baja' ? 'text-[#b42318]' : 'text-[#9ca3af]'">{{ d.neto }}</span>
+        </div>
+        @for (r of d.filas; track r.m.id) {
+          @let abierta = r.m.id === abierto();
+          @let encimaFila = r.m.id === encima();
+          <div (mouseenter)="encima.set(r.m.id)" (mouseleave)="encima.set(null)"
+            class="animate-[mov-in_420ms_cubic-bezier(.2,.8,.2,1)_both] rounded-[14px] [transition:background-color_.25s,_box-shadow_.3s_cubic-bezier(.2,.8,.2,1),_transform_.25s_cubic-bezier(.2,.8,.2,1)]"
+            [class]="abierta
+              ? 'bg-white shadow-[0_0_0_1px_#ebebeb,0_12px_28px_-18px_rgba(0,0,0,.28)]'
+              : encimaFila ? 'bg-white shadow-[0_0_0_1px_#efefef] [transform:translateY(-1px)]' : 'shadow-[0_0_0_1px_transparent]'"
+            [style.animation-delay.ms]="r.retraso">
+            <button type="button" (click)="alternar(r.m.id)"
+              class="grid w-full cursor-pointer grid-cols-[34px_minmax(0,1fr)_auto_18px] items-center gap-3 px-3 py-2.5 text-left">
+              <span class="relative flex size-8.5 items-center justify-center rounded-[10px]" [class]="tonoTipo[r.tipo]">
+                <tabler-icon [icon]="iconoTipo(r.tipo)" [size]="16" [stroke]="2" />
+              </span>
+              <span class="flex min-w-0 flex-col gap-0.5">
+                <span class="flex min-w-0 items-center gap-[7px]">
+                  <span class="text-[13px] font-semibold text-[#111827]">{{ titulo(r.tipo) }}</span>
+                  <span class="rounded-full px-[7px] text-[11.5px] leading-[19px] font-semibold tabular-nums" [class]="tonoTipo[r.tipo]">{{ r.cantidad }}</span>
+                  @if (r.alerta) {
+                    <span [title]="r.alerta" class="size-1.5 rounded-full bg-[#d82c0d]"></span>
+                  }
+                </span>
+                <span class="flex min-w-0 items-center gap-1.5 text-[12px] text-[#6b7280]">
+                  <span class="truncate">{{ r.m.motivo || '—' }}</span>
+                  @if (r.referencia) {
+                    <span class="text-[#d4d4d4]">·</span>
+                    <span (click)="referencia($event, r.m)" class="inline-flex cursor-pointer items-center gap-1 font-medium whitespace-nowrap text-[#00605b]">
+                      <tabler-icon [icon]="icono(r.iconoReferencia)" [size]="12" [stroke]="2" />{{ r.referencia }}
+                    </span>
+                  }
+                </span>
+              </span>
+              <span class="flex flex-col items-end gap-1">
+                <span class="flex items-center gap-[5px] text-[12px] whitespace-nowrap tabular-nums">
+                  <span class="text-[#9ca3af]">{{ r.antes }}</span>
+                  <tabler-icon [icon]="icono('arrow-narrow-right')" [size]="13" [stroke]="2" class="text-[#c4c4c4]" />
+                  <span class="font-semibold text-[#111827]">{{ r.despues }}</span>
+                </span>
+                <span class="relative block h-1 w-16 rounded-full bg-[#efefef]">
+                  <span class="absolute top-0 bottom-0 left-0 rounded-full bg-[#d9d9d9]" [style.width.%]="r.anchoAntes"></span>
+                  <span class="absolute top-0 bottom-0 left-0 rounded-full opacity-90 transition-[width] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]"
+                    [class]="barraTipo[r.tipo]" [style.width.%]="r.anchoDespues"></span>
+                  @if (stock().minimo > 0) {
+                    <span class="absolute -top-0.5 -bottom-0.5 w-[1.5px] rounded-xs bg-[#8a8a8a]" [style.left.%]="r.posicionMinimo"></span>
+                  }
+                </span>
+              </span>
+              <tabler-icon [icon]="icono('chevron-down')" [size]="14" [stroke]="2"
+                class="text-[#9ca3af] transition-[rotate] duration-280 ease-[cubic-bezier(.2,.8,.2,1)]" [class.rotate-180]="abierta" />
+            </button>
+            <!-- Detalle desplegable -->
+            <div class="grid transition-[grid-template-rows] duration-320 ease-[cubic-bezier(.2,.8,.2,1)]" [class]="abierta ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'">
+              <div class="min-h-0 overflow-hidden">
+                <div class="flex flex-col gap-3 pt-0.5 pr-3 pb-3 pl-14.5 transition-[opacity] duration-250 ease-[ease]" [class]="abierta ? 'opacity-100' : 'opacity-0'">
+                  <div class="grid grid-cols-[repeat(3,minmax(0,1fr))] rounded-[10px] bg-[#fafafa] shadow-[inset_0_0_0_1px_#f0f0f0]">
+                    <div class="px-2.5 py-2">
+                      <div class="text-[11px] text-[#9ca3af]">Antes</div>
+                      <div class="font-[Archivo] text-[15px] font-semibold tabular-nums">{{ r.antes }}</div>
+                    </div>
+                    <div class="border-l border-l-[#f0f0f0] px-2.5 py-2">
+                      <div class="text-[11px] text-[#9ca3af]">Cambio</div>
+                      <div class="font-[Archivo] text-[15px] font-semibold tabular-nums" [class]="tintaTipo[r.tipo]">{{ r.cantidad }}</div>
+                    </div>
+                    <div class="border-l border-l-[#f0f0f0] px-2.5 py-2">
+                      <div class="text-[11px] text-[#9ca3af]">Después</div>
+                      <div class="font-[Archivo] text-[15px] font-semibold tabular-nums">{{ r.despues }}</div>
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="inline-flex items-center gap-[5px] text-[11.5px] text-[#6b7280]">
+                      <tabler-icon [icon]="icono('clock')" [size]="13" [stroke]="2" />{{ r.cuando }}
+                    </span>
+                    @if (r.alerta) {
+                      <span class="inline-flex items-center gap-1 rounded-full bg-[#fff1f0] px-2 py-[1px] text-[11px] font-medium text-[#b42318]">
+                        <tabler-icon [icon]="icono('alert-triangle')" [size]="12" [stroke]="2" />{{ r.alerta }}
+                      </span>
+                    }
+                    <span class="flex-1"></span>
+                    <button type="button" (click)="copiar($event, r.m)" title="Copiar"
+                      class="flex size-7 cursor-pointer items-center justify-center rounded-lg bg-[#f4f4f4] text-[#4b5563] hover:bg-[#e9e9e9]!">
+                      <tabler-icon [icon]="icono('copy')" [size]="14" [stroke]="2" />
+                    </button>
+                    @if (r.referencia) {
+                      <button type="button" (click)="referencia($event, r.m)"
+                        class="flex h-7 cursor-pointer items-center gap-1.5 rounded-lg bg-[#f4f4f4] px-2.5 text-[12.5px] font-medium text-[#303030] hover:bg-[#e9e9e9]!">
+                        <tabler-icon [icon]="icono(r.iconoReferencia)" [size]="14" [stroke]="2" />Ver {{ r.referencia }}
+                      </button>
+                    } @else {
+                      <button type="button" (click)="reversion($event, r.m)"
+                        class="flex h-7 cursor-pointer items-center gap-1.5 rounded-lg bg-[#303030] px-2.5 text-[12.5px] font-medium text-white hover:opacity-90!">
+                        <tabler-icon [icon]="icono('arrow-back-up')" [size]="14" [stroke]="2" />Revertir
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+} @else {
+  <div class="flex animate-[fade-in-up_.25s_ease-out] flex-col items-center gap-2.5 rounded-2xl border border-dashed border-[#e0e0e0] p-7 text-center text-[13px] text-[#6b7280]">
+    <span class="flex size-9 items-center justify-center rounded-full bg-[#f1f1f1] text-[#8a8a8a]">
+      <tabler-icon [icon]="icono('arrows-exchange')" [size]="17" [stroke]="2" />
+    </span>
+    {{ textoVacio() }}
+    @if (movimientos().length) {
+      <button type="button" (click)="verTodo()" class="cursor-pointer rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[12.5px] font-medium text-[#374151] hover:bg-[#d4d4d4]!">Ver todo el historial</button>
+    }
+  </div>
+}

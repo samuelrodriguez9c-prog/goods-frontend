@@ -1,0 +1,115 @@
+@let d = borrador();
+@let e = errores();
+@if (!nuevo()) {
+  <div class="grid grid-cols-[repeat(auto-fit,minmax(max(260px,calc((100%_-_12px)_/_2)),1fr))] gap-3">
+    <app-relacion-proveedor [proveedorId]="d.id" (verCompra)="verCompra.emit($event)" />
+    <app-salud-proveedor [proveedorId]="d.id" />
+  </div>
+}
+
+@if (!editando()) {
+  <!-- Ficha en lectura -->
+  <app-seccion-hoja icono="id-badge-2" titulo="Ficha" detalle="Datos de contacto y facturación." class="animate-[fade-in-up_.2s_ease-out]">
+    <button accion type="button" (click)="alternarEdicion.emit()"
+      class="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#f1f1f1] px-[11px] py-1.5 text-[12.5px] font-medium text-[#303030] hover:bg-[#e6e6e6]!">
+      <tabler-icon [icon]="icono('pencil')" [size]="14" />Editar
+    </button>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-x-4 gap-y-0.5">
+      @for (f of ficha(); track f.etiqueta) {
+        <div class="flex items-start gap-2.5 border-b border-b-[#f4f4f4] py-[9px]">
+          <tabler-icon [icon]="icono(f.icono)" [size]="15" class="mt-[1px] text-[#9ca3af]" />
+          <span class="flex min-w-0 flex-col gap-[1px]">
+            <span class="text-[11px] text-[#9ca3af]">{{ f.etiqueta }}</span>
+            <span class="text-[13px] font-medium break-words" [class]="f.valor ? 'text-[#111827]' : 'text-[#b5b5b5]'">{{ f.valor || 'Sin dato' }}</span>
+          </span>
+        </div>
+      }
+    </div>
+    <div class="flex flex-col gap-2">
+      <span class="text-[11px] text-[#9ca3af]">Días de entrega</span>
+      <div class="flex flex-wrap gap-1.5">
+        @for (dia of dias; track dia[0]) {
+          <span class="flex h-7 min-w-11 items-center justify-center rounded-full px-2.5 text-[12px] font-medium"
+            [class]="d.diasEntrega.includes(dia[0]) ? 'bg-[#303030] text-white' : 'bg-[#f4f4f4] text-[#b5b5b5]'">{{ dia[1] }}</span>
+        }
+      </div>
+    </div>
+    @if (d.notas.trim()) {
+      <p class="rounded-xl bg-[#fafafa] px-3 py-2.5 text-[12.5px] leading-[18px] whitespace-pre-wrap text-[#4b5563]">{{ d.notas }}</p>
+    }
+  </app-seccion-hoja>
+} @else {
+  <!-- Formulario -->
+  <div class="flex items-center justify-between gap-2.5 px-1 py-0.5">
+    <span class="text-[12.5px] font-semibold text-[#111827]">{{ nuevo() ? 'Completa los datos y guarda desde la barra de abajo' : 'Editando la ficha' }}</span>
+    @if (!nuevo()) {
+      <button type="button" (click)="alternarEdicion.emit()"
+        class="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#f1f1f1] px-[11px] py-1.5 text-[12.5px] font-medium text-[#303030] hover:bg-[#e6e6e6]!">
+        <tabler-icon [icon]="icono('check')" [size]="14" />Listo
+      </button>
+    }
+  </div>
+  <div class="grid animate-[fade-in-up_.2s_ease-out] grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%_-_12px)_/_2)),1fr))] gap-3">
+    <app-seccion-hoja holgada icono="id" titulo="Identidad" detalle="Cómo aparece al registrar compras.">
+      <app-campo-texto #nombre etiqueta="Nombre o razón social" requerido ayuda="Así lo verás en compras y reposiciones."
+        placeholder="Ej. Harinas del Valle S.A.S." [valor]="d.nombre" [error]="e.nombre ?? ''" [soloLectura]="!editable()"
+        (cambiar)="editar.emit({ nombre: $event })" />
+      <app-campo-texto etiqueta="NIT" ayuda="Sin dígito de verificación. No se puede repetir." icono="hash" modo="numeric"
+        placeholder="Ej. 900123456" [valor]="d.nit" [error]="e.nit ?? ''" [soloLectura]="!editable()"
+        (cambiar)="editar.emit({ nit: $event })" />
+    </app-seccion-hoja>
+
+    <app-seccion-hoja holgada icono="address-book" titulo="Contacto" detalle="A quién llamar para hacer pedidos.">
+      <app-campo-texto etiqueta="Persona de contacto" icono="user" placeholder="Ej. Marcela Ríos"
+        [valor]="d.contactoNombre" [error]="e.contactoNombre ?? ''" [soloLectura]="!editable()"
+        (cambiar)="editar.emit({ contactoNombre: $event })" />
+      <app-campo-texto etiqueta="Correo" icono="mail" tipo="email" placeholder="pedidos@proveedor.com"
+        [valor]="d.correo" [error]="e.correo ?? ''" [soloLectura]="!editable()"
+        (cambiar)="editar.emit({ correo: $event })" />
+      <app-campo-texto etiqueta="Teléfono" ayuda="También se usa para WhatsApp." icono="phone" modo="tel" placeholder="Ej. 300 123 4567"
+        [valor]="d.telefono" [error]="e.telefono ?? ''" [soloLectura]="!editable()"
+        (cambiar)="editar.emit({ telefono: $event })" />
+    </app-seccion-hoja>
+
+    <app-seccion-hoja holgada icono="map-pin" titulo="Entregas y notas" detalle="Para planear pedidos y recogidas.">
+      <div class="flex flex-col gap-2">
+        <span class="text-[13px] font-semibold text-[#303030]">Días de entrega</span>
+        <div class="flex flex-wrap gap-1.5">
+          @for (dia of dias; track dia[0]) {
+            <button type="button" (click)="alternarDia(dia[0])"
+              class="h-7.5 min-w-11 cursor-pointer rounded-full px-2.5 text-[12.5px] font-medium transition-[background-color,color,box-shadow] duration-200 ease-[ease]"
+              [class]="d.diasEntrega.includes(dia[0]) ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] shadow-[0_0_0_1px_#e5e5e5]'">{{ dia[1] }}</button>
+          }
+        </div>
+      </div>
+      <app-campo-texto etiqueta="Dirección" icono="map-pin" placeholder="Ej. Cra 12 #45-67, Bogotá"
+        [valor]="d.direccion" [error]="e.direccion ?? ''" [soloLectura]="!editable()"
+        (cambiar)="editar.emit({ direccion: $event })" />
+      <label class="flex flex-col gap-2">
+        <span class="flex items-center justify-between text-[13px] font-semibold text-[#303030]">
+          Notas<span class="text-[11.5px] font-medium text-[#9ca3af]">{{ d.notas.length }} / 500</span>
+        </span>
+        <textarea [value]="d.notas" (input)="editar.emit({ notas: $any($event.target).value })" [disabled]="!editable()" maxlength="500" rows="3"
+          placeholder="Ej. Pago a 30 días. Pedir antes de las 3 p. m."
+          class="w-full resize-y rounded-[10px] bg-[#fafafa] px-3 py-[9px] font-[inherit] text-[13px] leading-[19px] shadow-[0_0_0_1px_#e5e5e5] outline-none transition-[box-shadow,background-color] duration-200 ease-[ease] focus:bg-white! focus:shadow-[0_0_0_1px_#303030,_0_0_0_4px_rgba(48,_48,_48,_.08)]! disabled:cursor-not-allowed"></textarea>
+      </label>
+    </app-seccion-hoja>
+
+    <app-seccion-hoja holgada icono="toggle-right" titulo="Estado" detalle="Desactívalo si dejaste de comprarle.">
+      <div class="relative grid grid-cols-[repeat(2,minmax(0,1fr))] rounded-[10px] bg-[#f1f1f1] p-[3px]">
+        <span class="absolute top-[3px] bottom-[3px] left-[3px] w-[calc((100%_-_6px)_/_2)] rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)] transition-[translate] duration-280 ease-[cubic-bezier(.2,.8,.2,1)]"
+          [class]="d.activo ? 'translate-x-0' : 'translate-x-full'"></span>
+        @for (activo of [true, false]; track activo) {
+          <button type="button" (click)="ponerActivo(activo)"
+            class="relative flex h-8 cursor-pointer items-center justify-center gap-[7px] text-[13px] transition-[color] duration-200 ease-[ease]"
+            [class]="d.activo === activo ? 'font-semibold text-[#111827]' : 'font-medium text-[#6b7280]'">
+            <span class="size-[7px] rounded-full" [class]="activo ? 'bg-[#29845a]' : 'bg-[#9ca3af]'"></span>{{ activo ? 'Activo' : 'Inactivo' }}
+          </button>
+        }
+      </div>
+      <p class="text-[12.5px] leading-[18px] text-[#6b7280]">
+        {{ d.activo ? 'Aparece en la lista al crear compras.' : 'No aparece al crear compras. Su historial se conserva.' }}
+      </p>
+    </app-seccion-hoja>
+  </div>
+}

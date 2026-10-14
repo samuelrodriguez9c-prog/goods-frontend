@@ -107,18 +107,25 @@ export interface RespuestaPaginada<T> {
 }
 
 export interface AccesoResumen {
-  /** `en_mora`: venció el pago, sigue operando dentro de la gracia. */
-  estado: 'ok' | 'en_mora' | 'bloqueada';
-  motivo: 'alta_en_curso' | 'rechazada' | 'suspendida' | 'cancelada' | 'sin_plan' | 'suscripcion_vencida' | null;
+  /** `en_mora`: venció el pago, sigue operando dentro de la gracia.
+   *  `en_prueba` (2026-10-10): período de prueba, opera hasta `pruebaHasta`. */
+  estado: 'ok' | 'en_mora' | 'en_prueba' | 'bloqueada';
+  motivo: 'alta_en_curso' | 'rechazada' | 'suspendida' | 'cancelada' | 'sin_plan' | 'suscripcion_vencida' | 'prueba_terminada' | null;
   suscripcionEstado: string | null;
   fechaProximoVencimiento: string | null;
+  /** En prueba: hasta cuándo (2026-10-10). */
+  pruebaHasta?: string | null;
+  /** Descuento activo sobre el plan, en % (2026-10-10). */
+  descuentoPorcentaje?: number | null;
 }
 
 /** Marca extra junto al estado de la cuenta cuando no alcanza para saber si
  *  la Empresa opera (solo para Empresas `activa`). `null` = no hace falta. */
-export function marcaAcceso(e: Pick<Empresa, 'estado' | 'acceso'>): { texto: string; tono: 'critical' | 'warning' | 'neutral' } | null {
+export function marcaAcceso(e: Pick<Empresa, 'estado' | 'acceso'>): { texto: string; tono: 'critical' | 'warning' | 'neutral' | 'info' } | null {
   if (e.estado !== 'activa' || !e.acceso || e.acceso.estado === 'ok') return null;
   if (e.acceso.estado === 'en_mora') return { texto: 'En mora', tono: 'warning' };
+  if (e.acceso.estado === 'en_prueba') return { texto: 'En prueba', tono: 'info' };
+  if (e.acceso.motivo === 'prueba_terminada') return { texto: 'Prueba terminada', tono: 'critical' };
   if (e.acceso.motivo === 'suscripcion_vencida') return { texto: 'Vencida', tono: 'critical' };
   return { texto: 'Sin plan', tono: 'neutral' };
 }

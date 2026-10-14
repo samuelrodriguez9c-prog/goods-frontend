@@ -23,7 +23,11 @@ export interface Compra {
   notas: string | null;
   numeroFactura: string | null;
   archivoUrl: string | null;
+  /** Cuándo se recibió (el stock entró). */
+  recibidaEn?: string | null;
   items: CompraItem[];
+  creadoEn?: string;
+  actualizadoEn?: string;
 }
 
 export interface CrearCompraItemPayload {
@@ -39,4 +43,14 @@ export interface CrearCompraPayload {
   numeroFactura?: string;
   archivoUrl?: string;
   items: CrearCompraItemPayload[];
+}
+
+/** Body de `PATCH /compras/:id`. Fuera de "pendiente" solo se aceptan las notas. */
+export interface ActualizarCompraPayload {
+  proveedorId?: number;
+  fecha?: string;
+  notas?: string;
+  numeroFactura?: string | null;
+  archivoUrl?: string | null;
+  items?: CrearCompraItemPayload[];
 }

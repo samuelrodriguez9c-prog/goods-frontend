@@ -1,8 +1,8 @@
 <!-- projects/staff/src/app/layout/topbar/topbar.component.html -->
 <header class="relative z-40 flex h-15 shrink-0 items-center gap-4 bg-topbar px-4 text-white">
   <div class="flex min-w-0 items-center gap-3">
-    <!-- <img src="/logo-goods-wordmark.png" alt="Goods" class="h-12 w-auto shrink-0" />
-    <span class="h-[22px] w-px shrink-0 bg-topbar-badge-border"></span>
+    <img src="/logo-goods-nombre-topbar.png" alt="Goods" class="h-[34px] w-auto shrink-0" />
+    <!-- <span class="h-[22px] w-px shrink-0 bg-topbar-badge-border"></span>
     <span class="shrink-0 text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">Staff</span> -->
     <!-- ─── Rastro de navegación (§5.4.4, 2026-10-02) ─── -->
     <app-breadcrumb-trail />
@@ -282,7 +282,7 @@
             (touchend)="cancelarHold()"
             (keydown)="empezarHold($event)"
             (keyup)="cancelarHold()"
-            aria-label="Mantén presionado para cerrar sesión"
+            aria-label="Mantené presionado para cerrar sesión"
             class="relative flex h-[46px] w-full touch-none select-none items-center gap-3 overflow-hidden rounded-[11px] bg-[#f7f7f7] px-3 text-left transition-[opacity,transform] delay-[140ms] duration-[360ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] active:scale-[0.985]"
             [class]="menuAbierto() ? 'translate-y-0 opacity-100' : 'translate-y-1.5 opacity-0'"
           >

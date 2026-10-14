@@ -162,6 +162,15 @@
                       <span class="text-lg font-medium" [class]="on ? 'text-gray-500' : 'text-gray-400'">Precio a confirmar</span>
                     }
                   </span>
+                  @if (p.diasPrueba) {
+                    <!-- Período de prueba (2026-10-10): arranca cuando el cliente activa su cuenta. -->
+                    <span
+                      class="mt-2 inline-flex items-center gap-1.5 self-start rounded-full px-2.5 py-1 text-[11.5px] font-semibold"
+                      [class]="on ? 'bg-badge-success-bg text-success-solid' : 'bg-white/[0.08] text-badge-success-bg'"
+                    >
+                      Incluye {{ p.diasPrueba }} {{ p.diasPrueba === 1 ? 'día' : 'días' }} de prueba gratis
+                    </span>
+                  }
                   <span
                     class="mt-4 flex items-start gap-2 rounded-[10px] px-3 py-[11px] text-xs leading-[17px] transition-all"
                     [class]="on ? 'bg-canvas-bg text-gray-600' : 'bg-white/5 text-gray-400'"
@@ -446,11 +455,16 @@
         <div class="tirilla-scroll min-h-0 flex-1 overflow-y-auto px-[18px] pb-3.5 pt-5">
           <!-- Emisor -->
           <div class="flex flex-col items-center gap-px text-center">
-            <span class="font-factura-titulo text-[22px] font-bold tracking-[0.02em]">GOODS</span>
-            <span>Goods S.A.S. · NIT [900.000.000-0]</span>
-            <span>Responsable de IVA</span>
-            <span>[Dirección] · Bogotá D.C.</span>
-            <span>facturacion&#64;goods.co</span>
+            <!-- Datos del emisor: emisor-factura.ts (DE EJEMPLO hasta tener los reales). -->
+            <span class="font-factura-titulo text-[22px] font-bold tracking-[0.02em]">{{ emisor.marca }}</span>
+            <span>{{ emisor.razonSocial }} · NIT {{ emisor.nit }}</span>
+            <span>{{ emisor.regimen }}</span>
+            <span>{{ emisor.direccion }} · {{ emisor.ciudad }}</span>
+            <span>{{ emisor.correo }}</span>
+            @if (emisor.deEjemplo) {
+              <!-- Se va solo al poner deEjemplo: false con los datos reales. -->
+              <span class="mt-1 border border-dashed border-[#c9a24a] px-1.5 text-[9.5px] uppercase tracking-[0.08em] text-[#8a5a00]">Datos del emisor de ejemplo</span>
+            }
           </div>
 
           <div class="mb-2.5 mt-3 border-t border-dashed border-[#b9b8b2]"></div>

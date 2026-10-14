@@ -1,23 +1,41 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { EMPTY, Observable, expand, reduce } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Compra, CrearCompraPayload } from './models/compra.model';
+import { RespuestaPaginada } from '../usuarios/models/usuario.model';
+import { ActualizarCompraPayload, Compra, CrearCompraPayload } from './models/compra.model';
 
-/**
- * Cliente mínimo de `CompraController` (backend) — por ahora solo
- * `crear`, que es lo único que necesita el paso "Confirmar y guardar"
- * del modo documento del Asistente de IA (§5.5). El resto de
- * `CompraModule` (listar, cambiar estado a 'recibida' y disparar
- * inventario, etc.) queda para cuando se construya la pantalla real de
- * Compras (`ProductPurchasesPageComponent`, hoy un placeholder).
- */
+/** Cliente de `CompraController` (permisos `compras.*`). */
 @Injectable({ providedIn: 'root' })
 export class CompraService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/compras`;
 
+  /** Todas las compras, página por página (de la más nueva a la más vieja). */
+  todas(): Observable<Compra[]> {
+    const pagina = (page: number) =>
+      this.http.get<RespuestaPaginada<Compra>>(this.base, { params: { page, pageSize: 100 } });
+    return pagina(1).pipe(
+      expand((r) => (r.page < r.totalPaginas ? pagina(r.page + 1) : EMPTY)),
+      reduce((xs, r) => [...xs, ...r.data], [] as Compra[]),
+    );
+  }
+
   crear(payload: CrearCompraPayload): Observable<Compra> {
     return this.http.post<Compra>(this.base, payload);
+  }
+
+  actualizar(id: number, payload: ActualizarCompraPayload): Observable<Compra> {
+    return this.http.patch<Compra>(`${this.base}/${id}`, payload);
+  }
+
+  /** El stock de cada línea entra al inventario. */
+  recibir(id: number): Observable<Compra> {
+    return this.http.patch<Compra>(`${this.base}/${id}/recibir`, {});
+  }
+
+  /** `motivo` queda en las notas. */
+  cancelar(id: number, motivo?: string): Observable<Compra> {
+    return this.http.patch<Compra>(`${this.base}/${id}/cancelar`, motivo ? { motivo } : {});
   }
 }

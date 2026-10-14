@@ -1,0 +1,8 @@
+<span class="seg-indicador" [style.left]="left()" [style.width]="width()"></span>
+@for (o of opciones(); track o.k) {
+  <button type="button" (click)="cambiar.emit(o.k)"
+    class="relative flex h-7 cursor-pointer items-center justify-center gap-[5px] rounded-full border-0 bg-transparent text-[12px] font-medium whitespace-nowrap transition-colors duration-200 hover:text-[#111827]"
+    [class]="(ancho() === 'normal' ? 'px-[11px] ' : 'px-2.5 ') + (valor() === o.k ? 'text-[#111827]' : 'text-[#6b7280]')">
+    {{ o.label }}<span class="text-[10.5px] tabular-nums transition-colors duration-200" [class]="valor() === o.k ? 'text-[#6b7280]' : 'text-[#a3a3a3]'">{{ o.n }}</span>
+  </button>
+}

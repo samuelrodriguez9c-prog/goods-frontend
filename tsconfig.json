@@ -43,6 +43,9 @@
     },
     {
       "path": "./projects/staff/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/tienda/tsconfig.app.json"
     }
   ]
 }

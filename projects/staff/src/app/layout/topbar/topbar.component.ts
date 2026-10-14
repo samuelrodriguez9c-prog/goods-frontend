@@ -177,6 +177,7 @@ export class TopbarComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.notifSub?.unsubscribe();
     clearTimeout(this.holdTimer);
+    clearTimeout(this.pistaTimer);
     cancelAnimationFrame(this.holdRaf);
   }
 
@@ -319,9 +320,20 @@ export class TopbarComponent implements OnDestroy {
 
   protected cancelarHold(): void {
     if (this.hold() !== 'manteniendo') return;
+    // Soltó casi enseguida (un clic): se le recuerda que hay que mantener,
+    // ya que el botón no tiene otra pista visible.
+    if (this.progreso() < 0.15) {
+      this.pistaHold.set(true);
+      clearTimeout(this.pistaTimer);
+      this.pistaTimer = setTimeout(() => this.pistaHold.set(false), 1600);
+    }
     this.hold.set(false);
     this.animarProgreso(-1);
   }
+
+  /** `true` ~1,6 s después de un clic corto: el texto pasa a "Mantené presionado". */
+  protected readonly pistaHold = signal(false);
+  private pistaTimer: ReturnType<typeof setTimeout> | undefined;
 
   private animarProgreso(sentido: 1 | -1): void {
     cancelAnimationFrame(this.holdRaf);
@@ -350,7 +362,11 @@ export class TopbarComponent implements OnDestroy {
 
   /** Texto del botón, letra por letra (la despedida entra en ola). */
   protected readonly letrasSalir = computed(() => {
-    const texto = this.hold() === 'listo' ? `Hasta luego, ${this.currentUser()?.nombres ?? ''}`.trim() : 'Cerrar sesión';
+    const nombre = this.currentUser()?.nombres?.split(' ')[0];
+    const texto =
+      this.hold() === 'listo'
+        ? nombre ? `Hasta luego, ${nombre}` : 'Hasta luego'
+        : this.pistaHold() && !this.hold() ? 'Mantené presionado' : 'Cerrar sesión';
     return [...texto].map((c, i) => ({ c, retraso: i * 28 }));
   });
 

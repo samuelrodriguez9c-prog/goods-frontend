@@ -19,7 +19,13 @@ import { AuthService } from '../auth/auth.service';
 // refreshToken inexistente (nadie logueado todavía) y el 400 de ESE
 // intento ("refreshToken must be a string") tapaba el mensaje real del
 // backend (encontrado probando la pantalla end-to-end, 2026-09-15).
-const RUTAS_SIN_INTERCEPTAR = ['/auth/login', '/auth/refresh', '/auth/reset-password'];
+const RUTAS_SIN_INTERCEPTAR = [
+  '/auth/login',
+  '/auth/refresh',
+  '/auth/reset-password',
+  '/auth/reportar-cambio-password',
+  '/empresas/registro-publico/contacto',
+];
 
 /**
  * Adjunta `Authorization: Bearer <accessToken>` a cada request saliente

@@ -25,7 +25,9 @@ export type TipoNotificacion =
   | 'conversacion_asignada'
   // Solicitudes de personalización (2026-10-04).
   | 'solicitud_nueva'
-  | 'solicitud_actualizada';
+  | 'solicitud_actualizada'
+  | 'seguridad_reporte'
+  | 'alta_mensaje';
 
 export interface Notificacion {
   id: number;

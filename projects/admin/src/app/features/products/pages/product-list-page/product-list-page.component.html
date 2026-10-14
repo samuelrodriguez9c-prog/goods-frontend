@@ -1,0 +1,580 @@
+<!-- Productos v4 — ver handoff-productos/LEEME.md §2. Referencia visual: referencia/Productos Goods v4.dc.html -->
+<div class="flex h-full min-h-0 flex-col overflow-hidden px-6 pt-6">
+  @if (!(s.abierto() != null && s.completa())) {
+    <!-- Cabecera -->
+    <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+      <div class="min-w-0 flex-[1_1_420px]">
+        <div class="flex items-center gap-2 text-[#303030]">
+          <tabler-icon [icon]="ic.tag" [size]="20" />
+          <h1 class="m-0 font-display text-[22px] font-semibold leading-7 tracking-[-0.01em] text-[#111827]">Productos</h1>
+          <span class="ml-1 inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-white px-[7px] py-0.5 text-[11.5px] font-medium text-[#303030] shadow-[0_0_0_1px_rgba(0,0,0,.06)]">
+            <span class="size-1.5 rounded-full bg-[#29845a] shadow-[0_0_0_3px_rgba(41,132,90,.18)]"></span>{{ s.productos().length }} productos
+          </span>
+        </div>
+        @if (s.carga() === 'listo' && s.productos().length) {
+          <p class="mt-2 mb-0 max-w-[640px] text-pretty text-[13px] leading-5 text-[#6b7280]">{{ s.resumen().lectura }}</p>
+        }
+      </div>
+      <div class="flex items-center gap-2 pt-0.5">
+        <button type="button" (click)="s.exportarCSV()" class="rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-colors hover:bg-[#d4d4d4]">Exportar</button>
+        <button
+          type="button"
+          (click)="s.nuevo()"
+          [title]="s.puede('productos.crear') ? 'Nuevo producto (' + atajos.teclas().nuevo.toUpperCase() + ')' : 'Necesitas el permiso productos.crear'"
+          [class.opacity-45]="!s.puede('productos.crear')"
+          [class.cursor-not-allowed]="!s.puede('productos.crear')"
+          class="flex items-center gap-1.5 rounded-lg bg-primary-button px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-opacity hover:opacity-90"
+        >
+          <tabler-icon [icon]="ic.plus" [size]="14" />Nuevo producto
+        </button>
+      </div>
+    </div>
+
+    <!-- Métricas: cada una filtra la lista (clic de nuevo para quitar) -->
+    @if (s.carga() === 'listo' && s.productos().length) {
+      <div class="mt-[18px] flex flex-wrap overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,.07),0_0_0_1px_rgba(0,0,0,.05)]">
+        @for (m of s.resumen().metricas; track m.key) {
+          @let on = s.metrica() === m.key;
+          <button
+            type="button"
+            (click)="s.metrica.set(on ? null : m.key)"
+            [title]="m.label"
+            class="-mb-px flex min-w-0 flex-[1_1_170px] flex-col gap-1.5 border-0 border-b border-r border-[#ebebeb] p-4 text-left transition-[background-color,box-shadow] duration-200 hover:bg-[#fafafa]"
+            [style.background]="on ? '#f7f7f7' : null"
+            [style.box-shadow]="on ? 'inset 0 -2px 0 #303030' : 'none'"
+          >
+            <span class="truncate text-[13px] font-semibold text-[#303030] underline decoration-[#b5b5b5] decoration-dotted underline-offset-4">{{ m.label }}</span>
+            <span class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+              <span class="max-w-full truncate text-[15px] font-semibold tabular-nums" [style.color]="m.tinta">{{ m.valor }}</span>
+              <span class="truncate text-xs font-medium text-[#6b7280]">{{ m.sub }}</span>
+            </span>
+          </button>
+        }
+      </div>
+    }
+  }
+
+  <div class="mt-4 grid min-h-0 flex-1 pb-4 transition-[grid-template-columns] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-columns]="columnas()">
+    <!-- Error / vacío -->
+    @if (vacio()) {
+      <section class="flex min-h-0 flex-col items-center justify-center rounded-2xl bg-white p-10 text-center shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_40px_-24px_rgba(0,0,0,.22)] animate-[entra_.36s_cubic-bezier(.2,.8,.2,1)]">
+        @if (s.carga() === 'error') {
+          <div class="flex max-w-[360px] flex-col items-center gap-2.5">
+            <span class="flex size-11 items-center justify-center rounded-full bg-[#ffe6e5] text-[#d82c0d]"><tabler-icon [icon]="ic.nube" [size]="20" /></span>
+            <div class="font-display text-lg font-semibold">No pudimos cargar los productos</div>
+            <div class="text-[13px] leading-5 text-[#6b7280]">Revisa tu conexión. Si sigue pasando, el servidor puede estar en mantenimiento.</div>
+            <button type="button" (click)="reintentar()" class="mt-1 rounded-lg bg-primary-button px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000]">Reintentar</button>
+          </div>
+        } @else {
+          <div class="flex max-w-[380px] flex-col items-center gap-2.5">
+            <span class="flex size-12 items-center justify-center rounded-full bg-[#e0f7f5] text-[#00605b]"><tabler-icon [icon]="ic.tag" [size]="22" /></span>
+            <div class="font-display text-lg font-semibold">Todavía no tienes productos</div>
+            <div class="text-[13px] leading-5 text-[#6b7280]">Crea el primero con su precio y stock. Después podrás agruparlos en categorías y llevar el inventario.</div>
+            <button type="button" (click)="s.nuevo()" class="mt-1 rounded-lg bg-primary-button px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000]">Crear el primero</button>
+          </div>
+        }
+      </section>
+    }
+
+    @if (verLista()) {
+      <section class="relative z-[2] -mr-4 flex h-full min-h-0 min-w-0 flex-col">
+        <!-- Popover de filtros: secciones a la izquierda, contenido a la derecha -->
+        <div
+          (click)="$event.stopPropagation()"
+          class="absolute left-0 top-11 z-40 grid w-[620px] max-w-[calc(100vw-300px)] origin-top-left grid-cols-[210px_minmax(0,1fr)] overflow-hidden rounded-2xl bg-white shadow-[0_0_0_1px_rgba(0,0,0,.06),0_24px_48px_-20px_rgba(0,0,0,.35)] transition-[opacity,transform] duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)]"
+          [class]="filtrosAbierto() ? 'pointer-events-auto translate-y-0 scale-100 opacity-100' : 'pointer-events-none -translate-y-1.5 scale-[0.98] opacity-0'"
+        >
+          <div class="flex flex-col border-r border-[#efefef] bg-[#f7f7f7] px-2.5 pb-2.5 pt-3">
+            <div class="px-2 pb-3 pt-1">
+              <div class="font-display text-[15px] font-semibold text-[#111827]">Filtros</div>
+              <div class="mt-0.5 text-xs text-[#8a8a8a]">Elige qué ver en la lista</div>
+            </div>
+            <div class="relative">
+              <span class="absolute inset-x-0 top-0 h-[58px] rounded-[11px] bg-white shadow-[0_1px_2px_rgba(0,0,0,.06),0_0_0_1px_rgba(0,0,0,.04)] transition-transform duration-[320ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.transform]="'translateY(' + indiceSeccion() * 60 + 'px)'"></span>
+              @for (x of secciones(); track x.k) {
+                @let on = seccion() === x.k;
+                <button type="button" (click)="seccion.set(x.k)" class="relative z-[1] mb-0.5 flex h-[58px] w-full items-center gap-2.5 px-2.5 text-left">
+                  <span class="flex size-7 shrink-0 items-center justify-center rounded-full transition-colors duration-[250ms]" [style.background]="on ? '#f1f1f1' : 'transparent'" [style.color]="on ? '#111827' : '#6b7280'">
+                    <tabler-icon [icon]="x.icon" [size]="15" />
+                  </span>
+                  <span class="flex min-w-0 flex-1 flex-col gap-px">
+                    <span class="text-[13px] font-semibold transition-colors" [style.color]="on ? '#111827' : '#6b7280'">{{ x.t }}</span>
+                    <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ x.sub }}</span>
+                  </span>
+                  @if (x.act) {
+                    <span class="size-[7px] shrink-0 rounded-full bg-[#2be0d5] shadow-[0_0_0_3px_rgba(43,224,213,.2)] animate-[pop_.38s_cubic-bezier(.2,.8,.2,1)]"></span>
+                  }
+                </button>
+              }
+            </div>
+            <button type="button" (click)="s.limpiarFiltros()" class="mt-auto self-start px-2.5 pb-0.5 pt-2.5 text-[12.5px] font-medium text-[#6b7280] hover:text-[#111827]">Limpiar todo</button>
+          </div>
+
+          <div class="flex max-h-[440px] min-h-[340px] flex-col">
+            <div class="min-h-0 flex-1 overflow-y-auto px-[18px] pb-2 pt-4">
+              @switch (seccion()) {
+                @case ('agrupar') {
+                  <div class="flex flex-col gap-3 animate-[ficha_300ms_cubic-bezier(.2,.8,.2,1)_both]">
+                    <div>
+                      <div class="font-display text-[15px] font-semibold text-[#111827]">Agrupar la lista</div>
+                      <div class="text-[12.5px] leading-[18px] text-[#6b7280]">Cómo se ordenan los productos en grupos plegables.</div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      @for (o of agrupaciones; track o.k) {
+                        @let on = s.agrupar() === o.k;
+                        <button type="button" (click)="s.agrupar.set(o.k)" class="grid grid-cols-[18px_30px_minmax(0,1fr)] items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#f7f7f7]" [style.background]="on ? '#f4f4f4' : null">
+                          <span class="flex size-[18px] items-center justify-center rounded-full transition-shadow" [style.box-shadow]="'inset 0 0 0 1.5px ' + (on ? '#303030' : '#d4d4d4')">
+                            <span class="size-2 rounded-full bg-[#303030] transition-transform duration-[250ms] ease-[cubic-bezier(.34,1.56,.64,1)]" [style.transform]="'scale(' + (on ? 1 : 0) + ')'"></span>
+                          </span>
+                          <span class="flex size-[30px] items-center justify-center rounded-[9px] bg-[#f1f1f1] text-[#4b5563]"><tabler-icon [icon]="o.icon" [size]="16" /></span>
+                          <span class="flex flex-col gap-px"><span class="text-[13px] font-semibold text-[#111827]">{{ o.t }}</span><span class="text-xs text-[#8a8a8a]">{{ o.d }}</span></span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+                @case ('estado') {
+                  <div class="flex flex-col gap-3 animate-[ficha_300ms_cubic-bezier(.2,.8,.2,1)_both]">
+                    <div>
+                      <div class="font-display text-[15px] font-semibold text-[#111827]">Estado del producto</div>
+                      <div class="text-[12.5px] leading-[18px] text-[#6b7280]">Marca uno o varios. Sin marcar, ves todos.</div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      @for (e of estados; track e) {
+                        @let on = s.fEstados().includes(e);
+                        <button type="button" (click)="s.alternarEn(s.fEstados, e)" class="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#f7f7f7]" [style.background]="on ? '#f4f4f4' : null">
+                          <span class="flex size-[18px] items-center justify-center rounded-md text-white transition-[background-color,box-shadow]" [style.background]="on ? '#303030' : '#fff'" [style.box-shadow]="'inset 0 0 0 1.5px ' + (on ? '#303030' : '#d4d4d4')">
+                            <tabler-icon [icon]="ic.check" [size]="12" class="transition-transform duration-[250ms]" [style.transform]="'scale(' + (on ? 1 : 0) + ')'" />
+                          </span>
+                          <span class="flex items-center gap-[7px] text-[13px] font-semibold text-[#111827]"><span class="size-[7px] rounded-full" [style.background]="EST[e].dot"></span>{{ EST[e].t }}</span>
+                          <span class="text-xs font-semibold tabular-nums text-[#6b7280]">{{ cuentaEstado(e) }}</span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+                @case ('categorias') {
+                  <div class="flex flex-col gap-3 animate-[ficha_300ms_cubic-bezier(.2,.8,.2,1)_both]">
+                    <div>
+                      <div class="font-display text-[15px] font-semibold text-[#111827]">Categorías</div>
+                      <div class="text-[12.5px] leading-[18px] text-[#6b7280]">Si eliges una principal, también incluye sus subcategorías.</div>
+                    </div>
+                    <div class="flex flex-col">
+                      @for (c of s.arbol(); track c.id) {
+                        @let on = s.fCats().includes(c.id);
+                        @let hija = !!c.categoriaPadreId;
+                        <button type="button" (click)="s.alternarEn(s.fCats, c.id)" class="relative grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[10px] py-2 pr-3 text-left transition-colors hover:bg-[#f7f7f7]" [style.padding-left.px]="hija ? 38 : 12" [style.background]="on ? '#f4f4f4' : null">
+                          @if (hija) {
+                            <span class="absolute left-5 top-[-6px] h-[22px] w-2.5 rounded-bl-md border-b-[1.5px] border-l-[1.5px] border-dashed border-[#d4d4d4]"></span>
+                          }
+                          <span class="flex size-[18px] items-center justify-center rounded-md text-white" [style.background]="on ? '#303030' : '#fff'" [style.box-shadow]="'inset 0 0 0 1.5px ' + (on ? '#303030' : '#d4d4d4')">
+                            <tabler-icon [icon]="ic.check" [size]="12" [style.transform]="'scale(' + (on ? 1 : 0) + ')'" class="transition-transform duration-[250ms]" />
+                          </span>
+                          <span class="truncate text-[13px] text-[#111827]" [class.font-semibold]="!hija">{{ c.nombre }}</span>
+                          <span class="text-xs font-semibold tabular-nums text-[#9ca3af]">{{ cuentaCategoria(c.id) }}</span>
+                        </button>
+                      }
+                      @let sinOn = s.fCats().includes(0);
+                      <button type="button" (click)="s.alternarEn(s.fCats, 0)" class="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[10px] py-2 pl-3 pr-3 text-left transition-colors hover:bg-[#f7f7f7]" [style.background]="sinOn ? '#f4f4f4' : null">
+                        <span class="flex size-[18px] items-center justify-center rounded-md text-white" [style.background]="sinOn ? '#303030' : '#fff'" [style.box-shadow]="'inset 0 0 0 1.5px ' + (sinOn ? '#303030' : '#d4d4d4')">
+                          <tabler-icon [icon]="ic.check" [size]="12" [style.transform]="'scale(' + (sinOn ? 1 : 0) + ')'" />
+                        </span>
+                        <span class="text-[13px] font-semibold text-[#111827]">Sin categoría</span>
+                        <span class="text-xs font-semibold tabular-nums text-[#9ca3af]">{{ cuentaCategoria(0) }}</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+                @case ('precio') {
+                  <div class="flex flex-col gap-3.5 animate-[ficha_300ms_cubic-bezier(.2,.8,.2,1)_both]">
+                    <div>
+                      <div class="font-display text-[15px] font-semibold text-[#111827]">Rango de precio</div>
+                      <div class="text-[12.5px] leading-[18px] text-[#6b7280]">Arrastra los extremos o elige un rango rápido.</div>
+                    </div>
+                    <div class="flex items-end justify-between">
+                      <span class="flex flex-col"><span class="text-[11.5px] text-[#8a8a8a]">Desde</span><span class="font-display text-xl font-semibold tabular-nums">{{ cop(s.pMin()) }}</span></span>
+                      <span class="pb-1 text-xs text-[#6b7280]">{{ enRango() }}</span>
+                      <span class="flex flex-col items-end"><span class="text-[11.5px] text-[#8a8a8a]">Hasta</span><span class="font-display text-xl font-semibold tabular-nums">{{ s.pMax() < PMAX ? cop(s.pMax()) : cop(PMAX) + '+' }}</span></span>
+                    </div>
+                    <div>
+                      <div class="flex h-[46px] items-end gap-0.5 px-1.5">
+                        @for (b of barras(); track $index) {
+                          <span [title]="b.tip" class="flex-1 rounded-t-[3px] transition-[background-color,height] duration-[400ms]" [style.height]="b.alto" [style.background]="b.dentro ? '#303030' : '#e3e3e3'"></span>
+                        }
+                      </div>
+                      <div class="relative h-5">
+                        <div class="absolute inset-x-0 top-2 h-1 rounded-full bg-[#ececec]"></div>
+                        <div class="absolute top-2 h-1 rounded-full bg-[#303030]" [style.left.%]="(s.pMin() / PMAX) * 100" [style.right.%]="100 - (s.pMax() / PMAX) * 100"></div>
+                        <input type="range" min="0" [max]="PMAX" step="1000" [value]="s.pMin()" (input)="ponerMin($any($event.target).value)" class="rango-doble absolute left-0 top-0 m-0 h-5 w-full" aria-label="Precio mínimo" />
+                        <input type="range" min="0" [max]="PMAX" step="1000" [value]="s.pMax()" (input)="ponerMax($any($event.target).value)" class="rango-doble absolute left-0 top-0 m-0 h-5 w-full" aria-label="Precio máximo" />
+                      </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      @for (r of rangos; track r.t) {
+                        @let on = rangoActivo(r);
+                        <button type="button" (click)="rango(r)" class="grid grid-cols-[18px_minmax(0,1fr)] items-center gap-3 rounded-xl px-3 py-[9px] text-left transition-colors hover:bg-[#f7f7f7]" [style.background]="on ? '#f4f4f4' : null">
+                          <span class="flex size-[18px] items-center justify-center rounded-full" [style.box-shadow]="'inset 0 0 0 1.5px ' + (on ? '#303030' : '#d4d4d4')">
+                            <span class="size-2 rounded-full bg-[#303030] transition-transform duration-[250ms]" [style.transform]="'scale(' + (on ? 1 : 0) + ')'"></span>
+                          </span>
+                          <span class="flex flex-col gap-px"><span class="text-[13px] font-semibold text-[#111827]">{{ r.t }}</span><span class="text-xs text-[#8a8a8a]">{{ r.d }}</span></span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+            <div class="flex items-center justify-between gap-2.5 border-t border-[#f1f1f1] px-[18px] py-3">
+              <span class="text-[12.5px] text-[#6b7280]"><strong class="font-semibold text-[#111827]">{{ s.conteo() }}</strong> con estos filtros</span>
+              <button type="button" (click)="filtrosAbierto.set(false)" class="rounded-lg bg-primary-button px-3.5 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000]">Ver resultados</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra: buscar · filtros · lista/grilla -->
+        <div class="flex items-center gap-1.5 pb-2.5 pr-7">
+          <label
+            class="flex min-w-0 flex-1 items-center gap-2 rounded-full px-3 transition-[background-color,box-shadow] duration-200"
+            [style.background]="qFoco() ? '#fff' : '#e6e6e6'"
+            [style.box-shadow]="qFoco() ? '0 0 0 1px #d4d4d4' : 'none'"
+          >
+            <tabler-icon [icon]="ic.search" [size]="15" class="text-[#8a8a8a]" />
+            <input
+              data-atajo="buscar"
+              [value]="s.qVivo()"
+              (input)="s.buscar($any($event.target).value)"
+              (focus)="qFoco.set(true)"
+              (blur)="qFoco.set(false)"
+              placeholder="Nombre o SKU"
+              class="min-w-0 flex-1 border-0 bg-transparent py-2 text-[13px] text-[#111827] outline-none"
+            />
+            @if (s.qVivo()) {
+              <button type="button" (click)="s.buscar('', true)" aria-label="Borrar búsqueda" class="flex text-[#8a8a8a]"><tabler-icon [icon]="ic.x" [size]="13" /></button>
+            }
+          </label>
+          <button
+            type="button"
+            (click)="alternarFiltros($event)"
+            [title]="'Filtros y agrupación (' + atajos.teclas().filtros.toUpperCase() + ')'"
+            class="relative flex size-[34px] shrink-0 items-center justify-center rounded-full text-[#4b5563] transition-colors hover:bg-[#e6e6e6]"
+            [style.background]="filtrosAbierto() || s.nFiltros() ? '#e3e3e3' : 'transparent'"
+          >
+            <tabler-icon [icon]="ic.filtros" [size]="16" />
+            @if (s.nFiltros()) {
+              <span class="absolute right-1 top-1 size-[7px] rounded-full bg-[#2be0d5] shadow-[0_0_0_2px_#f1f1f1]"></span>
+            }
+          </button>
+          <button
+            type="button"
+            (click)="s.vista.set(s.vista() === 'lista' ? 'grilla' : 'lista')"
+            [title]="s.vista() === 'grilla' ? 'Ver como lista' : 'Ver como grilla'"
+            class="flex size-[34px] shrink-0 items-center justify-center rounded-full text-[#4b5563] transition-colors hover:bg-[#e6e6e6]"
+          >
+            <tabler-icon [icon]="s.vista() === 'grilla' ? ic.lista : ic.grilla" [size]="16" />
+          </button>
+        </div>
+
+        <!-- Seleccionar todo · conteo · chips · en vivo -->
+        <div class="flex min-h-[26px] flex-wrap items-center gap-2 pb-2 pl-1 pr-7">
+          <span
+            (click)="s.marcarTodos()"
+            title="Seleccionar todo lo visible"
+            class="flex size-[15px] cursor-pointer items-center justify-center rounded-[5px] text-white transition-colors"
+            [style.background]="s.todosMarcados() ? '#303030' : '#fff'"
+            [style.box-shadow]="'inset 0 0 0 1.5px ' + (s.todosMarcados() ? '#303030' : '#d4d4d4')"
+          >
+            @if (s.todosMarcados()) { <tabler-icon [icon]="ic.check" [size]="11" /> }
+          </span>
+          <span class="text-xs tabular-nums text-[#6b7280]">{{ s.conteo() }}</span>
+          @for (c of s.chips(); track c.label) {
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pl-2.5 pr-1 text-[11.5px] font-medium text-[#374151] animate-[fade-in-up_.2s_ease-out]">
+              {{ c.label }}
+              <button type="button" (click)="c.quitar()" aria-label="Quitar filtro" class="flex size-4 items-center justify-center rounded-full text-[#6b7280] hover:bg-[#d1d5db] hover:text-[#111827]"><tabler-icon [icon]="ic.x" [size]="11" /></button>
+            </span>
+          }
+          <span class="ml-auto inline-flex items-center gap-1.5 whitespace-nowrap text-[11.5px] font-medium text-[#4b5563]">
+            <span class="relative flex size-[7px]">
+              @if (cambiosEnVivo()) { <span class="absolute inset-0 rounded-full bg-[#2be0d5] animate-ping"></span> }
+              <span class="relative size-[7px] rounded-full bg-[#2be0d5]"></span>
+            </span>
+            En vivo
+          </span>
+        </div>
+
+        <div data-atajo="lista" (mouseleave)="hover.set(null)" class="relative min-h-0 flex-1 overflow-y-auto pb-3 [scrollbar-width:none]">
+          @if (cambiosEnVivo()) {
+            <div class="pointer-events-none sticky top-3 z-30 flex h-0 justify-center overflow-visible pr-7">
+              <button type="button" (click)="actualizarEnVivo()" class="pointer-events-auto flex h-9 items-center gap-2.5 whitespace-nowrap rounded-full bg-[#1a1a1a] py-[7px] pl-3 pr-[7px] text-white shadow-[0_10px_24px_-8px_rgba(0,0,0,.4)] animate-[vivo-entrar_320ms_cubic-bezier(.2,.8,.2,1)_both]">
+                <tabler-icon [icon]="ic.flecha" [size]="14" class="text-[#2be0d5]" />
+                <span class="text-[12.5px]">{{ cambiosEnVivo() === 1 ? '1 cambio nuevo' : cambiosEnVivo() + ' cambios nuevos' }}</span>
+                <span class="rounded-full bg-[#2be0d5] px-2.5 py-[3px] text-xs font-semibold text-[#0a0a0a]">Actualizar</span>
+              </button>
+            </div>
+          }
+
+          @if (s.carga() === 'cargando') {
+            <div class="flex flex-col gap-2 pr-7 pt-3">
+              @for (k of [1, 2, 3, 4, 5, 6, 7, 8]; track k) {
+                <span class="h-12 rounded-xl bg-[linear-gradient(90deg,#e6e6e6_0,#ededed_80px,#e6e6e6_160px)] bg-[length:320px_100%] animate-[brillo_1.4s_linear_infinite]"></span>
+              }
+            </div>
+          } @else if (s.carga() === 'listo' && !s.filtrados().length) {
+            <div class="pb-10 pl-4 pr-11 pt-10 text-center animate-[fade-in-up_.2s_ease-out]">
+              <p class="m-0 text-[13px] text-[#6b7280]">Ningún producto coincide con estos filtros.</p>
+              <button type="button" (click)="s.limpiarFiltros()" class="mt-3 rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[13px] font-medium text-[#374151] hover:bg-[#d4d4d4]">Limpiar filtros</button>
+            </div>
+          } @else if (s.carga() === 'listo' && s.vista() === 'lista') {
+            <!-- ── LISTA ── -->
+            @for (g of s.grupos(); track g.key) {
+              <div>
+                <button type="button" (click)="s.alternarGrupo(g.key)" class="sticky top-0 z-[3] flex w-[calc(100%-28px)] items-center gap-2.5 bg-canvas-bg pb-2 pl-1 pr-2 pt-3.5 text-left">
+                  <span class="flex size-[22px] shrink-0 items-center justify-center rounded-full" [style.background]="g.bg" [style.color]="g.fg"><tabler-icon [icon]="icGrupo[g.icono]" [size]="13" /></span>
+                  <span class="flex min-w-0 flex-1 flex-col gap-px">
+                    <span class="flex items-center gap-[7px]">
+                      <span class="truncate text-[13px] font-semibold text-[#111827]">{{ g.titulo }}</span>
+                      <span class="rounded-full bg-[#e3e3e3] px-[7px] text-[11px] font-semibold leading-[17px] tabular-nums text-[#4b5563]">{{ g.items.length }}</span>
+                    </span>
+                    @if (g.sub) { <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ g.sub }}</span> }
+                  </span>
+                  <span class="flex size-6 shrink-0 items-center justify-center rounded-full text-[#8a8a8a] transition-colors hover:bg-[#e3e3e3]">
+                    <tabler-icon [icon]="ic.abajo" [size]="14" class="transition-transform duration-[240ms]" [style.transform]="'rotate(' + (g.abierto ? 0 : -90) + 'deg)'" />
+                  </span>
+                </button>
+                <div class="grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-rows]="g.abierto ? '1fr' : '0fr'">
+                  <div class="min-h-0 overflow-hidden">
+                    <div class="flex flex-col gap-0.5 pb-1 pt-0.5">
+                      @for (p of g.visibles; track p.id) {
+                        @let j = unida(p.id);
+                        @let sel = s.seleccion().has(p.id);
+                        @let st = s.stock(p.id);
+                        @let ok = s.estadoStock(p.id) === 'ok';
+                        @let mini = miniatura(p);
+                        @let barra = barraStock(p);
+                        @let celda = s.celda();
+                        <!-- La fila abierta o con hover se "une" a la ficha: pierde el margen derecho y las esquinas de ese lado -->
+                        <div (mouseenter)="hover.set(p.id)" (mouseleave)="hover() === p.id && hover.set(null)" class="relative transition-[margin] duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.margin-right.px]="j ? 0 : 28">
+                          <div
+                            (click)="s.abrir(p.id)"
+                            class="relative grid cursor-pointer grid-cols-[16px_32px_minmax(0,1fr)_auto_64px] items-center gap-2.5 py-2 pl-2.5 transition-[background-color,border-radius,padding] duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)]"
+                            [style.padding-right.px]="j ? 30 : 14"
+                            [style.border-radius]="j ? '12px 0 0 12px' : '12px'"
+                            [style.background]="s.destello().has(p.id) ? '#e6fbf9' : j ? '#fff' : 'transparent'"
+                          >
+                            <span class="flex h-7 items-center justify-center">
+                              @if (nSel() || hover() === p.id) {
+                                <span
+                                  (click)="$event.stopPropagation(); s.marcar(p.id)"
+                                  class="flex size-[15px] items-center justify-center rounded-[5px] text-white animate-[fade-in-up_.15s_ease-out]"
+                                  [style.background]="sel ? '#303030' : '#fff'"
+                                  [style.box-shadow]="'inset 0 0 0 1.5px ' + (sel ? '#303030' : '#d4d4d4')"
+                                >
+                                  @if (sel) { <tabler-icon [icon]="ic.check" [size]="11" /> }
+                                </span>
+                              } @else {
+                                <span class="h-7 w-[3px] rounded-full" [style.background]="EST[p.estado].dot"></span>
+                              }
+                            </span>
+                            <span
+                              class="flex size-8 items-center justify-center overflow-hidden rounded-[9px] font-display text-[13px] font-semibold"
+                              [style.background]="mini.url ? '#f1f1f1' : '#fafafa'"
+                              [style.color]="'#9ca3af'"
+                              [style.box-shadow]="'inset 0 0 0 1px ' + (mini.url ? '#eeeeee' : '#d4d4d4')"
+                            >
+                              @if (mini.url) {
+                                <span class="block size-full bg-cover bg-center" [style.background-image]="'url(' + mini.url + ')'"></span>
+                              } @else {
+                                <span>{{ mini.letra }}</span>
+                              }
+                            </span>
+                            <span class="flex min-w-0 flex-col gap-0.5">
+                              <span class="flex min-w-0 items-center gap-[5px]">
+                                <span class="truncate text-[13.5px] text-[#111827]" [class.font-semibold]="s.abierto() === p.id" [class.font-medium]="s.abierto() !== p.id">{{ p.nombre }}</span>
+                                @if (p.destacado) { <tabler-icon [icon]="ic.estrella" [size]="11" class="shrink-0 text-[#ffb904]" /> }
+                              </span>
+                              <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ (p.sku || 'Sin SKU') + ' · ' + s.nombreCategoria(p.categoriaId) }}</span>
+                            </span>
+                            <span (dblclick)="$event.stopPropagation(); s.editarCelda(p.id, 'precio')" title="Doble clic para editar el precio" class="flex flex-col items-end">
+                              @if (celda?.id === p.id && celda?.campo === 'precio') {
+                                <input appAutofoco [value]="celda!.valor" (input)="s.celda.set({ id: p.id, campo: 'precio', valor: $any($event.target).value })" (keydown)="teclaCelda($event)" (blur)="s.celda.set(null)" (click)="$event.stopPropagation()" inputmode="numeric" class="w-[84px] rounded-lg border-0 bg-[#f5f5f5] px-2 py-[5px] text-right text-[12.5px] outline-none shadow-[0_0_0_1px_#d4d4d4] animate-[fade-in-up_.15s_ease-out]" />
+                              } @else {
+                                <span class="-mx-[5px] -my-0.5 cursor-text whitespace-nowrap rounded-md px-[5px] py-0.5 text-[12.5px] font-medium tabular-nums text-[#303030] transition-[background-color,box-shadow] hover:bg-[#f5f5f5] hover:shadow-[inset_0_0_0_1px_#d4d4d4]">{{ cop(p.precio) }}</span>
+                              }
+                              @if (p.precioComparacion && p.precioComparacion > p.precio) {
+                                <span class="text-[10.5px] tabular-nums text-[#9ca3af] line-through">{{ cop(p.precioComparacion) }}</span>
+                              }
+                            </span>
+                            <span (dblclick)="$event.stopPropagation(); s.editarCelda(p.id, 'stock')" title="Doble clic para corregir el stock" class="flex w-16 flex-col items-end gap-[5px]">
+                              @if (celda?.id === p.id && celda?.campo === 'stock') {
+                                <input appAutofoco [value]="celda!.valor" (input)="s.celda.set({ id: p.id, campo: 'stock', valor: $any($event.target).value })" (keydown)="teclaCelda($event)" (blur)="s.celda.set(null)" (click)="$event.stopPropagation()" inputmode="numeric" class="w-16 rounded-lg border-0 bg-[#f5f5f5] px-2 py-[5px] text-right text-[12.5px] outline-none shadow-[0_0_0_1px_#d4d4d4]" />
+                              } @else {
+                                <span class="-mx-[5px] -my-0.5 cursor-text whitespace-nowrap rounded-md px-[5px] py-0.5 text-[11.5px] font-semibold tabular-nums transition-[background-color,box-shadow] hover:bg-[#f5f5f5] hover:shadow-[inset_0_0_0_1px_#d4d4d4]" [style.color]="ok ? '#111827' : '#d82c0d'">{{ num(st.disp) }}</span>
+                                <span class="relative block h-1 w-16 overflow-hidden rounded-full transition-colors duration-[260ms]" [style.background]="j ? '#efefef' : '#e2e2e2'">
+                                  <span class="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[600ms]" [style.width]="barra.w" [style.background]="barra.c"></span>
+                                </span>
+                              }
+                            </span>
+                          </div>
+                          @if (j) {
+                            <!-- esquinas invertidas que la unen con la ficha -->
+                            <span class="pointer-events-none absolute -top-3 right-4 z-[4] size-3 bg-[radial-gradient(circle_at_0_0,transparent_11.5px,#fff_12px)] animate-[fade-in_.2s]"></span>
+                            <span class="pointer-events-none absolute -bottom-3 right-4 z-[4] size-3 bg-[radial-gradient(circle_at_0_100%,transparent_11.5px,#fff_12px)] animate-[fade-in_.2s]"></span>
+                          }
+                        </div>
+                      }
+                      @if (g.quedan > 0) {
+                        <button type="button" (click)="s.cargarMas(g.key)" class="mr-7 mt-1 rounded-xl px-3 py-2 text-left text-[12.5px] font-medium text-[#00807a] hover:bg-[#e8e8e8]">
+                          Cargar {{ g.quedan < 15 ? g.quedan : 15 }} más · quedan {{ g.quedan }}
+                        </button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+            <p class="mb-1 mr-7 mt-2.5 flex items-center justify-center gap-1.5 text-[11.5px] text-[#8a8a8a]">
+              <tabler-icon [icon]="ic.lapiz" [size]="13" />Doble clic en el precio o el stock para editarlo aquí mismo · Pulsa
+              <kbd class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] bg-white px-1 font-sans text-[10.5px] font-medium text-[#4b5563] shadow-[inset_0_0_0_1px_#d4d4d4,0_1px_0_#d4d4d4]">Ctrl</kbd>
+              <kbd class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] bg-white px-1 font-sans text-[10.5px] font-medium text-[#4b5563] shadow-[inset_0_0_0_1px_#d4d4d4,0_1px_0_#d4d4d4]">.</kbd>
+              para ver todos los atajos
+            </p>
+          } @else if (s.carga() === 'listo') {
+            <!-- ── GRILLA ── -->
+            <div class="pr-7">
+              @for (g of s.grupos(); track g.key) {
+                <div>
+                  <button type="button" (click)="s.alternarGrupo(g.key)" class="sticky top-0 z-[3] flex w-full items-center gap-2.5 bg-canvas-bg pb-2 pl-1 pr-2 pt-3.5 text-left">
+                    <span class="flex size-[22px] items-center justify-center rounded-full" [style.background]="g.bg" [style.color]="g.fg"><tabler-icon [icon]="icGrupo[g.icono]" [size]="13" /></span>
+                    <span class="text-[13px] font-semibold text-[#111827]">{{ g.titulo }}</span>
+                    <span class="rounded-full bg-[#e3e3e3] px-[7px] text-[11px] font-semibold leading-[17px] text-[#4b5563]">{{ g.items.length }}</span>
+                    <span class="flex-1"></span>
+                    <tabler-icon [icon]="ic.abajo" [size]="14" class="text-[#8a8a8a] transition-transform duration-[240ms]" [style.transform]="'rotate(' + (g.abierto ? 0 : -90) + 'deg)'" />
+                  </button>
+                  <div class="grid transition-[grid-template-rows] duration-300" [style.grid-template-rows]="g.abierto ? '1fr' : '0fr'">
+                    <div class="min-h-0 overflow-hidden">
+                      <div class="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-2.5 pb-2 pt-1">
+                        @for (p of g.visibles; track p.id) {
+                          @let sel = s.seleccion().has(p.id);
+                          @let mini = miniatura(p);
+                          @let barra = barraStock(p);
+                          <div
+                            (click)="s.abrir(p.id)"
+                            class="relative flex cursor-pointer flex-col overflow-hidden rounded-[14px] bg-white transition-[transform,box-shadow] duration-[260ms] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-16px_rgba(0,0,0,.3),0_0_0_1px_rgba(0,0,0,.05)] animate-[ficha_360ms_cubic-bezier(.2,.8,.2,1)_both]"
+                            [style.box-shadow]="'0 1px 2px rgba(0,0,0,.04),0 0 0 1px ' + (s.abierto() === p.id ? '#303030' : sel ? '#b5b5b5' : 'rgba(0,0,0,.05)')"
+                          >
+                            <span class="flex aspect-[4/3] items-center justify-center overflow-hidden bg-[#fafafa] font-display text-[28px] font-semibold text-[#9ca3af]">
+                              @if (mini.url) {
+                                <span class="block size-full bg-cover bg-center" [style.background-image]="'url(' + mini.url + ')'"></span>
+                              } @else {
+                                <span>{{ mini.letra }}</span>
+                              }
+                            </span>
+                            <span (click)="$event.stopPropagation(); s.marcar(p.id)" class="absolute left-2 top-2 flex size-[18px] items-center justify-center rounded-md text-white" [style.background]="sel ? '#303030' : '#fff'" [style.box-shadow]="'inset 0 0 0 1.5px ' + (sel ? '#303030' : '#d4d4d4')">
+                              @if (sel) { <tabler-icon [icon]="ic.check" [size]="12" /> }
+                            </span>
+                            <span class="absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-white/[0.94] px-[9px] py-[3px] text-[11px] font-medium text-[#303030]">
+                              <span class="size-1.5 rounded-full" [style.background]="EST[p.estado].dot"></span>{{ EST[p.estado].t }}
+                            </span>
+                            <span class="flex flex-col gap-1.5 px-3 pb-3 pt-2.5">
+                              <span class="line-clamp-2 min-h-[34px] text-[13px] font-medium leading-[1.3] text-[#111827]">{{ p.nombre }}</span>
+                              <span class="flex items-baseline gap-1.5">
+                                <span class="text-[13.5px] font-semibold tabular-nums">{{ cop(p.precio) }}</span>
+                                @if (p.precioComparacion && p.precioComparacion > p.precio) { <span class="text-[11px] text-[#9ca3af] line-through">{{ cop(p.precioComparacion) }}</span> }
+                                <span class="flex-1"></span>
+                                <span class="text-[11.5px] font-semibold" [style.color]="s.estadoStock(p.id) === 'ok' ? '#111827' : '#d82c0d'">{{ num(s.stock(p.id).disp) }}</span>
+                              </span>
+                              <span class="relative block h-1 overflow-hidden rounded-full bg-[#efefef]"><span class="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[600ms]" [style.width]="barra.w" [style.background]="barra.c"></span></span>
+                            </span>
+                          </div>
+                        }
+                      </div>
+                      @if (g.quedan > 0) {
+                        <button type="button" (click)="s.cargarMas(g.key)" class="rounded-xl px-3 py-2 text-[12.5px] font-medium text-[#00807a] hover:bg-[#e8e8e8]">Cargar {{ g.quedan < 15 ? g.quedan : 15 }} más · quedan {{ g.quedan }}</button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    @if (verFicha()) {
+      <app-producto-ficha />
+    }
+  </div>
+</div>
+
+<!-- Barra de selección masiva: misma piel que la pila, abajo al centro -->
+@if (nSel()) {
+  <div
+    (click)="$event.stopPropagation()"
+    role="toolbar"
+    aria-label="Acciones de la selección"
+    class="fixed bottom-6 left-1/2 max-w-[calc(100vw-32px)] -translate-x-1/2"
+    [class]="menuMasivo() ? 'z-[62]' : 'z-[59]'"
+  >
+    <div class="flex h-11 items-center gap-0.5 rounded-[22px] bg-[#1a1a1a] pl-3.5 pr-1.5 text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,.35)] animate-[alerta-entrar_360ms_cubic-bezier(.2,.8,.2,1)_both]">
+      <app-estado-icono estado="success" tema="oscuro" [px]="18" [grosor]="3.6" class="shrink-0" />
+      <strong class="whitespace-nowrap pl-2 pr-2.5 text-[13px] font-semibold tabular-nums">{{ nSel() === 1 ? '1 seleccionado' : nSel() + ' seleccionados' }}</strong>
+      <span class="mr-1 h-[18px] w-px bg-[#333]"></span>
+
+      <div class="relative">
+        <button type="button" (click)="alternarMenu('estado', $event)" class="flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-full px-[11px] text-[12.5px] font-medium text-[#e5e5e5] transition-colors hover:bg-[#2a2a2a] hover:text-white" [class.opacity-45]="!s.puede('productos.editar')">
+          <tabler-icon [icon]="ic.dot" [size]="14" />Estado<tabler-icon [icon]="ic.arriba" [size]="12" class="text-[#8c8c8c]" />
+        </button>
+        @if (menuMasivo() === 'estado') {
+          <div class="absolute bottom-[calc(100%+12px)] left-0 w-[220px] rounded-[14px] bg-[#1a1a1a] p-[5px] text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,.35)] animate-[alerta-entrar_260ms_cubic-bezier(.2,.8,.2,1)_both]">
+            @for (e of estados; track e) {
+              <button type="button" (click)="menuMasivo.set(null); s.masivoEstado(e)" class="flex h-8 w-full items-center gap-[9px] rounded-[10px] px-2.5 text-left text-[12.5px] text-[#e5e5e5] hover:bg-[#2a2a2a] hover:text-white">
+                <span class="size-[7px] rounded-full" [style.background]="EST[e].dot"></span>Marcar como {{ EST[e].t.toLowerCase() }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="relative">
+        <button type="button" (click)="alternarMenu('categoria', $event)" class="flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-full px-[11px] text-[12.5px] font-medium text-[#e5e5e5] transition-colors hover:bg-[#2a2a2a] hover:text-white" [class.opacity-45]="!s.puede('productos.editar')">
+          <tabler-icon [icon]="ic.carpeta" [size]="14" />Categoría<tabler-icon [icon]="ic.arriba" [size]="12" class="text-[#8c8c8c]" />
+        </button>
+        @if (menuMasivo() === 'categoria') {
+          <div class="absolute bottom-[calc(100%+12px)] left-0 max-h-80 w-60 overflow-y-auto rounded-[14px] bg-[#1a1a1a] p-[5px] text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,.35)] animate-[alerta-entrar_260ms_cubic-bezier(.2,.8,.2,1)_both]">
+            @for (c of s.arbol(); track c.id) {
+              <button type="button" (click)="menuMasivo.set(null); s.masivoCategoria(c.id)" class="flex h-8 w-full items-center gap-2 whitespace-nowrap rounded-[10px] pr-2.5 text-left text-[12.5px] text-[#e5e5e5] hover:bg-[#2a2a2a] hover:text-white" [style.padding-left.px]="c.categoriaPadreId ? 26 : 10">
+                <tabler-icon [icon]="c.categoriaPadreId ? ic.carpeta : ic.carpetas" [size]="15" class="text-[#8c8c8c]" /><span class="truncate">{{ c.nombre }}</span>
+              </button>
+            }
+            <button type="button" (click)="menuMasivo.set(null); s.masivoCategoria(null)" class="flex h-8 w-full items-center gap-2 rounded-[10px] px-2.5 text-left text-[12.5px] text-[#e5e5e5] hover:bg-[#2a2a2a] hover:text-white">
+              <tabler-icon [icon]="ic.sinCarpeta" [size]="15" class="text-[#8c8c8c]" />Sin categoría
+            </button>
+          </div>
+        }
+      </div>
+
+      <button
+        type="button"
+        (click)="s.masivoDestacado()"
+        [title]="destacados().todos ? 'Todos están destacados' : destacados().nd ? destacados().nd + ' de ' + nSel() + ' ya están destacados' : 'Destacar en la tienda'"
+        class="flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-full px-[11px] text-[12.5px] font-medium text-[#e5e5e5] transition-colors hover:bg-[#2a2a2a] hover:text-white"
+      >
+        <tabler-icon [icon]="destacados().todos ? ic.estrella : destacados().algunos ? ic.estrellaMedia : ic.estrellaVacia" [size]="14" class="transition-colors" [style.color]="destacados().nd ? '#ffd24a' : '#e5e5e5'" />
+        {{ destacados().todos ? 'Quitar destacado' : 'Destacar' }}
+      </button>
+      <button type="button" (click)="s.exportarCSV(seleccionados())" class="flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-full px-[11px] text-[12.5px] font-medium text-[#e5e5e5] transition-colors hover:bg-[#2a2a2a] hover:text-white">
+        <tabler-icon [icon]="ic.csv" [size]="14" />CSV
+      </button>
+      <button type="button" (click)="s.pedirEliminar(seleccionados())" class="flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-full px-[11px] text-[12.5px] font-medium text-[#ff8f7a] transition-colors hover:bg-[#3a2320] hover:text-[#ffb4a6]" [class.opacity-45]="!s.puede('productos.eliminar')">
+        <tabler-icon [icon]="ic.basura" [size]="14" />Eliminar
+      </button>
+      <button type="button" (click)="limpiarSeleccion()" aria-label="Quitar selección" title="Quitar selección (Esc)" class="ml-1 flex size-6 shrink-0 items-center justify-center rounded-full text-[#8c8c8c] transition-colors hover:bg-[#2a2a2a] hover:text-white">
+        <tabler-icon [icon]="ic.x" [size]="14" />
+      </button>
+    </div>
+  </div>
+}
+
+@if (atajosAbierto()) {
+  <app-atajos-dialogo (cerrar)="atajosAbierto.set(false)" />
+}

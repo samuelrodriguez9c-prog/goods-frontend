@@ -1,0 +1,23 @@
+@let a = audiencia();
+<div class="flex flex-wrap items-end gap-5">
+  <div>
+    <p class="m-0 text-[11.5px] text-[#6b7280]">Recibirían una campaña hoy</p>
+    <p class="m-0 mt-0.5 font-display text-[34px] leading-none font-semibold tracking-[-0.03em] text-[#111827] tabular-nums">{{ a.alcance }}</p>
+  </div>
+  <div class="flex gap-[18px] pb-[3px] text-[12px] text-[#6b7280]">
+    <span><b class="font-semibold text-[#111827]">{{ a.aceptan }}</b> aceptan promociones</span>
+    <span><b class="font-semibold text-[#111827]">{{ a.recientes }}</b> ya recibieron una esta semana</span>
+  </div>
+</div>
+<div class="mt-3.5 flex h-2.5 gap-[3px]">
+  @if (a.alcance) {
+    <span title="Alcance hoy" class="rounded-l-full rounded-r-[3px] bg-[#2be0d5]" [style.flex]="a.alcance"></span>
+  }
+  @if (a.recientes) {
+    <span [title]="'Protegidos: recibieron una hace menos de ' + a.diasEntreCampanas + ' días'" class="barra-rayada rounded-l-[3px] rounded-r-full" [class.rounded-l-full]="!a.alcance" [style.flex]="a.recientes"></span>
+  }
+  @if (!a.alcance && !a.recientes) {
+    <span class="flex-1 rounded-full bg-[#f1f1f1]"></span>
+  }
+</div>
+<p class="m-0 mt-2 text-[11.5px] text-[#9ca3af]">Para no cansar a tus clientes, Goods no le manda más de una campaña cada {{ a.diasEntreCampanas }} días a la misma persona.</p>

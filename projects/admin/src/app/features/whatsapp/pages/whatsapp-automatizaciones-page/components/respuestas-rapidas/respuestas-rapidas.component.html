@@ -1,0 +1,80 @@
+<div class="flex items-center gap-2">
+  <h3 class="m-0 flex-1 text-[13px] font-semibold text-[#111827]">Respuestas rápidas del equipo</h3>
+  <span class="text-[11.5px] text-[#9ca3af]">Escribe / en el chat</span>
+</div>
+<div class="mt-2 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-1.5">
+  @for (r of lista(); track r.id) {
+    @if (form()?.id === r.id) {
+      <ng-container [ngTemplateOutlet]="formulario" />
+    } @else if (puedeConfigurar()) {
+      <button type="button" (click)="abrir(r)" [attr.aria-label]="'Editar /' + r.atajo"
+        class="cursor-pointer rounded-[9px] border-0 bg-[#fafafa] px-2.5 py-[9px] text-left shadow-[inset_0_0_0_1px_#f0f0f0] transition-[background,box-shadow] duration-200 hover:bg-[#fcfcfc] hover:shadow-[inset_0_0_0_1px_#e3e3e3,0_4px_12px_-8px_rgba(0,0,0,.12)]">
+        <ng-container [ngTemplateOutlet]="tarjeta" [ngTemplateOutletContext]="{ $implicit: r }" />
+      </button>
+    } @else {
+      <div class="rounded-[9px] bg-[#fafafa] px-2.5 py-[9px] shadow-[inset_0_0_0_1px_#f0f0f0]">
+        <ng-container [ngTemplateOutlet]="tarjeta" [ngTemplateOutletContext]="{ $implicit: r }" />
+      </div>
+    }
+  } @empty {
+    @if (!form()) {
+      <p class="col-span-full m-0 py-2 text-[12.5px] text-[#9ca3af]">Todavía no hay respuestas rápidas.</p>
+    }
+  }
+  @if (form() && !form()!.id) {
+    <ng-container [ngTemplateOutlet]="formulario" />
+  } @else if (puedeConfigurar()) {
+    <button type="button" (click)="abrir()"
+      class="flex min-h-[59px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent shadow-[inset_0_0_0_1px_#e5e7eb] text-[12.5px] font-medium text-[#6b7280] transition-[background,color] duration-200 hover:bg-[#fafafa] hover:text-[#111827]">
+      <tabler-icon [icon]="iMas" [size]="15" [stroke]="2" class="flex" />Nueva respuesta
+    </button>
+  }
+</div>
+
+<ng-template #tarjeta let-r>
+  <span class="font-mono text-[12px] font-semibold text-[#00857e]">/{{ r.atajo }}</span>
+  <p class="mt-[3px] mb-0 line-clamp-2 text-[12px] leading-[1.4] text-[#4b5563]">{{ r.texto }}</p>
+</ng-template>
+
+<ng-template #formulario>
+  @if (form(); as f) {
+    <form (submit)="$event.preventDefault(); guardar()"
+      class="col-span-full grid animate-[wa-entra_.25s_cubic-bezier(.2,.8,.2,1)] gap-3 rounded-[11px] bg-white p-3 shadow-[inset_0_0_0_1px_#dcdcdc,0_6px_18px_-12px_rgba(0,0,0,.22)]">
+      <label class="grid gap-1.5">
+        <span class="flex flex-col gap-px">
+          <span class="text-[12px] font-medium text-[#374151]">Atajo</span>
+          <span class="text-[11px] leading-[1.4] text-[#9ca3af]">Una palabra corta. En el chat escribes “/” y el atajo para insertarla.</span>
+        </span>
+        <span class="flex h-9 items-center rounded-lg bg-[#f7f7f7] shadow-[inset_0_0_0_1px_#e5e7eb] focus-within:bg-white focus-within:shadow-[inset_0_0_0_1.5px_#303030]">
+          <span class="pl-[11px] font-mono text-[13px] text-[#9ca3af]">/</span>
+          <input [value]="f.atajo" (input)="parche({ atajo: $any($event.target).value })" placeholder="envio" maxlength="30" name="atajo"
+            class="h-full min-w-0 flex-1 border-0 bg-transparent px-1 font-mono text-[13px] text-[#111827] outline-none" />
+        </span>
+      </label>
+      <label class="grid gap-1.5">
+        <span class="flex flex-col gap-px">
+          <span class="text-[12px] font-medium text-[#374151]">Texto</span>
+          <span class="text-[11px] leading-[1.4] text-[#9ca3af]">Lo que se inserta en el chat. {{ '{' }}nombre{{ '}' }} se llena con el nombre del cliente.</span>
+        </span>
+        <textarea rows="3" [value]="f.texto" (input)="parche({ texto: $any($event.target).value })" name="texto"
+          class="w-full resize-y rounded-[9px] border-0 bg-[#f7f7f7] px-3 py-2.5 text-[13px] leading-normal text-[#111827] shadow-[inset_0_0_0_1px_#e5e7eb] outline-none focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#303030]"></textarea>
+      </label>
+      <div class="flex items-center gap-2">
+        @if (f.id) {
+          <button type="button" (click)="borrar()"
+            class="h-8 cursor-pointer rounded-full border-0 px-3 text-[12.5px] font-medium transition-[background,color] duration-200"
+            [class]="confirmar() ? 'bg-[#fef3f2] text-[#b42318]' : 'bg-transparent text-[#6b7280] hover:bg-[#fef3f2] hover:text-[#b42318]'">
+            {{ confirmar() ? '¿Borrarla?' : 'Borrar' }}
+          </button>
+        }
+        <span class="flex-1"></span>
+        <button type="button" (click)="form.set(null)"
+          class="h-8 cursor-pointer rounded-full border-0 bg-white px-3.5 text-[12.5px] font-medium text-[#303030] shadow-[inset_0_0_0_1px_#e3e3e3] transition-[background] duration-200 hover:bg-[#f7f7f7]">Cancelar</button>
+        <button type="submit" [disabled]="guardando() || !f.atajo.trim() || !f.texto.trim()"
+          class="h-8 cursor-pointer rounded-full border-0 bg-[#303030] px-3.5 text-[12.5px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-opacity duration-200 hover:opacity-90 disabled:cursor-default disabled:opacity-40">
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  }
+</ng-template>
