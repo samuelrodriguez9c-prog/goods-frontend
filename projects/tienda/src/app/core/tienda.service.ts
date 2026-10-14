@@ -13,7 +13,7 @@ export class TiendaService {
 
   armarPedido(
     slug: string,
-    body: { items: { productoId: number; cantidad: number }[]; nombre?: string; nota?: string; aceptaPromociones?: boolean },
+    body: { items: { productoId: number; cantidad: number }[]; nombre: string; telefono: string; nota?: string; aceptaPromociones?: boolean },
   ) {
     return this.http.post<PedidoWhatsapp>(`${environment.apiUrl}/tiendas/${encodeURIComponent(slug)}/pedido-whatsapp`, body);
   }

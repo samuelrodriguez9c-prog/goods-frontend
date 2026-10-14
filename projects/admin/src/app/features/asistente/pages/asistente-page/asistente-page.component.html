@@ -250,7 +250,7 @@
                                   <div class="col-span-2 flex flex-col gap-[5px]">
                                     <div class="flex min-h-[17px] items-center gap-1.5">
                                       <label class="text-[11.5px] font-medium text-[#6b7280]">Proveedor</label>
-                                      @if (deIa('proveedor')) { <span class="ia-pop flex items-center gap-[3px] rounded-full bg-[#e0f7f5] px-1.5 py-px text-[10.5px] font-semibold text-[#00605b]"><tabler-icon [icon]="i.ia" [size]="11" />IA</span> }
+                                      @if (deIa('proveedor')) { <span class="ia-pop flex items-center gap-[3px] rounded-full bg-[#e0f7f5] px-1.5 py-px text-[10.5px] font-semibold text-[#00605b]"><app-ia-marca [size]="12" [fondo]="true" />IA</span> }
                                       @if (editado('proveedor')) { <span class="ia-msg-in text-[10.5px] text-[#9ca3af]">editado</span> }
                                       @if (proveedorNombre().trim() && proveedorId() === null) { <span class="ia-msg-in rounded-full bg-[#fff1e3] px-1.5 py-px text-[10.5px] font-semibold text-[#9a3412]">Nuevo · se crea al guardar</span> }
                                     </div>
@@ -261,7 +261,7 @@
                                     <div class="flex flex-col gap-[5px]">
                                       <div class="flex min-h-[17px] items-center gap-1.5">
                                         <label class="text-[11.5px] font-medium text-[#6b7280]">{{ c.label }}</label>
-                                        @if (deIa($any(c.k))) { <span class="ia-pop flex items-center gap-[3px] rounded-full bg-[#e0f7f5] px-1.5 py-px text-[10.5px] font-semibold text-[#00605b]"><tabler-icon [icon]="i.ia" [size]="11" />IA</span> }
+                                        @if (deIa($any(c.k))) { <span class="ia-pop flex items-center gap-[3px] rounded-full bg-[#e0f7f5] px-1.5 py-px text-[10.5px] font-semibold text-[#00605b]"><app-ia-marca [size]="12" [fondo]="true" />IA</span> }
                                         @if (editado($any(c.k))) { <span class="ia-msg-in text-[10.5px] text-[#9ca3af]">editado</span> }
                                       </div>
                                       @if (c.k === 'numero') {
@@ -309,7 +309,7 @@
                                 <div class="flex flex-col gap-[5px]">
                                   <div class="flex min-h-[17px] items-center gap-1.5">
                                     <label class="text-[11.5px] font-medium text-[#6b7280]">Notas</label>
-                                    @if (deIa('notas')) { <span class="ia-pop flex items-center gap-[3px] rounded-full bg-[#e0f7f5] px-1.5 py-px text-[10.5px] font-semibold text-[#00605b]"><tabler-icon [icon]="i.ia" [size]="11" />IA</span> }
+                                    @if (deIa('notas')) { <span class="ia-pop flex items-center gap-[3px] rounded-full bg-[#e0f7f5] px-1.5 py-px text-[10.5px] font-semibold text-[#00605b]"><app-ia-marca [size]="12" [fondo]="true" />IA</span> }
                                   </div>
                                   <textarea rows="2" [ngModel]="notas()" (ngModelChange)="notas.set($event)" [disabled]="p === 'guardando'"
                                     class="block w-full resize-none rounded-[9px] border border-[#e5e5e5] bg-transparent px-[11px] py-2 text-[13.5px] leading-[1.45] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#a3a3a3] focus:shadow-[0_0_0_3px_rgba(10,10,10,0.06)]"></textarea>
@@ -379,16 +379,18 @@
         </div>
 
         <!-- Saludo (solo vacío) -->
-        <!-- <div class="absolute inset-x-0 bottom-[calc(50%+62px)] flex justify-center px-6 text-center transition-[opacity,transform] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+        <div class="absolute inset-x-0 bottom-[calc(50%+62px)] flex justify-center px-6 transition-[opacity,transform] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           [style.opacity]="vacio() ? 1 : 0" [style.transform]="vacio() ? 'none' : 'translateY(-18px)'" [style.pointer-events]="vacio() ? 'auto' : 'none'">
-          @if (vacio()) { <app-ia-saludo [nombre]="nombre()" /> }
-        </div> -->
+          @if (vacio()) {
+            <app-ia-saludo [texto]="texto()" (elegir)="elegirSaludo($event)" (sugerencia)="sugerencia.set($event)" (preguntas)="preguntasSaludo.set($event)" />
+          }
+        </div>
 
         <!-- Sugerencias (solo vacío) -->
         <div class="absolute inset-x-0 top-[calc(50%+40px)] px-6 transition-[opacity,transform] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           [style.opacity]="vacio() ? 1 : 0" [style.transform]="vacio() ? 'none' : 'translateY(14px)'" [style.pointer-events]="vacio() ? 'auto' : 'none'">
           <div class="mx-auto flex max-h-[calc(50vh-120px)] max-w-[760px] flex-col overflow-y-auto px-1.5 [scrollbar-width:none]">
-            @for (s of sugerencias; track s.texto; let n = $index) {
+            @for (s of sugerenciasVisibles(); track s.texto; let n = $index) {
               <button type="button" (click)="enviar(s.texto)" [style.animation-delay.ms]="380 + n * 60"
                 class="ia-card-in flex w-full shrink-0 items-center gap-3.5 rounded-xl px-3 py-[clamp(6px,1.2vh,10px)] text-left text-[14px] text-[#4b5563] transition-[background-color,color,scale] duration-150 hover:bg-[#f5f5f5] hover:text-[#111827] active:scale-[0.99]">
                 <tabler-icon [icon]="s.icono" [size]="18" class="text-[#6b7280]" />{{ s.texto }}
@@ -432,7 +434,7 @@
                   (preguntarDocumento)="preguntarDocumento($event)"
                 />
                 <textarea #composer rows="1" [ngModel]="texto()" (ngModelChange)="texto.set($event)" (keydown)="onKeyDown($event)" (focus)="enfocado.set(true)" (blur)="enfocado.set(false)"
-                  placeholder="Pregunta algo o adjunta una factura…"
+                  [placeholder]="vacio() && sugerencia() ? sugerencia() : 'Pregunta algo o adjunta una factura…'"
                   class="block max-h-[180px] min-h-[38px] min-w-0 flex-1 resize-none border-0 bg-transparent px-1.5 py-2 text-[15px] leading-[22px] outline-none [field-sizing:content] placeholder:text-[#9ca3af]"></textarea>
                 @if (store.generando()) { <span class="ia-msg-in self-center whitespace-nowrap px-1 text-[11.5px] text-[#9ca3af]">Esc para detener</span> }
                 <button type="button" (click)="iniciarCompra()" class="flex h-[38px] shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-[#4b5563] transition-[background-color,color,scale] duration-150 hover:bg-[#f4f4f4] hover:text-[#111827] active:scale-[0.96]">

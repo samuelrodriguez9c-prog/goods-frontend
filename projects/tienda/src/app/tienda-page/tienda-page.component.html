@@ -229,9 +229,19 @@
               @if (lineas().length) {
                 <div class="mt-4 grid gap-3">
                   <label class="grid gap-1 text-sm font-medium">
-                    Tu nombre <span class="sr-only">(opcional)</span>
-                    <input [ngModel]="nombre()" (ngModelChange)="nombre.set($event)" maxlength="80" autocomplete="name" placeholder="Opcional"
+                    Tu nombre
+                    <input [ngModel]="nombre()" (ngModelChange)="nombre.set($event); errorPedido.set(null)" maxlength="80" autocomplete="name" required
+                      placeholder="¿Cómo te llamas?" [attr.aria-invalid]="faltanDatosVisibles() && !nombreValido()"
+                      [class.ring-oferta]="faltanDatosVisibles() && !nombreValido()"
                       class="rounded-xl bg-papel px-3.5 py-2.5 font-normal ring-1 ring-linea outline-none focus:ring-2 focus:ring-wa" />
+                  </label>
+                  <label class="grid gap-1 text-sm font-medium">
+                    Tu celular
+                    <input type="tel" inputmode="tel" [ngModel]="telefono()" (ngModelChange)="telefono.set($event); errorPedido.set(null)" maxlength="20"
+                      autocomplete="tel" required placeholder="300 123 4567" [attr.aria-invalid]="faltanDatosVisibles() && !telefonoValido()"
+                      [class.ring-oferta]="faltanDatosVisibles() && !telefonoValido()"
+                      class="rounded-xl bg-papel px-3.5 py-2.5 font-normal ring-1 ring-linea outline-none focus:ring-2 focus:ring-wa" />
+                    <span class="text-xs font-normal text-gris">Con este número {{ t.nombre }} encuentra tu pedido.</span>
                   </label>
                   <label class="grid gap-1 text-sm font-medium">
                     Nota para el negocio

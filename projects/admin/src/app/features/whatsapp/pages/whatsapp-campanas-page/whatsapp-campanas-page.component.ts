@@ -1,55 +1,38 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { IconPlus, IconRefresh, TablerIconComponent } from '@tabler/icons-angular';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { mensajeDeError } from '../../../../core/solicitudes/solicitudes.service';
-import {
-  AudienciaCampanas,
-  Campana,
-  EstadoCampana,
-  Plantilla,
-  VariableCampana,
-  armarPlantilla,
-  piePromociones,
-  variablesDe,
-} from '../../../../core/whatsapp/whatsapp.model';
+import { AlertaService } from '../../../../core/ui/alerta.service';
+import { AudienciaCampanas, Campana, Plantilla } from '../../../../core/whatsapp/whatsapp.model';
 import { WhatsappService } from '../../../../core/whatsapp/whatsapp.service';
-
-const ESTADOS: Record<EstadoCampana, { texto: string; clase: string }> = {
-  programada: { texto: 'Programada', clase: 'bg-blue-50 text-blue-700' },
-  enviando: { texto: 'Enviando', clase: 'bg-amber-50 text-amber-800' },
-  enviada: { texto: 'Enviada', clase: 'bg-[#e7f6ec] text-[#166d3b]' },
-  cancelada: { texto: 'Cancelada', clase: 'bg-gray-100 text-gray-600' },
-  fallida: { texto: 'No se envió', clase: 'bg-red-50 text-red-700' },
-};
-
-interface Formulario {
-  nombre: string;
-  plantillaId: number | null;
-  variables: VariableCampana[];
-  cuando: 'ahora' | 'programar';
-  fecha: string;
-}
+import { WhatsappModuloStore } from '../../shared/whatsapp-modulo.store';
+import { AlcanceHoyComponent } from './components/alcance-hoy/alcance-hoy.component';
+import { FormularioCampanaComponent } from './components/formulario-campana/formulario-campana.component';
+import { HistorialCampanasComponent } from './components/historial-campanas/historial-campanas.component';
+import { esProxima, fechaCorta, hora } from './campanas.util';
 
 /**
- * Campañas de WhatsApp (decisión 4 de PROPUESTA_WHATSAPP.md §10): una
- * plantilla de promoción a los clientes que aceptaron recibirlas. Muestra a
- * cuántos les llegaría, el formulario (con vista previa y confirmación) y
- * cómo va cada campaña.
+ * Campañas de WhatsApp (rediseño 2026-10-13, LEEME §7): una plantilla de
+ * promoción a los clientes que aceptaron recibirlas.
+ *
+ * Izquierda: alcance de hoy e Historial (próximas y enviadas, con su embudo
+ * o su tarjeta-calendario). Derecha: "Nueva campaña" (la abre el botón de
+ * la cabecera por `store.nuevo`, o `?nueva=1&plantilla=ID` desde Plantillas)
+ * o "Editar campaña" de una programada.
  */
 @Component({
   selector: 'app-whatsapp-campanas-page',
-  imports: [FormsModule, RouterLink, TablerIconComponent],
+  imports: [AlcanceHoyComponent, HistorialCampanasComponent, FormularioCampanaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './whatsapp-campanas-page.component.html',
+  host: { class: 'block' },
 })
 export class WhatsappCampanasPageComponent {
   private readonly whatsapp = inject(WhatsappService);
   private readonly auth = inject(AuthService);
+  private readonly alertas = inject(AlertaService);
+  private readonly store = inject(WhatsappModuloStore);
 
-  protected readonly i = { mas: IconPlus, actualizar: IconRefresh };
-  protected readonly estados = ESTADOS;
   protected readonly puedeConfigurar = computed(() => (this.auth.currentUser()?.permisos ?? []).includes('whatsapp.configurar'));
 
   protected readonly cargando = signal(true);
@@ -57,129 +40,70 @@ export class WhatsappCampanasPageComponent {
   protected readonly campanas = signal<Campana[]>([]);
   protected readonly audiencia = signal<AudienciaCampanas | null>(null);
   protected readonly promos = signal<Plantilla[]>([]);
-  protected readonly aviso = signal<{ texto: string; ok: boolean } | null>(null);
-  protected readonly confirmandoCancelar = signal<number | null>(null);
+  protected readonly cancelandoId = signal<number | null>(null);
 
-  protected readonly form = signal<Formulario | null>(null);
-  protected readonly confirmando = signal(false);
-  protected readonly enviando = signal(false);
-  protected readonly errorForm = signal<string | null>(null);
-
-  protected readonly plantilla = computed(() => this.promos().find((p) => p.id === this.form()?.plantillaId) ?? null);
-  protected readonly vistaPrevia = computed(() => {
-    const p = this.plantilla();
-    const f = this.form();
-    if (!p || !f) return '';
-    const valores = f.variables.map((v) => (v.tipo === 'nombre' ? 'Ana' : v.valor));
-    return `${armarPlantilla(p.cuerpo, valores)}\n\n${piePromociones(p.idioma)}`;
-  });
-  protected readonly listo = computed(() => {
-    const f = this.form();
-    if (!f || !this.plantilla() || !f.nombre.trim()) return false;
-    if (f.variables.some((v) => !v.valor.trim())) return false;
-    return f.cuando === 'ahora' || (!!f.fecha && new Date(f.fecha).getTime() > Date.now());
-  });
+  /** Panel abierto: nueva (con plantilla de entrada) o edición de una programada. */
+  protected readonly form = signal<{ n: number; campana: Campana | null; plantilla: number | null } | null>(null);
+  private nForm = 0;
+  protected readonly alcance = computed(() => this.audiencia()?.alcance ?? 0);
 
   constructor() {
     this.cargar();
-    // Mientras haya una campaña en curso, se actualiza sola.
+    // Mientras haya campañas próximas, la lista se actualiza sola.
     const timer = setInterval(() => {
-      if (this.campanas().some((c) => c.estado === 'enviando' || c.estado === 'programada')) this.cargar(false);
+      if (this.campanas().some(esProxima)) this.cargar(false);
     }, 15000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
-  }
 
-  protected nueva(): void {
-    this.form.set({ nombre: '', plantillaId: null, variables: [], cuando: 'ahora', fecha: '' });
-    this.confirmando.set(false);
-    this.errorForm.set(null);
-  }
+    // Desde Plantillas: /whatsapp/campanas?nueva=1&plantilla=ID
+    const qp = inject(ActivatedRoute).snapshot.queryParamMap;
+    if (qp.get('nueva')) this.nueva(Number(qp.get('plantilla')) || null);
 
-  protected parche(cambio: Partial<Formulario>): void {
-    this.form.update((f) => (f ? { ...f, ...cambio } : f));
-    this.confirmando.set(false);
-  }
-
-  protected elegirPlantilla(id: string): void {
-    const p = this.promos().find((x) => String(x.id) === id) ?? null;
-    // La primera variable suele ser el nombre del cliente.
-    const variables: VariableCampana[] = Array.from({ length: p ? variablesDe(p.cuerpo) : 0 }, (_, k) =>
-      k === 0 ? { tipo: 'nombre', valor: 'cliente' } : { tipo: 'texto', valor: '' },
-    );
-    this.parche({ plantillaId: p?.id ?? null, variables });
-  }
-
-  protected cambiarVariable(k: number, cambio: Partial<VariableCampana>): void {
-    this.form.update((f) => {
-      if (!f) return f;
-      const variables = f.variables.map((v, n) => {
-        if (n !== k) return v;
-        const nueva = { ...v, ...cambio };
-        // Al cambiar de tipo se propone un valor que tenga sentido.
-        if (cambio.tipo && cambio.tipo !== v.tipo) nueva.valor = cambio.tipo === 'nombre' ? 'cliente' : '';
-        return nueva;
-      });
-      return { ...f, variables };
+    // "Nueva campaña" de la cabecera.
+    const inicial = this.store.nuevo();
+    effect(() => {
+      if (this.store.nuevo() > inicial) untracked(() => this.nueva());
     });
-    this.confirmando.set(false);
   }
 
-  protected enviar(): void {
-    const f = this.form();
-    if (!f || !this.listo() || this.enviando()) return;
-    if (!this.confirmando()) {
-      this.confirmando.set(true);
-      return;
-    }
-    this.enviando.set(true);
-    this.errorForm.set(null);
-    this.whatsapp
-      .crearCampana({
-        nombre: f.nombre.trim(),
-        plantillaId: f.plantillaId!,
-        variables: f.variables.map((v) => ({ tipo: v.tipo, valor: v.valor.trim() })),
-        ...(f.cuando === 'programar' ? { programadaPara: new Date(f.fecha).toISOString() } : {}),
-      })
-      .subscribe({
-        next: (c) => {
-          this.enviando.set(false);
-          this.form.set(null);
-          this.campanas.update((l) => [c, ...l]);
-          this.aviso.set({
-            texto: f.cuando === 'ahora' ? 'La campaña se está enviando.' : `Campaña programada para el ${this.fecha(c.programadaPara)}.`,
-            ok: true,
-          });
-          setTimeout(() => this.cargar(false), 3000);
-        },
-        error: (e) => {
-          this.enviando.set(false);
-          this.confirmando.set(false);
-          this.errorForm.set(mensajeDeError(e));
-        },
-      });
+  protected nueva(plantilla: number | null = null): void {
+    if (!this.puedeConfigurar()) return;
+    this.form.set({ n: ++this.nForm, campana: null, plantilla });
+  }
+
+  protected editar(c: Campana): void {
+    this.form.set({ n: ++this.nForm, campana: c, plantilla: null });
+  }
+
+  protected guardada(e: { campana: Campana; editada: boolean }): void {
+    const c = e.campana;
+    this.form.set(null);
+    this.campanas.update((l) => (e.editada ? l.map((x) => (x.id === c.id ? c : x)) : [c, ...l]));
+    const titulo = e.editada
+      ? 'Cambios guardados'
+      : c.estado === 'programada'
+        ? `Campaña programada para el ${fechaCorta(c.programadaPara)} a las ${hora(new Date(c.programadaPara))}`
+        : 'La campaña se está enviando';
+    this.alertas.mostrar({ estado: 'success', titulo });
+    this.store.cargarResumen();
+    setTimeout(() => this.cargar(false), 3000);
   }
 
   protected cancelar(c: Campana): void {
+    this.cancelandoId.set(c.id);
     this.whatsapp.cancelarCampana(c.id).subscribe({
       next: (r) => {
-        this.confirmandoCancelar.set(null);
+        this.cancelandoId.set(null);
         this.campanas.update((l) => l.map((x) => (x.id === r.id ? r : x)));
+        if (this.form()?.campana?.id === r.id) this.form.set(null);
+        this.alertas.mostrar({ estado: 'success', titulo: c.estado === 'enviando' ? 'Envío detenido' : 'Campaña cancelada' });
+        this.store.cargarResumen();
       },
       error: (e) => {
-        this.confirmandoCancelar.set(null);
-        this.aviso.set({ texto: mensajeDeError(e), ok: false });
+        this.cancelandoId.set(null);
+        this.alertas.mostrar({ estado: 'error', titulo: mensajeDeError(e) });
       },
     });
-  }
-
-  protected fecha(iso: string): string {
-    return new Date(iso).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-  }
-
-  /** Para el `min` del campo de fecha: ahora, en hora local. */
-  protected ahoraLocal(): string {
-    const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
-    return d.toISOString().slice(0, 16);
   }
 
   protected cargar(conTodo = true): void {

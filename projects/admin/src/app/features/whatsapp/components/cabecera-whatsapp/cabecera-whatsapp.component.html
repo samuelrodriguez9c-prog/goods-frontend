@@ -1,0 +1,37 @@
+<div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+  <div class="min-w-0 flex-[1_1_420px]">
+    <div class="flex items-center gap-2 text-[20px] text-[#303030]">
+      <tabler-icon [icon]="i.wa" [size]="20" [stroke]="2" />
+      <h1 class="m-0 flex items-center gap-2 font-[Archivo,sans-serif] text-[22px] leading-7 font-semibold tracking-[-0.01em] text-[#111827]">
+        <span>WhatsApp</span>
+        <span class="font-normal text-[#c8c8c8]">/</span>
+        <app-tambor-secciones [actual]="store.seccion()" [estados]="estados()" (ir)="store.ir($event)" />
+      </h1>
+      @if (noLeidos()) {
+        <span title="Sin leer"
+          class="flex h-5 min-w-5 animate-[wa-entra_.3s_ease-out] items-center justify-center rounded-full bg-[#2be0d5] px-1.5 text-[11px] font-bold text-[#003331]">{{ noLeidos() }}</span>
+      }
+      <span title="Número conectado con Meta"
+        class="ml-1 inline-flex h-5.5 items-center gap-1.5 rounded-full bg-[rgba(41,132,90,.08)] pr-[9px] pl-2 text-[11.5px] font-medium whitespace-nowrap text-[#1f6e49]">
+        <span class="relative flex size-1.5">
+          <span class="absolute inset-0 animate-[wa-halo_2.4s_ease-in-out_infinite] rounded-full bg-[#29845a]"></span>
+          <span class="relative size-1.5 rounded-full bg-[#29845a]"></span>
+        </span>Conectado
+      </span>
+    </div>
+    <p class="mt-2 mb-0 max-w-160 text-[13px] leading-5 text-pretty text-[#6b7280]">{{ lectura() }}</p>
+  </div>
+  <div class="flex items-center gap-2 pt-0.5">
+    @if (cuenta(); as c) {
+      <app-menu-numero [numero]="c.numero" [negocio]="c.nombreVisible ?? ''" [puedeDesconectar]="puedeConfigurar()" (desconectar)="desconectar()" />
+    }
+    @if (accion(); as a) {
+      <button type="button" (click)="store.nuevo.update(n => n + 1)"
+        class="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-opacity duration-200 hover:opacity-90">
+        <tabler-icon [icon]="i.mas" [size]="14" [stroke]="2" />{{ a }}
+      </button>
+    }
+  </div>
+</div>
+
+<app-franja-metricas [metricas]="metricas()" [periodoFijo]="true" fondoActiva="claro" (metrica)="clicMetrica($event)" />

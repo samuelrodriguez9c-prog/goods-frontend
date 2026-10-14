@@ -5,19 +5,19 @@ import { AlertaService } from '../../../../core/ui/alerta.service';
 import { CatalogoStore } from '../../shared/catalogo.store';
 import { cop, hace, num, pl } from '../../shared/formato';
 import { Movimiento, ProductoV5 } from '../../shared/modelos';
-import { EstadoPaginaComponent } from '../../shared/ui/estado-pagina.component';
-import { FranjaMetricasComponent, MetricaFranja } from '../../shared/ui/franja-metricas.component';
+import { EstadoPaginaComponent } from '../../shared/ui/estado-pagina/estado-pagina.component';
+import { FranjaMetricasComponent, MetricaFranja } from '../../../../shared/ui/franja-metricas/franja-metricas.component';
 import { icono } from '../../shared/ui/iconos';
-import { ModuloCabeceraComponent } from '../../shared/ui/modulo-cabecera.component';
-import { PestanaHojaV5, PestanasHojaComponent } from '../../shared/ui/pestanas-hoja.component';
-import { PopoverDirective } from '../../shared/ui/popover.directive';
-import { FilaInventario, FilaInventarioComponent } from './components/fila-inventario.component';
-import { GrupoInventario, GrupoInventarioComponent } from './components/grupo-inventario.component';
-import { MiniaturaProductoComponent } from './components/miniatura-producto.component';
-import { ModalReponerComponent } from './components/modal-reponer.component';
-import { PestanaComprasComponent } from './components/pestana-compras.component';
-import { PestanaMovimientosComponent } from './components/pestana-movimientos.component';
-import { PestanaResumenComponent } from './components/pestana-resumen.component';
+import { ModuloCabeceraComponent } from '../../shared/ui/modulo-cabecera/modulo-cabecera.component';
+import { PestanaHojaV5, PestanasHojaComponent } from '../../shared/ui/pestanas-hoja/pestanas-hoja.component';
+import { PopoverDirective } from '../../../../shared/ui/popover.directive';
+import { FilaInventario, FilaInventarioComponent } from './components/fila-inventario/fila-inventario.component';
+import { GrupoInventario, GrupoInventarioComponent } from './components/grupo-inventario/grupo-inventario.component';
+import { MiniaturaProductoComponent } from './components/miniatura-producto/miniatura-producto.component';
+import { ModalReponerComponent } from './components/modal-reponer/modal-reponer.component';
+import { PestanaComprasComponent } from './components/pestana-compras/pestana-compras.component';
+import { PestanaMovimientosComponent } from './components/pestana-movimientos/pestana-movimientos.component';
+import { PestanaResumenComponent } from './components/pestana-resumen/pestana-resumen.component';
 import {
   Agrupacion, Ajuste, FiltroMovimientos, Metrica, NIVELES, Nivel, PestanaInventario, RangoMovimientos,
   TIPOS_MOVIMIENTO, ajusteVacio, categoriaRaiz, deltaAjuste, escalaStock, miniaturaDe, motivoDe, nivelDe, planReponer, soloDigitos, tipoDe,

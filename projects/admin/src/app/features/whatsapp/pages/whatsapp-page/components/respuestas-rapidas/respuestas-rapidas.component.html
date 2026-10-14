@@ -1,0 +1,42 @@
+<div class="flex items-center gap-2 px-1 pt-0.5 pb-2">
+  <span class="font-display text-[15px] font-semibold text-[#111827]">Respuestas rápidas</span>
+  <span class="flex-1"></span>
+  <button type="button" (click)="editar.emit()"
+    class="cursor-pointer border-0 bg-transparent p-0 text-[12px] font-medium text-[#6b7280] underline underline-offset-[3px]">Editar</button>
+</div>
+<label class="mb-1.5 flex h-8 items-center gap-2 rounded-full bg-[#f1f1f1] px-3">
+  <span class="font-factura text-[13px] font-semibold text-[#9ca3af]">/</span>
+  <span class="sr-only">Buscar respuesta rápida</span>
+  <input #buscador [value]="consulta()" (input)="consultaChange.emit($any($event.target).value)" (keydown)="tecla.emit($event)"
+    placeholder="Busca por atajo o texto"
+    class="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-[#111827] outline-none placeholder:text-[#757575]" />
+</label>
+<div role="listbox" aria-label="Respuestas rápidas" class="flex max-h-[260px] min-h-[60px] flex-1 flex-col gap-0.5 overflow-y-auto">
+  @for (f of filas(); track f.r.id; let k = $index) {
+    <button type="button" role="option" [attr.aria-selected]="k === elegida()" (mousedown)="$event.preventDefault()" (click)="usar.emit(f.r)"
+      (mouseenter)="k !== elegida() && resaltar.emit(k)"
+      class="flex w-full cursor-pointer items-start gap-2.5 rounded-[10px] border-0 px-2.5 py-2 text-left transition-[background] duration-[120ms]"
+      [class]="k === elegida() ? 'bg-[#f3f3f3]' : 'bg-transparent'">
+      <span class="min-w-0 flex-1">
+        <span class="flex items-center gap-2">
+          <span class="text-[12.5px] font-semibold text-[#111827]">{{ f.titulo }}</span>
+          <span class="font-factura text-[11px] text-[#9ca3af]">/{{ f.r.atajo }}</span>
+        </span>
+        <span class="mt-0.5 line-clamp-2 text-[12px] leading-[1.45] text-[#6b7280]">@for (p of f.partes; track $index) {@if (p.token) {<span class="rounded bg-[#e0f7f5] px-[3px] font-semibold text-[#00605b]">{{ p.t }}</span>} @else {<span>{{ p.t }}</span>}}</span>
+      </span>
+      <span class="flex shrink-0 items-center gap-1 self-center text-[10.5px] font-semibold text-[#6b7280] transition-opacity duration-[120ms]"
+        [class]="k === elegida() ? 'opacity-100' : 'opacity-0'">
+        <kbd class="rounded bg-white px-[5px] py-px font-[inherit] text-[10px] font-semibold text-[#6b7280] shadow-[inset_0_0_0_1px_#e0e0e0,0_1px_0_#e0e0e0]">Enter</kbd>
+      </span>
+    </button>
+  } @empty {
+    <p class="m-0 px-2.5 py-3.5 text-center text-[12.5px] text-[#9ca3af]">Ninguna respuesta con ese atajo.</p>
+  }
+</div>
+<div class="mt-1.5 flex items-center gap-2.5 border-t border-[#f1f1f1] px-1 pt-2 text-[10.5px] text-[#9ca3af]">
+  <span class="flex items-center gap-1"><kbd class="kbd-mini">↑</kbd><kbd class="kbd-mini">↓</kbd>moverte</span>
+  <span class="flex items-center gap-1"><kbd class="kbd-mini">Enter</kbd>insertar</span>
+  <span class="flex items-center gap-1"><kbd class="kbd-mini">Esc</kbd>cerrar</span>
+  <span class="flex-1"></span>
+  <span>El nombre se llena solo</span>
+</div>

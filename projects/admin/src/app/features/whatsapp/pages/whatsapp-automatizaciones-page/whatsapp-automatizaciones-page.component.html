@@ -1,290 +1,66 @@
-<div class="p-8">
-  <div class="max-w-[720px]">
-    <a routerLink="/whatsapp" class="text-sm text-gray-500 hover:text-gray-900">← WhatsApp</a>
-    <h1 class="mt-2 text-lg font-semibold text-gray-900">Respuestas automáticas</h1>
-    <p class="mt-2 text-sm text-gray-500">
-      Goods le contesta solo a tus clientes cuando escriben: una respuesta por mensaje, primero las palabras clave, después el
-      asistente de IA (si lo activas), el aviso de fuera de horario y por último la bienvenida. En los textos puedes usar <code class="rounded bg-gray-100 px-1">{{ '{' }}nombre{{ '}' }}</code>
-      (el nombre del cliente) y <code class="rounded bg-gray-100 px-1">{{ '{' }}tienda{{ '}' }}</code> (el enlace de tu tienda en línea).
-    </p>
-    @if (!puedeConfigurar()) {
-      <p class="mt-3 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600">Puedes verlas, pero solo el dueño del negocio las cambia.</p>
-    }
+@if (cargando()) {
+  <div class="flex h-[40vh] items-center justify-center">
+    <span class="size-5 animate-[gira_.8s_linear_infinite] rounded-full border-2 border-[#e3e3e3] border-t-[#303030]"></span>
   </div>
+} @else if (error()) {
+  <div class="py-4">
+    <p class="m-0 text-[13px] text-[#d82c0d]">{{ error() }}</p>
+    <button type="button" (click)="reintentar()"
+      class="mt-3 cursor-pointer rounded-full border-0 bg-[#303030] px-3.5 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000]">Reintentar</button>
+  </div>
+} @else if (datos(); as d) {
+  <div class="flex flex-wrap items-start gap-4">
+    <div class="flex max-w-[420px] min-w-0 flex-[1_1_340px] flex-col gap-3">
+      <app-pasos-respuesta [pasos]="pasos()" [elegido]="pasoSel()" [golpe]="respuestaSim()?.paso ?? null" [ocupado]="alternando()"
+        (elegir)="pasoSel.set($event)" (alternar)="alternar($event)" />
+      <app-simulador-respuesta [(texto)]="simTexto" [(nuevo)]="simNuevo" [(abierto)]="simAbierto" [respuesta]="respuestaSim()" />
+    </div>
 
-  @if (cargando()) {
-    <p class="mt-6 text-sm text-gray-400">Cargando…</p>
-  } @else if (error()) {
-    <p class="mt-6 text-sm text-red-600">{{ error() }}</p>
-  } @else {
-    <div class="mt-6 grid max-w-[720px] gap-5">
-      <!-- Asistente de IA -->
-      @if (datos()?.asistente; as a) {
-        <section class="rounded-2xl bg-card-bg p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                <tabler-icon [icon]="i.ia" [size]="16" [stroke]="2" class="text-[#1d8a4b]" /> Asistente de IA
-              </h2>
-              <p class="mt-1 text-sm text-gray-500">
-                Contesta a tus clientes con los productos, precios y disponibilidad de tu catálogo y con lo que le cuentes aquí abajo.
-                Solo habla de tu negocio, no inventa precios y le pasa el chat a tu equipo para cerrar pedidos, pagos o reclamos, o cuando
-                no sabe la respuesta.
-              </p>
-            </div>
-            <button type="button" role="switch" [attr.aria-checked]="asistenteActivo()" aria-label="Activar asistente de IA"
-              [disabled]="!puedeConfigurar() || !a.disponible"
-              (click)="asistenteActivo.set(!asistenteActivo())" class="relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50"
-              [class]="asistenteActivo() ? 'bg-[#1d8a4b]' : 'bg-gray-300'">
-              <span class="absolute top-0.5 size-4 rounded-full bg-white transition-[left]" [style.left.px]="asistenteActivo() ? 18 : 2"></span>
-            </button>
-          </div>
-          @if (!a.disponible) {
-            <p class="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">El asistente de IA todavía no está disponible en Goods. Te avisamos apenas lo esté.</p>
-          } @else {
-            <label class="mt-4 grid gap-1 text-sm font-medium text-gray-700">
-              Lo que el asistente debe saber de tu negocio
-              <textarea rows="5" maxlength="3000" [ngModel]="asistenteInstrucciones()" (ngModelChange)="asistenteInstrucciones.set($event)"
-                [disabled]="!puedeConfigurar()"
-                placeholder="Ej.: Hacemos envíos en Pereira y Dosquebradas por $6.000, llegan el mismo día si pides antes de las 2 p. m. Pagos por Nequi o Bancolombia. Cambios dentro de los 8 días con la factura. Estamos en la Cra. 7 # 20-15."
-                class="w-full resize-y rounded-lg bg-white px-3 py-2 text-sm font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900"></textarea>
-              <span class="text-xs font-normal text-gray-500">Envíos, formas de pago, cambios y devoluciones, dirección. Los productos y precios los toma de tu catálogo.</span>
-            </label>
-            <ul class="mt-3 grid gap-1 text-xs text-gray-500">
-              <li>• Si alguien de tu equipo responde un chat, el asistente se hace a un lado en ese chat por 12 horas. También lo puedes pausar desde el chat.</li>
-              <li>• Cuando le pasa un chat a tu equipo, no vuelve a responder ahí por 24 horas.</li>
-              <li>• Respondió {{ a.respuestasUltimas24h }} {{ a.respuestasUltimas24h === 1 ? 'vez' : 'veces' }} en las últimas 24 horas (máximo {{ a.limiteDiario }}; después siguen las respuestas automáticas de abajo).</li>
-            </ul>
-            @if (puedeConfigurar()) {
-              <div class="mt-3 flex items-center justify-end gap-3">
-                @if (aviso()?.seccion === 'asistente') {
-                  <p class="text-sm" [class]="aviso()!.ok ? 'text-[#087b5d]' : 'text-red-600'">{{ aviso()!.texto }}</p>
-                }
-                <button type="button" (click)="guardarAsistente()" [disabled]="guardando() === 'asistente'"
-                  class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40">Guardar</button>
-              </div>
+    <section class="min-w-0 flex-[1_1_420px] rounded-2xl bg-white p-5 shadow-[0_0_0_1px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.04)]">
+      @for (k of [pasoSel()]; track k) {
+        <div class="animar-panel">
+          <div class="flex items-center gap-2.5">
+            @if (k === 'ia') {
+              <!-- El asistente de IA lleva su marca (como en el asistente de admin). -->
+              <app-ia-marca [size]="34" [fondo]="true" />
+            } @else {
+              <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f3f3f3]">
+                <tabler-icon [icon]="iconos[k]" [size]="18" [stroke]="2" class="flex text-[#111827]" />
+              </span>
             }
+            <div class="min-w-0 flex-1">
+              <h2 class="m-0 font-[Archivo,sans-serif] text-[17px] font-semibold tracking-[-0.01em] text-[#111827]">{{ infoPaso().titulo }}</h2>
+              <p class="mt-px mb-0 text-[12.5px] text-[#6b7280]">{{ infoPaso().desc }}</p>
+            </div>
+          </div>
+          @if (!puedeConfigurar()) {
+            <p class="mt-3 mb-0 rounded-[9px] bg-[#f7f7f7] px-[11px] py-[9px] text-[12px] leading-normal text-[#6b7280]">
+              Puedes verlas, pero solo el dueño del negocio las cambia.
+            </p>
           }
-        </section>
+          <div class="mt-4">
+            @switch (k) {
+              @case ('palabras') {
+                <app-editor-palabras [reglas]="d.palabrasClave" [puedeConfigurar]="puedeConfigurar()" [llenar]="llenar" [abrirNueva]="pedirNuevaPalabra()"
+                  (nuevaAbierta)="pedirNuevaPalabra.set(false)" (cambio)="recargar()" />
+              }
+              @case ('ia') {
+                <app-editor-asistente [(instrucciones)]="instrucciones" [(motivos)]="motivos" [disponible]="d.asistente.disponible" [puedeConfigurar]="puedeConfigurar()"
+                  [respuestas]="usoIa().respuestas" [limite]="usoIa().limite" [sinAyudaPct]="usoIa().sinAyudaPct" [pasados]="usoIa().pasados" />
+              }
+              @case ('fuera') {
+                <app-editor-fuera-horario [(texto)]="fueraTexto" [(zona)]="zona" [(horario)]="horario" [puedeConfigurar]="puedeConfigurar()" />
+              }
+              @case ('bienvenida') {
+                <app-editor-bienvenida [(texto)]="bienvenidaTexto" [puedeConfigurar]="puedeConfigurar()" [llenar]="llenar" />
+              }
+            }
+          </div>
+        </div>
       }
 
-      <!-- Palabras clave -->
-      <section class="rounded-2xl bg-card-bg p-5 shadow-sm">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 class="text-sm font-semibold text-gray-900">Palabras clave</h2>
-            <p class="mt-1 text-sm text-gray-500">Si el mensaje del cliente trae una de estas palabras, se le responde con el texto que elijas.</p>
-          </div>
-          @if (puedeConfigurar() && !palabraForm()) {
-            <button type="button" (click)="nuevaPalabra()" class="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50">
-              <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" /> Agregar
-            </button>
-          }
-        </div>
-
-        @if (palabraForm(); as f) {
-          <div class="mt-4 grid gap-3 rounded-xl bg-gray-50 p-4">
-            <label class="grid gap-1 text-sm font-medium text-gray-700">
-              Palabras, separadas por coma
-              <input [ngModel]="f.palabras" (ngModelChange)="parchePalabra({ palabras: $event })" placeholder="catálogo, precios, productos"
-                class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
-            </label>
-            <label class="grid gap-1 text-sm font-medium text-gray-700">
-              Respuesta
-              <textarea rows="3" [ngModel]="f.texto" (ngModelChange)="parchePalabra({ texto: $event })" placeholder="Mira todos nuestros productos aquí: {tienda}"
-                class="resize-none rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900"></textarea>
-            </label>
-            @if (f.texto) {
-              <p class="text-xs text-gray-500">Así le llega: <span class="text-gray-700">{{ vistaPrevia(f.texto) }}</span></p>
-            }
-            <div class="flex justify-end gap-2">
-              <button type="button" (click)="palabraForm.set(null)" class="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">Cancelar</button>
-              <button type="button" (click)="guardarPalabra()" [disabled]="guardando() === 'palabras' || !f.palabras.trim() || !f.texto.trim()"
-                class="rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40">Guardar</button>
-            </div>
-          </div>
-        }
-
-        <ul class="mt-4 divide-y divide-gray-100">
-          @for (p of datos()?.palabrasClave ?? []; track p.id) {
-            <li class="flex items-start gap-3 py-3">
-              <div class="min-w-0 flex-1">
-                <p class="flex flex-wrap gap-1.5">
-                  @for (w of p.config.palabras; track w) {
-                    <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">{{ w }}</span>
-                  }
-                </p>
-                <p class="mt-1.5 text-sm text-gray-600" [class.opacity-50]="!p.activa">{{ p.config.texto }}</p>
-              </div>
-              @if (puedeConfigurar()) {
-                <button type="button" role="switch" [attr.aria-checked]="p.activa" [attr.aria-label]="'Activa: ' + p.config.palabras.join(', ')" (click)="alternarPalabra(p)"
-                  class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors" [class]="p.activa ? 'bg-[#1d8a4b]' : 'bg-gray-300'">
-                  <span class="absolute top-0.5 size-4 rounded-full bg-white transition-[left]" [style.left.px]="p.activa ? 18 : 2"></span>
-                </button>
-                <button type="button" (click)="editarPalabra(p)" class="text-gray-400 hover:text-gray-900" aria-label="Editar">
-                  <tabler-icon [icon]="i.editar" [size]="16" [stroke]="2" />
-                </button>
-                <button type="button" (click)="borrarPalabra(p.id)" class="text-gray-400 hover:text-red-600" aria-label="Borrar">
-                  <tabler-icon [icon]="i.borrar" [size]="16" [stroke]="2" />
-                </button>
-              }
-            </li>
-          } @empty {
-            @if (!palabraForm()) {
-              <li class="py-3 text-sm text-gray-400">Todavía no hay palabras clave. Una buena primera: "catálogo" con el enlace de tu tienda.</li>
-            }
-          }
-        </ul>
-        @if (aviso()?.seccion === 'palabras') {
-          <p class="mt-2 text-sm" [class]="aviso()!.ok ? 'text-[#087b5d]' : 'text-red-600'">{{ aviso()!.texto }}</p>
-        }
-      </section>
-
-      <!-- Fuera de horario -->
-      <section class="rounded-2xl bg-card-bg p-5 shadow-sm">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 class="text-sm font-semibold text-gray-900">Fuera de horario</h2>
-            <p class="mt-1 text-sm text-gray-500">Si te escriben cuando estás cerrado, se les avisa. Como mucho una vez cada 12 horas por cliente.</p>
-          </div>
-          <button type="button" role="switch" [attr.aria-checked]="fueraActiva()" aria-label="Activar aviso de fuera de horario" [disabled]="!puedeConfigurar()"
-            (click)="fueraActiva.set(!fueraActiva())" class="relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50" [class]="fueraActiva() ? 'bg-[#1d8a4b]' : 'bg-gray-300'">
-            <span class="absolute top-0.5 size-4 rounded-full bg-white transition-[left]" [style.left.px]="fueraActiva() ? 18 : 2"></span>
-          </button>
-        </div>
-
-        <fieldset [disabled]="!puedeConfigurar()" class="mt-4 grid gap-4">
-          <label class="grid gap-1 text-sm font-medium text-gray-700">
-            Mensaje
-            <textarea rows="3" [ngModel]="fueraTexto()" (ngModelChange)="fueraTexto.set($event)"
-              class="resize-none rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900"></textarea>
-          </label>
-          <label class="grid gap-1 text-sm font-medium text-gray-700">
-            Zona horaria del negocio
-            <select [ngModel]="zona()" (ngModelChange)="zona.set($event)"
-              class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900">
-              @for (z of zonas; track z.v) { <option [value]="z.v">{{ z.t }}</option> }
-            </select>
-          </label>
-          <div>
-            <p class="text-sm font-medium text-gray-700">Horario de atención</p>
-            <div class="mt-2 grid gap-1.5">
-              @for (d of dias; track d.k) {
-                <div class="flex items-center gap-3 text-sm">
-                  <label class="flex w-32 items-center gap-2 text-gray-700">
-                    <input type="checkbox" [checked]="abierto(d.k)" (change)="alternarDia(d.k)" class="size-4 accent-gray-900" />
-                    {{ d.nombre }}
-                  </label>
-                  @if (horario()[d.k]; as r) {
-                    <input type="time" [value]="r.desde" (change)="cambiarHora(d.k, 'desde', $any($event.target).value)" [attr.aria-label]="d.nombre + ' abre'"
-                      class="rounded-md bg-white px-2 py-1 text-gray-900 ring-1 ring-gray-300" />
-                    <span class="text-gray-400">a</span>
-                    <input type="time" [value]="r.hasta" (change)="cambiarHora(d.k, 'hasta', $any($event.target).value)" [attr.aria-label]="d.nombre + ' cierra'"
-                      class="rounded-md bg-white px-2 py-1 text-gray-900 ring-1 ring-gray-300" />
-                  } @else {
-                    <span class="text-gray-400">Cerrado</span>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        </fieldset>
-        @if (puedeConfigurar()) {
-          <div class="mt-4 flex items-center justify-end gap-3">
-            @if (aviso()?.seccion === 'fuera') {
-              <p class="text-sm" [class]="aviso()!.ok ? 'text-[#087b5d]' : 'text-red-600'">{{ aviso()!.texto }}</p>
-            }
-            <button type="button" (click)="guardarFueraHorario()" [disabled]="guardando() === 'fuera' || !fueraTexto().trim()"
-              class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40">Guardar</button>
-          </div>
-        }
-      </section>
-
-      <!-- Bienvenida -->
-      <section class="rounded-2xl bg-card-bg p-5 shadow-sm">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 class="text-sm font-semibold text-gray-900">Bienvenida</h2>
-            <p class="mt-1 text-sm text-gray-500">Al primer mensaje de un cliente nuevo.</p>
-          </div>
-          <button type="button" role="switch" [attr.aria-checked]="bienvenidaActiva()" aria-label="Activar bienvenida" [disabled]="!puedeConfigurar()"
-            (click)="bienvenidaActiva.set(!bienvenidaActiva())" class="relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50" [class]="bienvenidaActiva() ? 'bg-[#1d8a4b]' : 'bg-gray-300'">
-            <span class="absolute top-0.5 size-4 rounded-full bg-white transition-[left]" [style.left.px]="bienvenidaActiva() ? 18 : 2"></span>
-          </button>
-        </div>
-        <textarea rows="2" [ngModel]="bienvenidaTexto()" (ngModelChange)="bienvenidaTexto.set($event)" [disabled]="!puedeConfigurar()" aria-label="Mensaje de bienvenida"
-          class="mt-4 w-full resize-none rounded-lg bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900"></textarea>
-        <p class="mt-1 text-xs text-gray-500">Así le llega: <span class="text-gray-700">{{ vistaPrevia(bienvenidaTexto()) }}</span></p>
-        @if (puedeConfigurar()) {
-          <div class="mt-3 flex items-center justify-end gap-3">
-            @if (aviso()?.seccion === 'bienvenida') {
-              <p class="text-sm" [class]="aviso()!.ok ? 'text-[#087b5d]' : 'text-red-600'">{{ aviso()!.texto }}</p>
-            }
-            <button type="button" (click)="guardarBienvenida()" [disabled]="guardando() === 'bienvenida' || !bienvenidaTexto().trim()"
-              class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40">Guardar</button>
-          </div>
-        }
-      </section>
-
-      <!-- Respuestas rápidas -->
-      <section class="rounded-2xl bg-card-bg p-5 shadow-sm">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 class="text-sm font-semibold text-gray-900">Respuestas rápidas</h2>
-            <p class="mt-1 text-sm text-gray-500">Textos que tu equipo usa seguido. En el chat, escribe "/" y elige uno.</p>
-          </div>
-          @if (puedeConfigurar() && !rapidaForm()) {
-            <button type="button" (click)="nuevaRapida()" class="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50">
-              <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" /> Agregar
-            </button>
-          }
-        </div>
-        @if (rapidaForm(); as f) {
-          <div class="mt-4 grid gap-3 rounded-xl bg-gray-50 p-4">
-            <label class="grid gap-1 text-sm font-medium text-gray-700">
-              Atajo
-              <span class="flex items-center rounded-lg bg-white ring-1 ring-gray-300 focus-within:ring-2 focus-within:ring-gray-900">
-                <span class="pl-3 text-gray-400">/</span>
-                <input [ngModel]="f.atajo" (ngModelChange)="parcheRapida({ atajo: $event })" placeholder="envio" maxlength="30"
-                  class="min-w-0 flex-1 rounded-lg bg-transparent px-1 py-2 font-normal text-gray-900 outline-none" />
-              </span>
-            </label>
-            <label class="grid gap-1 text-sm font-medium text-gray-700">
-              Texto
-              <textarea rows="3" [ngModel]="f.texto" (ngModelChange)="parcheRapida({ texto: $event })"
-                class="resize-none rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900"></textarea>
-            </label>
-            <div class="flex justify-end gap-2">
-              <button type="button" (click)="rapidaForm.set(null)" class="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">Cancelar</button>
-              <button type="button" (click)="guardarRapida()" [disabled]="guardando() === 'rapidas' || !f.atajo.trim() || !f.texto.trim()"
-                class="rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40">Guardar</button>
-            </div>
-          </div>
-        }
-        <ul class="mt-4 divide-y divide-gray-100">
-          @for (r of datos()?.respuestasRapidas ?? []; track r.id) {
-            <li class="flex items-start gap-3 py-3">
-              <span class="shrink-0 rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700">/{{ r.atajo }}</span>
-              <p class="min-w-0 flex-1 text-sm text-gray-600">{{ r.texto }}</p>
-              @if (puedeConfigurar()) {
-                <button type="button" (click)="rapidaForm.set({ id: r.id, atajo: r.atajo, texto: r.texto })" class="text-gray-400 hover:text-gray-900" aria-label="Editar">
-                  <tabler-icon [icon]="i.editar" [size]="16" [stroke]="2" />
-                </button>
-                <button type="button" (click)="borrarRapida(r.id)" class="text-gray-400 hover:text-red-600" aria-label="Borrar">
-                  <tabler-icon [icon]="i.borrar" [size]="16" [stroke]="2" />
-                </button>
-              }
-            </li>
-          } @empty {
-            @if (!rapidaForm()) {
-              <li class="py-3 text-sm text-gray-400">Todavía no hay respuestas rápidas.</li>
-            }
-          }
-        </ul>
-        @if (aviso()?.seccion === 'rapidas') {
-          <p class="mt-2 text-sm" [class]="aviso()!.ok ? 'text-[#087b5d]' : 'text-red-600'">{{ aviso()!.texto }}</p>
-        }
-      </section>
-    </div>
-  }
-</div>
+      <app-respuestas-rapidas class="mt-5 border-t border-[#f3f4f6] pt-4" [respuestas]="d.respuestasRapidas" [puedeConfigurar]="puedeConfigurar()"
+        (cambio)="recargar()" />
+    </section>
+  </div>
+}

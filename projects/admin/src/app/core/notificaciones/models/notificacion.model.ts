@@ -11,6 +11,8 @@ export type TipoNotificacion =
   | 'pedido_estado'
   | 'pago_estado'
   | 'stock_bajo'
+  // Entró un pedido de la tienda en línea (Pedidos y Clientes, 2026-10-13).
+  | 'pedido_nuevo'
   | 'mensaje_chat'
   // Categoría staff.
   | 'empresa_registrada'

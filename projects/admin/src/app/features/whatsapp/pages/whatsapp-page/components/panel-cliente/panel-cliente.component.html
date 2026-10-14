@@ -1,0 +1,144 @@
+<div class="flex w-[300px] min-w-[300px] flex-col overflow-y-auto [transition:transform_.42s_cubic-bezier(.32,.72,0,1)]"
+  [class]="visible() ? '[transform:none]' : '[transform:translateX(16px)]'">
+  @for (k of [clave()]; track k) {
+    <div class="animar-panel flex flex-col">
+      @let cab = cabecera();
+      <!-- Quién es -->
+      <div class="flex items-center gap-2.5 px-3.5 pt-3.5 pb-3">
+        <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] font-display text-[13px] font-semibold" [class]="cab.avatar">{{ cab.ini }}</span>
+        <span class="min-w-0 flex-1">
+          <span class="block truncate font-display text-[14.5px] font-semibold tracking-[-0.01em] text-[#111827]">{{ cab.nombre }}</span>
+          <span class="mt-px block min-h-[17px] text-[11.5px] text-[#9ca3af]">{{ cab.desde }}</span>
+        </span>
+        @if (ficha(); as f) {
+          <a [routerLink]="['/customers', f.id]" title="Abrir en Customers"
+            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-transparent text-[#6b7280] hover:bg-[#f1f1f1] hover:text-[#111827]">
+            <tabler-icon [icon]="i.abrir" [size]="15" />
+          </a>
+        }
+      </div>
+
+      <!-- Franja de datos -->
+      <div class="mx-3.5 flex rounded-[10px] bg-[#f7f7f7]">
+        @for (s of stats(); track s.k; let n = $index) {
+          <div class="min-w-0 flex-1 px-2.5 py-2" [class]="n ? 'border-l border-[#ececec]' : ''" [title]="s.tip">
+            <p class="m-0 text-[11px] whitespace-nowrap text-[#6b7280] underline decoration-[#c4c4c4] decoration-dotted underline-offset-[3px]">{{ s.k }}</p>
+            <p class="m-0 mt-0.5 text-[13.5px] font-semibold whitespace-nowrap text-[#111827] tabular-nums">{{ s.v }}</p>
+          </div>
+        }
+      </div>
+
+      <!-- Promociones -->
+      <button type="button" (click)="alternarPromociones.emit()" [disabled]="!puedeResponder()" role="switch" [attr.aria-checked]="chat().contacto.aceptaPromociones"
+        class="mx-1.5 mt-2 flex cursor-pointer items-center gap-2.5 rounded-[9px] border-0 bg-transparent p-2 text-left hover:bg-[#fafafa] disabled:cursor-default">
+        <tabler-icon [icon]="i.promo" [size]="15" class="text-[#9ca3af]" />
+        <span class="min-w-0 flex-1">
+          <span class="block text-[12.5px] font-medium text-[#111827]">Acepta promociones</span>
+          <span class="block text-[11px] text-[#9ca3af]">{{ chat().contacto.aceptaPromociones ? 'Puede recibir campañas' : 'No le llegan campañas' }}</span>
+        </span>
+        <span class="relative h-[18px] w-[30px] shrink-0 rounded-full transition-[background] duration-200"
+          [class]="chat().contacto.aceptaPromociones ? 'bg-[#303030]' : 'bg-[#d4d4d4]'">
+          <span class="absolute top-0.5 size-3.5 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,.2)] [transition:left_.2s_cubic-bezier(.3,1.3,.5,1)]"
+            [class]="chat().contacto.aceptaPromociones ? 'left-4' : 'left-0.5'"></span>
+        </span>
+      </button>
+
+      <div class="mx-3.5 mt-2.5 h-px bg-[#f1f1f1]"></div>
+
+      <!-- Pedido en curso -->
+      <div class="px-3.5 pt-3">
+        <div class="flex items-center gap-2">
+          <span class="flex-1 text-[12px] font-semibold text-[#303030]">Pedido en curso</span>
+          <span class="text-[11px] text-[#9ca3af] tabular-nums">{{ unidades() ? unidades() + ' unid.' : '' }}</span>
+        </div>
+        <div class="relative mt-2 rounded-t-[4px] bg-[#fffefb] px-3 pt-3 pb-[18px] font-factura text-[#1c1c1c] shadow-[0_1px_2px_rgba(0,0,0,.06),0_0_0_1px_rgba(0,0,0,.05)] [-webkit-mask:radial-gradient(circle_5px_at_50%_100%,transparent_98%,#000)_0_0/12px_100%_repeat-x] [mask:radial-gradient(circle_5px_at_50%_100%,transparent_98%,#000)_0_0/12px_100%_repeat-x]">
+          <div class="flex justify-between text-[10px] tracking-[.06em] text-[#8a8a8a] uppercase"><span>Borrador</span><span>{{ horaBorrador() }}</span></div>
+          <div class="my-2 border-t border-dashed border-[#d4d4d4]"></div>
+          @if (!lineas().length) {
+            <p class="m-0 mt-1.5 mb-1 text-[11.5px] leading-normal text-[#9ca3af]">Sin productos. Agrégalos desde lo que mencionó el cliente o con «Producto» en el chat.</p>
+          }
+          <div class="flex flex-col gap-[7px]">
+            @for (l of lineas(); track l.p.id) {
+              <div class="animate-[wa-entra_.25s_ease-out]">
+                <div class="flex items-baseline gap-1.5 text-[11.5px] leading-[1.35]">
+                  <span class="min-w-0 flex-1">{{ l.p.nombre }}</span>
+                  <span class="shrink-0 font-semibold tabular-nums">{{ l.sub }}</span>
+                </div>
+                <div class="mt-[3px] flex items-center gap-1.5 text-[10.5px] text-[#8a8a8a]">
+                  <span class="flex items-center rounded-[5px] shadow-[inset_0_0_0_1px_#e3e3e3]">
+                    <button type="button" (click)="cambiarCantidad.emit({ productoId: l.p.id, delta: -1 })" aria-label="Uno menos"
+                      class="flex size-[18px] cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[#6b7280]"><tabler-icon [icon]="i.menos" [size]="10" /></button>
+                    <span class="min-w-3.5 text-center font-semibold text-[#1c1c1c]">{{ l.n }}</span>
+                    <button type="button" (click)="cambiarCantidad.emit({ productoId: l.p.id, delta: 1 })" aria-label="Uno más"
+                      class="flex size-[18px] cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[#6b7280]"><tabler-icon [icon]="i.mas" [size]="10" /></button>
+                  </span>
+                  <span>× {{ l.unidad }}</span>
+                </div>
+              </div>
+            }
+          </div>
+          @if (lineas().length) {
+            <div class="mt-2.5 mb-2 border-t border-dashed border-[#d4d4d4]"></div>
+            <div class="flex items-baseline justify-between">
+              <span class="text-[10.5px] tracking-[.08em] uppercase">Total</span>
+              <span class="text-[15px] font-semibold tabular-nums">{{ total() }}</span>
+            </div>
+          }
+        </div>
+        @if (lineas().length) {
+          <button type="button" (click)="crearPedido.emit()" [disabled]="creando() || !puedeCrearPedido()"
+            [title]="puedeCrearPedido() ? (ventanaAbierta() ? '' : 'El pedido se crea; el resumen no se puede enviar con la ventana cerrada') : 'Tu usuario no puede crear pedidos'"
+            class="mt-2.5 flex h-[34px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border-0 bg-[#303030] text-[12.5px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-opacity duration-200 hover:opacity-90 active:scale-[.98] disabled:cursor-default disabled:opacity-50">
+            <tabler-icon [icon]="i.pedido" [size]="15" />{{ creando() ? 'Creando pedido…' : ventanaAbierta() ? 'Crear pedido y enviar resumen' : 'Crear pedido' }}
+          </button>
+        }
+      </div>
+
+      <!-- Mencionó en el chat -->
+      @if (mencionados().length) {
+        <div class="px-3.5 pt-3.5">
+          <p class="m-0 mb-1.5 flex items-center gap-[5px] text-[12px] font-semibold text-[#303030]">Mencionó en el chat<app-ia-marca [size]="14" [fondo]="true" /></p>
+          <div class="flex flex-col gap-0.5">
+            @for (m of mencionados(); track m.p.id) {
+              <div class="-mx-1.5 flex items-center gap-2 rounded-lg px-1.5 py-[5px] hover:bg-[#fafafa]">
+                <tabler-icon [icon]="i.producto" [size]="15" class="text-[#9ca3af]" />
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-[12.5px] text-[#111827]">{{ m.p.nombre }}</span>
+                  <span class="block text-[11px]" [class]="m.agotado ? 'text-[#b45309]' : 'text-[#9ca3af]'">{{ m.precio }} · {{ m.stock }}</span>
+                </span>
+                <button type="button" (click)="mostrarProducto.emit(m.p.id)" title="Enviar al chat" [disabled]="!puedeResponder() || !ventanaAbierta()"
+                  class="flex size-[26px] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[#6b7280] hover:bg-[#e6e6e6] hover:text-[#111827] disabled:cursor-default disabled:opacity-40">
+                  <tabler-icon [icon]="i.enviar" [size]="14" />
+                </button>
+                <button type="button" (click)="cambiarCantidad.emit({ productoId: m.p.id, delta: 1 })" title="Agregar al pedido"
+                  class="flex size-[26px] cursor-pointer items-center justify-center rounded-full border-0 bg-[#e3e3e3] text-[#303030] hover:bg-[#d4d4d4]">
+                  <tabler-icon [icon]="i.mas" [size]="14" />
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Historial -->
+      <div class="px-3.5 pt-3.5 pb-4">
+        <p class="m-0 mb-2 text-[12px] font-semibold text-[#303030]">Historial</p>
+        <div class="relative flex flex-col gap-2.5 pl-4">
+          @if (pedidos().length) {
+            <span class="absolute top-1.5 bottom-1.5 left-[3.5px] w-px bg-[#e5e5e5]"></span>
+          }
+          @for (p of pedidos(); track p.id) {
+            <a [routerLink]="['/orders', p.id]" class="relative flex animate-[wa-entra_.3s_ease-out] items-baseline gap-2 no-underline">
+              <span class="absolute top-1 -left-4 size-2 rounded-full shadow-[0_0_0_2px_#fff]" [class]="p.nuevo ? 'bg-[#2be0d5]' : 'bg-[#d4d4d4]'"></span>
+              <span class="font-factura text-[11.5px] font-semibold text-[#111827]">#{{ p.numero }}</span>
+              <span class="flex-1 text-[11.5px] text-[#9ca3af]">{{ p.fecha }} · {{ p.estado }}</span>
+              <span class="text-[12px] font-medium text-[#111827] tabular-nums">{{ p.total }}</span>
+            </a>
+          } @empty {
+            <p class="m-0 -ml-4 text-[12px] text-[#9ca3af]">{{ ficha() === undefined ? 'Cargando…' : 'Cliente nuevo: todavía no tiene pedidos.' }}</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

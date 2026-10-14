@@ -2891,3 +2891,35 @@ propia, todavía pendiente de especificar a nivel de composite.
   estado, sobre `p-tag`) para validar el patrón de `pt` antes de
   meterse con el `p-table` (el más riesgoso visualmente) o el popover de
   posicionamiento.
+
+## Estructura de carpetas de un módulo (2026-10-13)
+
+Convención del CLI de Angular: **una carpeta por componente**, con su
+`.ts` y su `.html` (si tiene) adentro.
+
+```
+features/<módulo>/
+  <módulo>.routes.ts
+  components/            componentes que usan varias páginas del módulo (o de otros)
+    formulario-pedido/formulario-pedido.component.ts
+  shared/                modelo de UI, utilidades y stores del módulo
+    ui/                  piezas visuales chicas del módulo (insignias, íconos…)
+      insignia-estado/insignia-estado.component.ts
+  pages/
+    order-list-page/
+      order-list-page.component.ts / .html
+      <algo>.modelo.ts   tipos y helpers solo de esta página
+      components/        componentes solo de esta página, cada uno en su carpeta
+        fila-pedido/fila-pedido.component.ts
+```
+
+- Los servicios HTTP y los modelos de la API van en `core/<entidad>/`
+  (`core/pedido`, `core/cliente`), no dentro del módulo.
+- Un componente que se repite entre páginas con variantes distintas (hoy
+  `miniatura-producto` y `marco-modal` en Inventario, Compras y
+  Proveedores) se queda en cada página hasta unificar sus variantes; recién
+  ahí pasa a `shared/ui/`.
+- Pedidos y Clientes son una sola página con lista + hoja (como Productos
+  v5): `/orders?pedido=ID`, `/orders?nuevo=1&cliente=ID`,
+  `/customers?cliente=ID`, `/customers?nuevo=1`. Las rutas viejas
+  (`/orders/:id`, `/customers/:id`, `/customers/new`) redirigen ahí.

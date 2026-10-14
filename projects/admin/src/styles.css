@@ -639,8 +639,6 @@
 @keyframes ia-latido { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .55; transform: scale(.7); } }
 @keyframes ia-ping { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(2.6); opacity: 0; } }
 @keyframes ia-palabra { from { opacity: 0; filter: blur(8px); transform: translateY(8px); } to { opacity: 1; filter: blur(0); transform: none; } }
-@keyframes ia-letra { from { opacity: 0; filter: blur(12px); transform: translateY(.45em) rotate(8deg) scale(.9); } to { opacity: 1; filter: blur(0); transform: none; } }
-@keyframes ia-brillo { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
 @keyframes ia-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @keyframes ia-caret { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
 @keyframes ia-msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -665,7 +663,6 @@
 
 .ia-latido { animation: ia-latido 2.4s ease-in-out infinite; }
 .ia-palabra { animation: ia-palabra 720ms cubic-bezier(.2, .8, .2, 1) both; }
-.ia-letra { animation: ia-letra 900ms cubic-bezier(.2, .8, .2, 1) both; }
 .ia-msg-in { animation: ia-msg-in 380ms cubic-bezier(.2, .8, .2, 1); }
 .ia-user-in { animation: ia-user-in 380ms cubic-bezier(.2, .8, .2, 1); transform-origin: bottom right; }
 .ia-card-in { animation: ia-card-in 440ms cubic-bezier(.2, .8, .2, 1) both; }
@@ -706,20 +703,6 @@
 .ia-markdown th, .ia-markdown td { border: 1px solid #e5e5e5; padding: 4px 8px; text-align: left; }
 .ia-markdown th { background: #fafafa; font-weight: 600; }
 
-/* Nombre del usuario: degradé gris→negro con brillo lento. */
-.ia-degrade-nombre {
-  background: linear-gradient(100deg, #0a0a0a 0%, #303030 28%, #8a8a8a 52%, #303030 76%, #0a0a0a 100%);
-  background-size: 240% 100%;
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  animation: ia-palabra 740ms cubic-bezier(.2, .8, .2, 1) both, ia-brillo 5s ease-in-out 1.4s infinite alternate;
-}
-/* Letras de "Goods": el degradé es continuo entre letras (900 % de ancho,
-   cada letra corrida 12,5 %) y su posición la mueve el cursor. */
-.ia-degrade-goods {
-  background-image: linear-gradient(100deg, #0a0a0a 0%, #262626 22%, #5c5c5c 45%, #a3a3a3 55%, #5c5c5c 65%, #262626 80%, #0a0a0a 100%);
-  background-size: 900% 100%;
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
 /* Texto con barrido (v3: ya no se usa para "Pensando…"; queda para otros estados). */
 .ia-shimmer-texto {
   background: linear-gradient(90deg, #a3a3a3 0%, #a3a3a3 35%, #111827 50%, #a3a3a3 65%, #a3a3a3 100%);
@@ -913,3 +896,63 @@ app-topbar {
 @utility gp-ia {
   @apply relative inline-flex size-4 items-center justify-center rounded-full bg-[#0a0a0a] shadow-[0_0_0_1.5px_#fff];
 }
+
+/* ── WhatsApp · rediseño 2026-10-13 (handoff-whatsapp/styles-whatsapp.css) ── */
+/* ── WhatsApp (handoff 2026-10-13) · pegar al final de projects/admin/src/styles.css ── */
+
+@keyframes wa-entra { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes wa-sube { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes wa-abre { from { opacity: 0; transform: scaleY(.55); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes wa-latido { 0%, 100% { box-shadow: 0 0 0 0 rgba(43,224,213,.55); } 50% { box-shadow: 0 0 0 5px rgba(43,224,213,0); } }
+@keyframes wa-latido-ambar { 0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,.5); } 50% { box-shadow: 0 0 0 5px rgba(245,158,11,0); } }
+
+.latido { animation: wa-latido 1.4s ease-in-out infinite; }
+.latido-ambar { animation: wa-latido-ambar 1.6s ease-in-out infinite; }
+
+/* Popover del compositor (Mostrador, Respuestas rápidas). */
+.animar-popover { transform-origin: 24px 100%; animation: wa-abre .22s cubic-bezier(.2,.8,.2,1); }
+
+/* Panel derecho: cada bloque entra en cascada (35 ms entre uno y otro).
+   El nodo se recrea con @for (k of [clave()]; track k) para reiniciar. */
+.animar-panel > * { animation: wa-sube .32s cubic-bezier(.2,.8,.2,1) backwards; }
+.animar-panel > *:nth-child(2) { animation-delay: 35ms; }
+.animar-panel > *:nth-child(3) { animation-delay: 70ms; }
+.animar-panel > *:nth-child(4) { animation-delay: 105ms; }
+.animar-panel > *:nth-child(5) { animation-delay: 140ms; }
+.animar-panel > *:nth-child(6) { animation-delay: 175ms; }
+.animar-panel > *:nth-child(n+7) { animation-delay: 210ms; }
+
+/* Indicador blanco del segmentado; `left` y `width` van inline. */
+.seg-indicador {
+  position: absolute; top: 2px; bottom: 2px; border-radius: 9999px; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 2px 6px -2px rgba(0,0,0,.08);
+  transition: left .32s cubic-bezier(.32,.72,0,1);
+}
+
+/* Filas de Plantillas y Campañas: sin elevación; fondo + borde suave. */
+.fila-plantilla, .fila-campana {
+  transition: background .25s ease, box-shadow .25s ease, transform .25s cubic-bezier(.32,.72,0,1);
+  animation: wa-entra .35s cubic-bezier(.2,.8,.2,1) backwards; /* backwards: no bloquea el transform de :active */
+}
+.fila-plantilla:hover, .fila-campana:hover { background: #fcfcfc; box-shadow: inset 0 0 0 1px #ececec, 0 4px 12px -8px rgba(0,0,0,.12); }
+.fila-plantilla:active { transform: scale(.995); }
+.fila-plantilla--elegida, .fila-plantilla--elegida:hover { background: #fff; box-shadow: inset 0 0 0 1px #dcdcdc, 0 6px 18px -12px rgba(0,0,0,.22); }
+
+/* Mensaje de la fila: 2 líneas → 4 al elegirla, con transición de altura. */
+.mensaje-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-height: 38px; transition: max-height .35s cubic-bezier(.32,.72,0,1); }
+.mensaje-clamp--abierto { -webkit-line-clamp: 4; max-height: 76px; }
+
+/* Dato variable dentro de un mensaje ({{1}} → "Ana"). */
+.var-token { border-radius: 4px; background: #e0f7f5; color: #00605b; font-weight: 500; padding: 0 3px; }
+
+/* Campo de formulario del panel. */
+.campo { border: 0; border-radius: 8px; background: #f7f7f7; padding-inline: 11px; color: #111827; caret-color: #111827; box-shadow: inset 0 0 0 1px #e5e7eb; outline: none; }
+.campo:focus { box-shadow: inset 0 0 0 1.5px #303030; background: #fff; }
+
+.kbd-mini { border-radius: 4px; background: #f5f5f5; padding: 0 4px; font-family: inherit; font-weight: 600; color: #6b7280; box-shadow: inset 0 0 0 1px #e3e3e3; }
+
+.barra-rayada { background: repeating-linear-gradient(-45deg, #e5e5e5 0 4px, #f3f3f3 4px 8px); }
+/* Extras del prototipo (sus nombres chocan con keyframes ya usados en admin). */
+@keyframes wa-punto { 0%, 60%, 100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+@keyframes wa-halo { 0%, 100% { transform: scale(1); opacity: .6; } 50% { transform: scale(2.4); opacity: 0; } }
+@keyframes wa-drum { from { opacity: 0; transform: scaleY(.55); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }

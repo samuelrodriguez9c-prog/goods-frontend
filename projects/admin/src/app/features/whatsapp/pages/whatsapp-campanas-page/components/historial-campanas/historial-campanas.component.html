@@ -1,0 +1,36 @@
+<div class="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 pr-3 pl-3.5">
+  <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+    <h2 class="m-0 font-display text-[14.5px] font-semibold tracking-[-0.01em] text-[#111827]">Historial</h2>
+    <span class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-[#9ca3af]">
+      @for (r of resumen(); track r.k) {
+        <span class="flex items-center gap-[5px]"><span class="size-1.5 rounded-full" [style.background]="r.c"></span><b class="font-semibold text-[#374151] tabular-nums">{{ r.v }}</b>{{ r.k }}</span>
+      }
+    </span>
+  </span>
+  <app-segmentado [opciones]="filtros()" [valor]="filtro()" ancho="normal" (cambiar)="filtro.set($event)" />
+</div>
+
+@for (g of grupos(); track g.k) {
+  <div class="flex flex-col">
+    <div class="flex items-baseline gap-2 border-t border-[#f1f1f1] bg-[#fafafa] px-3.5 py-2">
+      <span class="text-[12px] font-semibold text-[#111827]">{{ g.titulo }}</span>
+      <span class="text-[11px] text-[#9ca3af]">{{ g.sub }}</span>
+    </div>
+    <div class="flex flex-col gap-0.5 p-1.5">
+      @for (c of g.items; track c.id; let j = $index) {
+        <app-fila-campana [campana]="c" [indice]="j" [alcance]="alcance()" [puedeConfigurar]="puedeConfigurar()"
+          [editando]="editandoId() === c.id" [cancelando]="cancelandoId() === c.id"
+          (editar)="editar.emit(c)" (cancelar)="cancelar.emit(c)" />
+      }
+    </div>
+  </div>
+} @empty {
+  <div class="border-t border-[#f1f1f1] px-3.5 py-9 text-center">
+    @if (campanas().length) {
+      <p class="m-0 text-[12.5px] text-[#9ca3af]">Ninguna campaña con ese filtro.</p>
+    } @else {
+      <p class="m-0 text-[13px] font-medium text-[#111827]">Todavía no has mandado campañas</p>
+      <p class="m-0 mt-1 text-[12.5px] text-[#9ca3af]">Cuando tus clientes acepten recibir promociones, aquí les mandas tus novedades.</p>
+    }
+  </div>
+}

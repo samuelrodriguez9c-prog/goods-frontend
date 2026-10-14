@@ -1,0 +1,42 @@
+@let v = vista();
+@if (angosto()) {
+  <button type="button" (click)="volver.emit()" aria-label="Volver a los chats"
+    class="flex cursor-pointer rounded-lg border-0 bg-transparent p-1.5 hover:bg-[#f3f4f6]">
+    <tabler-icon [icon]="i.volver" [size]="18" />
+  </button>
+}
+<span class="flex size-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold" [class]="v.avatar">{{ v.ini }}</span>
+<div class="min-w-0 flex-1">
+  <p class="m-0 truncate text-[14px] font-semibold text-[#111827]">{{ v.nombre }}</p>
+  <p class="m-0 mt-px flex min-w-0 items-center gap-2 overflow-hidden text-[12px] whitespace-nowrap text-[#6b7280]">
+    @if (!compacto()) { <span class="tabular-nums">{{ v.tel }}</span> }
+    <span class="flex min-w-0 items-center gap-1.5" [class]="v.color">
+      <tabler-icon [icon]="v.icono" [size]="13" />
+      <span class="tabular-nums">{{ v.texto }}</span>
+      <span class="h-1 w-11 overflow-hidden rounded-full bg-[#efefef]">
+        <span class="block h-full rounded-full [transition:width_1s_linear]" [class]="v.barra" [style.width]="v.pct"></span>
+      </span>
+    </span>
+  </p>
+</div>
+<div role="radiogroup" aria-label="Quién atiende" class="relative flex shrink-0 rounded-[9px] bg-[#f3f3f3] p-[3px]">
+  <span class="absolute top-[3px] bottom-[3px] w-[calc(50%-3px)] rounded-[7px] bg-white shadow-[0_1px_2px_rgba(0,0,0,.08)] [transition:left_.25s_cubic-bezier(.3,1.3,.5,1)]"
+    [class]="enIa() ? 'left-[3px]' : 'left-1/2'"></span>
+  <button type="button" role="radio" [attr.aria-checked]="enIa()" (click)="modo.emit('ia')" [disabled]="!puedeResponder() || !asistenteActivo()"
+    [title]="asistenteActivo() ? 'La IA responde en este chat' : 'Prende el asistente de IA en Automático para usarlo'"
+    class="relative flex h-[26px] w-[62px] cursor-pointer items-center justify-center gap-[5px] border-0 bg-transparent text-[12px] font-semibold disabled:cursor-default"
+    [class]="enIa() ? 'text-[#00605b]' : 'text-[#6b7280]'">
+    <app-ia-marca [size]="14" [fondo]="true" />IA
+  </button>
+  <button type="button" role="radio" [attr.aria-checked]="!enIa()" (click)="modo.emit('tu')" [disabled]="!puedeResponder()"
+    title="Atiendes tú: la IA no responde en este chat"
+    class="relative flex h-[26px] w-[62px] cursor-pointer items-center justify-center gap-[5px] border-0 bg-transparent text-[12px] font-semibold disabled:cursor-default"
+    [class]="!enIa() ? 'text-[#111827]' : 'text-[#6b7280]'">
+    <tabler-icon [icon]="i.tu" [size]="13" />Tú
+  </button>
+</div>
+<button type="button" (click)="alternarPanel.emit()" title="Ficha del cliente" [attr.aria-pressed]="panelAbierto()"
+  class="flex cursor-pointer rounded-lg border-0 p-[7px] text-[#374151] hover:bg-[#efefef]"
+  [class]="panelAbierto() ? 'bg-[#efefef]' : 'bg-transparent'">
+  <tabler-icon [icon]="i.panel" [size]="18" />
+</button>

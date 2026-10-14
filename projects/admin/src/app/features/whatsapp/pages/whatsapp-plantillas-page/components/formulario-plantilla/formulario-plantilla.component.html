@@ -1,0 +1,83 @@
+@let fv = f();
+<div class="flex items-center gap-2.5 px-3.5 pt-3.5 pb-3">
+  <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f3f3f3] text-[#374151]"><tabler-icon [icon]="i.lapiz" [size]="17" /></span>
+  <span class="min-w-0 flex-1">
+    <span class="block truncate font-[ui-monospace,monospace] text-[13px] font-semibold text-[#111827]">Nueva plantilla</span>
+    <span class="mt-0.5 block text-[11.5px] text-[#9ca3af]">Llena los campos y envíala a Meta. La aprueban en minutos.</span>
+  </span>
+  <span class="shrink-0 rounded-full bg-[#f3f3f3] px-[9px] py-[3px] text-[11px] font-semibold text-[#6b7280]">Borrador</span>
+</div>
+<div class="flex flex-col gap-3 px-3.5 pt-1">
+  <label class="grid gap-1 text-[12px] font-medium text-[#374151]">
+    <span class="flex flex-col gap-px">Nombre interno<span class="text-[11px] leading-[1.4] font-normal text-[#9ca3af]">Solo lo ves tú. Minúsculas y guion bajo, sin tildes: <span class="font-[ui-monospace,monospace] text-[#6b7280]">entrega_en_camino</span></span></span>
+    <input #nombre [ngModel]="fv.nombre" (ngModelChange)="cambiarNombre($event, nombre)" maxlength="512" autocomplete="off"
+      class="campo h-9 font-[ui-monospace,monospace] text-[12.5px]" />
+  </label>
+  <div class="grid gap-1">
+    <span class="flex flex-col gap-px">
+      <span class="text-[12px] font-medium text-[#374151]">Tipo</span>
+      <span class="text-[11px] leading-[1.4] text-[#9ca3af]">Define el costo y a quién le puede llegar. Promoción solo va a quien aceptó recibirlas.</span>
+    </span>
+    <div class="grid grid-cols-2 gap-1.5">
+      @for (t of TIPOS; track t.k) {
+        <button type="button" (click)="parche({ categoria: t.k })" [attr.aria-pressed]="fv.categoria === t.k"
+          class="flex cursor-pointer flex-col items-start gap-0.5 rounded-[9px] border-0 px-2.5 py-2 text-left transition-shadow duration-200"
+          [class]="fv.categoria === t.k ? 'bg-white shadow-[inset_0_0_0_1.5px_#303030]' : 'bg-[#f7f7f7] shadow-[inset_0_0_0_1px_#ececec]'">
+          <span class="text-[12.5px] font-semibold text-[#111827]">{{ t.l }}</span>
+          <span class="text-[11px] text-[#6b7280]">{{ t.s }}</span>
+        </button>
+      }
+    </div>
+  </div>
+  <div class="grid gap-1">
+    <span class="flex items-start gap-2">
+      <span class="flex flex-1 flex-col gap-px">
+        <label for="wa-pl-cuerpo" class="text-[12px] font-medium text-[#374151]">Mensaje</label>
+        <span class="text-[11px] leading-[1.4] text-[#9ca3af]">Lo que lee el cliente. Usa <span class="font-[ui-monospace,monospace] text-[#00857e]">{{ v(1) }}</span>, <span class="font-[ui-monospace,monospace] text-[#00857e]">{{ v(2) }}</span>… donde va un dato que cambia, como el nombre o el pedido. Máx. 1.024 caracteres.</span>
+      </span>
+      <button type="button" (click)="insertarVariable()" class="shrink-0 cursor-pointer border-0 bg-transparent p-0 text-[12px] font-semibold text-[#00857e]">+ Variable</button>
+    </span>
+    <textarea id="wa-pl-cuerpo" #cuerpo rows="4" maxlength="1024" [ngModel]="fv.cuerpo" (ngModelChange)="parche({ cuerpo: $event })"
+      class="campo resize-y py-[9px] text-[13px] leading-[1.45]"></textarea>
+  </div>
+  @if (indices().length) {
+    <span class="-mb-1 flex flex-col gap-px">
+      <span class="text-[12px] font-medium text-[#374151]">Ejemplos para Meta</span>
+      <span class="text-[11px] leading-[1.4] text-[#9ca3af]">Un valor real por variable y de dónde sale al enviarla. Meta usa los ejemplos para revisar; el cliente nunca los ve.</span>
+      @if (sugeridoPorIa() && !fv.tipos) {
+        <span class="mt-0.5 flex items-center gap-1 text-[11px] text-[#00857e]"><app-ia-marca [size]="14" [fondo]="true" />La IA sugirió de dónde sale cada dato; cámbialo si no es así.</span>
+      }
+    </span>
+    @for (k of indices(); track k) {
+      <label class="flex items-center gap-2.5 text-[12px] text-[#6b7280]">
+        <span class="w-10 font-[ui-monospace,monospace] font-semibold text-[#00857e]">{{ v(k + 1) }}</span>
+        <input [ngModel]="fv.ejemplos[k] || ''" (ngModelChange)="cambiarEjemplo(k, $event)" placeholder="Ejemplo para Meta" maxlength="200"
+          class="campo h-8 min-w-0 flex-1 rounded-[7px] px-2.5 text-[12.5px]" />
+        @let t = tipos()[k];
+        <span class="relative flex h-8 w-[118px] shrink-0 items-center gap-[5px] rounded-[7px] px-2 text-[11.5px] shadow-[inset_0_0_0_1px_#ececec]"
+          [class]="VARIABLES[t].auto ? 'bg-[#e0f7f5] text-[#00605b]' : 'bg-white text-[#6b7280]'">
+          <tabler-icon [icon]="VARIABLES[t].icono" [size]="13" class="shrink-0" />
+          <span class="truncate">{{ VARIABLES[t].fuente }}</span>
+          <select (change)="elegirTipo(k, $any($event.target).value)" [attr.aria-label]="'De dónde sale ' + v(k + 1)"
+            class="absolute inset-0 cursor-pointer opacity-0">
+            @for (o of OPCIONES; track o.k) {
+              <option [value]="o.k" [selected]="o.k === t">{{ o.l }}</option>
+            }
+          </select>
+        </span>
+      </label>
+    }
+  }
+</div>
+<app-vista-previa-whatsapp [partes]="partes()" [pie]="pie()" />
+@if (error(); as e) {
+  <p role="alert" class="mx-3.5 mt-3 mb-0 rounded-[10px] bg-[#fef3f2] px-3 py-2.5 text-[12px] text-[#7a271a]">{{ e }}</p>
+}
+<p class="mx-3.5 mt-3 mb-0 text-[11.5px] text-[#6b7280]">{{ costo() }} por envío · Meta la revisa en minutos</p>
+<div class="mt-3.5 flex gap-1.5 border-t border-[#f3f3f3] px-3.5 pt-3 pb-3.5">
+  <button type="button" (click)="crear()" [disabled]="!puedeCrear()"
+    class="h-9 flex-1 cursor-pointer rounded-full border-0 bg-[#303030] text-[12.5px] font-semibold text-white shadow-[inset_0_-1px_0_#000] hover:bg-[#1a1a1a] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-[#303030]">
+    {{ creando() ? 'Enviando…' : 'Enviar a revisión de Meta' }}
+  </button>
+  <button type="button" (click)="cancelar.emit()" class="h-9 cursor-pointer rounded-full border-0 bg-transparent px-3.5 text-[12.5px] text-[#6b7280] hover:bg-[#f3f3f3]">Cancelar</button>
+</div>

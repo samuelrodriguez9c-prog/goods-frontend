@@ -1,179 +1,35 @@
-<div class="p-8">
-  <div class="flex max-w-[720px] flex-wrap items-end justify-between gap-4">
-    <div>
-      <a routerLink="/whatsapp" class="text-sm text-gray-500 hover:text-gray-900">← WhatsApp</a>
-      <h1 class="mt-2 text-lg font-semibold text-gray-900">Campañas</h1>
-      <p class="mt-2 text-sm text-gray-500">
-        Manda una promoción a los clientes que aceptaron recibirlas. Un cliente acepta marcando la casilla al pedir desde tu tienda en
-        línea, escribiendo ALTA, o cuando tu equipo lo marca en el chat porque el cliente lo pidió. Si responde BAJA, no le llegan más.
-      </p>
+@if (cargando()) {
+  <div class="flex animate-pulse flex-wrap items-start gap-4">
+    <div class="h-[460px] min-w-0 flex-[1_1_440px] rounded-[14px] bg-white/70"></div>
+  </div>
+} @else if (error(); as e) {
+  <p role="alert" class="m-0 rounded-[14px] bg-white p-6 text-center text-[13px] text-[#b42318]">{{ e }}</p>
+} @else {
+  <div class="flex flex-wrap items-start gap-4 text-[13px] leading-[normal]">
+    <div class="flex min-w-0 flex-[1_1_440px] flex-col gap-3">
+      @if (audiencia(); as a) {
+        <app-alcance-hoy [audiencia]="a" />
+      }
+      <app-historial-campanas
+        [campanas]="campanas()"
+        [alcance]="alcance()"
+        [puedeConfigurar]="puedeConfigurar()"
+        [editandoId]="form()?.campana?.id ?? null"
+        [cancelandoId]="cancelandoId()"
+        (editar)="editar($event)"
+        (cancelar)="cancelar($event)" />
     </div>
-    @if (puedeConfigurar() && !form()) {
-      <button type="button" (click)="nueva()" class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700">
-        <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" /> Nueva campaña
-      </button>
+
+    @for (k of form() ? [form()!.n] : []; track k) {
+      <section class="sticky top-0 max-w-[440px] flex-[1_1_360px] animate-[wa-entra_.3s_cubic-bezier(.2,.8,.2,1)] overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.04)]">
+        <app-formulario-campana
+          [promos]="promos()"
+          [alcance]="alcance()"
+          [campana]="form()!.campana"
+          [plantillaInicial]="form()!.plantilla"
+          (guardada)="guardada($event)"
+          (cerrar)="form.set(null)" />
+      </section>
     }
   </div>
-
-  @if (audiencia(); as a) {
-    <section class="mt-6 grid max-w-[720px] grid-cols-3 divide-x divide-gray-100 rounded-2xl bg-card-bg py-4 shadow-sm">
-      <div class="px-5">
-        <p class="text-2xl font-semibold text-gray-900 tabular-nums">{{ a.aceptan }}</p>
-        <p class="text-xs text-gray-500">aceptaron promociones</p>
-      </div>
-      <div class="px-5">
-        <p class="text-2xl font-semibold text-gray-900 tabular-nums">{{ a.recientes }}</p>
-        <p class="text-xs text-gray-500">recibieron una en los últimos {{ a.diasEntreCampanas }} días</p>
-      </div>
-      <div class="px-5">
-        <p class="text-2xl font-semibold text-[#166d3b] tabular-nums">{{ a.alcance }}</p>
-        <p class="text-xs text-gray-500">recibirían una campaña hoy</p>
-      </div>
-    </section>
-  }
-
-  @if (aviso(); as av) {
-    <p role="status" class="mt-4 max-w-[720px] rounded-lg px-4 py-3 text-sm" [class]="av.ok ? 'bg-[#e7f6ec] text-[#166d3b]' : 'bg-red-50 text-red-700'">{{ av.texto }}</p>
-  }
-
-  @if (form(); as f) {
-    <section class="mt-6 max-w-[720px] rounded-2xl bg-card-bg p-5 shadow-sm">
-      <h2 class="text-sm font-semibold text-gray-900">Nueva campaña</h2>
-      @if (!promos().length) {
-        <p class="mt-3 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600">
-          Necesitas una plantilla de tipo Promoción aprobada por Meta.
-          <a routerLink="/whatsapp/plantillas" class="font-medium text-gray-900 underline underline-offset-2">Crea una</a>; Meta suele aprobarlas en minutos.
-        </p>
-        <button type="button" (click)="form.set(null)" class="mt-3 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100">Cerrar</button>
-      } @else {
-        <div class="mt-4 grid gap-4">
-          <label class="grid gap-1 text-sm font-medium text-gray-700">
-            Nombre (solo lo ves tú)
-            <input [ngModel]="f.nombre" (ngModelChange)="parche({ nombre: $event })" maxlength="120" placeholder="Promo de octubre"
-              class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
-          </label>
-          <label class="grid gap-1 text-sm font-medium text-gray-700">
-            Plantilla
-            <select [ngModel]="f.plantillaId ?? ''" (ngModelChange)="elegirPlantilla($event + '')"
-              class="rounded-lg bg-white px-3 py-2 font-normal text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900">
-              <option value="">Elige una plantilla de promoción</option>
-              @for (p of promos(); track p.id) {
-                <option [value]="p.id">{{ p.nombre }}</option>
-              }
-            </select>
-          </label>
-
-          @for (v of f.variables; track $index; let k = $index) {
-            <div class="grid gap-2 sm:grid-cols-[110px_180px_1fr] sm:items-center">
-              <span class="text-sm text-gray-600">Variable {{ k + 1 }}</span>
-              <select [ngModel]="v.tipo" (ngModelChange)="cambiarVariable(k, { tipo: $event })" [attr.aria-label]="'Qué va en la variable ' + (k + 1)"
-                class="rounded-lg bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900">
-                <option value="nombre">Nombre del cliente</option>
-                <option value="texto">Texto fijo</option>
-              </select>
-              <label class="flex items-center gap-2 text-sm text-gray-600">
-                @if (v.tipo === 'nombre') { <span class="shrink-0 text-xs">Si no tiene nombre:</span> }
-                <input [ngModel]="v.valor" (ngModelChange)="cambiarVariable(k, { valor: $event })" maxlength="200"
-                  [placeholder]="v.tipo === 'nombre' ? 'cliente' : 'Ej.: 15% de descuento'"
-                  class="min-w-0 flex-1 rounded-lg bg-white px-3 py-2 text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
-              </label>
-            </div>
-          }
-
-          @if (plantilla()) {
-            <div class="rounded-xl bg-[#efe7de] p-4">
-              <p class="mb-1 text-xs text-gray-600">Así le llega, por ejemplo, a Ana</p>
-              <p class="max-w-[85%] rounded-lg bg-white px-3 py-2 text-sm whitespace-pre-wrap text-gray-900 shadow-sm">{{ vistaPrevia() }}</p>
-            </div>
-          }
-
-          <fieldset class="grid gap-2">
-            <legend class="text-sm font-medium text-gray-700">Cuándo</legend>
-            <label class="flex items-center gap-2 text-sm text-gray-700">
-              <input type="radio" name="cuando" value="ahora" [ngModel]="f.cuando" (ngModelChange)="parche({ cuando: $event })" /> Ahora
-            </label>
-            <label class="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-              <input type="radio" name="cuando" value="programar" [ngModel]="f.cuando" (ngModelChange)="parche({ cuando: $event })" /> Programar para
-              <input type="datetime-local" [min]="ahoraLocal()" [ngModel]="f.fecha" (ngModelChange)="parche({ fecha: $event, cuando: 'programar' })"
-                aria-label="Fecha y hora de envío"
-                class="rounded-lg bg-white px-3 py-1.5 text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900" />
-            </label>
-          </fieldset>
-
-          @if (errorForm()) {
-            <p role="alert" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ errorForm() }}</p>
-          }
-          @if (confirmando()) {
-            <p class="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Se le enviará a <strong>{{ audiencia()?.alcance ?? 0 }} {{ audiencia()?.alcance === 1 ? 'cliente' : 'clientes' }}</strong>
-              {{ f.cuando === 'ahora' ? 'ahora' : 'el ' + fecha(f.fecha) }}. Meta le cobra cada mensaje a la cuenta de WhatsApp de tu negocio.
-              ¿Confirmas?
-            </p>
-          }
-          <div class="flex gap-2">
-            <button type="button" (click)="enviar()" [disabled]="!listo() || enviando()"
-              class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40">
-              @if (enviando()) { Enviando… } @else if (confirmando()) { Sí, {{ f.cuando === 'ahora' ? 'enviar' : 'programar' }} } @else { {{ f.cuando === 'ahora' ? 'Enviar campaña' : 'Programar campaña' }} }
-            </button>
-            <button type="button" (click)="form.set(null)" class="rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100">Cancelar</button>
-          </div>
-        </div>
-      }
-    </section>
-  }
-
-  @if (cargando()) {
-    <p class="mt-6 text-sm text-gray-400">Cargando…</p>
-  } @else if (error()) {
-    <p class="mt-6 text-sm text-red-600">{{ error() }}</p>
-  } @else {
-    <div class="mt-6 flex max-w-[720px] items-center justify-between">
-      <h2 class="text-sm font-semibold text-gray-900">Historial</h2>
-      <button type="button" (click)="cargar(false)" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900">
-        <tabler-icon [icon]="i.actualizar" [size]="14" [stroke]="2" /> Actualizar
-      </button>
-    </div>
-    <ul class="mt-3 grid max-w-[720px] gap-3">
-      @for (c of campanas(); track c.id) {
-        <li class="rounded-2xl bg-card-bg p-5 shadow-sm">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-sm font-medium text-gray-900">{{ c.nombre }}</span>
-            <span class="rounded-full px-2 py-0.5 text-xs font-medium" [class]="estados[c.estado].clase">{{ estados[c.estado].texto }}</span>
-            <span class="text-xs text-gray-400">
-              <span class="font-mono">{{ c.plantilla }}</span> ·
-              {{ c.estado === 'programada' ? 'sale el ' + fecha(c.programadaPara) : fecha(c.enviadaEn ?? c.programadaPara) }}
-            </span>
-            @if (puedeConfigurar() && (c.estado === 'programada' || c.estado === 'enviando')) {
-              <span class="ml-auto">
-                @if (confirmandoCancelar() === c.id) {
-                  <span class="text-sm text-gray-600">¿Cancelarla?</span>
-                  <button type="button" (click)="cancelar(c)" class="ml-2 text-sm font-medium text-red-600 hover:underline">Sí, cancelar</button>
-                  <button type="button" (click)="confirmandoCancelar.set(null)" class="ml-2 text-sm text-gray-500 hover:underline">No</button>
-                } @else {
-                  <button type="button" (click)="confirmandoCancelar.set(c.id)" class="text-sm text-gray-500 hover:text-red-600">Cancelar</button>
-                }
-              </span>
-            }
-          </div>
-          @if (c.motivo) {
-            <p class="mt-2 text-xs text-red-700">{{ c.motivo }}</p>
-          }
-          @if (c.estado !== 'programada') {
-            <dl class="mt-3 grid grid-cols-3 gap-2 text-center sm:grid-cols-5">
-              <div class="rounded-lg bg-gray-50 py-2"><dt class="text-[11px] text-gray-500">Destinatarios</dt><dd class="text-sm font-semibold text-gray-900 tabular-nums">{{ c.resumen.destinatarios }}</dd></div>
-              <div class="rounded-lg bg-gray-50 py-2"><dt class="text-[11px] text-gray-500">Entregados</dt><dd class="text-sm font-semibold text-gray-900 tabular-nums">{{ c.resumen.entregados }}</dd></div>
-              <div class="rounded-lg bg-gray-50 py-2"><dt class="text-[11px] text-gray-500">Leídos</dt><dd class="text-sm font-semibold text-gray-900 tabular-nums">{{ c.resumen.leidos }}</dd></div>
-              <div class="rounded-lg bg-gray-50 py-2"><dt class="text-[11px] text-gray-500">No se enviaron</dt><dd class="text-sm font-semibold tabular-nums" [class]="c.resumen.fallidos ? 'text-red-700' : 'text-gray-900'">{{ c.resumen.fallidos }}</dd></div>
-              <div class="rounded-lg bg-gray-50 py-2" title="Recibieron otra campaña hace poco o se dieron de baja"><dt class="text-[11px] text-gray-500">Omitidos</dt><dd class="text-sm font-semibold text-gray-900 tabular-nums">{{ c.resumen.omitidos }}</dd></div>
-            </dl>
-          }
-        </li>
-      } @empty {
-        <li class="rounded-2xl bg-card-bg px-6 py-10 text-center shadow-sm">
-          <p class="text-sm font-medium text-gray-900">Todavía no has mandado campañas</p>
-          <p class="mt-1 text-sm text-gray-500">Cuando tus clientes acepten recibir promociones, aquí les mandas tus novedades.</p>
-        </li>
-      }
-    </ul>
-  }
-</div>
+}

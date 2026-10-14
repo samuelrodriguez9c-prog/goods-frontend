@@ -16,6 +16,7 @@ import { NotificacionService } from '../../core/notificaciones/notificacion.serv
 import { agruparPorDia, defTipo, filaNotificacion } from '../../core/notificaciones/notificacion-catalogo';
 import { RealtimeService } from '../../core/realtime/realtime.service';
 import { AtajosService } from '../../core/ui/atajos.service';
+import { IaMarcaComponent } from '../../shared/ui/ia-marca/ia-marca.component';
 
 type Pestana = 'todas' | 'soporte' | 'tienda' | 'cuenta';
 type EstadoPlan = 'al dia' | 'por vencer' | 'en mora';
@@ -29,7 +30,8 @@ interface CuentaTopbar {
 }
 
 /** Íconos de ruta (`data.icon`) que no son un nombre registrado en `provideTablerIcons`. */
-const ICONO_RUTA: Record<string, string> = { ia: 'sparkles' };
+/** `ia` no se traduce: se pinta con la marca del asistente (`app-ia-marca`). */
+const ICONO_RUTA: Record<string, string> = {};
 const DIA_MS = 864e5;
 const cop = (n: number) => '$' + Math.round(n).toLocaleString('es-CO');
 const fechaCorta = (iso: string) => new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
@@ -47,7 +49,7 @@ const fechaCorta = (iso: string) => new Date(iso).toLocaleDateString('es-CO', { 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [TablerIconComponent],
+  imports: [IaMarcaComponent, TablerIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './topbar.component.html',
 })
@@ -168,6 +170,13 @@ export class TopbarComponent implements OnDestroy {
     const icono = (d: ActivatedRouteSnapshot['data']) => ICONO_RUTA[d['icon']] ?? d['icon'] ?? 'category';
     const ruta = '/' + this.url().split(/[?#]/)[0].split('/').filter(Boolean).join('/');
     const seg = ruta.split('/').filter(Boolean);
+    // WhatsApp (rediseño 2026-10-13): "WhatsApp › sección", también en la Bandeja.
+    if (seg[0] === 'whatsapp') {
+      return [
+        { texto: 'WhatsApp', icono: 'brand-whatsapp', ruta: '/whatsapp', actual: false },
+        { texto: hoja.data['breadcrumb'] as string, icono: icono(hoja.data), ruta, actual: true },
+      ];
+    }
     if (seg[0] === 'products' && seg.length > 1) {
       return [
         { texto: 'Products', icono: 'tag', ruta: '/products', actual: false },

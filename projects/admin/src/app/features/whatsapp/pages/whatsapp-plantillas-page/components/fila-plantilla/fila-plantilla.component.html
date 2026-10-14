@@ -1,0 +1,20 @@
+<span class="flex min-w-0 flex-1 flex-col gap-1">
+  <span class="flex min-w-0 items-center gap-2">
+    <span class="size-[7px] shrink-0 rounded-full" [style.background]="estado().punto" [class.latido-ambar]="plantilla().estado === 'pendiente'"></span>
+    <span class="min-w-0 truncate font-[ui-monospace,monospace] text-[12.5px] font-semibold text-[#111827]">{{ plantilla().nombre }}</span>
+    @if (nota().t) {
+      <span class="shrink-0 text-[11px] font-medium" [class]="nota().c">{{ nota().t }}</span>
+    }
+  </span>
+  <span class="mensaje-clamp pl-[15px] text-[12.5px] leading-[1.5]" [class.mensaje-clamp--abierto]="elegida()" [class]="elegida() ? 'text-[#374151]' : 'text-[#6b7280]'">@for (t of partes(); track $index) {<span [class]="t.variable ? 'var-token' : ''">{{ t.t }}</span>}</span>
+</span>
+<span class="flex min-w-16 shrink-0 flex-col items-end gap-[5px] pt-px">
+  <span class="flex items-baseline gap-1">
+    <span class="font-display text-[15px] font-semibold tracking-[-0.01em] tabular-nums" [class]="envios() ? 'text-[#111827]' : 'text-[#c0c0c0]'">{{ envios() || '—' }}</span>
+    @if (envios()) {<span class="text-[10.5px] text-[#9ca3af]">envíos</span>}
+  </span>
+  <span class="h-[3px] w-14 overflow-hidden rounded-full bg-[#efefef]">
+    <span class="block h-full rounded-full transition-[width,background-color] duration-[600ms,300ms] ease-[cubic-bezier(.32,.72,0,1)]"
+      [class]="elegida() ? 'bg-[#303030]' : 'bg-[#c4c4c4]'" [style.width]="barra()"></span>
+  </span>
+</span>

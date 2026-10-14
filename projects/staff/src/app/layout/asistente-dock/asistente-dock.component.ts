@@ -105,13 +105,18 @@ export class AsistenteDockComponent implements OnDestroy {
     mas: IconPlus, clip: IconPaperclip, pago: IconReceipt2, enviar: IconArrowUp, detener: IconPlayerStopFilled,
     copiar: IconCopy, copiado: IconCheck, fuentes: IconDatabase, mover: IconHandMove,
   };
-  protected readonly sugerencias = SUGERENCIAS;
+  /** Preguntas de la familia del saludo: se filtran de la lista para no repetir la misma pregunta. */
+  protected readonly preguntasSaludo = signal<string[]>([]);
+  protected readonly sugerenciasVisibles = computed(() => {
+    const norm = (t: string) => t.trim().toLowerCase();
+    const repetidas = new Set(this.preguntasSaludo().map(norm));
+    return SUGERENCIAS.filter((s) => !repetidas.has(norm(s.texto)));
+  });
   protected readonly accept = ACCEPT;
 
   protected readonly visible = computed(() =>
     (this.auth.currentUser()?.permisos ?? []).includes('asistente_staff.usar'),
   );
-  protected readonly nombre = computed(() => this.auth.currentUser()?.nombres?.split(' ')[0] ?? '');
 
   // ── Posición ───────────────────────────────────────────────
   private readonly vw = signal(window.innerWidth);
@@ -248,6 +253,8 @@ export class AsistenteDockComponent implements OnDestroy {
 
   // ── Chat ────────────────────────────────────────────────────
   protected readonly texto = signal('');
+  /** Pregunta de la palabra visible del saludo (placeholder del composer en vacío). */
+  protected readonly sugerencia = signal<string | null>(null);
   protected readonly enfocado = signal(false);
   protected readonly copiado = signal<number | null>(null);
   protected readonly vacio = computed(() => !this.store.mensajes().length);
@@ -404,6 +411,12 @@ export class AsistenteDockComponent implements OnDestroy {
 
   protected accionBoton(): void {
     this.store.generando() ? this.store.detener() : this.enviar();
+  }
+
+  /** Clic en la palabra del saludo: deja la pregunta en el composer para que la edite o la mande. */
+  protected elegirSaludo(pregunta: string): void {
+    this.texto.set(pregunta);
+    this.composerRef?.nativeElement.focus();
   }
 
   protected onKeyDown(e: KeyboardEvent): void {

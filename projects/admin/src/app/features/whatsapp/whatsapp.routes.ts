@@ -3,15 +3,26 @@ import { WhatsappAutomatizacionesPageComponent } from './pages/whatsapp-automati
 import { WhatsappCampanasPageComponent } from './pages/whatsapp-campanas-page/whatsapp-campanas-page.component';
 import { WhatsappPageComponent } from './pages/whatsapp-page/whatsapp-page.component';
 import { WhatsappPlantillasPageComponent } from './pages/whatsapp-plantillas-page/whatsapp-plantillas-page.component';
+import { WhatsappShellComponent } from './pages/whatsapp-shell/whatsapp-shell.component';
 
+/**
+ * Rediseño 2026-10-13: las cuatro secciones cuelgan del marco
+ * (`WhatsappShellComponent`), que pone la cabecera con el tambor y el store
+ * compartido. Sin número conectado el marco muestra Conectar.
+ */
 export const WHATSAPP_ROUTES: Routes = [
-  { path: '', component: WhatsappPageComponent, data: { breadcrumb: 'WhatsApp', icon: 'brand-whatsapp' } },
-  // Fase 3 (2026-10-12): se entra desde la bandeja (no son hijos del menú lateral).
-  { path: 'plantillas', component: WhatsappPlantillasPageComponent, data: { breadcrumb: 'Plantillas', icon: 'file-text' } },
   {
-    path: 'automatizaciones',
-    component: WhatsappAutomatizacionesPageComponent,
-    data: { breadcrumb: 'Respuestas automáticas', icon: 'sparkles' },
+    path: '',
+    component: WhatsappShellComponent,
+    children: [
+      { path: '', component: WhatsappPageComponent, data: { breadcrumb: 'Bandeja', icon: 'messages' } },
+      { path: 'plantillas', component: WhatsappPlantillasPageComponent, data: { breadcrumb: 'Plantillas', icon: 'template' } },
+      {
+        path: 'automatizaciones',
+        component: WhatsappAutomatizacionesPageComponent,
+        data: { breadcrumb: 'Automático', icon: 'sparkles' },
+      },
+      { path: 'campanas', component: WhatsappCampanasPageComponent, data: { breadcrumb: 'Campañas', icon: 'speakerphone' } },
+    ],
   },
-  { path: 'campanas', component: WhatsappCampanasPageComponent, data: { breadcrumb: 'Campañas', icon: 'discount-2' } },
 ];

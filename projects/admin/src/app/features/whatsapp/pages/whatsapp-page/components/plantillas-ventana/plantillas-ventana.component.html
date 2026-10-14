@@ -1,0 +1,54 @@
+<div class="flex items-start gap-2.5 rounded-[10px] bg-[#fffbeb] px-3 py-2.5 text-[12.5px] leading-[1.45] text-[#78350f]">
+  <tabler-icon [icon]="i.reloj" [size]="16" class="mt-px shrink-0" />
+  <span class="flex-1">Pasaron más de 24 h desde su último mensaje. Para escribirle, WhatsApp pide una plantilla aprobada. Si te responde, se abre otra vez la ventana y vuelves a escribir gratis.</span>
+</div>
+
+@if (aprobadas() === null) {
+  <p class="m-0 text-[12px] text-[#9ca3af]">Cargando plantillas…</p>
+} @else if (!tarjetas().length) {
+  <p class="m-0 text-[12.5px] leading-[1.45] text-[#6b7280]">
+    Todavía no tienes plantillas aprobadas.
+    @if (puedeConfigurar()) {
+      <a routerLink="/whatsapp/plantillas" class="font-medium text-[#111827] underline underline-offset-2">Crea una</a>.
+    } @else {
+      Pídele al dueño del negocio que cree una.
+    }
+    Mientras tanto, respóndele desde la app de tu celular.
+  </p>
+} @else {
+  <div class="flex flex-wrap gap-2">
+    @for (t of tarjetas(); track t.p.id) {
+      <button type="button" (click)="elegir(t.p)" [attr.aria-pressed]="t.on"
+        class="flex flex-[1_1_180px] cursor-pointer flex-col items-start gap-[3px] rounded-[10px] border-0 px-[11px] py-[9px] text-left transition-[box-shadow,background] duration-200"
+        [class]="t.on ? 'bg-white shadow-[inset_0_0_0_1.5px_#303030]' : 'bg-[#fafafa] shadow-[inset_0_0_0_1px_#ececec]'">
+        <span class="flex w-full items-center gap-1.5">
+          <span class="flex-1 font-mono text-[12px] font-semibold text-[#111827]">{{ t.p.nombre }}</span>
+          <span class="text-[11px] font-semibold" [class]="t.promo ? 'text-[#92400e]' : 'text-[#6b7280]'">{{ t.costo }}</span>
+        </span>
+        <span class="text-[11.5px] text-[#6b7280]">{{ t.tipo }}</span>
+      </button>
+    }
+  </div>
+
+  @if (vista(); as v) {
+    @if (indices().length) {
+      <div class="grid animate-[wa-entra_.25s_ease-out] grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
+        @for (k of indices(); track k) {
+          <label class="flex flex-col gap-1">
+            @let e = etiqueta(k);
+            <span class="text-[11px] font-medium text-[#6b7280]">{{ e.label }}</span>
+            <input class="campo h-8 text-[12.5px]" [value]="variables()[k] || ''" (input)="cambiarVariable(k, $any($event.target).value)"
+              [placeholder]="e.placeholder" />
+          </label>
+        }
+      </div>
+    }
+    <div class="flex animate-[wa-entra_.25s_ease-out] items-end gap-2">
+      <p class="m-0 flex-1 rounded-[10px] bg-[#d9fdd3] px-3 py-[9px] text-[13px] leading-[1.45] whitespace-pre-wrap text-[#111827]">@for (p of v.partes; track $index) {@if (p.vacia) {<span class="var-token">{{ p.t }}</span>} @else {<span>{{ p.t }}</span>}}@if (v.pie) {<span class="mt-1.5 block text-[11.5px] text-[#8b8b8b]">{{ v.pie }}</span>}</p>
+      <button type="button" (click)="mandar()" [disabled]="!lista() || bloqueada() || enviando()"
+        class="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-[9px] border-0 bg-[#303030] px-3 text-[12.5px] font-semibold text-white shadow-[inset_0_-1px_0_#000] disabled:cursor-default disabled:opacity-40">
+        {{ enviando() ? 'Enviando…' : 'Enviar · ' + costoEnvio() }}
+      </button>
+    </div>
+  }
+}

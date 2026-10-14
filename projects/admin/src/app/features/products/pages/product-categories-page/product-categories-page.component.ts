@@ -11,12 +11,12 @@ import { CatalogoStore } from '../../shared/catalogo.store';
 import { esGuardar, vigilarCambios } from '../../shared/cambios-sin-guardar';
 import { num, pl } from '../../shared/formato';
 import { Categoria, ProductoV5 } from '../../shared/modelos';
-import { EstadoPaginaComponent } from '../../shared/ui/estado-pagina.component';
-import { FranjaMetricasComponent, MetricaFranja } from '../../shared/ui/franja-metricas.component';
+import { EstadoPaginaComponent } from '../../shared/ui/estado-pagina/estado-pagina.component';
+import { FranjaMetricasComponent, MetricaFranja } from '../../../../shared/ui/franja-metricas/franja-metricas.component';
 import { icono } from '../../shared/ui/iconos';
-import { ModuloCabeceraComponent } from '../../shared/ui/modulo-cabecera.component';
-import { PestanasHojaComponent } from '../../shared/ui/pestanas-hoja.component';
-import { PopoverDirective } from '../../shared/ui/popover.directive';
+import { ModuloCabeceraComponent } from '../../shared/ui/modulo-cabecera/modulo-cabecera.component';
+import { PestanasHojaComponent } from '../../shared/ui/pestanas-hoja/pestanas-hoja.component';
+import { PopoverDirective } from '../../../../shared/ui/popover.directive';
 import {
   Borrador,
   Miniatura,
@@ -28,16 +28,16 @@ import {
   puntoEstado,
   tonoCategoria,
 } from './categorias.util';
-import { BarraSeleccionComponent } from './components/barra-seleccion.component';
-import { CabeceraGrupoComponent } from './components/cabecera-grupo.component';
-import { DesplegableComponent } from './components/desplegable.component';
-import { FilaCategoria, FilaCategoriaComponent } from './components/fila-categoria.component';
-import { MiniaturaComponent } from './components/miniatura.component';
-import { ModalBorrarCategoriaComponent } from './components/modal-borrar-categoria.component';
-import { PestanaGeneralComponent } from './components/pestana-general.component';
-import { PestanaImagenComponent } from './components/pestana-imagen.component';
-import { PestanaProductosComponent } from './components/pestana-productos.component';
-import { PestanaTiendaComponent } from './components/pestana-tienda.component';
+import { BarraSeleccionComponent } from './components/barra-seleccion/barra-seleccion.component';
+import { CabeceraGrupoComponent } from './components/cabecera-grupo/cabecera-grupo.component';
+import { DesplegableComponent } from './components/desplegable/desplegable.component';
+import { FilaCategoria, FilaCategoriaComponent } from './components/fila-categoria/fila-categoria.component';
+import { MiniaturaComponent } from './components/miniatura/miniatura.component';
+import { ModalBorrarCategoriaComponent } from './components/modal-borrar-categoria/modal-borrar-categoria.component';
+import { PestanaGeneralComponent } from './components/pestana-general/pestana-general.component';
+import { PestanaImagenComponent } from './components/pestana-imagen/pestana-imagen.component';
+import { PestanaProductosComponent } from './components/pestana-productos/pestana-productos.component';
+import { PestanaTiendaComponent } from './components/pestana-tienda/pestana-tienda.component';
 import { MenuActivo } from './menu-activo';
 import { ProductosCategoria } from './productos-categoria';
 

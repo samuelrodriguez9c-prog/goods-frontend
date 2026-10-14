@@ -1,0 +1,20 @@
+@if (store.cargando()) {
+  <div class="flex h-[60vh] items-center justify-center">
+    <span class="size-5 animate-[gira_.8s_linear_infinite] rounded-full border-2 border-[#e3e3e3] border-t-[#303030]"></span>
+  </div>
+} @else if (store.errorCarga()) {
+  <div class="px-6 py-8">
+    <p class="m-0 text-[13px] text-[#d82c0d]">{{ store.errorCarga() }}</p>
+    <button type="button" (click)="store.cargarConexion()"
+      class="mt-3 cursor-pointer rounded-lg border-0 bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white">Reintentar</button>
+  </div>
+} @else if (!store.conectado()) {
+  <app-whatsapp-conectar-page />
+} @else {
+  <div class="px-6 pt-6 pb-7">
+    <app-cabecera-whatsapp />
+    <div class="mt-4">
+      <router-outlet />
+    </div>
+  </div>
+}
