@@ -7,22 +7,22 @@ import { esGuardar, vigilarCambios } from '../../shared/cambios-sin-guardar';
 import { cop, dias, hace, num, pl } from '../../shared/formato';
 import { CompraV5, LineaCompra, ProveedorV5 } from '../../shared/modelos';
 import { AccionProveedor, DIAS, accionProveedor, proximaEntrega, statProveedor } from '../../shared/proveedores.util';
-import { EstadoPaginaComponent } from '../../shared/ui/estado-pagina.component';
-import { FranjaMetricasComponent, MetricaFranja } from '../../shared/ui/franja-metricas.component';
+import { EstadoPaginaComponent } from '../../shared/ui/estado-pagina/estado-pagina.component';
+import { FranjaMetricasComponent, MetricaFranja } from '../../../../shared/ui/franja-metricas/franja-metricas.component';
 import { icono } from '../../shared/ui/iconos';
-import { ModuloCabeceraComponent } from '../../shared/ui/modulo-cabecera.component';
-import { PestanaHojaV5, PestanasHojaComponent } from '../../shared/ui/pestanas-hoja.component';
-import { PopoverDirective } from '../../shared/ui/popover.directive';
-import { AccionProveedorComponent } from './components/accion-proveedor.component';
-import { FilaProveedorComponent } from './components/fila-proveedor.component';
-import { GrupoProveedoresComponent } from './components/grupo-proveedores.component';
-import { ModalCompraRapidaComponent } from './components/modal-compra-rapida.component';
-import { ModalBajaComponent } from './components/modal-baja.component';
-import { PestanaComprasComponent } from './components/pestana-compras.component';
-import { PestanaGeneralComponent } from './components/pestana-general.component';
-import { PestanaProductosComponent } from './components/pestana-productos.component';
-import { TarjetaContactoComponent } from './components/tarjeta-contacto.component';
-import { TarjetaProveedorComponent } from './components/tarjeta-proveedor.component';
+import { ModuloCabeceraComponent } from '../../shared/ui/modulo-cabecera/modulo-cabecera.component';
+import { PestanaHojaV5, PestanasHojaComponent } from '../../shared/ui/pestanas-hoja/pestanas-hoja.component';
+import { PopoverDirective } from '../../../../shared/ui/popover.directive';
+import { AccionProveedorComponent } from './components/accion-proveedor/accion-proveedor.component';
+import { FilaProveedorComponent } from './components/fila-proveedor/fila-proveedor.component';
+import { GrupoProveedoresComponent } from './components/grupo-proveedores/grupo-proveedores.component';
+import { ModalCompraRapidaComponent } from './components/modal-compra-rapida/modal-compra-rapida.component';
+import { ModalBajaComponent } from './components/modal-baja/modal-baja.component';
+import { PestanaComprasComponent } from './components/pestana-compras/pestana-compras.component';
+import { PestanaGeneralComponent } from './components/pestana-general/pestana-general.component';
+import { PestanaProductosComponent } from './components/pestana-productos/pestana-productos.component';
+import { TarjetaContactoComponent } from './components/tarjeta-contacto/tarjeta-contacto.component';
+import { TarjetaProveedorComponent } from './components/tarjeta-proveedor/tarjeta-proveedor.component';
 import {
   Agrupacion, CampoTexto, ETIQUETAS_CAMPOS, Errores, FilaProveedor, FiltroCompras, GrupoProveedores, MESES_CORTOS, Menu, Metrica, Modal,
   PestanaProveedor, Vista, borradorDe, proveedorVacio, puntosSpark,

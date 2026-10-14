@@ -16,13 +16,19 @@ export interface EstadoConexion {
 export interface Conversacion {
   id: number;
   /** `waId` puede faltar: un cliente con nombre de usuario de WhatsApp a veces llega sin número. */
-  contacto: { nombre: string | null; waId: string | null; usuario: string | null; aceptaPromociones: boolean };
+  contacto: { id: number; nombre: string | null; waId: string | null; usuario: string | null; aceptaPromociones: boolean };
   /** El asistente de IA no responde en este chat hasta esta fecha (null = puede responder). */
   asistentePausadoHasta: string | null;
   ultimoMensajeEn: string | null;
   ultimoMensajeTexto: string | null;
   ultimoMensajeDireccion: 'entrante' | 'saliente' | null;
+  /** Quién mandó el último mensaje ("IA: …" / "Tú: …" en la lista). */
+  ultimoMensajeAutor: Mensaje['autor'] | null;
+  /** De qué automatismo salió el último mensaje (`asistente_ia` → "IA:", otra automática → "Auto:"). */
+  ultimoMensajeOrigen: OrigenMensaje | null;
   noLeidos: number;
+  /** El asistente de IA le pasó el chat al equipo y nadie lo atendió todavía. */
+  pasadoAEquipo: { en: string; motivo: string | null } | null;
   ventanaHasta: string | null;
   ventanaAbierta: boolean;
 }
@@ -50,6 +56,8 @@ export interface Mensaje {
   media: { mime: string | null; nombre: string | null; descargable: boolean } | null;
   /** Si se mandó con una plantilla, su nombre. */
   plantilla: { nombre: string } | null;
+  /** Producto que el equipo le mostró (tipo `producto`): se ve como tarjeta. */
+  producto: ProductoEnMensaje | null;
   /** Qué lo generó, si no lo escribió una persona: respuesta automática, asistente de IA, alta/baja, campaña. */
   origen: OrigenMensaje | null;
   estado: EstadoMensaje;
@@ -71,7 +79,18 @@ export interface Plantilla {
   estado: EstadoPlantilla;
   motivoRechazo: string | null;
   actualizadoEn: string;
+  /** Cuántas veces se mandó y cuántas se leyeron. */
+  uso: { enviados: number; leidos: number };
+  /** De dónde sale cada variable `{{1}}`, `{{2}}`…, en orden. */
+  tiposVariables: TipoVariable[];
 }
+
+/**
+ * De dónde sale el valor de una variable de plantilla: el nombre del cliente
+ * (del chat), el número o el total del pedido, un producto del catálogo, o
+ * texto que se escribe al enviar.
+ */
+export type TipoVariable = 'nombre' | 'pedido' | 'total' | 'producto' | 'texto';
 
 export interface NuevaPlantilla {
   nombre: string;
@@ -79,6 +98,8 @@ export interface NuevaPlantilla {
   idioma: string;
   cuerpo: string;
   ejemplos: string[];
+  /** Si falta, el backend lo sugiere. */
+  tipos?: TipoVariable[];
 }
 
 export type HorarioSemanal = Record<string, { desde: string; hasta: string } | null>;
@@ -97,11 +118,13 @@ export interface RespuestaRapida {
 
 export interface Automatizaciones {
   asistente: {
-    config: Automatizacion<{ instrucciones: string }> | null;
+    config: Automatizacion<{ instrucciones: string; pasarCuando?: string[] }> | null;
     /** Goods tiene configurada la IA; si no, no se puede activar. */
     disponible: boolean;
     respuestasUltimas24h: number;
     limiteDiario: number;
+    /** Cuándo pasa el chat al equipo si el dueño no eligió sus motivos. */
+    motivosPorDefecto: string[];
   };
   bienvenida: Automatizacion<{ texto: string }> | null;
   fueraHorario: Automatizacion<{ texto: string; zonaHoraria: string; horario: HorarioSemanal }> | null;
@@ -130,7 +153,16 @@ export interface Campana {
   enviadaEn: string | null;
   motivo: string | null;
   creadoEn: string;
-  resumen: { destinatarios: number; omitidos: number; enviados: number; entregados: number; leidos: number; fallidos: number };
+  resumen: {
+    destinatarios: number;
+    omitidos: number;
+    enviados: number;
+    entregados: number;
+    leidos: number;
+    fallidos: number;
+    /** Contestaron hasta 3 días después de recibirla. */
+    respondieron: number;
+  };
 }
 
 export interface AudienciaCampanas {
@@ -140,6 +172,80 @@ export interface AudienciaCampanas {
   recientes: number;
   alcance: number;
   diasEntreCampanas: number;
+}
+
+export interface ProductoEnMensaje {
+  id: number;
+  nombre: string;
+  precio: number;
+  /** null = no se controla stock. */
+  disponibles: number | null;
+  imagenUrl: string | null;
+}
+
+/** Producto del Mostrador de la bandeja (`GET /whatsapp/conversaciones/:id/mostrador`). */
+export interface ProductoMostrador {
+  id: number;
+  nombre: string;
+  sku: string | null;
+  precio: number;
+  /** null = no se controla stock. */
+  stock: number | null;
+  /** "viene en camino" si está agotado y hay una compra pendiente. */
+  reposicion: string | null;
+  imagenUrl: string | null;
+}
+
+export interface Mostrador {
+  productos: ProductoMostrador[];
+  /** Productos que el cliente nombró en el chat ("Le interesa"). */
+  interes: number[];
+}
+
+// ── Cabecera: números de cada sección (`GET /whatsapp/resumen`) ──
+
+/** Valor de hoy y serie de 8 días (hace 7 días → hoy) para la gráfica chica. */
+export interface MetricaWa {
+  valor: number | null;
+  serie: number[];
+}
+
+export interface ResumenWhatsapp {
+  bandeja: {
+    /** Mensajes sin leer en todos los chats. */
+    noLeidos: number;
+    sinResponder: MetricaWa;
+    porVencer: MetricaWa;
+    atendidosIa: MetricaWa & { sinAyudaPct: number | null };
+    pedidos: MetricaWa & { vsAyer: number };
+    /** Mediana en minutos. */
+    tiempoRespuesta: MetricaWa;
+  };
+  plantillas: {
+    aprobadas: MetricaWa;
+    enRevision: MetricaWa;
+    enviosMes: MetricaWa & { semana: number };
+    /** Aproximado en COP. */
+    costoMes: MetricaWa;
+  };
+  automatico: {
+    /** El asistente de IA está prendido. */
+    iaActiva: boolean;
+    respuestasHoy: MetricaWa;
+    ia: MetricaWa & { limite: number };
+    pasadosEquipo: MetricaWa;
+    palabrasClave: MetricaWa;
+  };
+  campanas: {
+    aceptan: MetricaWa & { nuevosMes: number };
+    alcanceHoy: MetricaWa & { protegidos: number };
+    tasaLectura: MetricaWa & { campanas: number };
+    respondieron: MetricaWa;
+    /** La campaña que está saliendo, con su avance. */
+    enviando: { id: number; nombre: string; pct: number } | null;
+    /** La próxima programada. */
+    proxima: { id: number; nombre: string; programadaPara: string } | null;
+  };
 }
 
 /** Pie que Goods les pone a las plantillas de promoción (igual que el backend). */

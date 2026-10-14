@@ -1,0 +1,60 @@
+@if (motivo(); as m) {
+  <p class="m-0 flex items-start gap-2 rounded-[10px] bg-[#f7f7f7] px-3 py-2.5 text-[12.5px] leading-[1.45] text-[#4b5563]">
+    <tabler-icon [icon]="i.candado" [size]="16" class="mt-px shrink-0 text-[#9ca3af]" />{{ m }}
+  </p>
+} @else {
+  @if (error()) {
+    <p role="alert" class="m-0 mb-2 rounded-[10px] bg-[#fef3f2] px-3 py-2 text-[12.5px] text-[#b42318]">{{ error() }}</p>
+  }
+  @if (abierta()) {
+    @if (enIa()) {
+      <div class="mb-2 flex items-center gap-2.5 rounded-[9px] bg-[#effcfb] px-2.5 py-2 text-[12.5px] text-[#00605b]">
+        <span class="size-2 shrink-0 animate-[wa-latido_2s_ease-in-out_infinite] rounded-full bg-[#2be0d5]"></span>
+        <span class="flex-1">La IA está atendiendo este chat. Si escribes, lo tomas tú por 12 h.</span>
+      </div>
+    }
+    <div class="rounded-xl bg-white shadow-[inset_0_0_0_1px_#e3e3e3] transition-shadow duration-200">
+      <label class="sr-only" for="wa-respuesta">Respuesta</label>
+      <textarea id="wa-respuesta" #cuadro rows="1" maxlength="4096" [value]="texto()" (input)="cambiarTexto($any($event.target).value)"
+        (keydown)="tecla($event)" [placeholder]="placeholder()"
+        class="block max-h-[150px] min-h-[44px] w-full resize-none rounded-xl border-0 bg-transparent px-3 pt-3 pb-1 text-[13.5px] leading-[1.45] text-[#111827] caret-[#111827] outline-none [field-sizing:content] placeholder:text-[#757575]"></textarea>
+      <div class="flex items-center gap-0.5 px-1.5 pt-1 pb-1.5">
+        @for (h of herramientas(); track h.k) {
+          <button type="button" (click)="herramienta(h.k)" [title]="h.tip" [attr.aria-expanded]="h.on"
+            class="flex cursor-pointer items-center gap-[5px] rounded-[7px] border-0 px-2 py-[5px] text-[12px] font-medium hover:bg-[#f1f1f1] hover:text-[#111827]"
+            [class]="h.on ? 'bg-[#303030] text-white' : 'bg-transparent text-[#6b7280]'">
+            <tabler-icon [icon]="h.icono" [size]="15" />{{ h.label }}
+          </button>
+        }
+        <span class="flex-1"></span>
+        @if (sugActiva()) {
+          <button type="button" (click)="usarSugerencia()" title="Usar la sugerencia"
+            class="mr-2 flex animate-[wa-entra_.3s_ease-out] cursor-pointer items-center gap-[5px] border-0 bg-transparent p-0 text-[11px] text-[#6b7280]">
+            <app-ia-marca [size]="15" [fondo]="true" />Sugerencia de la IA<kbd
+              class="rounded-[4px] bg-white px-[5px] py-px font-[inherit] text-[10px] font-semibold text-[#6b7280] shadow-[inset_0_0_0_1px_#e0e0e0,0_1px_0_#e0e0e0]">Tab</kbd>para usarla
+          </button>
+        } @else {
+          <span class="text-[11px] text-[#b0b0b0]">Enter envía</span>
+        }
+        <button type="button" (click)="mandar()" aria-label="Enviar" [disabled]="enviando()"
+          class="ml-1.5 flex size-8 cursor-pointer items-center justify-center rounded-[9px] border-0 bg-[#303030] text-white shadow-[inset_0_-1px_0_#000] transition-[opacity,transform] duration-200 active:scale-[.92]"
+          [class]="texto().trim() && !enviando() ? 'opacity-100' : 'opacity-35'">
+          <tabler-icon [icon]="i.enviar" [size]="17" />
+        </button>
+      </div>
+    </div>
+
+    @if (verRapidas()) {
+      <app-respuestas-rapidas [rapidas]="rapidasFiltradas()" [elegida]="rapIdxVisible()" [consulta]="consulta()" [cliente]="cliente()"
+        [maxAlto]="maxAlto()" (consultaChange)="cambiarConsulta($event)" (tecla)="tecla($event)" (usar)="usarRapida($event)"
+        (resaltar)="rapIdx.set($event)" (editar)="editarRapidas.emit()" />
+    }
+    @if (pop() === 'productos') {
+      <app-mostrador-productos [productos]="productos() ?? []" [interes]="interes()" [borrador]="borrador()" [cliente]="cliente()"
+        [maxAlto]="maxAlto()" (mostrar)="mostrar($event)" (agregar)="agregar.emit($event)" (cerrar)="cerrarPop()" />
+    }
+  } @else {
+    <app-plantillas-ventana [aprobadas]="aprobadas()" [aceptaPromociones]="aceptaPromociones()" [cliente]="cliente()" [datos]="datosPlantilla()"
+      [enviando]="enviando()" [puedeConfigurar]="puedeConfigurar()" (enviar)="enviarPlantilla.emit($event)" />
+  }
+}

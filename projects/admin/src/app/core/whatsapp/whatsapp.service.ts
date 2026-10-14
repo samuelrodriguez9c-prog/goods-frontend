@@ -9,9 +9,12 @@ import {
   HorarioSemanal,
   ListaConversaciones,
   Mensaje,
+  Mostrador,
   NuevaPlantilla,
   Plantilla,
   RespuestaRapida,
+  ResumenWhatsapp,
+  TipoVariable,
 } from './whatsapp.model';
 
 @Injectable({ providedIn: 'root' })
@@ -75,6 +78,20 @@ export class WhatsappService {
     return this.http.post<Plantilla[]>(`${this.base}/plantillas/sincronizar`, {});
   }
 
+  /** Respuesta que propone la IA al último mensaje del cliente (no envía nada). */
+  sugerencia(conversacionId: number) {
+    return this.http.post<{ texto: string | null }>(`${this.base}/conversaciones/${conversacionId}/sugerencia`, {});
+  }
+
+  /** Sugiere de dónde sale cada variable de un cuerpo (IA, con reglas de respaldo). */
+  sugerirVariables(cuerpo: string, ejemplos: string[]) {
+    return this.http.post<{ tipos: TipoVariable[]; fuente: 'ia' | 'reglas' }>(`${this.base}/plantillas/sugerir-variables`, { cuerpo, ejemplos });
+  }
+
+  guardarTiposVariables(id: number, tipos: TipoVariable[]) {
+    return this.http.patch<Plantilla>(`${this.base}/plantillas/${id}/variables`, { tipos });
+  }
+
   borrarPlantilla(id: number) {
     return this.http.delete<void>(`${this.base}/plantillas/${id}`);
   }
@@ -115,7 +132,7 @@ export class WhatsappService {
     return this.http.delete<void>(`${this.base}/respuestas-rapidas/${id}`);
   }
 
-  guardarAsistente(datos: { activa: boolean; instrucciones: string }) {
+  guardarAsistente(datos: { activa: boolean; instrucciones: string; pasarCuando?: string[] }) {
     return this.http.put(`${this.base}/automatizaciones/asistente`, datos);
   }
 
@@ -143,6 +160,31 @@ export class WhatsappService {
 
   cancelarCampana(id: number) {
     return this.http.post<Campana>(`${this.base}/campanas/${id}/cancelar`, {});
+  }
+
+  /** Números de la cabecera de cada sección. */
+  resumen() {
+    return this.http.get<ResumenWhatsapp>(`${this.base}/resumen`);
+  }
+
+  /** "Entendido": el equipo vio que la IA le pasó el chat. */
+  marcarPasadoVisto(conversacionId: number) {
+    return this.http.post<void>(`${this.base}/conversaciones/${conversacionId}/pasado-visto`, {});
+  }
+
+  /** Productos del Mostrador para un chat y los que el cliente nombró. */
+  mostrador(conversacionId: number) {
+    return this.http.get<Mostrador>(`${this.base}/conversaciones/${conversacionId}/mostrador`);
+  }
+
+  /** Le muestra un producto al cliente (sale como texto; en el chat queda la tarjeta). */
+  enviarProducto(conversacionId: number, productoId: number) {
+    return this.http.post<Mensaje>(`${this.base}/conversaciones/${conversacionId}/producto`, { productoId });
+  }
+
+  /** Corregir una campaña que todavía no salió. */
+  editarCampana(id: number, datos: { nombre?: string; plantillaId?: number; variables?: { tipo: 'nombre' | 'texto'; valor: string }[]; programadaPara?: string }) {
+    return this.http.patch<Campana>(`${this.base}/campanas/${id}`, datos);
   }
 
   marcarLeida(conversacionId: number) {

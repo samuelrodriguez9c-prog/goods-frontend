@@ -44,7 +44,9 @@ interface DefTipo {
 
 const chat = () => ({ url: '/messages', destino: 'Messages' });
 const pedido = (d: Record<string, unknown>) =>
-  d['pedidoId'] ? { url: `/orders/${d['pedidoId']}`, destino: `Orders · #${d['pedidoId']}` } : { url: '/orders', destino: 'Orders' };
+  d['pedidoId']
+    ? { url: `/orders/${d['pedidoId']}`, destino: `Orders · #${d['numero'] ?? d['pedidoId']}` }
+    : { url: '/orders', destino: 'Orders' };
 const cuenta = () => ({ url: '/', destino: 'Dashboard' });
 const otra = () => ({ url: '/notificaciones', destino: 'Notificaciones' });
 
@@ -60,6 +62,7 @@ export const TIPOS: Record<TipoNotificacion, DefTipo> = {
     ruta: (d) => ({ url: '/settings/solicitudes', query: d['solicitudId'] ? { id: d['solicitudId'] } : undefined, destino: 'Solicitudes a Goods' }),
   },
   pedido_estado: { cat: 'tienda', etiqueta: 'Pedido', icono: IconPackage, accion: 'Ver pedido', ruta: pedido },
+  pedido_nuevo: { cat: 'tienda', etiqueta: 'Pedido nuevo', icono: IconShoppingBag, accion: 'Ver pedido', ruta: pedido, accionable: true },
   pago_estado: { cat: 'tienda', etiqueta: 'Pago', icono: IconReceipt, accion: 'Ver pedido', ruta: pedido },
   stock_bajo: {
     cat: 'tienda',

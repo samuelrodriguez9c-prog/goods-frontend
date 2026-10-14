@@ -1,0 +1,42 @@
+<section class="rounded-2xl bg-white p-4 shadow-[0_0_0_1px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.04)]">
+  <p class="m-0 text-[11px] font-semibold tracking-[.06em] text-[#9ca3af] uppercase">Así responde Goods</p>
+  <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-[#6b7280]">
+    Un cliente escribe → se revisa en este orden y responde el primero que aplique. Solo una respuesta por mensaje.
+  </p>
+  <div class="flex flex-col">
+    @for (p of pasos(); track p.k) {
+      <div class="flex gap-2.5">
+        <span class="flex w-[26px] shrink-0 flex-col items-center">
+          <span class="flex size-[26px] items-center justify-center rounded-full text-[11.5px] font-bold transition-[background,color,box-shadow] duration-250"
+            [class]="claseNumero(p)">{{ p.n }}</span>
+          <span class="my-[3px] min-h-2.5 w-0.5 flex-1 rounded-[2px] bg-[#ececec]"></span>
+        </span>
+        <div role="button" tabindex="0" [attr.aria-pressed]="elegido() === p.k" (click)="elegir.emit(p.k)" (keydown.enter)="elegir.emit(p.k)"
+          (keydown.space)="$event.preventDefault(); elegir.emit(p.k)"
+          class="mb-2 flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-[11px] px-[11px] py-2.5 transition-[background,box-shadow] duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[#2be0d5]"
+          [class]="claseFila(p)">
+          @if (p.k === 'ia') {
+            <app-ia-marca [size]="20" [fondo]="true" />
+          } @else {
+            <tabler-icon [icon]="iconos[p.k]" [size]="18" [stroke]="2" class="flex transition-colors duration-200" [class]="claseIcono(p)" />
+          }
+          <span class="min-w-0 flex-1">
+            <span class="block text-[13px] font-semibold text-[#111827]">{{ p.titulo }}</span>
+            <span class="mt-px block truncate text-[11.5px] text-[#6b7280]">{{ p.resumen }}</span>
+          </span>
+          <app-interruptor [activo]="p.on" [etiqueta]="(p.on ? 'Apagar ' : 'Prender ') + p.titulo" [desactivado]="!p.editable" [ocupado]="ocupado() === p.k"
+            (cambiar)="alternar.emit(p.k)" />
+        </div>
+      </div>
+    }
+    <div class="flex gap-2.5">
+      <span class="flex w-[26px] shrink-0 justify-center">
+        <span class="flex size-[26px] items-center justify-center rounded-full transition-[background] duration-250"
+          [class]="golpe() === 'equipo' ? 'bg-[#2be0d5] text-[#003331]' : 'bg-[#f1f1f1] text-[#9ca3af]'">
+          <tabler-icon [icon]="iEquipo" [size]="13" [stroke]="2" class="flex" />
+        </span>
+      </span>
+      <span class="pt-1 text-[12.5px] text-[#6b7280]">Si nada aplica, el mensaje espera a tu equipo en la bandeja.</span>
+    </div>
+  </div>
+</section>

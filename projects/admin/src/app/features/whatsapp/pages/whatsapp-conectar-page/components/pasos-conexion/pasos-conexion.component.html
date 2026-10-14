@@ -1,0 +1,22 @@
+<ol class="m-0 mt-4 flex list-none flex-col p-0">
+  @for (p of pasos(); track p.n) {
+    <li class="flex gap-3.5">
+      <span class="flex flex-col items-center">
+        <span class="flex size-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold transition-[background] duration-300" [class]="p.num">
+          @if (p.hecho) {
+            <tabler-icon [icon]="iCheck" [size]="15" [stroke]="2" class="flex animate-[wa-entra_.25s_ease-out]" />
+          } @else {
+            {{ p.n }}
+          }
+        </span>
+        @if (p.linea) {
+          <span class="my-1 min-h-[22px] w-0.5 flex-1 rounded-[2px] transition-[background] duration-300" [class]="p.lineaBg"></span>
+        }
+      </span>
+      <span class="pt-1 pb-[18px]">
+        <span class="block text-[14px] font-semibold text-[#111827]">{{ p.titulo }}</span>
+        <span class="mt-[3px] block text-[13px] leading-normal text-[#6b7280]">{{ p.texto }}</span>
+      </span>
+    </li>
+  }
+</ol>

@@ -28,6 +28,8 @@ export interface PedidoWhatsapp {
   texto: string;
   url: string;
   total: number;
+  /** Número del pedido guardado en el panel del negocio (null si su plan no incluye Pedidos). */
+  numero: number | null;
 }
 
 /** `$38.000` (COP) · `$25.50` (USD). Igual que el mensaje que arma el backend. */

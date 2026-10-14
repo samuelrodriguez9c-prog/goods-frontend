@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 /**
@@ -13,13 +14,26 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
  *  - `atento`: 1,4 s (hover / arrastre del botón).
  *  - `activo`: 1,1 s con ease (la IA está respondiendo; avatares).
  * `brillo`: halo y latido en el punto (solo el botón del borde).
+ * `fondo` (2026-10-13): para fondos claros (WhatsApp, chips, etiquetas): la
+ * marca va dentro de su círculo negro de `size` px, como en los avatares del
+ * asistente. Así es el mismo ícono de IA en toda la app.
  */
 @Component({
   selector: 'app-ia-marca',
   standalone: true,
+  imports: [NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'inline-flex shrink-0' },
   template: `
-    <span class="relative block" [style.width.px]="size()" [style.height.px]="size()" [style.animation]="animacion()">
+    @if (fondo()) {
+      <span class="flex items-center justify-center rounded-full bg-[#0a0a0a]" [style.width.px]="size()" [style.height.px]="size()">
+        <ng-container *ngTemplateOutlet="marca" />
+      </span>
+    } @else {
+      <ng-container *ngTemplateOutlet="marca" />
+    }
+    <ng-template #marca>
+    <span class="relative block" [style.width.px]="lado()" [style.height.px]="lado()" [style.animation]="animacion()">
       <span class="absolute inset-0 rounded-full" [style]="arco()"></span>
       <span
         class="absolute rounded-full bg-[#2be0d5]"
@@ -31,6 +45,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
         [style.box-shadow]="brillo() ? '0 0 10px 1px rgba(43,224,213,0.7)' : 'none'"
       ></span>
     </span>
+    </ng-template>
   `,
 })
 export class IaMarcaComponent {
@@ -38,8 +53,12 @@ export class IaMarcaComponent {
   readonly size = input(16);
   readonly ritmo = input<'quieto' | 'reposo' | 'atento' | 'activo'>('quieto');
   readonly brillo = input(false);
+  /** Dentro de su círculo negro (para fondos claros). */
+  readonly fondo = input(false);
 
-  private readonly grosor = computed(() => +(this.size() * 0.19).toFixed(1));
+  /** Diámetro de la marca: con `fondo`, ~62 % del círculo (como 16 en 26 en los avatares). */
+  protected readonly lado = computed(() => (this.fondo() ? Math.max(8, Math.round(this.size() * 0.6)) : this.size()));
+  private readonly grosor = computed(() => +(this.lado() * 0.19).toFixed(1));
 
   protected readonly arco = computed(() => {
     const t = this.grosor();
@@ -53,10 +72,10 @@ export class IaMarcaComponent {
 
   /** El punto se centra sobre el trazo a 45° (arriba a la derecha), justo en la abertura. */
   protected readonly punto = computed(() => {
-    const r = this.size() / 2;
+    const r = this.lado() / 2;
     const rc = r - this.grosor() / 2;
     const o = rc * Math.SQRT1_2;
-    const d = Math.round(this.size() * 0.31);
+    const d = Math.max(2, Math.round(this.lado() * 0.31));
     return { x: +(r + o - d / 2).toFixed(1), y: +(r - o - d / 2).toFixed(1), d };
   });
 

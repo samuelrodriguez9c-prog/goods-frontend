@@ -79,7 +79,11 @@ export class TiendaPageComponent {
   protected readonly abierto = signal(false);
   protected readonly detalle = signal<ProductoPublico | null>(null);
   protected readonly nombre = signal('');
+  /** Celular del cliente: el pedido se guarda en Goods y el negocio lo ubica con este número. */
+  protected readonly telefono = signal('');
   protected readonly nota = signal('');
+  /** Tocó "Enviar" sin nombre o celular: se marcan los campos. */
+  protected readonly faltanDatosVisibles = signal(false);
   /** Casilla "quiero recibir novedades": queda escrita en el mensaje (así el negocio tiene el consentimiento). */
   protected readonly aceptaPromociones = signal(false);
   protected readonly enviando = signal(false);
@@ -112,6 +116,9 @@ export class TiendaPageComponent {
       .map(([id, cantidad]) => ({ producto: porId.get(id)!, cantidad }))
       .filter((l) => l.producto);
   });
+  protected readonly nombreValido = computed(() => this.nombre().trim().length > 0);
+  protected readonly telefonoValido = computed(() => /^[0-9]{7,15}$/.test(this.telefono().replace(/\D/g, '')));
+
   protected readonly unidades = computed(() => this.lineas().reduce((s, l) => s + l.cantidad, 0));
   protected readonly total = computed(() => this.lineas().reduce((s, l) => s + l.producto.precio * l.cantidad, 0));
 
@@ -130,8 +137,8 @@ export class TiendaPageComponent {
     ];
     const nombre = this.nombre().trim();
     const nota = this.nota().trim();
-    if (nombre || nota) partes.push({ texto: '' });
-    if (nombre) partes.push({ texto: `Mi nombre: ${nombre}` });
+    partes.push({ texto: '' });
+    partes.push({ texto: `Mi nombre: ${nombre || '…'}` });
     if (nota) partes.push({ texto: `Nota: ${nota}` });
     if (this.aceptaPromociones()) partes.push({ texto: '' }, { texto: textoAltaPromociones(t.nombre) });
     return partes;
@@ -147,6 +154,7 @@ export class TiendaPageComponent {
       guardar(`goods.tienda.${t.slug}.carrito`, JSON.stringify([...this.carrito()]));
     });
     effect(() => guardar('goods.tienda.nombre', this.nombre()));
+    effect(() => guardar('goods.tienda.telefono', this.telefono()));
 
     // Escape cierra lo que esté abierto; el scroll de fondo se bloquea.
     const alTeclear = (e: KeyboardEvent) => {
@@ -205,12 +213,18 @@ export class TiendaPageComponent {
   protected enviar(): void {
     const t = this.tienda();
     if (!t || !this.lineas().length || this.enviando()) return;
+    if (!this.nombreValido() || !this.telefonoValido()) {
+      this.faltanDatosVisibles.set(true);
+      this.errorPedido.set('Escribe tu nombre y tu celular para enviar el pedido.');
+      return;
+    }
     this.enviando.set(true);
     this.errorPedido.set(null);
     this.tiendaService
       .armarPedido(t.slug, {
         items: this.lineas().map((l) => ({ productoId: l.producto.id, cantidad: l.cantidad })),
-        nombre: this.nombre().trim() || undefined,
+        nombre: this.nombre().trim(),
+        telefono: this.telefono().replace(/\D/g, ''),
         nota: this.nota().trim() || undefined,
         aceptaPromociones: this.aceptaPromociones() || undefined,
       })
@@ -228,6 +242,9 @@ export class TiendaPageComponent {
             this.cargar(t.slug, true);
           } else if (e.status === 404) {
             this.estado.set('no-disponible');
+          } else if (e.status === 400 || e.status === 429) {
+            const m = e.error?.message;
+            this.errorPedido.set((Array.isArray(m) ? m[0] : m) ?? 'Revisa tu nombre y tu celular.');
           } else {
             this.errorPedido.set('No pudimos preparar el mensaje. Revisa tu conexión y vuelve a intentarlo.');
           }
@@ -245,6 +262,7 @@ export class TiendaPageComponent {
         if (!silencioso) {
           this.carrito.set(leerCarrito(t));
           this.nombre.set(leer('goods.tienda.nombre') ?? '');
+          this.telefono.set(leer('goods.tienda.telefono') ?? '');
         } else {
           // Lo que se agotó o ya no está sale del carrito; lo que no alcanza se ajusta en el servidor.
           const vigentes = new Map(t.productos.filter((p) => !p.agotado).map((p) => [p.id, p]));

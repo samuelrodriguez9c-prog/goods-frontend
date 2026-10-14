@@ -53,9 +53,9 @@
       <div #hilo class="min-h-0 flex-1 overflow-y-auto">
         @if (vacio()) {
           <div class="flex min-h-full flex-col justify-end gap-[18px] px-3.5 pb-2 pt-6">
-            <!-- <app-ia-saludo [nombre]="nombre()" variante="mini" /> -->
+            <app-ia-saludo variante="mini" [texto]="texto()" (elegir)="elegirSaludo($event)" (sugerencia)="sugerencia.set($event)" (preguntas)="preguntasSaludo.set($event)" />
             <div class="flex flex-col">
-              @for (s of sugerencias; track s.texto; let n = $index) {
+              @for (s of sugerenciasVisibles(); track s.texto; let n = $index) {
                 <button type="button" (click)="enviar(s.texto)" [style.animation-delay.ms]="340 + n * 55"
                   class="ia-card-in flex w-full items-center gap-3 rounded-[11px] px-2.5 py-2 text-left text-[13.5px] text-[#4b5563] transition-[background-color,color,scale] duration-150 hover:bg-[#f5f5f5] hover:text-[#111827] active:scale-[0.99]">
                   <tabler-icon [icon]="s.icono" [size]="17" [stroke]="1.75" class="text-[#6b7280]" />
@@ -144,7 +144,7 @@
               (keydown)="onKeyDown($event)"
               (focus)="enfocado.set(true)"
               (blur)="enfocado.set(false)"
-              placeholder="Pregunta algo…"
+              [placeholder]="vacio() && sugerencia() ? sugerencia() : 'Pregunta algo…'"
               class="block max-h-[120px] min-h-[34px] min-w-0 flex-1 resize-none border-0 bg-transparent px-1.5 py-1.5 text-[14px] leading-[22px] text-[#111827] outline-none [field-sizing:content] placeholder:text-[#9ca3af]"
             ></textarea>
             <button type="button" (click)="accionBoton()" [attr.aria-label]="store.generando() ? 'Detener' : 'Enviar'"

@@ -1,11 +1,13 @@
+<!-- Scroll vertical solo si hace falta, con la barra oculta (se sigue
+     pudiendo desplazar con la rueda o el trackpad). -->
 <nav
-  class="relative flex h-full w-56 shrink-0 flex-col gap-0.5 overflow-y-auto rounded-tl-xl bg-sidebar-bg p-2.5"
-  (mouseleave)="hoveredIndex.set(null)"
+  #nav
+  class="relative flex h-full w-56 shrink-0 flex-col gap-0.5 overflow-y-auto rounded-tl-xl bg-sidebar-bg p-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+  (mouseleave)="soltarHover()"
 >
-  <!-- Píldora que se desliza entre ítems de primer nivel (hover o, si no,
-       la ruta activa) — mismo mecanismo que el sidebar de staff. Los
-       `<div>` de agrupación de abajo van SIN `position` propio: así el
-       `offsetParent` de cada `#link` sigue siendo el `<nav>`. -->
+  <!-- Píldora única que se desliza entre los ítems de primer nivel y los
+       hijos del submenú de Products (hover o, si no, la ruta activa). Su
+       posición se mide con getBoundingClientRect respecto del `<nav>`. -->
   <div
     class="pointer-events-none absolute inset-x-2.5 z-0 rounded-lg bg-nav-active transition-all duration-200 ease-out"
     [style.top.px]="indicatorTop()"
@@ -13,95 +15,158 @@
     [style.opacity]="indicatorVisible() ? 1 : 0"
   ></div>
 
-  @for (item of navItems(); track item.path; let i = $index) {
-    <div>
-      <!-- Fila: el link + el chevron como HERMANO (un botón dentro de un
-           `<a>` es HTML inválido). `mouseenter` en la fila para que pasar
-           por el chevron también mantenga la píldora en este ítem. -->
-      <div class="flex items-center" (mouseenter)="hoveredIndex.set(i)">
-        <a
-          #link
-          [routerLink]="item.path"
-          [class.text-gray-900]="activeIndex() === i"
-          class="relative z-10 flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium text-gray-700 transition-colors duration-200 ease-out"
+  @for (b of bloques(); track b.clave) {
+    @if (b.titulo) {
+      <!-- Título de sección (estructura de Shopify: "Sales channels", "Apps"):
+           pliega o despliega la sección. -->
+      <button
+        type="button"
+        (click)="toggleSeccion(b.clave!)"
+        (mouseenter)="soltarHover()"
+        [attr.aria-expanded]="seccionAbierta(b.clave)"
+        class="mt-3.5 flex w-fit items-center gap-1 rounded-md px-2.5 py-1 text-left text-[12px] font-medium text-gray-500 transition-colors duration-200 ease-out hover:text-gray-800"
+      >
+        {{ b.titulo }}
+        <span
+          class="flex transition-transform duration-150 ease-out"
+          [style.transform]="seccionAbierta(b.clave) ? 'rotate(90deg)' : 'none'"
         >
-          <tabler-icon [icon]="item.icon" [size]="18" [stroke]="1.75" svgClass="shrink-0" />
-          <span class="truncate">{{ item.label }}</span>
-          @if (cambios.tiene(item.path)) {
-            <span
-              aria-label="Hay cambios"
-              class="ml-auto mr-[3px] size-[5px] shrink-0 rounded-full bg-[#2be0d5] animate-[latido-cambio_2.4s_ease-in-out_infinite]"
-            ></span>
-          }
-        </a>
-
-        @if (item.hijos) {
-          <button
-            type="button"
-            class="relative z-10 shrink-0 rounded p-1.5 text-gray-400 transition-colors duration-200 ease-out hover:text-gray-700"
-            [attr.aria-label]="(abierto(item) ? 'Contraer ' : 'Expandir ') + item.label"
-            [attr.aria-expanded]="abierto(item)"
-            (click)="toggleGrupo(item)"
-          >
-            <span
-              class="flex transition-transform duration-150 ease-out"
-              [style.transform]="abierto(item) ? 'rotate(0deg)' : 'rotate(-90deg)'"
+          <tabler-icon [icon]="iconSeccion" [size]="13" [stroke]="2" />
+        </span>
+      </button>
+    }
+    <!-- Misma técnica que el submenú de Products: la sección plegada no se
+         desmonta, solo se anima su fila. Sin `position` propio, para que el
+         `offsetParent` de cada `#link` siga siendo el `<nav>`. -->
+    <div
+      class="grid transition-[grid-template-rows] duration-200 ease-out"
+      [style.gridTemplateRows]="seccionAbierta(b.clave) ? '1fr' : '0fr'"
+    >
+      <div
+        class="flex min-h-0 flex-col gap-0.5 overflow-hidden transition-opacity duration-200 ease-out"
+        [style.opacity]="seccionAbierta(b.clave) ? 1 : 0"
+      >
+        @for (x of b.items; track x.item.path) {
+          @let item = x.item;
+        <div>
+          <!-- Fila: el link + el chevron como HERMANO (un botón dentro de un
+               `<a>` es HTML inválido). `mouseenter` en la fila para que pasar
+               por el chevron también mantenga la píldora en este ítem. -->
+          <div class="flex items-center" (mouseenter)="hoverItem(x.idx)">
+            <a
+              #link
+              [routerLink]="item.path"
+              [class.text-gray-900]="activeIndex() === x.idx"
+              class="relative z-10 flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium text-gray-700 transition-colors duration-200 ease-out"
             >
-              <tabler-icon [icon]="iconChevron" [size]="15" [stroke]="1.75" />
-            </span>
-          </button>
+              <tabler-icon [icon]="item.icon" [size]="18" [stroke]="1.75" svgClass="shrink-0" />
+              <span class="truncate">{{ item.label }}</span>
+              @if (item.path === '/whatsapp' && waNoLeidos()) {
+                <span aria-label="Chats sin leer"
+                  class="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#2be0d5] px-[5px] text-[11px] font-bold tabular-nums text-[#003331]">{{ waNoLeidos() }}</span>
+              } @else if (cambios.tiene(item.path)) {
+                <span
+                  aria-label="Hay cambios"
+                  class="ml-auto mr-[3px] size-[5px] shrink-0 rounded-full bg-[#2be0d5] animate-[latido-cambio_2.4s_ease-in-out_infinite]"
+                ></span>
+              }
+            </a>
+
+            @if (item.hijos) {
+              <button
+                type="button"
+                class="relative z-10 shrink-0 rounded p-1.5 text-gray-400 transition-colors duration-200 ease-out hover:text-gray-700"
+                [attr.aria-label]="(abierto(item) ? 'Contraer ' : 'Expandir ') + item.label"
+                [attr.aria-expanded]="abierto(item)"
+                (click)="toggleGrupo(item)"
+              >
+                <span
+                  class="flex transition-transform duration-150 ease-out"
+                  [style.transform]="abierto(item) ? 'rotate(0deg)' : 'rotate(-90deg)'"
+                >
+                  <tabler-icon [icon]="iconChevron" [size]="15" [stroke]="1.75" />
+                </span>
+              </button>
+            }
+          </div>
+
+          @if (item.hijos) {
+            <!-- Altura animada con `grid-template-rows` 0fr → 1fr + fade: el
+                 submenú nunca se desmonta, solo se anima su fila. -->
+            <div
+              class="grid transition-[grid-template-rows] duration-200 ease-out"
+              [style.gridTemplateRows]="abierto(item) ? '1fr' : '0fr'"
+            >
+              <div
+                class="overflow-hidden transition-opacity duration-200 ease-out"
+                [style.opacity]="abierto(item) ? 1 : 0"
+              >
+                <div class="relative mt-0.5 flex flex-col gap-0.5">
+                  <!-- Conector "árbol": un único trazo pegado arriba cuya altura
+                       crece o se encoge hasta el centro del hijo bajo el mouse
+                       (o el activo). El codo lo dibuja el propio borde. -->
+                  @if (conectorVisible()) {
+                    <div
+                      class="pointer-events-none absolute left-2.5 top-0 z-10 w-[14px] rounded-bl-lg border-b-[1.5px] border-l-[1.5px] border-dashed border-gray-400 transition-[height] duration-200 ease-out"
+                      [style.height.px]="conectorAlto()"
+                    ></div>
+                  }
+                  @for (h of item.hijos; track h.path; let n = $index) {
+                    <a
+                      #childLink
+                      [routerLink]="h.path"
+                      (mouseenter)="hoverHijo(n)"
+                      [class.text-gray-900]="esHijoActivo(h.path)"
+                      class="relative z-10 flex items-center gap-2 rounded-lg py-1.5 pl-[30px] pr-2.5 text-[13px] text-gray-700 transition-colors duration-200 ease-out"
+                    >
+                      <tabler-icon [icon]="h.icon" [size]="16" [stroke]="1.75" svgClass="shrink-0" />
+                      <span class="truncate">{{ h.label }}</span>
+                      @if (cambios.tiene(h.path)) {
+                        <span
+                          aria-label="Hay cambios"
+                          class="ml-auto mr-[3px] size-[5px] shrink-0 rounded-full bg-[#2be0d5] animate-[latido-cambio_2.4s_ease-in-out_infinite]"
+                        ></span>
+                      }
+                    </a>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
         }
       </div>
-
-      @if (item.hijos) {
-        <!-- Altura animada con `grid-template-rows` 0fr → 1fr + fade: el
-             submenú nunca se desmonta, solo se anima su fila. -->
-        <div
-          class="grid transition-[grid-template-rows] duration-200 ease-out"
-          [style.gridTemplateRows]="abierto(item) ? '1fr' : '0fr'"
-        >
-          <div
-            class="overflow-hidden transition-opacity duration-200 ease-out"
-            [style.opacity]="abierto(item) ? 1 : 0"
-          >
-            <div class="relative mt-0.5 flex flex-col gap-0.5" (mouseleave)="hoveredChild.set(null)">
-              <!-- Conector "árbol": un único trazo pegado arriba cuya altura
-                   crece o se encoge hasta el centro del hijo bajo el mouse
-                   (o el activo). El codo lo dibuja el propio borde. -->
-              @if (conectorVisible()) {
-                <div
-                  class="pointer-events-none absolute left-2.5 top-0 z-10 w-[14px] rounded-bl-lg border-b-[1.5px] border-l-[1.5px] border-dashed border-gray-400 transition-[height] duration-200 ease-out"
-                  [style.height.px]="conectorAlto()"
-                ></div>
-              }
-              @for (h of item.hijos; track h.path; let n = $index) {
-                <a
-                  #childLink
-                  [routerLink]="h.path"
-                  (mouseenter)="hoveredChild.set(n)"
-                  [class.bg-nav-active]="esHijoActivo(h.path)"
-                  [class.text-gray-900]="esHijoActivo(h.path)"
-                  class="relative z-0 flex items-center gap-2 rounded-lg py-1.5 pl-[30px] pr-2.5 text-[13px] text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
-                >
-                  <tabler-icon [icon]="h.icon" [size]="16" [stroke]="1.75" svgClass="shrink-0" />
-                  <span class="truncate">{{ h.label }}</span>
-                  @if (cambios.tiene(h.path)) {
-                    <span
-                      aria-label="Hay cambios"
-                      class="ml-auto mr-[3px] size-[5px] shrink-0 rounded-full bg-[#2be0d5] animate-[latido-cambio_2.4s_ease-in-out_infinite]"
-                    ></span>
-                  }
-                </a>
-              }
-            </div>
-          </div>
-        </div>
-      }
     </div>
   }
 
-  <!-- Settings: link simple, empujado al fondo (igual que staff). -->
+  <!-- Al fondo: Conversaciones con IA y Settings (igual que Shopify). -->
   <div class="mt-auto pt-2">
+    <!-- Conversaciones con IA (como "Sidekick conversations" de Shopify): el
+         título lleva a la pantalla completa; cada fila abre esa conversación. -->
+    @if (conAsistente() && conversaciones().length) {
+      <a
+        routerLink="/asistente"
+        (mouseenter)="soltarHover()"
+        class="flex w-fit items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium text-gray-500 transition-colors duration-200 ease-out hover:text-gray-800"
+      >
+        Conversaciones con IA
+        <tabler-icon [icon]="iconSeccion" [size]="13" [stroke]="2" />
+      </a>
+      <div class="mb-3 flex flex-col gap-0.5">
+        @for (c of conversaciones(); track c.id) {
+          <button
+            type="button"
+            (click)="abrirConversacion(c)"
+            (mouseenter)="soltarHover()"
+            [title]="tituloConversacion(c)"
+            [class.bg-nav-active]="esConversacionActiva(c)"
+            [class.text-gray-900]="esConversacionActiva(c)"
+            class="block w-full truncate rounded-lg px-2.5 py-[6px] text-left text-[13px] text-gray-700 transition-colors duration-200 ease-out hover:bg-nav-active"
+          >{{ tituloConversacion(c) }}</button>
+        }
+      </div>
+    }
+
     @if (conAtajos()) {
       <button
         type="button"

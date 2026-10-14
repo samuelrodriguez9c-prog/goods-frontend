@@ -1,0 +1,86 @@
+@let msg = m();
+<div class="max-w-[72%] rounded-[10px] px-2.5 pt-1.5 pb-[5px] text-[13.5px] text-[#111827] shadow-[0_1px_.5px_rgba(0,0,0,.1)]" [class]="fondo()">
+  @if (etiqueta(); as et) {
+    <p class="m-0 mb-0.5 flex items-center gap-1 text-[11px] font-semibold" [class]="et.clase">
+      @if (et.ia) {
+        <app-ia-marca [size]="14" [fondo]="true" />
+      } @else {
+        <tabler-icon [icon]="et.icono" [size]="12" />
+      }{{ et.texto }}
+    </p>
+  }
+  @if (msg.plantilla && msg.origen !== 'campana') {
+    <p class="m-0 mb-0.5 flex items-center gap-1 text-[11px] font-semibold text-[#6b7280]">
+      <tabler-icon [icon]="i.plantilla" [size]="12" />Plantilla · {{ msg.plantilla.nombre }}
+    </p>
+  }
+
+  @if (msg.producto; as p) {
+    <div class="mt-0.5 mb-1.5 flex w-[260px] max-w-full gap-2.5 rounded-lg bg-white/70 p-2">
+      <span class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[7px] bg-[#ececec] text-[#9ca3af]">
+        @if (p.imagenUrl) {
+          <img [src]="p.imagenUrl" [alt]="p.nombre" class="size-full object-cover" />
+        } @else {
+          <tabler-icon [icon]="i.producto" [size]="22" />
+        }
+      </span>
+      <span class="min-w-0 flex-1">
+        <span class="block text-[13px] leading-[1.3] font-semibold">{{ p.nombre }}</span>
+        <span class="mt-0.5 block font-display text-[14px] font-semibold">{{ cop(p.precio) }}</span>
+        <span class="block text-[11.5px]" [class]="p.disponibles === 0 ? 'text-[#b45309]' : 'text-[#1d8a4b]'">{{ stockTexto({ stock: p.disponibles }) }}</span>
+      </span>
+    </div>
+  }
+
+  @if (msg.media?.descargable && (msg.tipo === 'image' || msg.tipo === 'sticker')) {
+    @if (adjunto(); as a) {
+      @if (a.url) {
+        <a [href]="a.url" target="_blank" rel="noopener" class="mb-1 block">
+          <img [src]="a.url" [alt]="msg.texto || 'Foto'" class="max-h-72 rounded-md object-contain" [class.max-w-40]="msg.tipo === 'sticker'" />
+        </a>
+      } @else if (a.error) {
+        <p class="m-0 mb-1 text-[12px] text-[#6b7280]">{{ a.error }}</p>
+      } @else {
+        <div class="mb-1 grid h-40 w-56 place-items-center rounded-md bg-black/5 text-[12px] text-[#6b7280]">Cargando foto…</div>
+      }
+    }
+  } @else if (msg.media?.descargable && (msg.tipo === 'audio' || msg.tipo === 'video')) {
+    @if (adjunto()?.url; as url) {
+      @if (msg.tipo === 'audio') {
+        <audio [src]="url" controls class="mb-1 w-64"></audio>
+      } @else {
+        <video [src]="url" controls class="mb-1 max-h-72 rounded-md"></video>
+      }
+    } @else {
+      <button type="button" (click)="cargar.emit()" class="mb-1 flex cursor-pointer items-center gap-1.5 rounded-md border-0 bg-black/5 px-2.5 py-1.5 text-[#374151] hover:bg-black/10">
+        @if (iconoTipo(msg.tipo); as ic) { <tabler-icon [icon]="ic" [size]="15" /> }
+        {{ adjunto()?.error ?? (adjunto() ? 'Cargando…' : msg.tipo === 'audio' ? 'Escuchar audio' : 'Ver video') }}
+      </button>
+    }
+  } @else if (msg.media?.descargable && msg.tipo === 'document') {
+    <button type="button" (click)="descargar.emit()" class="mb-1 flex cursor-pointer items-center gap-1.5 rounded-md border-0 bg-black/5 px-2.5 py-1.5 text-left text-[#374151] hover:bg-black/10">
+      <tabler-icon [icon]="i.archivo" [size]="15" />
+      <span class="min-w-0 truncate">{{ msg.media?.nombre ?? 'Documento' }}</span>
+      <span class="shrink-0 text-[12px] text-[#6b7280]">{{ adjunto()?.error ?? 'Descargar' }}</span>
+    </button>
+  } @else if (msg.tipo !== 'text' && msg.tipo !== 'producto') {
+    <p class="m-0 flex items-center gap-1.5 text-[#4b5563]" [class.italic]="msg.tipo === 'unsupported'">
+      @if (iconoTipo(msg.tipo); as ic) { <tabler-icon [icon]="ic" [size]="15" /> }
+      @if (msg.tipo === 'reaction') { Reaccionó {{ msg.texto }} } @else { {{ etiquetaTipo(msg) }} }
+    </p>
+  }
+
+  @if (mostrarTexto()) {
+    <p class="m-0 leading-[1.42] whitespace-pre-wrap [overflow-wrap:anywhere]" [innerHTML]="formato(msg.texto!)"></p>
+  }
+  <p class="m-0 mt-px flex items-center justify-end gap-[3px] text-[10.5px] text-[#8b8b8b] tabular-nums">
+    {{ hora() }}
+    @if (tick(); as t) { <tabler-icon [icon]="t.icono" [size]="14" [class]="t.clase" [attr.aria-label]="t.label" /> }
+  </p>
+  @if (msg.estado === 'fallido') {
+    <p class="m-0 mt-1 text-[12px] text-[#b42318]">No se envió{{ msg.error ? ': ' + msg.error : '' }}</p>
+    @if (puedeReintentar()) {
+      <button type="button" (click)="reintentar.emit()" class="mt-1 cursor-pointer border-0 bg-transparent p-0 text-[12px] font-medium text-[#b42318] underline underline-offset-2 hover:text-[#7a271a]">Reintentar</button>
+    }
+  }
+</div>

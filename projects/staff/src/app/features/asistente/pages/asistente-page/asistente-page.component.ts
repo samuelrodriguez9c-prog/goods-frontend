@@ -57,7 +57,6 @@ import {
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { finalize } from 'rxjs';
-import { AuthService } from '../../../../core/auth/auth.service';
 import { AsistenteChatStore } from '../../../../core/asistente-staff/asistente-chat.store';
 import { AsistenteStaffService } from '../../../../core/asistente-staff/asistente-staff.service';
 import { AsistenteStaffConversacion, AsistenteStaffMensaje } from '../../../../core/asistente-staff/models/asistente-staff.model';
@@ -132,7 +131,6 @@ const SUGERENCIAS = [
 export class AsistentePageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly auth = inject(AuthService);
   private readonly api = inject(AsistenteStaffService);
   private readonly empresaService = inject(EmpresaService);
   private readonly suscripcionService = inject(SuscripcionService);
@@ -150,11 +148,15 @@ export class AsistentePageComponent implements OnInit {
     renombrar: IconPencil, eliminar: IconTrash, pdf: IconFileTypePdf, imagen: IconPhoto, archivo: IconFile, libros: IconBooks,
     documentos: IconFileText,
   };
-  protected readonly sugerencias = SUGERENCIAS;
+  /** Preguntas de la familia del saludo: se filtran de la lista para no repetir la misma pregunta. */
+  protected readonly preguntasSaludo = signal<string[]>([]);
+  protected readonly sugerenciasVisibles = computed(() => {
+    const norm = (t: string) => t.trim().toLowerCase();
+    const repetidas = new Set(this.preguntasSaludo().map(norm));
+    return SUGERENCIAS.filter((s) => !repetidas.has(norm(s.texto)));
+  });
   protected readonly campos = CAMPOS;
   protected readonly acceptComprobante = ACCEPT_COMPROBANTE;
-
-  protected readonly nombre = computed(() => this.auth.currentUser()?.nombres?.split(' ')[0] ?? '');
 
   // ── Rail ────────────────────────────────────────────────────
   protected readonly railAbierto = signal(true);
@@ -184,6 +186,8 @@ export class AsistentePageComponent implements OnInit {
 
   // ── Composer ────────────────────────────────────────────────
   protected readonly texto = signal('');
+  /** Pregunta de la palabra visible del saludo (placeholder del composer en vacío). */
+  protected readonly sugerencia = signal<string | null>(null);
   protected readonly enfocado = signal(false);
   protected readonly arrastre = signal(false);
   protected readonly copiado = signal<number | null>(null);
@@ -400,6 +404,12 @@ export class AsistentePageComponent implements OnInit {
 
   protected accionBoton(): void {
     this.store.generando() ? this.store.detener() : this.enviar();
+  }
+
+  /** Clic en la palabra del saludo: deja la pregunta en el composer para que la edite o la mande. */
+  protected elegirSaludo(pregunta: string): void {
+    this.texto.set(pregunta);
+    this.composerRef?.nativeElement.focus();
   }
 
   protected onKeyDown(e: KeyboardEvent): void {

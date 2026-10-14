@@ -1,0 +1,38 @@
+<div class="mt-4 border-t border-[#f3f4f6] pt-3.5">
+  <button type="button" (click)="abierto.set(!abierto())" [attr.aria-expanded]="abierto()"
+    class="flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-[13px] font-medium text-[#6b7280] transition-colors duration-200 hover:text-[#111827]">
+    <tabler-icon [icon]="iChevron" [size]="14" [stroke]="2" class="flex transition-transform duration-200" [class]="abierto() ? 'rotate-90' : 'rotate-0'" />Conectar a mano con el número de prueba de Meta
+  </button>
+  <div class="grid transition-[grid-template-rows] duration-250 ease-out" [class]="abierto() ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'">
+    <div class="min-h-0 overflow-hidden">
+      <form (submit)="$event.preventDefault(); enviar()" class="grid gap-2.5 pt-3" [attr.inert]="abierto() ? null : ''">
+        <p class="m-0 text-[12px] text-[#6b7280]">En developers.facebook.com → tu app → WhatsApp → Configuración de la API.</p>
+        <label class="grid gap-1 text-[12.5px] font-medium text-[#374151]">
+          Token de acceso
+          <input type="password" name="token" autocomplete="off" [value]="token()" (input)="token.set($any($event.target).value)"
+            class="h-9 rounded-lg border-0 bg-[#f7f7f7] px-3 text-[13px] font-normal text-[#111827] shadow-[inset_0_0_0_1px_#e5e7eb] outline-none focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#303030]" />
+        </label>
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2.5">
+          <label class="grid gap-1 text-[12.5px] font-medium text-[#374151]">
+            Identificador del número
+            <input name="phoneNumberId" inputmode="numeric" autocomplete="off" [value]="phoneNumberId()" (input)="phoneNumberId.set($any($event.target).value)"
+              class="h-9 rounded-lg border-0 bg-[#f7f7f7] px-3 text-[13px] font-normal text-[#111827] shadow-[inset_0_0_0_1px_#e5e7eb] outline-none focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#303030]" />
+          </label>
+          <label class="grid gap-1 text-[12.5px] font-medium text-[#374151]">
+            Identificador de la cuenta (opcional)
+            <input name="wabaId" inputmode="numeric" autocomplete="off" [value]="wabaId()" (input)="wabaId.set($any($event.target).value)"
+              class="h-9 rounded-lg border-0 bg-[#f7f7f7] px-3 text-[13px] font-normal text-[#111827] shadow-[inset_0_0_0_1px_#e5e7eb] outline-none focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#303030]" />
+          </label>
+        </div>
+        <button type="submit" [disabled]="conectando() || !token().trim() || !phoneNumberId().trim()"
+          class="mt-0.5 flex h-8 cursor-pointer items-center gap-2 justify-self-start rounded-full border-0 bg-white px-3.5 text-[12.5px] font-medium text-[#303030] shadow-[inset_0_0_0_1px_#e3e3e3] transition-[background,opacity] duration-200 hover:bg-[#f7f7f7] disabled:cursor-default disabled:opacity-50 disabled:hover:bg-white">
+          @if (conectando()) {
+            <span class="size-3.5 animate-[gira_.8s_linear_infinite] rounded-full border-2 border-[#e3e3e3] border-t-[#303030]"></span>Conectando…
+          } @else {
+            Conectar a mano
+          }
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

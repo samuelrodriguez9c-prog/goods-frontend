@@ -1,16 +1,17 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
+/**
+ * Clientes: lista (búsqueda, orden y archivados) + ficha en la hoja con pestañas Datos, Pedidos y Notas; el cliente nuevo también se carga en la hoja.
+ * ?cliente=ID abre la ficha · ?nuevo=1 abre uno nuevo
+ *
+ * Mismo patrón que los módulos de Productos v5 (cabecera con métricas,
+ * lista a la izquierda unida a la hoja de la derecha). Los componentes de
+ * esta página viven en `components/`, uno por carpeta. Se completa con el
+ * handoff de Pedidos y Clientes (BRIEF_HANDOFF_PEDIDOS_Y_CLIENTES.md).
+ */
 @Component({
   selector: 'app-customer-list-page',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="p-8">
-      <h1 class="text-lg font-semibold text-gray-900">Customers</h1>
-      <p class="mt-2 text-sm text-gray-500">
-        TODO: listado real de clientes (ver ADMIN_DISENO.md &gt; "Clientes / Usuarios").
-      </p>
-    </div>
-  `,
+  templateUrl: './customer-list-page.component.html',
 })
 export class CustomerListPageComponent {}

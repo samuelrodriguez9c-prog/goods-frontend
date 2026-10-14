@@ -1,97 +1,205 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+  viewChildren,
+} from '@angular/core';
 
 /**
- * Saludo de bienvenida del asistente, en tres líneas apiladas:
- *   1. "Buenas noches, Laura"  (chico, gris; nombre con degradé gris→negro)
- *   2. "¿Qué revisamos hoy en" (mediano; "¿Qué revisamos" oscuro, "hoy en" gris claro)
- *   3. "Goods?"                (gigante; cada letra entra por separado)
- * Interacción: el degradé de "Goods" sigue al cursor (posición X sobre el
- * saludo) y cada letra salta/rota con rebote al pasar el mouse.
+ * Saludo del asistente (rediseño 2026-10-12, reemplaza al saludo de tres
+ * líneas «Buenas noches, Laura · ¿Qué revisamos hoy en Goods?»).
+ *
+ * Una sola línea: «¿Empezamos por stock?». Solo gira la palabra final
+ * (turquesa con subrayado punteado) y su ancho se acomoda.
+ * Versión staff: mismas mecánicas que admin, con preguntas de la plataforma
+ * (Empresas, altas, cobros, soporte) en vez de las del negocio.
+ * - Familia por apertura: cada vez que el componente se monta (abrir el
+ *   mini chat, abrir /asistente o "Nueva conversación") pasa a la
+ *   siguiente familia: curiosear → recordar → qué hacer. El turno queda en
+ *   localStorage y es compartido entre el mini chat y la pantalla completa.
+ * - La palabra gira cada 2,3 s. Se pausa con el mouse encima, cuando hay
+ *   texto en el composer y con prefers-reduced-motion.
+ * - Si el usuario escribe algo que coincide con una palabra («stock»,
+ *   «pagos»…), el giro salta a esa palabra.
+ * - Solo la palabra visible lleva el subrayado: el de la palabra de arriba
+ *   caía 3 px dentro de la ventana y se veía como una línea punteada encima
+ *   (también pasa en el prototipo).
+ * - Clic en la palabra → `elegir` emite la pregunta completa.
+ * - `sugerencia` emite la pregunta de la palabra visible (para usarla de
+ *   placeholder del composer).
  */
+
+interface Palabra {
+  t: string;
+  /** Pregunta que se manda al composer. */
+  q: string;
+  /** Fragmentos (minúsculas) que, si aparecen en lo que se escribe, saltan a esta palabra. */
+  k: string[];
+}
+interface Familia {
+  id: 'curiosear' | 'recordar' | 'hacer';
+  pre: string;
+  palabras: Palabra[];
+}
+
+export const SALUDO_FAMILIAS: Familia[] = [
+  {
+    id: 'curiosear',
+    pre: '¿Cómo van las',
+    palabras: [
+      { t: 'Empresas', q: '¿Cuántas Empresas están activas hoy?', k: ['empres', 'activ', 'client'] },
+      { t: 'altas', q: '¿Cuántas altas entraron este mes?', k: ['alta', 'regist'] },
+      { t: 'pruebas', q: '¿Cuántas Empresas en prueba pasaron a pago?', k: ['prueba', 'trial', 'convir'] },
+      { t: 'suscripciones', q: '¿Cuántas suscripciones se renovaron este mes?', k: ['suscrip', 'renov', 'plan'] },
+    ],
+  },
+  {
+    id: 'recordar',
+    pre: '¿Algo pendiente en',
+    palabras: [
+      { t: 'altas', q: '¿Qué altas llevan más de 3 días esperando?', k: ['alta', 'esper'] },
+      { t: 'cobros', q: '¿Qué Empresas tienen pagos vencidos?', k: ['cobr', 'pago', 'venc', 'deud'] },
+      { t: 'soporte', q: '¿Qué conversaciones de soporte siguen abiertas?', k: ['soport', 'ticket', 'mensaj', 'chat'] },
+      { t: 'solicitudes', q: '¿Qué solicitudes de personalización están pendientes?', k: ['solicit', 'personaliz', 'pedid'] },
+    ],
+  },
+  {
+    id: 'hacer',
+    pre: '¿Empezamos por',
+    palabras: [
+      { t: 'vencimientos', q: '¿Qué suscripciones vencen esta semana?', k: ['venc', 'semana'] },
+      { t: 'altas', q: '¿Qué alta reviso primero?', k: ['alta', 'revis', 'primero'] },
+      { t: 'cobros', q: '¿A qué Empresas hay que cobrar hoy?', k: ['cobr', 'pago', 'factur'] },
+      { t: 'ingresos', q: '¿Cuánto facturamos este mes?', k: ['ingres', 'factur', 'gananc'] },
+    ],
+  },
+];
+
+const CLAVE_FAMILIA = 'goods.staff.ia.saludo.familia';
+const MS_GIRO = 2300;
+
+/** Avanza el turno guardado y devuelve la familia de esta apertura. */
+function siguienteFamilia(): number {
+  try {
+    const previa = parseInt(localStorage.getItem(CLAVE_FAMILIA) ?? '-1', 10);
+    const n = (Number.isNaN(previa) ? 0 : previa + 1) % SALUDO_FAMILIAS.length;
+    localStorage.setItem(CLAVE_FAMILIA, String(n));
+    return n;
+  } catch {
+    return 0;
+  }
+}
+
 @Component({
   selector: 'app-ia-saludo',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2
-      (mousemove)="mover($event)"
-      (mouseleave)="gx.set(50)"
-      class="m-0 flex max-w-full flex-col font-['Archivo',sans-serif] font-semibold leading-none"
-      [class.items-center]="centrado()"
-      [class.items-start]="!centrado()"
-      [class.w-max]="centrado()"
-      [class.px-2]="!centrado()"
+      (mouseenter)="pausa.set(true)"
+      (mouseleave)="pausa.set(false)"
+      class="ia-palabra m-0 flex max-w-full items-end gap-[0.26em] font-['Archivo',sans-serif] font-semibold leading-[1.15] tracking-[-0.03em] text-[#111827]"
+      [class.justify-center]="!mini()"
+      [class.px-2]="mini()"
+      [style.font-size]="mini() ? '22px' : 'clamp(28px, 4.6vh, 40px)'"
     >
-      <span
-        class="flex flex-wrap gap-x-[0.3em] font-['Inter',sans-serif] font-medium leading-[1.3] text-[#6b7280]"
-        [class.justify-center]="centrado()"
-        [style.font-size.px]="mini() ? 13.5 : 15"
-        [style.margin-bottom.px]="mini() ? 10 : 14"
+      <span class="whitespace-nowrap">{{ familia().pre }}</span>
+      <button
+        type="button"
+        (click)="elegir.emit(actual().q)"
+        [attr.aria-label]="'Preguntar: ' + actual().q"
+        class="inline-block h-[1.15em] shrink-0 cursor-pointer overflow-hidden border-0 bg-transparent p-0 text-left [font:inherit] [letter-spacing:inherit] transition-[width] duration-[460ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+        [style.width]="ancho()"
       >
-        @for (w of saludo(); track $index) {
-          <span class="ia-palabra inline-block" [style.animation-delay.ms]="60 + $index * 110">{{ w }}</span>
-        }
-        <span class="ia-palabra ia-degrade-nombre inline-block font-semibold" [style.animation-delay.ms]="dNombre()">{{ nombre() }}</span>
-      </span>
-
-      <span
-        class="flex flex-wrap gap-x-[0.24em] leading-[1.1] tracking-[-0.03em]"
-        [class.justify-center]="centrado()"
-        [style.font-size]="mini() ? '22px' : 'clamp(22px, 3.6vh, 34px)'"
-      >
-        @for (w of ['¿Qué', 'revisamos']; track $index) {
-          <span class="ia-palabra inline-block text-[#111827]" [style.animation-delay.ms]="dNombre() + 240 + $index * 90">{{ w }}</span>
-        }
-        @for (w of ['hoy', 'en']; track $index) {
-          <span class="ia-palabra inline-block text-[#b4b4b4]" [style.animation-delay.ms]="dNombre() + 420 + $index * 90">{{ w }}</span>
-        }
-      </span>
-
-      <span
-        class="flex items-end leading-[0.92] tracking-[-0.055em]"
-        [class.justify-center]="centrado()"
-        [style.margin-top.px]="mini() ? 2 : 4"
-        [style.font-size]="mini() ? '64px' : 'clamp(70px, 12vh, 120px)'"
-      >
-        @for (l of letras; track $index) {
-          <span class="ia-letra inline-block" [style.animation-delay.ms]="dNombre() + 620 + $index * 75">
+        <span
+          class="flex flex-col transition-transform duration-[560ms] ease-[cubic-bezier(0.3,1.35,0.5,1)]"
+          [style.transform]="'translateY(' + -indice() * 1.15 + 'em)'"
+        >
+          @for (p of familia().palabras; track $index) {
             <span
-              class="ia-degrade-goods inline-block cursor-default origin-[50%_90%] px-[0.02em] pb-[0.1em] transition-[translate,scale,rotate,background-position] duration-[460ms] ease-[cubic-bezier(0.3,1.7,0.5,1)] hover:-translate-y-[0.14em] hover:scale-[1.08] hover:-rotate-[4deg]"
-              [style.background-position]="(gx() * 0.5 + $index * 12.5).toFixed(1) + '% 50%'"
-            >{{ l }}</span>
-          </span>
-        }
-        <span class="ia-letra inline-block" [style.animation-delay.ms]="dNombre() + 620 + 5 * 75">
-          <span class="inline-block cursor-default origin-[50%_90%] pb-[0.1em] pl-[0.04em] text-[#111827] transition-[translate,rotate] duration-[520ms] ease-[cubic-bezier(0.3,1.7,0.5,1)] hover:rotate-[16deg] hover:-translate-y-[0.06em]">?</span>
+              #palabra
+              class="h-[1.15em] w-max self-start whitespace-nowrap text-[#00605b] underline decoration-[#2be0d5] decoration-dotted decoration-[3px] underline-offset-[0.16em] transition-[text-decoration-color] duration-300"
+              [class.decoration-transparent]="$index !== indice()"
+              [attr.aria-hidden]="$index !== indice()"
+            >{{ p.t }}</span>
+          }
         </span>
-      </span>
+      </button>
+      <span class="-ml-[0.22em]" aria-hidden="true">?</span>
     </h2>
   `,
 })
 export class IaSaludoComponent {
-  readonly nombre = input.required<string>();
-  /** `completo`: centrado y grande (pantalla completa) · `mini`: alineado a la izquierda. */
+  /** `completo`: centrado (pantalla completa) · `mini`: alineado a la izquierda (dock). */
   readonly variante = input<'completo' | 'mini'>('completo');
+  /** Texto actual del composer: pausa el giro y lo sincroniza con lo que se escribe. */
+  readonly texto = input('');
+
+  /** Clic en la palabra: pregunta completa para poner en el composer. */
+  readonly elegir = output<string>();
+  /** Pregunta de la palabra visible, cada vez que cambia (placeholder del composer). */
+  readonly sugerencia = output<string>();
+  /** Todas las preguntas de la familia de esta apertura (para que el host no las repita en sus sugerencias). */
+  readonly preguntas = output<string[]>();
 
   protected readonly mini = computed(() => this.variante() === 'mini');
-  protected readonly centrado = computed(() => !this.mini());
-  protected readonly gx = signal(50);
-  protected readonly letras = ['G', 'o', 'o', 'd', 's'];
+  protected readonly familia = signal(SALUDO_FAMILIAS[siguienteFamilia()]);
+  protected readonly indice = signal(0);
+  protected readonly actual = computed(() => this.familia().palabras[this.indice()]);
+  protected readonly pausa = signal(false);
 
-  protected readonly saludo = computed(() => {
-    const h = new Date().getHours();
-    return (h < 12 ? 'Buenos días,' : h < 19 ? 'Buenas tardes,' : 'Buenas noches,').split(' ');
+  private readonly palabraEls = viewChildren<ElementRef<HTMLElement>>('palabra');
+  private readonly anchos = signal<number[]>([]);
+  protected readonly ancho = computed(() => {
+    const w = this.anchos()[this.indice()];
+    return w ? `${w}px` : 'auto';
   });
-  protected readonly dNombre = computed(() => 60 + this.saludo().length * 110);
 
-  private raf = 0;
-  protected mover(e: MouseEvent): void {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const v = Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
-    if (this.raf) return;
-    this.raf = requestAnimationFrame(() => {
-      this.raf = 0;
-      this.gx.set(v);
+  constructor() {
+    const destroyRef = inject(DestroyRef);
+
+    afterNextRender(() => {
+      this.medir();
+      document.fonts?.ready.then(() => this.medir());
+
+      const reducir = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (reducir) return;
+      const id = setInterval(() => {
+        if (this.pausa() || this.texto().trim()) return;
+        this.indice.update((i) => (i + 1) % this.familia().palabras.length);
+      }, MS_GIRO);
+      destroyRef.onDestroy(() => clearInterval(id));
     });
+
+    // La variante cambia el tamaño de letra: volver a medir.
+    effect(() => {
+      this.mini();
+      requestAnimationFrame(() => this.medir());
+    });
+
+    // Lo que se escribe salta a la palabra que coincide.
+    effect(() => {
+      const l = this.texto().toLowerCase();
+      if (!l) return;
+      const i = untracked(this.familia).palabras.findIndex((p) => p.k.some((k) => l.includes(k)));
+      if (i >= 0) this.indice.set(i);
+    });
+
+    effect(() => this.sugerencia.emit(this.actual().q));
+    effect(() => this.preguntas.emit(this.familia().palabras.map((p) => p.q)));
+  }
+
+  private medir(): void {
+    const a = this.palabraEls().map((e) => e.nativeElement.offsetWidth);
+    if (a.length && a.every((x) => x > 0)) this.anchos.set(a);
   }
 }

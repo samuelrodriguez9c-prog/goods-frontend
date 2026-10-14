@@ -22,7 +22,11 @@
       @for (m of migas(); track m.ruta) {
         <button type="button" (click)="irMiga(m.ruta)" class="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
           <tabler-icon [icon]="i.chevron" [size]="13" [stroke]="2" class="text-[#525252]" />
-          <tabler-icon [icon]="$any(m.icono)" [size]="15" [stroke]="1.75" class="text-[#2be0d5]" />
+          @if (m.icono === 'ia') {
+            <app-ia-marca [size]="14" />
+          } @else {
+            <tabler-icon [icon]="$any(m.icono)" [size]="15" [stroke]="1.75" class="text-[#2be0d5]" />
+          }
           <span class="max-w-[260px] truncate" [class]="m.actual ? 'text-white' : 'text-[#a3a3a3]'">{{ m.texto }}</span>
         </button>
       }

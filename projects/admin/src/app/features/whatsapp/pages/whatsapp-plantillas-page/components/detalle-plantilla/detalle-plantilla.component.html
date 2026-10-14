@@ -1,0 +1,86 @@
+@let d = vista();
+<div class="flex items-center gap-2.5 px-3.5 pt-3.5 pb-3">
+  <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f3f3f3] text-[#374151]"><tabler-icon [icon]="d.icono" [size]="17" /></span>
+  <span class="min-w-0 flex-1">
+    <span class="block truncate font-[ui-monospace,monospace] text-[13px] font-semibold text-[#111827]">{{ plantilla().nombre }}</span>
+    <span class="mt-0.5 block text-[11.5px] text-[#9ca3af]">{{ d.sub }}</span>
+  </span>
+  <span class="flex shrink-0 items-center gap-[5px] rounded-full py-[3px] pr-[9px] pl-[7px] text-[11px] font-semibold" [style.background]="d.estado.bg" [style.color]="d.estado.fg">
+    <span class="size-1.5 rounded-full" [style.background]="d.estado.punto"></span>{{ d.estado.texto }}
+  </span>
+</div>
+@if (d.rechazo) {
+  <div class="mx-3.5 mb-1 flex items-start gap-2 rounded-[10px] bg-[#fef3f2] px-3 py-2.5">
+    <tabler-icon [icon]="i.alerta" [size]="15" class="mt-px shrink-0 text-[#b42318]" />
+    <span class="flex-1 text-[12px] leading-[1.45] text-[#7a271a]">{{ d.rechazo }}</span>
+  </div>
+}
+<div class="mx-3.5 flex rounded-[10px] bg-[#f7f7f7]">
+  @for (s of d.stats; track s.k; let first = $first) {
+    <div class="min-w-0 flex-1 px-2.5 py-2" [class]="first ? '' : 'border-l border-[#ececec]'">
+      <p class="m-0 text-[11px] whitespace-nowrap text-[#6b7280]">{{ s.k }}</p>
+      <p class="m-0 mt-0.5 text-[13.5px] font-semibold whitespace-nowrap text-[#111827] tabular-nums">{{ s.v }}</p>
+    </div>
+  }
+</div>
+<app-vista-previa-whatsapp [partes]="d.partes" [pie]="d.pie" />
+@if (d.variables.length) {
+  <div class="mx-3.5 mt-4">
+    <p class="m-0 mb-1.5 text-[12px] font-semibold text-[#111827]">De dónde sale cada dato</p>
+    <div class="flex flex-col">
+      @for (x of d.variables; track x.k; let first = $first) {
+        <div class="flex min-h-9 items-center gap-2.5" [class]="first ? '' : 'border-t border-[#f3f3f3]'">
+          <span class="w-[38px] shrink-0 font-[ui-monospace,monospace] text-[11.5px] font-semibold text-[#00857e]">{{ x.k }}</span>
+          <span class="min-w-0 flex-1 truncate text-[12.5px] text-[#111827]">{{ x.label }}</span>
+          <span class="relative flex shrink-0 items-center gap-[5px] text-[11.5px]" [class]="x.auto ? 'text-[#00857e]' : 'text-[#6b7280]'">
+            <tabler-icon [icon]="x.icono" [size]="13" />{{ x.fuente }}
+            @if (puedeConfigurar()) {
+              <!-- Selector invisible encima: tocar la fuente deja cambiar el tipo. -->
+              <select (change)="elegirTipo(x.n, $any($event.target).value)" [attr.aria-label]="'De dónde sale ' + x.k"
+                title="Cambiar de dónde sale este dato" class="absolute inset-0 cursor-pointer opacity-0">
+                @for (o of OPCIONES; track o.k) {
+                  <option [value]="o.k" [selected]="o.k === x.tipo">{{ o.l }}</option>
+                }
+              </select>
+            }
+          </span>
+        </div>
+      }
+    </div>
+  </div>
+}
+@if (d.usos.length) {
+  <div class="mx-3.5 mt-3.5">
+    <p class="m-0 mb-1 text-[12px] font-semibold text-[#111827]">Dónde la usas</p>
+    @for (u of d.usos; track u.t) {
+      <button type="button" (click)="irA(u.ruta)"
+        class="-mx-2 flex w-[calc(100%+16px)] cursor-pointer items-center gap-2.5 rounded-[9px] border-0 bg-transparent p-2 text-left hover:bg-[#f7f7f7]">
+        <tabler-icon [icon]="u.icono" [size]="16" class="text-[#6b7280]" />
+        <span class="min-w-0 flex-1">
+          <span class="block text-[12.5px] font-medium text-[#111827]">{{ u.t }}</span>
+          <span class="mt-px block text-[11.5px] text-[#9ca3af]">{{ u.sub }}</span>
+        </span>
+        <tabler-icon [icon]="i.ir" [size]="14" class="text-[#9ca3af]" />
+      </button>
+    }
+  </div>
+}
+<div class="mt-3.5 flex gap-1.5 border-t border-[#f3f3f3] px-3.5 pt-3 pb-3.5">
+  <button type="button" (click)="d.accion.ir()" [disabled]="!d.accion.activa"
+    class="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border-0 text-[12.5px] font-semibold"
+    [class]="d.accion.activa ? 'cursor-pointer bg-[#303030] text-white shadow-[inset_0_-1px_0_#000] hover:bg-[#1a1a1a]' : 'cursor-default bg-[#f3f3f3] text-[#9ca3af]'">
+    <tabler-icon [icon]="d.accion.icono" [size]="15" />{{ d.accion.t }}
+  </button>
+  @if (puedeConfigurar()) {
+    <button type="button" (click)="duplicar.emit(plantilla())" title="Duplicar" aria-label="Duplicar"
+      class="flex size-9 cursor-pointer items-center justify-center rounded-full border-0 bg-[#f3f3f3] text-[#374151] hover:bg-[#e9e9e9]">
+      <tabler-icon [icon]="i.copiar" [size]="16" />
+    </button>
+    <button type="button" (click)="tocarBorrar()" (mouseleave)="confirmandoBorrar.set(false)" [disabled]="borrando()"
+      [title]="confirmandoBorrar() ? 'Toca otra vez para borrarla también de WhatsApp' : 'Borrar'" aria-label="Borrar"
+      class="flex h-9 min-w-9 cursor-pointer items-center justify-center gap-1 rounded-full border-0 text-[12px] font-medium transition-colors duration-200"
+      [class]="confirmandoBorrar() ? 'bg-[#fef3f2] px-2.5 text-[#b42318]' : 'bg-[#f3f3f3] text-[#374151] hover:bg-[#fef3f2] hover:text-[#b42318]'">
+      <tabler-icon [icon]="i.borrar" [size]="16" />@if (confirmandoBorrar()) {<span>{{ borrando() ? 'Borrando…' : '¿Borrar?' }}</span>}
+    </button>
+  }
+</div>

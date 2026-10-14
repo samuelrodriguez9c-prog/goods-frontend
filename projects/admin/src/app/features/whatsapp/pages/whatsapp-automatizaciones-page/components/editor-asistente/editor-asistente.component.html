@@ -1,0 +1,80 @@
+@if (!disponible()) {
+  <p class="m-0 rounded-[9px] bg-[#f7f7f7] px-[11px] py-[9px] text-[12px] leading-normal text-[#6b7280]">
+    El asistente de IA todavía no está disponible en Goods. Te avisamos apenas lo esté.
+  </p>
+} @else {
+  <div class="flex flex-col gap-3.5">
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
+      <div class="rounded-[11px] bg-[#f7f7f7] px-3 py-[11px]" title="Al llegar al límite del día, responden los pasos que siguen.">
+        <p class="m-0 text-[11.5px] text-[#6b7280]">Respuestas hoy</p>
+        <p class="mt-0.5 mb-1.5 font-[Archivo,sans-serif] text-[20px] font-semibold text-[#111827] tabular-nums">
+          {{ respuestas() }}<span class="text-[13px] text-[#9ca3af]"> / {{ limite() }}</span>
+        </p>
+        <span class="block h-[5px] overflow-hidden rounded-full bg-[#e5e5e5]">
+          <span class="block h-full rounded-full bg-[#2be0d5] transition-[width] duration-600" [style.width.%]="uso()"></span>
+        </span>
+      </div>
+      <div class="rounded-[11px] bg-[#f7f7f7] px-3 py-[11px]">
+        <p class="m-0 text-[11.5px] text-[#6b7280]">Resolvió sin ayuda</p>
+        <p class="mt-0.5 mb-0 font-[Archivo,sans-serif] text-[20px] font-semibold text-[#111827] tabular-nums">{{ sinAyudaPct() == null ? '—' : sinAyudaPct() + '%' }}</p>
+        <p class="mt-0.5 mb-0 text-[11.5px] text-[#9ca3af]">{{ textoPasados() }}</p>
+      </div>
+    </div>
+    <label class="grid gap-[5px] text-[12.5px] font-medium text-[#374151]">
+      Lo que debe saber de tu negocio
+      <textarea rows="5" maxlength="3000" [value]="instrucciones()" (input)="instrucciones.set($any($event.target).value)" [readOnly]="!puedeConfigurar()"
+        placeholder="Ej.: Hacemos envíos en Pereira y Dosquebradas por $6.000, llegan el mismo día si pides antes de las 2 p. m. Pagos por Nequi o Bancolombia. Cambios dentro de los 8 días con la factura. Estamos en la Cra. 7 # 20-15."
+        class="resize-y rounded-[9px] border-0 bg-[#f7f7f7] px-3 py-2.5 text-[13px] leading-normal font-normal text-[#111827] shadow-[inset_0_0_0_1px_#e5e7eb] outline-none placeholder:text-[#9ca3af] focus:bg-white focus:shadow-[inset_0_0_0_1.5px_#303030] read-only:focus:bg-[#f7f7f7] read-only:focus:shadow-[inset_0_0_0_1px_#e5e7eb]"></textarea>
+      <span class="text-[11.5px] font-normal text-[#9ca3af]">Productos, precios y stock los toma de tu catálogo; cambios, garantías y envíos, también de tus
+        <a routerLink="/asistente/documentos" class="text-[#00857e] underline decoration-dotted underline-offset-2 hover:text-[#00605b]">documentos internos</a>.</span>
+    </label>
+    <div>
+      <p class="mt-0 mb-1.5 text-[12.5px] font-medium text-[#374151]">Le pasa el chat a tu equipo cuando…</p>
+      <div class="flex flex-wrap gap-1.5">
+        @for (h of chips(); track h.t) {
+          <span class="group flex animate-[wa-entra_.25s_ease-out] items-center gap-[5px] rounded-lg bg-[#303030] py-1.5 pl-2.5 text-[12px] font-medium text-white"
+            [class]="puedeConfigurar() ? 'pr-1.5' : 'pr-2.5'">
+            <tabler-icon [icon]="h.icon" [size]="13" [stroke]="2" class="flex" />{{ h.t }}
+            @if (puedeConfigurar()) {
+              <button type="button" (click)="quitar(h.t)" [attr.aria-label]="'Quitar ' + h.t" title="Quitar"
+                class="flex size-[18px] cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-[#a3a3a3] transition-colors duration-150 hover:bg-white/15 hover:text-white">
+                <tabler-icon [icon]="i.x" [size]="12" [stroke]="2.25" />
+              </button>
+            }
+          </span>
+        }
+        <span title="Siempre: WhatsApp exige que el cliente pueda hablar con una persona"
+          class="flex items-center gap-[5px] rounded-lg bg-[#303030] px-2.5 py-1.5 text-[12px] font-medium text-white">
+          <tabler-icon [icon]="i.user" [size]="13" [stroke]="2" class="flex" />Pide hablar con alguien
+          <tabler-icon [icon]="i.lock" [size]="11" [stroke]="2" class="flex text-[#a3a3a3]" />
+        </span>
+        @if (puedeConfigurar() && motivos().length < 10) {
+          @if (agregando()) {
+            <input #campo [value]="nuevo()" (input)="nuevo.set($any($event.target).value)" (keydown)="tecla($event)" (blur)="agregar()"
+              maxlength="80" placeholder="Ej.: Pide un descuento"
+              class="h-[30px] w-[210px] animate-[wa-entra_.2s_ease-out] rounded-lg border-0 bg-white px-2.5 text-[12px] text-[#111827] shadow-[inset_0_0_0_1.5px_#303030] outline-none placeholder:text-[#9ca3af]" />
+          } @else {
+            <button type="button" (click)="abrir()"
+              class="flex cursor-pointer items-center gap-[5px] rounded-lg border-0 bg-transparent px-2.5 py-1.5 text-[12px] font-medium text-[#6b7280] shadow-[inset_0_0_0_1px_#d4d4d4] transition-colors duration-150 hover:bg-[#f3f3f3] hover:text-[#111827]">
+              <tabler-icon [icon]="i.mas" [size]="13" [stroke]="2" class="flex" />Agregar motivo
+            </button>
+          }
+        }
+      </div>
+      @if (puedeConfigurar() && agregando() && ideas().length) {
+        <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#9ca3af]">
+          Ideas:
+          @for (t of ideas(); track t) {
+            <!-- mousedown: se agrega antes de que el blur del campo cierre la fila. -->
+            <button type="button" (mousedown)="$event.preventDefault(); agregar(t)"
+              class="cursor-pointer rounded-md border-0 bg-[#f3f3f3] px-2 py-[3px] text-[11.5px] text-[#374151] hover:bg-[#e8e8e8]">{{ t }}</button>
+          }
+        </div>
+      }
+    </div>
+    <p class="m-0 rounded-[9px] bg-[#effcfb] px-[11px] py-[9px] text-[12px] leading-normal text-[#00605b]">
+      Si alguien de tu equipo responde un chat, la IA se hace a un lado ahí por 12 h. Puedes cambiarlo en cada chat con el selector IA / Tú.
+      Si no sabe algo, también te lo pasa, y ahí no vuelve a responder por 24 h.
+    </p>
+  </div>
+}

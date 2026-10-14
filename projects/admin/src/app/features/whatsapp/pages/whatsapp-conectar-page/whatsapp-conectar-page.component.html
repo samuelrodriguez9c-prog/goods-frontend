@@ -1,0 +1,82 @@
+<!-- Sin número conectado -->
+<div class="mx-auto max-w-[960px] px-2 py-10">
+  <div class="flex items-center gap-3">
+    <span class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#303030] text-white">
+      <tabler-icon [icon]="i.wa" [size]="24" [stroke]="2" class="flex" />
+    </span>
+    <div>
+      <h1 class="m-0 font-[Archivo,sans-serif] text-[26px] font-semibold tracking-[-0.025em] text-[#111827]">Atiende tu WhatsApp desde Goods</h1>
+      <p class="mt-1 mb-0 text-[14px] text-[#6b7280]">Tu equipo responde desde aquí y tú sigues usando la app en el celular. Los chats se ven en los dos lados.</p>
+    </div>
+  </div>
+
+  @if (desconectado()) {
+    <div role="status" class="mt-6 flex animate-[wa-entra_.35s_ease-out] items-start gap-2.5 rounded-xl bg-[#fffbeb] px-4 py-3 shadow-[inset_0_0_0_1px_#fde68a]">
+      <tabler-icon [icon]="i.desconectado" [size]="17" [stroke]="2" class="mt-px flex shrink-0 text-[#b45309]" />
+      <span class="min-w-0">
+        <span class="block text-[13px] font-semibold text-[#92400e]">
+          Tu número{{ numeroAnterior() ? ' ' + numeroAnterior() : '' }} está desconectado
+        </span>
+        <span class="mt-0.5 block text-[12.5px] leading-normal text-[#92400e]/80">
+          Tus chats siguen guardados. Vuelve a conectarlo para recibir y responder mensajes.
+        </span>
+      </span>
+    </div>
+  }
+
+  <div class="mt-7 flex flex-wrap items-start gap-4">
+    <section class="min-w-0 flex-[1_1_420px] rounded-2xl bg-white p-6 shadow-[0_0_0_1px_rgba(0,0,0,.04),0_1px_2px_rgba(0,0,0,.04)]">
+      <p class="m-0 text-[11px] font-semibold tracking-[.06em] text-[#9ca3af] uppercase">Tres pasos · unos 3 minutos</p>
+      <app-pasos-conexion [paso]="conectando() === 'meta' ? paso() : null" />
+
+      @if (!conexion()?.disponible) {
+        <div class="mt-1 flex items-start gap-2.5 rounded-[10px] bg-[#f7f7f7] px-3.5 py-3">
+          <tabler-icon [icon]="i.espera" [size]="17" [stroke]="2" class="mt-px flex shrink-0 text-[#6b7280]" />
+          <span>
+            <span class="block text-[13px] font-semibold text-[#111827]">WhatsApp todavía no está habilitado en Goods</span>
+            <span class="mt-0.5 block text-[12.5px] leading-normal text-[#6b7280]">Estamos terminando el registro con Meta. Te avisamos apenas puedas conectar tu número.</span>
+          </span>
+        </div>
+      } @else if (!puedeConfigurar()) {
+        <div class="mt-1 flex items-start gap-2.5 rounded-[10px] bg-[#f7f7f7] px-3.5 py-3">
+          <tabler-icon [icon]="i.candado" [size]="17" [stroke]="2" class="mt-px flex shrink-0 text-[#6b7280]" />
+          <span>
+            <span class="block text-[13px] font-semibold text-[#111827]">Solo el dueño del negocio puede conectarlo</span>
+            <span class="mt-0.5 block text-[12.5px] leading-normal text-[#6b7280]">Pídele que entre a Goods y toque “Conectar con WhatsApp”. Apenas lo haga, los chats aparecen aquí.</span>
+          </span>
+        </div>
+      } @else {
+        @if (conexion()!.registroIntegrado) {
+          <button type="button" (click)="conectarConMeta()" [disabled]="!!conectando()" [attr.aria-busy]="conectando() === 'meta'"
+            class="mt-1 flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border-0 bg-[#303030] text-[14px] font-semibold text-white shadow-[inset_0_-1px_0_#000] transition-[background,transform] duration-150 hover:bg-[#1a1a1a] active:scale-[.99] disabled:cursor-default disabled:hover:bg-[#303030]"
+            [class.opacity-60]="conectando() === 'manual'">
+            @if (conectando() === 'meta') {
+              <span class="size-4 animate-[gira_.8s_linear_infinite] rounded-full border-2 border-[rgba(255,255,255,.3)] border-t-white"></span>
+            } @else {
+              <tabler-icon [icon]="i.fb" [size]="18" [stroke]="2" class="flex" />
+            }
+            {{ textoBoton() }}
+          </button>
+        } @else {
+          <div class="mt-1 flex items-start gap-2.5 rounded-[10px] bg-[#f7f7f7] px-3.5 py-3">
+            <tabler-icon [icon]="i.espera" [size]="17" [stroke]="2" class="mt-px flex shrink-0 text-[#6b7280]" />
+            <span>
+              <span class="block text-[13px] font-semibold text-[#111827]">La conexión directa con Meta todavía no está activa</span>
+              <span class="mt-0.5 block text-[12.5px] leading-normal text-[#6b7280]">Mientras tanto puedes probar con el número de prueba de Meta, aquí abajo.</span>
+            </span>
+          </div>
+        }
+
+        @if (errorConexion()) {
+          <p role="alert" class="mt-3 mb-0 flex animate-[wa-entra_.25s_ease-out] items-start gap-2 rounded-[10px] bg-[#fef3f2] px-3 py-2.5 text-[12.5px] leading-normal text-[#b42318]">
+            <tabler-icon [icon]="i.error" [size]="15" [stroke]="2" class="mt-px flex shrink-0" />{{ errorConexion() }}
+          </p>
+        }
+
+        <app-conexion-manual [(abierto)]="modoPrueba" [conectando]="conectando() === 'manual'" (conectar)="conectarManual($event)" />
+      }
+    </section>
+
+    <app-costos-conexion class="min-w-0 flex-[1_1_300px]" />
+  </div>
+</div>
