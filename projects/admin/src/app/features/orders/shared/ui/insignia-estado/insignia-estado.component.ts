@@ -1,14 +1,19 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { EST, EstadoPedido } from '../../ventas.modelos';
 
-/**
- * Badge del estado del pedido (pendiente · confirmado · enviado · entregado · cancelado · devuelto).
- *
- * Estructura creada antes del handoff de Pedidos y Clientes
- * (BRIEF_HANDOFF_PEDIDOS_Y_CLIENTES.md): se completa al integrarlo.
- */
+/** Pastilla del estado del pedido (pendiente · confirmado · enviado · entregado · cancelado · devuelto). */
 @Component({
   selector: 'app-insignia-estado',
+  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: ``,
+  host: {
+    class: 'inline-flex whitespace-nowrap rounded-full px-[7px] text-[11px] font-semibold leading-[18px]',
+    '[style.background-color]': 'e().bg',
+    '[style.color]': 'e().fg',
+  },
+  template: `{{ e().t }}`,
 })
-export class InsigniaEstadoComponent {}
+export class InsigniaEstadoComponent {
+  readonly estado = input.required<EstadoPedido>();
+  protected readonly e = computed(() => EST[this.estado()]);
+}

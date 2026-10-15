@@ -1,4 +1,128 @@
-<div class="p-8">
-  <h1 class="text-lg font-semibold text-gray-900">Customers</h1>
-  <p class="mt-2 text-sm text-gray-500">Pendiente del handoff de Pedidos y Clientes.</p>
-</div>
+<!-- Clientes · handoff-pedidos-clientes (prototipo: referencia/Pedidos y Clientes.dc.html, vistaInicial = customers) -->
+@if (!(completa() && abierta())) {
+  <app-cabecera-modulo titulo="Clientes" [badge]="badge()" badgeTono="vivo" [periodo]="periodoTexto()" [metricas]="metricas()" [activa]="metrica()"
+    (metricaClick)="elegirMetrica($event)" (periodoClick)="cambiarPeriodo()">
+    <span icono><app-ic nombre="user" [size]="20" /></span>
+    <div acciones class="flex items-center gap-2">
+      @if (puedeEditar()) {
+        <button type="button" class="gp-btn-primario" (click)="nuevo()"><app-ic nombre="plus" [size]="15" />Nuevo cliente</button>
+      }
+    </div>
+  </app-cabecera-modulo>
+}
+
+@if (v.error() && !v.cargado()) {
+  <app-estado-pagina class="mb-4 flex-1" tono="error" [icono]="icono('cloud-off')" titulo="No pudimos cargar los clientes" [texto]="v.error()!" accion="Reintentar" (accionar)="v.reintentar()" />
+} @else {
+  <div class="grid min-h-0 flex-1 pb-4 transition-[grid-template-columns] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-columns]="cols()">
+    @if (!(completa() && abierta())) {
+      <app-lista-modulo
+        [grupos]="grupos()" [seleccionadaId]="sel()?.id ?? null" [colapsados]="colapsados()" [buscar]="q()" [cargando]="v.cargando()"
+        placeholder="Nombre, celular, correo o documento" [resultados]="f.pl(filtrados().length, 'cliente', 'clientes')" [chips]="chips()"
+        [sinCoincidencias]="!grupos().length" [vacioTexto]="v.clientes().length ? 'Ningún cliente coincide.' : 'Todavía no tienes clientes.'"
+        (seleccionar)="abrir($event)" (buscarChange)="q.set($event)" (alternarGrupo)="alternarGrupo($event)" (limpiar)="limpiar()">
+        <app-filtros-clientes herramientas [(archivados)]="archivados" [(orden)]="orden" />
+        <ng-template #derecha let-fila>
+          @let c = $any(fila).dato;
+          <span class="text-[12.5px] font-semibold whitespace-nowrap tabular-nums" [style.color]="fila.valorColor">{{ fila.valor }}</span>
+          <span class="text-[11px] whitespace-nowrap text-[#8a8a8a]">{{ c.ultimoPedidoEn ? 'último ' + f.rel(c.ultimoPedidoEn) : 'sin pedidos' }}</span>
+        </ng-template>
+      </app-lista-modulo>
+    }
+
+    <app-hoja [vacio]="!abierta()" vacioIcono="user" vacioTitulo="Elige un cliente" vacioTexto="Abre un cliente para ver sus pedidos y sus notas.">
+      @if (abierta()) {
+        <div cabecera>
+          @let c = cab();
+          <div class="flex items-center gap-2">
+            <span class="text-[10.5px] font-semibold tracking-[.08em] text-gray-400 uppercase">{{ esNuevo() ? 'Nuevo cliente' : borrador() ? 'Editando cliente' : 'Cliente' }}</span>
+            <span class="flex-1"></span>
+            @if (!esNuevo() && !borrador() && posicion().n > 1) {
+              <span class="text-[11.5px] text-gray-400 tabular-nums">{{ posicion().i + 1 }} de {{ posicion().n }}</span>
+              <button type="button" class="gp-btn-icono size-[26px]" title="Anterior (↑)" (click)="paso(-1)"><app-ic nombre="chevron-up" [size]="16" /></button>
+              <button type="button" class="gp-btn-icono size-[26px]" title="Siguiente (↓)" (click)="paso(1)"><app-ic nombre="chevron-down" [size]="16" /></button>
+            }
+            @if (sel(); as cl) {
+              @if (puedeEditar() && !borrador()) {
+                <span class="relative">
+                  <button type="button" class="gp-btn-icono size-[26px]" title="Más acciones" (click)="menu.set(!menu())"><app-ic nombre="dots" [size]="16" /></button>
+                  @if (menu()) {
+                    <div class="absolute top-[34px] right-0 z-40 w-56 animate-[fade-in-up_.18s_ease-out] rounded-[14px] bg-white p-[5px] shadow-[0_0_0_1px_rgba(0,0,0,.06),0_18px_40px_-16px_rgba(0,0,0,.35)]">
+                      <button type="button" class="gp-menu-item" (click)="editar()"><app-ic nombre="pencil" [size]="15" class="text-gray-500" />Editar datos</button>
+                      <button type="button" class="gp-menu-item" (click)="archivar()">
+                        <app-ic [nombre]="cl.archivadoEn ? 'archive-off' : 'archive'" [size]="15" class="text-gray-500" />{{ cl.archivadoEn ? 'Desarchivar' : 'Archivar' }}
+                      </button>
+                    </div>
+                  }
+                </span>
+              }
+            }
+            <button type="button" class="gp-btn-icono size-[26px]" [title]="completa() ? 'Volver a la lista' : 'Abrir en página completa'" (click)="alternarCompleta()">
+              <app-ic [nombre]="completa() ? 'arrows-minimize' : 'arrows-maximize'" [size]="16" />
+            </button>
+            <button type="button" class="gp-btn-icono size-[26px]" title="Cerrar (Esc)" (click)="cerrar()"><app-ic nombre="x" [size]="16" /></button>
+          </div>
+          <div class="mt-2 flex animate-[ficha_360ms_cubic-bezier(.2,.8,.2,1)_both] items-center gap-4">
+            <span class="flex size-[60px] shrink-0 items-center justify-center rounded-[18px] font-[Archivo] text-[21px] font-semibold tracking-[-.02em] transition-colors duration-300"
+              [style.background-color]="c.fondo" [style.color]="c.tinta">{{ c.ini }}</span>
+            <div class="flex min-w-0 flex-1 flex-col gap-[3px]">
+              <div class="truncate font-[Archivo] text-[23px] leading-[29px] font-semibold tracking-[-.02em]" [style.color]="c.nombreC">{{ c.nombre }}</div>
+              <div class="truncate text-[12.5px] text-gray-500">{{ c.sub }}</div>
+            </div>
+            @if (st(); as s) {
+              <div class="flex shrink-0 flex-col items-end">
+                <span class="font-[Archivo] text-[23px] leading-[29px] font-semibold tracking-[-.02em] tabular-nums">{{ f.cop(s.total) }}</span>
+                <span class="text-xs text-gray-500">{{ f.pl(s.n, 'pedido', 'pedidos') }}</span>
+              </div>
+            }
+          </div>
+          @if (sel()?.archivadoEn) {
+            <p class="m-0 mt-3 flex items-center gap-1.5 rounded-xl bg-[#f4f4f4] px-3 py-2 text-[12.5px] text-gray-600">
+              <app-ic nombre="archive" [size]="14" />Archivado {{ f.rel(sel()!.archivadoEn!) }} · no aparece al crear pedidos ni en la lista
+            </p>
+          }
+          @if (sel(); as cl) {
+            @if (!borrador()) {
+              <div class="mt-3.5 flex flex-wrap gap-1.5">
+                @if (cat.puede('pedidos.editar')) {
+                  <button type="button" class="gp-btn-primario" [style.opacity]="cl.archivadoEn ? 0.45 : 1" (click)="nuevoPedido()"><app-ic nombre="plus" [size]="14" />Nuevo pedido</button>
+                }
+                @if (cl.telefono) {
+                  <a class="gp-btn" [href]="'tel:+' + cl.telefono"><app-ic nombre="phone" [size]="14" />Llamar</a>
+                  <button type="button" class="gp-btn" (click)="whatsapp()"><app-ic nombre="whatsapp" [size]="14" [class]="cl.whatsappContactoId ? 'text-[#25d366]' : ''" />WhatsApp</button>
+                }
+                @if (cl.correo) {
+                  <a class="gp-btn" [href]="'mailto:' + cl.correo"><app-ic nombre="mail" [size]="14" />Correo</a>
+                }
+              </div>
+            }
+          }
+        </div>
+      }
+      @if (abierta()) {
+        <div pestanas class="mt-3.5"><app-pestanas-hoja [pestanas]="pestanas()" [activa]="pestana()" (elegir)="elegirPestana($event)" /></div>
+      }
+
+      @if (abierta()) {
+        <div class="flex flex-col">
+          @if (borrador(); as d) {
+            <app-formulario-cliente [borrador]="d" (borradorChange)="cambiarBorrador($event)" [nuevo]="esNuevo()" [error]="error()" [guardando]="guardando()"
+              (guardar)="guardar()" (descartar)="descartar()" />
+          } @else if (sel(); as cl) {
+            @switch (pestana()) {
+              @case ('resumen') {
+                <app-pestana-datos [cliente]="cl" [puedeEditar]="puedeEditar()" (editar)="editar()" />
+              }
+              @case ('pedidos') {
+                <app-pestana-pedidos [cliente]="cl" (abrirPedido)="abrirPedido($event)" (repetir)="repetir($event)" (verTodos)="verTodos()" (nuevoPedido)="nuevoPedido()" />
+              }
+              @case ('notas') {
+                <app-pestana-notas [cliente]="cl" [puedeEditar]="puedeEditar()" (abrirPedido)="abrirPedido($event)" />
+              }
+            }
+          }
+        </div>
+      }
+    </app-hoja>
+  </div>
+}
