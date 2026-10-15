@@ -1,195 +1,401 @@
-<div class="p-8">
-  <div class="max-w-[640px]">
-    <h1 class="text-lg font-semibold text-gray-900">Tienda en línea</h1>
-    <p class="mt-2 text-sm text-gray-500">
-      Una página con tu catálogo para compartir en WhatsApp, Instagram o donde quieras. Tus clientes eligen productos y te
-      mandan el pedido por WhatsApp, ya escrito con cantidades y total.
-    </p>
+@if (cargando()) {
+  <div class="mx-auto flex max-w-[1160px] flex-col gap-3 px-7 py-6">
+    <span class="h-7 w-56 animate-pulse rounded-lg bg-[#e3e3e3]"></span>
+    <div class="mt-4 flex flex-wrap gap-4">
+      <div class="flex min-w-0 flex-[1_1_520px] flex-col gap-3">
+        @for (n of [1, 2, 3]; track n) { <div class="h-48 animate-pulse rounded-2xl bg-white"></div> }
+      </div>
+      <div class="h-[640px] min-w-[300px] flex-[0_1_344px] animate-pulse rounded-2xl bg-white"></div>
+    </div>
   </div>
+} @else if (errorCarga()) {
+  <div class="mx-auto max-w-[1160px] px-7 py-6"><p class="rounded-2xl bg-white p-6 text-[13px] text-[#b42318]">{{ errorCarga() }}</p></div>
+} @else {
+  @let fx = f();
+  <div class="mx-auto max-w-[1160px] px-7 pb-24 pt-6">
 
-  @if (cargando()) {
-    <p class="mt-6 text-sm text-gray-400">Cargando…</p>
-  } @else if (errorCarga()) {
-    <p class="mt-6 text-sm text-red-600">{{ errorCarga() }}</p>
-  } @else if (tienda(); as t) {
-    <div class="mt-6 grid items-start gap-5 lg:grid-cols-[1fr_minmax(300px,360px)]">
-      <!-- Formulario -->
-      <form class="flex flex-col gap-5" (ngSubmit)="guardar()">
-        <section class="rounded-2xl bg-card-bg p-5 shadow-sm">
-          <h2 class="text-sm font-semibold text-gray-900">Dirección y WhatsApp</h2>
+    <!-- Cabecera -->
+    <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+      <div class="min-w-0 flex-[1_1_360px]">
+        <div class="flex items-center gap-2">
+          <tabler-icon [icon]="i.tienda" [size]="20" [stroke]="1.75" class="text-[#303030]" />
+          <h1 class="m-0 font-display text-[22px] font-semibold leading-7 tracking-[-0.01em] text-[#111827]">Tienda en línea</h1>
+        </div>
+        <p class="mt-1.5 max-w-[600px] text-pretty text-[13px] leading-5 text-[#6b7280]">Tu catálogo en una página para compartir. Tus clientes eligen y te mandan el pedido por WhatsApp, ya escrito con cantidades y total.</p>
+      </div>
+      <div class="flex items-center gap-2 pt-0.5">
+        <button type="button" (click)="copiar()" class="rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-colors hover:bg-[#d4d4d4]">Copiar enlace</button>
+        <a [href]="tienda()?.url" target="_blank" rel="noopener" class="flex items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white no-underline shadow-[inset_0_-1px_0_#000] transition-opacity hover:text-white hover:opacity-90"><tabler-icon [icon]="i.abrir" [size]="14" [stroke]="2" />Ver tienda</a>
+      </div>
+    </div>
 
-          <label class="mt-4 block text-sm font-medium text-gray-700" for="slug">Dirección de tu tienda</label>
-          <div class="mt-1.5 flex items-center overflow-hidden rounded-lg ring-1 ring-gray-300 focus-within:ring-2 focus-within:ring-gray-900"
-            [class.ring-red-400]="!slugValido()">
-            <span class="shrink-0 bg-gray-50 py-2 pr-1 pl-3 text-sm text-gray-500">{{ prefijo() }}</span>
-            <input id="slug" name="slug" [ngModel]="slug()" (ngModelChange)="normalizarSlug($event)" maxlength="60"
-              autocomplete="off" spellcheck="false" class="min-w-0 flex-1 bg-white py-2 pr-3 text-sm text-gray-900 outline-none" />
-          </div>
-          @if (!slugValido()) {
-            <p class="mt-1 text-xs text-red-600">Usa letras sin tildes, números y guiones, sin guion al inicio ni al final.</p>
-          } @else {
-            <p class="mt-1 text-xs text-gray-500">Si la cambias después, el enlace viejo deja de funcionar.</p>
-          }
+    <div class="mt-5 flex flex-wrap items-start gap-4">
+      <div class="flex min-w-0 flex-[1_1_520px] flex-col gap-3">
 
-          <label class="mt-5 block text-sm font-medium text-gray-700" for="numero">WhatsApp donde te llegan los pedidos</label>
-          <div class="mt-1.5 flex gap-2">
-            <select name="pais" [ngModel]="pais()" (ngModelChange)="pais.set($event)" aria-label="País del número"
-              class="rounded-lg bg-white px-2.5 py-2 text-sm text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900">
-              <option value="CO">🇨🇴 +57</option>
-              <option value="US">🇺🇸 +1</option>
-              <option value="otro">Otro país</option>
-            </select>
-            <input id="numero" name="numero" type="tel" inputmode="tel" [ngModel]="numero()" (ngModelChange)="numero.set($event)"
-              [placeholder]="pais() === 'CO' ? '300 123 4567' : pais() === 'US' ? '305 555 0123' : 'Indicativo y número'"
-              class="min-w-0 flex-1 rounded-lg bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900"
-              [class.ring-red-400]="!whatsappValido()" />
-          </div>
-          @if (!whatsappValido()) {
-            <p class="mt-1 text-xs text-red-600">
-              {{ pais() === 'CO' ? 'Un celular de Colombia tiene 10 dígitos y empieza por 3.' : pais() === 'US' ? 'Un número de EE. UU. tiene 10 dígitos.' : 'Escribe el indicativo del país y el número, entre 8 y 15 dígitos.' }}
-            </p>
-          } @else {
-            <p class="mt-1 text-xs text-gray-500">Puede ser el de WhatsApp Business o el personal. No le damos este número a nadie más.</p>
+        <!-- 1 · Dirección -->
+        <section #secDireccion (mouseenter)="hov.set('direccion')" (mouseleave)="hov.set(null)"
+          class="tienda-ficha flex flex-col gap-[18px] rounded-2xl border bg-white p-5 transition-[border-color,box-shadow] duration-[250ms]" [style.border-color]="borde('direccion')" [style.box-shadow]="sombra('direccion')">
+          <ng-container *ngTemplateOutlet="cabeza; context: { icono: i.link, titulo: 'Dirección', sub: 'El enlace que compartes en WhatsApp, Instagram o donde quieras.' }" />
+          <label class="flex flex-col gap-2">
+            <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Dirección de tu tienda', sub: 'Letras sin tildes, números y guiones. Corta y fácil de dictar por teléfono.', req: true }" />
+            <span class="flex items-center overflow-hidden rounded-[10px] bg-[#fafafa] transition-shadow" [style.box-shadow]="sombraSlug()">
+              <span class="shrink-0 py-[9px] pl-3 text-[13px] text-[#8a8a8a]">{{ prefijo() }}</span>
+              <input [ngModel]="fx.slug" (ngModelChange)="alCambiarSlug($event)" maxlength="60" spellcheck="false" autocomplete="off" class="min-w-0 flex-1 border-0 bg-transparent py-[9px] pl-0 pr-1.5 text-[13px] font-medium text-[#111827] outline-none" />
+              <span class="flex pr-3">
+                @switch (slugEstado()) {
+                  @case ('comprobando') { <span class="tienda-gira size-3.5 rounded-full border-2 border-[#e5e7eb] border-t-[#6b7280]"></span> }
+                  @case ('libre') { <tabler-icon [icon]="i.checkLleno" [size]="16" class="tienda-pop text-[#0c7a43]" /> }
+                  @case ('ocupado') { <tabler-icon [icon]="i.xLleno" [size]="16" class="tienda-pop text-[#b42318]" /> }
+                  @case ('invalido') { <tabler-icon [icon]="i.alerta" [size]="16" [stroke]="2" class="tienda-pop text-[#b42318]" /> }
+                  @default { <tabler-icon [icon]="i.checkCirc" [size]="16" [stroke]="2" class="text-[#8a8a8a]" /> }
+                }
+              </span>
+            </span>
+            @switch (slugEstado()) {
+              @case ('comprobando') { <span class="tienda-sube text-xs text-[#6b7280]">Revisando si está libre…</span> }
+              @case ('libre') { <span class="tienda-sube flex items-center gap-[5px] text-xs text-[#0c7a43]"><tabler-icon [icon]="i.checkCirc" [size]="13" [stroke]="2" />Está libre. Queda tuya al guardar.</span> }
+              @case ('ocupado') { <span class="tienda-sube flex items-center gap-[5px] text-xs text-[#b42318]"><tabler-icon [icon]="i.alerta" [size]="13" [stroke]="2" />Ya la usa otro negocio. Prueba agregando tu ciudad.</span> }
+              @case ('invalido') { <span class="tienda-sube flex items-center gap-[5px] text-xs text-[#b42318]"><tabler-icon [icon]="i.alerta" [size]="13" [stroke]="2" />Sin guion al inicio ni al final.</span> }
+            }
+          </label>
+          @if (slugEstado() === 'libre') {
+            <div class="tienda-sube flex flex-col gap-1.5 rounded-xl bg-[#f6f6f6] px-3 py-2.5">
+              <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[12.5px]">
+                <span class="tienda-tacha text-[#8a8a8a]">{{ prefijo() }}{{ tienda()?.slug }}</span>
+                <span class="tienda-desliza text-[#8a8a8a] [animation-delay:.4s]">→</span>
+                <span class="tienda-desliza font-semibold text-[#111827] [animation-delay:.55s]">{{ prefijo() }}{{ fx.slug }}</span>
+              </div>
+              <span class="text-xs leading-[17px] text-[#6b7280]">El enlace viejo deja de funcionar al guardar. Si ya lo compartiste, cámbialo allá también.</span>
+            </div>
           }
         </section>
 
-        <section class="rounded-2xl bg-card-bg p-5 shadow-sm">
-          <h2 class="text-sm font-semibold text-gray-900">Cómo se ve</h2>
-
-          <p class="mt-4 text-sm font-medium text-gray-700">Logo</p>
-          <div class="mt-1.5 flex items-center gap-3">
-            @if (logoUrl()) {
-              <img [src]="logoUrl()" alt="Logo de la tienda" class="size-14 rounded-xl object-cover ring-1 ring-gray-200" />
-            } @else {
-              <div class="grid size-14 place-items-center rounded-xl bg-gray-100 text-gray-400">
-                <tabler-icon [icon]="i.foto" [size]="22" [stroke]="1.5" />
+        <!-- 2 · WhatsApp -->
+        <section #secWhatsapp (mouseenter)="hov.set('whatsapp')" (mouseleave)="hov.set(null)"
+          class="tienda-ficha grid grid-cols-[repeat(auto-fit,minmax(min(100%,270px),1fr))] overflow-hidden rounded-2xl border bg-white transition-[border-color,box-shadow] duration-[250ms] [animation-delay:.05s]" [style.border-color]="borde('whatsapp')" [style.box-shadow]="sombra('whatsapp')">
+          <div class="flex flex-col gap-[18px] p-5">
+            <ng-container *ngTemplateOutlet="cabeza; context: { icono: i.wa, titulo: 'WhatsApp para pedidos', sub: 'Cada pedido de la tienda te llega aquí, ya escrito.' }" />
+            <div class="flex flex-col gap-2">
+              <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'País del número', sub: 'Ponemos el indicativo por ti.' }" />
+              <div class="relative grid grid-cols-3 rounded-[10px] bg-[#f1f1f1] p-[3px]">
+                <span class="absolute inset-y-[3px] left-[3px] w-[calc((100%-6px)/3)] rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)] transition-transform duration-[350ms] ease-[cubic-bezier(.3,1.3,.5,1)]"
+                  [style.transform]="'translateX(' + (['CO', 'US', 'otro'].indexOf(fx.pais) * 100) + '%)'"></span>
+                @for (p of [['CO', '🇨🇴 Colombia'], ['US', '🇺🇸 EE. UU.'], ['otro', 'Otro']]; track p[0]) {
+                  <button type="button" (click)="set('pais', $any(p[0]))" class="relative h-[30px] bg-transparent text-[12.5px] font-medium transition-colors" [style.color]="fx.pais === p[0] ? '#111827' : '#6b7280'">{{ p[1] }}</button>
+                }
               </div>
-            }
-            <label class="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50"
-              [class.pointer-events-none]="subiendoLogo()">
-              {{ subiendoLogo() ? 'Subiendo…' : logoUrl() ? 'Cambiar' : 'Subir logo' }}
-              <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" (change)="subirLogo($event)" />
+            </div>
+            <label class="flex flex-col gap-2">
+              <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Número', sub: 'WhatsApp Business o personal. No se lo damos a nadie.', req: true }" />
+              <span class="flex items-center rounded-[10px] bg-[#fafafa] transition-shadow" [style.box-shadow]="sombraNumero()">
+                <span class="py-[9px] pl-3 text-[13px] tabular-nums text-[#8a8a8a]">{{ fx.pais === 'otro' ? '+' : (fx.pais === 'CO' ? '+57' : '+1') }}</span>
+                <input type="tel" inputmode="tel" [ngModel]="fx.numero" (ngModelChange)="set('numero', $event)" [placeholder]="fx.pais === 'CO' ? '300 123 4567' : fx.pais === 'US' ? '305 555 0123' : 'Indicativo y número'"
+                  class="min-w-0 flex-1 border-0 bg-transparent py-[9px] pl-1.5 pr-3 text-[13px] font-medium tabular-nums text-[#111827] outline-none" />
+              </span>
+              @if (!waLleno()) {
+                <span class="tienda-sube flex items-center gap-[5px] text-xs" [style.color]="waOk() ? '#8a6100' : '#b42318'"><tabler-icon [icon]="i.alerta" [size]="13" [stroke]="2" />{{ numeroError() }}</span>
+              }
             </label>
-            @if (logoUrl()) {
-              <button type="button" (click)="logoUrl.set(null)" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900">
-                <tabler-icon [icon]="i.quitar" [size]="16" [stroke]="2" /> Quitar
-              </button>
+            @if (waLleno()) {
+              <button type="button" (click)="probarChat()" class="flex items-center gap-1.5 self-start rounded-full bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow,transform] hover:shadow-[0_0_0_1px_#b5b5b5] active:scale-[.97]"><tabler-icon [icon]="i.enviar" [size]="14" [stroke]="2" class="text-[#1d8a4b]" />Probar el chat</button>
             }
           </div>
-          <p class="mt-1 text-xs text-gray-500">Cuadrado, de al menos 200 × 200 px. Sin logo se muestra la inicial del negocio.</p>
-
-          <label class="mt-5 block text-sm font-medium text-gray-700" for="descripcion">Frase bajo el nombre</label>
-          <textarea id="descripcion" name="descripcion" rows="2" maxlength="280" [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)"
-            placeholder="Ej. Café de especialidad tostado en Pereira. Entregas el mismo día."
-            class="mt-1.5 w-full resize-none rounded-lg bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-300 outline-none focus:ring-2 focus:ring-gray-900"></textarea>
-          <p class="mt-1 text-right text-xs text-gray-400 tabular-nums">{{ descripcion().length }}/280</p>
-
-          <fieldset class="mt-3">
-            <legend class="text-sm font-medium text-gray-700">Moneda de los precios</legend>
-            <div class="mt-1.5 flex gap-2">
-              @for (m of [{ v: 'COP', t: 'Pesos colombianos' }, { v: 'USD', t: 'Dólares' }]; track m.v) {
-                <label class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm ring-1"
-                  [class]="moneda() === m.v ? 'bg-gray-900 text-white ring-gray-900' : 'bg-white text-gray-900 ring-gray-300'">
-                  <input type="radio" name="moneda" class="sr-only" [value]="m.v" [ngModel]="moneda()" (ngModelChange)="moneda.set($event)" />
-                  {{ m.t }} ({{ m.v }})
-                </label>
+          <!-- Así te llega -->
+          <div class="flex flex-col bg-[#efe7de] shadow-[inset_1px_0_0_#e8dfd4]">
+            <div class="flex items-center gap-[9px] border-b border-[#e4e2de] bg-[#f0f2f5] px-3 py-2.5">
+              <span class="grid size-7 place-items-center rounded-full bg-[#1d211e] font-display text-xs font-bold text-[#f5f6f3]">{{ nombreNegocio().charAt(0) }}</span>
+              <span class="flex min-w-0 flex-1 flex-col"><span class="text-[12.5px] font-semibold text-[#111b21]">Tu WhatsApp</span><span class="truncate text-[11px] tabular-nums text-[#667781]">{{ waLleno() ? numeroFormateado() : 'Sin número todavía' }}</span></span>
+              <span class="text-[10.5px] font-medium text-[#667781]">Así te llega</span>
+            </div>
+            <div class="flex min-h-[250px] flex-1 flex-col justify-end gap-1.5 px-3 py-3.5">
+              <span class="self-center rounded-md bg-white px-2 py-0.5 text-[10.5px] text-[#54656f] shadow-[0_1px_.5px_rgba(0,0,0,.08)]">Hoy</span>
+              @if (!waLleno()) {
+                <div class="max-w-[90%] self-center rounded-lg bg-[#fff8e1] px-2.5 py-2 text-center text-[11.5px] leading-4 text-[#6b4e00] shadow-[0_1px_.5px_rgba(0,0,0,.08)]">Escribe tu número para ver cómo te llega un pedido.</div>
+              } @else if (tecleando()) {
+                <span class="tienda-entra flex gap-1 self-start rounded-[3px_10px_10px_10px] bg-white px-3 py-2.5 shadow-[0_1px_.5px_rgba(0,0,0,.13)]">
+                  <span class="tienda-punto size-1.5 rounded-full bg-[#8696a0]"></span><span class="tienda-punto size-1.5 rounded-full bg-[#8696a0] [animation-delay:.15s]"></span><span class="tienda-punto size-1.5 rounded-full bg-[#8696a0] [animation-delay:.3s]"></span>
+                </span>
+              } @else {
+                <div class="tienda-entra max-w-[94%] self-start rounded-[3px_10px_10px_10px] bg-white px-2.5 pb-1 pt-[7px] text-[12.5px] leading-[18px] text-[#111b21] shadow-[0_1px_.5px_rgba(0,0,0,.13)]">
+                  <p class="mb-0.5 text-[11.5px] font-semibold text-[#1f7aec]">María · cliente</p>
+                  @for (l of pedidoEjemplo(); track $index) { <p class="m-0" [class.font-semibold]="l.negrita">{{ l.texto || '\u00a0' }}</p> }
+                  <p class="mt-0.5 text-right text-[10px] text-[#667781]">10:42</p>
+                </div>
               }
             </div>
-          </fieldset>
-
-          <label class="mt-5 flex items-start gap-3 text-sm text-gray-700">
-            <input type="checkbox" name="agotados" [ngModel]="mostrarAgotados()" (ngModelChange)="mostrarAgotados.set($event)"
-              class="mt-0.5 size-4 accent-gray-900" />
-            <span>
-              Mostrar los productos agotados
-              <span class="block text-xs text-gray-500">Se ven con la etiqueta “Agotado” y no se pueden pedir. Si lo apagas, desaparecen hasta que vuelva a haber stock.</span>
-            </span>
-          </label>
+          </div>
         </section>
 
-        @if (error()) {
-          <p role="alert" class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{{ error() }}</p>
-        }
-
-        <div class="flex items-center justify-end gap-3">
-          @if (t.guardada && hayCambios()) {
-            <span class="text-xs text-gray-500">Tienes cambios sin guardar</span>
-          }
-          <button type="submit" [disabled]="!hayCambios() || !formValido() || guardando()"
-            class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40">
-            {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
-          </button>
-        </div>
-      </form>
-
-      <!-- Estado y enlace -->
-      <aside class="flex flex-col gap-5 lg:sticky lg:top-6">
-        <section class="rounded-2xl bg-card-bg p-5 shadow-sm">
-          <div class="flex items-center gap-2">
-            <span class="size-2 rounded-full" [class]="t.activa ? 'bg-[#087b5d]' : 'bg-gray-300'"></span>
-            <h2 class="text-sm font-semibold text-gray-900">{{ t.activa ? 'Publicada' : 'Sin publicar' }}</h2>
-          </div>
-          <p class="mt-1.5 text-sm text-gray-500">
-            @if (t.activa) {
-              Cualquiera con el enlace ve tu catálogo y te puede pedir.
-            } @else if (!t.guardada) {
-              Revisa la dirección y tu WhatsApp, y publícala cuando quieras.
+        <!-- 3 · Presentación -->
+        <section #secMarca (mouseenter)="hov.set('marca')" (mouseleave)="hov.set(null)"
+          class="tienda-ficha flex flex-col gap-[18px] rounded-2xl border bg-white p-5 transition-[border-color,box-shadow] duration-[250ms] [animation-delay:.1s]" [style.border-color]="borde('marca')" [style.box-shadow]="sombra('marca')">
+          <ng-container *ngTemplateOutlet="cabeza; context: { icono: i.badge, titulo: 'Presentación', sub: 'Lo primero que ve tu cliente al abrir el enlace.' }" />
+          <div class="flex flex-col gap-2">
+            <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Logo', sub: 'Cuadrado, de al menos 200 × 200 px. Sin logo se muestra la inicial del negocio.', opc: true }" />
+            @if (!fx.logoUrl) {
+              <label (drop)="alSoltar($event)" (dragover)="$event.preventDefault(); arrastrando.set(true)" (dragleave)="arrastrando.set(false)"
+                class="flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-4 rounded-[14px] bg-[radial-gradient(#e2e2e2_1px,transparent_1px)] bg-[length:16px_16px] px-5 py-6 text-center transition-[box-shadow,background-color] hover:shadow-[inset_0_0_0_1.5px_#2be0d5]"
+                [style.background-color]="arrastrando() ? '#f0fdfc' : '#fafafa'" [style.box-shadow]="arrastrando() ? 'inset 0 0 0 1.5px #2be0d5' : 'inset 0 0 0 1.5px #e5e5e5'">
+                <div class="relative h-[92px] w-[140px] shrink-0 transition-transform duration-300 ease-[cubic-bezier(.3,1.4,.5,1)]" [style.transform]="arrastrando() ? 'scale(1.06) translateY(-2px)' : 'scale(1)'">
+                  <span class="absolute left-1.5 top-3.5 grid size-[72px] -rotate-9 place-items-center rounded-[14px] bg-[#1d211e] font-display text-[26px] font-bold text-[#f5f6f3] shadow-[0_0_0_1px_#ececec,0_10px_24px_-16px_rgba(0,0,0,.35)]">{{ nombreNegocio().charAt(0) }}</span>
+                  <span class="absolute right-1.5 top-3.5 grid size-[72px] rotate-8 place-items-center rounded-[14px] bg-white text-[#c4c4c4] shadow-[0_0_0_1px_#ececec,0_10px_24px_-16px_rgba(0,0,0,.35)]"><tabler-icon [icon]="i.tienda" [size]="22" [stroke]="1.75" /></span>
+                  <span class="absolute left-[30px] top-0.5 grid size-20 place-items-center rounded-2xl bg-white text-[#00807a] shadow-[0_0_0_1px_#e5e5e5,0_18px_34px_-18px_rgba(0,0,0,.4)]"><tabler-icon [icon]="i.subir" [size]="28" [stroke]="1.75" /></span>
+                </div>
+                <span class="flex max-w-[340px] flex-col gap-[5px]"><span class="font-display text-[17px] font-semibold tracking-[-0.01em] text-[#111827]">{{ arrastrando() ? 'Suéltalo aquí' : 'Suelta aquí tu logo' }}</span><span class="text-pretty text-[12.5px] leading-[18px] text-[#6b7280]">PNG, JPG o WebP · hasta 4 MB. Mejor con fondo blanco o transparente.</span></span>
+                <span class="flex h-8 items-center gap-1.5 rounded-full bg-[#303030] px-3.5 text-[12.5px] font-medium text-white"><tabler-icon [icon]="i.upload" [size]="14" [stroke]="2" />Elegir archivo</span>
+                <input type="file" accept="image/*" (change)="alElegirLogo($event)" class="hidden" />
+              </label>
             } @else {
-              Nadie la puede ver por ahora.
+              <div class="tienda-ficha flex items-center gap-4 rounded-[14px] p-3.5 shadow-[0_0_0_1px_#ececec]">
+                <span class="size-[88px] shrink-0 rounded-[18px] bg-white bg-cover bg-center shadow-[0_0_0_1px_#e5e5e5,0_10px_22px_-14px_rgba(0,0,0,.35)]" [style.background-image]="'url(' + fx.logoUrl + ')'"></span>
+                <span class="flex min-w-0 flex-1 flex-col gap-2">
+                  <span class="flex flex-col gap-0.5"><span class="truncate text-[13px] font-semibold text-[#111827]">{{ fx.logoNombre || 'logo' }}</span><span class="text-xs text-[#8a8a8a]">Se ve en la cabecera y al compartir el enlace.</span></span>
+                  <span class="flex gap-2">
+                    <label class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] hover:shadow-[0_0_0_1px_#b5b5b5]"><tabler-icon [icon]="i.reemplazar" [size]="14" [stroke]="2" />Reemplazar<input type="file" accept="image/*" (change)="alElegirLogo($event)" class="hidden" /></label>
+                    <button type="button" (click)="quitarLogo()" class="flex items-center gap-1.5 rounded-full bg-transparent px-3 py-1.5 text-[12.5px] font-medium text-[#b42318] hover:bg-[#fff1f0]"><tabler-icon [icon]="i.quitar" [size]="14" [stroke]="2" />Quitar</button>
+                  </span>
+                </span>
+              </div>
             }
-          </p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Frase bajo el nombre', sub: 'Qué vendes, dónde estás o cómo entregas. Una o dos líneas.', opc: true }" />
+            <div class="relative">
+              <textarea rows="3" maxlength="280" [ngModel]="fx.frase" (ngModelChange)="set('frase', $event)" placeholder="Ej. Herramientas y materiales en Pereira. Entregas el mismo día."
+                class="block w-full resize-none rounded-[10px] border-0 bg-[#fafafa] px-3 pb-[26px] pt-[9px] text-[13px] leading-[19px] text-[#111827] shadow-[0_0_0_1px_#e5e5e5] outline-none transition-[box-shadow,background-color] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]"></textarea>
+              <span class="absolute bottom-2 right-2.5 text-[11px] tabular-nums text-[#9ca3af]">{{ fx.frase.length }}/280</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              @for (s of sugerencias(); track s) {
+                <button type="button" (click)="agregarSugerencia(s)" class="tienda-sube flex items-center gap-[5px] rounded-full bg-white px-[11px] py-[5px] text-xs font-medium text-[#374151] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow,transform] hover:shadow-[0_0_0_1px_#b5b5b5] active:scale-[.96]"><tabler-icon [icon]="i.plus" [size]="12" [stroke]="2" class="text-[#8a8a8a]" />{{ s }}</button>
+              }
+            </div>
+          </div>
+        </section>
 
-          @if (t.activa) {
-            <div class="mt-4 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 ring-1 ring-gray-200">
-              <span class="min-w-0 flex-1 truncate text-sm text-gray-900">{{ t.url }}</span>
-              <button type="button" (click)="copiar()" class="flex items-center gap-1 text-sm font-medium text-gray-900"
-                [attr.aria-label]="copiado() ? 'Enlace copiado' : 'Copiar enlace'">
-                <tabler-icon [icon]="copiado() ? i.copiado : i.copiar" [size]="16" [stroke]="2" />
-                {{ copiado() ? 'Copiado' : 'Copiar' }}
+        <!-- 4 · Catálogo -->
+        <section #secCatalogo (mouseenter)="hov.set('catalogo')" (mouseleave)="hov.set(null)"
+          class="tienda-ficha flex flex-col gap-[18px] rounded-2xl border bg-white p-5 transition-[border-color,box-shadow] duration-[250ms] [animation-delay:.15s]" [style.border-color]="borde('catalogo')" [style.box-shadow]="sombra('catalogo')">
+          <div class="flex items-start gap-3">
+            <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f4f4f4] text-[#303030]"><tabler-icon [icon]="i.grid" [size]="17" [stroke]="1.75" /></span>
+            <span class="flex min-w-0 flex-1 flex-col gap-0.5"><span class="text-[15px] font-semibold tracking-[-0.005em] text-[#111827]">Catálogo</span><span class="text-xs leading-[17px] text-[#8a8a8a]">Sale solo de tus productos activos. Los cambios de precio o foto se hacen en Productos.</span></span>
+            <button type="button" (click)="irProductos()" class="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] hover:shadow-[0_0_0_1px_#b5b5b5]"><tabler-icon [icon]="i.paquete" [size]="14" [stroke]="2" />Ir a Productos</button>
+          </div>
+
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(max(240px,calc((100%-16px)/2)),1fr))] gap-4">
+            <div class="flex flex-col gap-2">
+              <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Moneda de los precios', sub: 'Cambiarla no convierte tus precios, solo el formato.' }" />
+              <div class="relative grid grid-cols-2 rounded-[10px] bg-[#f1f1f1] p-[3px]">
+                <span class="absolute inset-y-[3px] left-[3px] w-[calc((100%-6px)/2)] rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)] transition-transform duration-[350ms] ease-[cubic-bezier(.3,1.3,.5,1)]" [style.transform]="fx.moneda === 'USD' ? 'translateX(100%)' : 'translateX(0)'"></span>
+                <button type="button" (click)="set('moneda', 'COP')" class="relative h-[30px] bg-transparent text-[12.5px] font-medium" [style.color]="fx.moneda === 'COP' ? '#111827' : '#6b7280'">Pesos (COP)</button>
+                <button type="button" (click)="set('moneda', 'USD')" class="relative h-[30px] bg-transparent text-[12.5px] font-medium" [style.color]="fx.moneda === 'USD' ? '#111827' : '#6b7280'">Dólares (USD)</button>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2">
+              <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Productos agotados', sub: fx.agotados ? 'Se ven con «Agotado» y no se pueden pedir.' : 'Vuelven a aparecer solos cuando haya stock.' }" />
+              <button type="button" role="switch" [attr.aria-checked]="fx.agotados" (click)="set('agotados', !fx.agotados)" class="flex h-9 items-center gap-2.5 rounded-[10px] bg-[#fafafa] pl-3 pr-2.5 text-left shadow-[0_0_0_1px_#e5e5e5] hover:shadow-[0_0_0_1px_#b5b5b5]">
+                <span class="flex-1 text-[13px] text-[#303030]">{{ fx.agotados ? 'Se muestran con su etiqueta' : 'Se esconden de la tienda' }}</span>
+                <span class="relative h-5 w-[34px] shrink-0 rounded-full transition-colors duration-[250ms]" [style.background]="fx.agotados ? '#303030' : '#d4d4d4'">
+                  <span class="absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,.25)] transition-transform duration-300 ease-[cubic-bezier(.3,1.5,.5,1)]" [style.transform]="fx.agotados ? 'translateX(14px)' : 'translateX(0)'"></span>
+                </span>
               </button>
             </div>
-            <div class="mt-3 grid grid-cols-2 gap-2">
-              <a [href]="t.url" target="_blank" rel="noopener"
-                class="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50">
-                <tabler-icon [icon]="i.abrir" [size]="16" [stroke]="2" /> Ver tienda
-              </a>
-              <a [href]="enlaceCompartir()" target="_blank" rel="noopener"
-                class="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50">
-                <tabler-icon [icon]="i.wa" [size]="16" [stroke]="2" /> Compartir
-              </a>
+          </div>
+
+          <div class="flex flex-col gap-2.5">
+            <div class="relative flex items-center gap-1.5">
+              <label class="flex min-w-0 flex-1 items-center gap-2 rounded-full px-3 transition-[background-color,box-shadow]"
+                [style.background]="qFoco() ? '#fff' : '#f4f4f4'" [style.box-shadow]="qFoco() ? '0 0 0 1px #303030,0 0 0 4px rgba(48,48,48,.08)' : 'none'">
+                <tabler-icon [icon]="i.buscar" [size]="15" [stroke]="2" class="text-[#8a8a8a]" />
+                <input [ngModel]="q()" (ngModelChange)="q.set($event)" (focus)="qFoco.set(true)" (blur)="qFoco.set(false)" placeholder="Nombre o categoría" class="min-w-0 flex-1 border-0 bg-transparent py-2 text-[13px] text-[#111827] outline-none" />
+                @if (q()) { <button type="button" (click)="q.set('')" class="flex bg-transparent p-0 text-[#8a8a8a]"><tabler-icon [icon]="i.cerrar" [size]="13" [stroke]="2" /></button> }
+              </label>
+              <button type="button" (click)="$event.stopPropagation(); fOpen.set(!fOpen())" title="Filtros y agrupación" class="relative flex size-[34px] shrink-0 items-center justify-center rounded-full text-[#4b5563] transition-colors hover:bg-[#e6e6e6]" [style.background]="fOpen() ? '#e6e6e6' : 'transparent'">
+                <tabler-icon [icon]="i.filtros" [size]="16" [stroke]="2" />
+                @if (filtrosActivos()) { <span class="absolute right-1 top-1 size-[7px] rounded-full bg-[#2be0d5] shadow-[0_0_0_2px_#fff]"></span> }
+              </button>
+
+              <!-- Popover de filtros -->
+              <div (click)="$event.stopPropagation()" class="absolute right-0 top-[42px] z-40 grid w-[min(380px,100%)] origin-top-right grid-cols-[132px_minmax(0,1fr)] overflow-hidden rounded-2xl bg-white shadow-[0_0_0_1px_rgba(0,0,0,.06),0_24px_48px_-20px_rgba(0,0,0,.35)] transition-[opacity,transform] duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)]"
+                [style.opacity]="fOpen() ? 1 : 0" [style.transform]="fOpen() ? 'none' : 'translateY(-6px) scale(.98)'" [style.pointer-events]="fOpen() ? 'auto' : 'none'">
+                <div class="flex flex-col border-r border-[#efefef] bg-[#f7f7f7] px-1.5 pb-1.5 pt-2">
+                  <div class="px-1.5 pb-2 pt-1 font-display text-[13.5px] font-semibold text-[#111827]">Filtros</div>
+                  <div class="relative">
+                    <span class="absolute inset-x-0 top-0 h-[34px] rounded-[9px] bg-white shadow-[0_1px_2px_rgba(0,0,0,.06),0_0_0_1px_rgba(0,0,0,.04)] transition-transform duration-[320ms] ease-[cubic-bezier(.2,.8,.2,1)]"
+                      [style.transform]="'translateY(' + (['estado', 'categoria', 'foto', 'agrupar'].indexOf(fSec()) * 36) + 'px)'"></span>
+                    @for (x of secciones(); track x.k) {
+                      <button type="button" (click)="fSec.set(x.k)" class="relative z-[1] mb-0.5 flex h-[34px] w-full items-center gap-[7px] bg-transparent px-2 text-left" [style.color]="fSec() === x.k ? '#111827' : '#6b7280'">
+                        <tabler-icon [icon]="x.icono" [size]="15" [stroke]="2" />
+                        <span class="min-w-0 flex-1 truncate text-[12.5px] font-semibold">{{ x.t }}</span>
+                        @if (x.act) { <span class="tienda-pop size-[7px] shrink-0 rounded-full bg-[#2be0d5] shadow-[0_0_0_3px_rgba(43,224,213,.2)]"></span> }
+                      </button>
+                    }
+                  </div>
+                  <button type="button" (click)="limpiarFiltros()" class="mt-auto self-start bg-transparent px-2 pb-0.5 pt-2 text-xs font-medium text-[#6b7280] hover:text-[#111827]">Limpiar todo</button>
+                </div>
+                <div class="flex max-h-[270px] min-h-[200px] flex-col">
+                  <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-1 pt-2.5">
+                    <div class="tienda-ficha flex flex-col gap-1.5">
+                      <div class="px-1.5 pt-0.5 text-[11.5px] leading-4 text-[#8a8a8a]">{{ panel().d }}</div>
+                      <div class="flex flex-col gap-px">
+                        @for (o of panel().rows; track o.t) {
+                          <button type="button" (click)="o.pick()" class="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-[9px] rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-[#f7f7f7]" [style.background]="o.on ? '#f7f7f7' : 'transparent'">
+                            @if (panel().multi) {
+                              <span class="flex size-[18px] items-center justify-center rounded-md text-white transition-[background-color,box-shadow]" [style.background]="o.on ? '#303030' : '#fff'" [style.box-shadow]="'inset 0 0 0 1.5px ' + (o.on ? '#303030' : '#d4d4d4')">
+                                <tabler-icon [icon]="i.check" [size]="12" [stroke]="2.5" class="transition-transform duration-[250ms] ease-[cubic-bezier(.34,1.56,.64,1)]" [style.transform]="'scale(' + (o.on ? 1 : 0) + ')'" />
+                              </span>
+                            } @else {
+                              <span class="flex size-[18px] items-center justify-center rounded-full transition-shadow" [style.box-shadow]="'inset 0 0 0 1.5px ' + (o.on ? '#303030' : '#d4d4d4')">
+                                <span class="size-2 rounded-full bg-[#303030] transition-transform duration-[250ms] ease-[cubic-bezier(.34,1.56,.64,1)]" [style.transform]="'scale(' + (o.on ? 1 : 0) + ')'"></span>
+                              </span>
+                            }
+                            <span class="flex min-w-0 items-center gap-[7px] truncate text-[12.5px] font-medium text-[#111827]">@if (o.dot) { <span class="size-[7px] shrink-0 rounded-full" [style.background]="o.dot"></span> }{{ o.t }}</span>
+                            <span class="text-xs font-semibold tabular-nums text-[#6b7280]">{{ o.n }}</span>
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 border-t border-[#f1f1f1] px-2.5 py-2">
+                    <span class="text-xs font-semibold text-[#111827]">{{ filtradas().length === 1 ? '1 producto' : filtradas().length + ' productos' }}</span>
+                    <button type="button" (click)="fOpen.set(false)" class="rounded-lg bg-[#303030] px-[11px] py-1.5 text-[12.5px] font-medium text-white shadow-[inset_0_-1px_0_#000]">Ver resultados</button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <button type="button" (click)="publicar(false)" [disabled]="guardando()"
-              class="mt-4 text-sm font-medium text-gray-500 underline-offset-2 hover:text-gray-900 hover:underline">
-              Pausar tienda
-            </button>
-          } @else {
-            <button type="button" (click)="publicar(true)" [disabled]="!puedePublicar() || guardando()"
-              class="mt-4 w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40">
-              Publicar tienda
-            </button>
-            @if (!whatsapp()) {
-              <p class="mt-2 text-xs text-gray-500">Para publicarla necesitas un WhatsApp: ahí te llegan los pedidos.</p>
-            }
-          }
 
-          @if (aviso()) {
-            <p role="status" class="mt-4 rounded-lg bg-[#e6f6ef] px-3 py-2 text-sm text-[#087b5d]">{{ aviso() }}</p>
-          }
+            <div class="flex min-h-[22px] flex-wrap items-center gap-2 px-1.5">
+              <span class="text-xs tabular-nums text-[#6b7280]">{{ conteoTxt() }}</span>
+              @for (c of chips(); track c.label) {
+                <span class="tienda-sube inline-flex items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pl-2.5 pr-1 text-[11.5px] font-medium text-[#374151]">{{ c.label }}<button type="button" (click)="c.quitar()" class="flex size-4 items-center justify-center rounded-full bg-transparent text-[#6b7280] hover:bg-[#d1d5db] hover:text-[#111827]"><tabler-icon [icon]="i.cerrar" [size]="11" [stroke]="2" /></button></span>
+              }
+            </div>
+
+            @if (!filtradas().length) {
+              <div class="tienda-sube px-4 py-8 text-center">
+                <p class="m-0 text-[13px] text-[#6b7280]">Ningún producto coincide con estos filtros.</p>
+                <button type="button" (click)="limpiarFiltros()" class="mt-3 rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[13px] font-medium text-[#374151] hover:bg-[#d4d4d4]">Limpiar filtros</button>
+              </div>
+            }
+
+            <div class="-mt-1.5 flex flex-col gap-1">
+              @for (g of grupos(); track g.k) {
+                <div>
+                  @if (grupo() !== 'ninguno') {
+                    <button type="button" (click)="plegar(g.k)" class="flex w-full items-center gap-2 bg-transparent px-1.5 pb-1.5 pt-2.5 text-left">
+                      <tabler-icon [icon]="g.icono" [size]="14" [stroke]="2" class="text-[#8a8a8a]" />
+                      <span class="truncate text-[12.5px] font-semibold text-[#111827]">{{ g.titulo }}</span>
+                      <span class="rounded-full bg-[#efefef] px-[7px] text-[11px] font-semibold leading-[17px] text-[#4b5563]">{{ g.filas.length }}</span>
+                      <span class="truncate text-[11.5px] text-[#8a8a8a]">· {{ g.sub }}</span>
+                      <span class="flex-1"></span>
+                      <tabler-icon [icon]="i.chevron" [size]="14" [stroke]="2" class="text-[#8a8a8a] transition-transform duration-[240ms]" [style.transform]="g.abierto ? 'none' : 'rotate(-90deg)'" />
+                    </button>
+                  }
+                  <div class="grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-rows]="g.abierto ? '1fr' : '0fr'">
+                    <div class="min-h-0 overflow-hidden">
+                      <div class="m-px flex flex-col rounded-xl p-1 shadow-[0_0_0_1px_#ececec]">
+                        @for (r of g.filas; track r.p.id) {
+                          <div (mouseenter)="filaHover.set(r.p.id)" (mouseleave)="filaHover.set(null)" (click)="irProductos(r.p.id)"
+                            class="grid cursor-pointer grid-cols-[16px_30px_minmax(0,1fr)_auto_64px_24px] items-center gap-2.5 rounded-[9px] px-1.5 py-[7px] transition-[background-color,opacity] hover:bg-[#f7f7f7]" [style.opacity]="r.estado === 'oculto' ? 0.55 : 1">
+                            <span class="flex h-[26px] items-center justify-center"><span class="h-[26px] w-[3px] rounded-full transition-colors" [style.background]="ESTADOS[r.estado].dot"></span></span>
+                            <span class="flex size-[30px] items-center justify-center overflow-hidden rounded-lg bg-[#eaece8] bg-cover bg-center font-display text-xs font-semibold text-[#9aa19b] shadow-[inset_0_0_0_1px_#e5e5e5]" [style.background-image]="r.foto ? 'url(' + r.foto + ')' : null">{{ r.foto ? '' : r.p.nombre.charAt(0) }}</span>
+                            <span class="flex min-w-0 flex-col gap-px">
+                              <span class="flex min-w-0 items-center gap-1.5"><span class="truncate text-[13px] font-medium text-[#111827]">{{ r.p.nombre }}</span>@if (!r.foto) { <tabler-icon [icon]="i.sinFoto" [size]="12" [stroke]="2" title="Sin foto · se ve la inicial" class="shrink-0 text-[#b08000]" /> }</span>
+                              <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ r.cat }} · {{ ESTADOS[r.estado].t }}</span>
+                            </span>
+                            <span class="whitespace-nowrap text-[12.5px] font-medium tabular-nums text-[#303030]">{{ monto(r.p.precio) }}</span>
+                            <span class="flex flex-col items-end gap-[5px]">
+                              @if (r.stock !== null) {
+                                <span class="text-[11.5px] font-semibold tabular-nums" [style.color]="stockColor(r.stock)">{{ stockTxt(r.stock) }}</span>
+                                <span class="relative block h-1 w-16 overflow-hidden rounded-full bg-[#efefef]"><span class="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500" [style.width]="stockAncho(r.stock)" [style.background]="r.stock < 5 ? '#ffb904' : '#303030'"></span></span>
+                              }
+                            </span>
+                            <span class="flex justify-center">
+                              @if (filaHover() === r.p.id) {
+                                <button type="button" (click)="$event.stopPropagation(); irProductos(r.p.id)" title="Editar en Productos" class="tienda-fade flex size-6 items-center justify-center rounded-full bg-transparent text-[#8a8a8a] hover:bg-[#ececec] hover:text-[#111827]"><tabler-icon [icon]="i.lapiz" [size]="14" [stroke]="2" /></button>
+                              }
+                            </span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Columna derecha -->
+      <aside class="sticky top-0 flex min-w-[300px] flex-[0_1_344px] flex-col gap-3">
+        <section class="tienda-ficha flex flex-col gap-3.5 rounded-2xl border border-[#ebebeb] bg-white p-[18px] shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)] [animation-delay:.08s]">
+          @let h = hero();
+          <div class="flex items-center gap-3">
+            <span class="relative grid size-[42px] shrink-0 place-items-center rounded-xl transition-colors duration-[350ms]" [style.background]="h.bg" [style.color]="h.fg">
+              @if (activa()) { <span class="tienda-respira absolute right-[-2px] top-[-2px] size-2.5 rounded-full bg-[#22c55e] shadow-[0_0_0_2px_#fff]"></span> }
+              <tabler-icon [icon]="h.icono" [size]="21" [stroke]="1.75" />
+            </span>
+            <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span class="text-[15px] font-semibold tracking-[-0.005em] text-[#111827]">{{ h.titulo }}</span>
+              <span class="text-pretty text-xs leading-[17px] text-[#8a8a8a]">{{ h.texto }}</span>
+            </span>
+          </div>
+          <div class="relative grid grid-cols-2 rounded-[10px] bg-[#f1f1f1] p-[3px]">
+            <span class="absolute inset-y-[3px] left-[3px] w-[calc((100%-6px)/2)] rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)] transition-transform duration-[400ms] ease-[cubic-bezier(.3,1.3,.5,1)]" [style.transform]="activa() ? 'translateX(0)' : 'translateX(100%)'"></span>
+            <button type="button" (click)="publicar()" [disabled]="guardando()" [title]="!activa() && !publicable() ? 'Completa lo pendiente para publicar' : 'Publicar tienda'"
+              class="relative flex h-8 items-center justify-center gap-1.5 bg-transparent text-[12.5px] font-medium transition-colors" [style.color]="activa() ? '#111827' : '#6b7280'" [style.opacity]="!activa() && !publicable() ? 0.45 : 1">
+              <span class="size-[7px] rounded-full bg-[#2fa65a]"></span>Publicada
+            </button>
+            <button type="button" (click)="pausar()" [disabled]="guardando()" class="relative flex h-8 items-center justify-center gap-1.5 bg-transparent text-[12.5px] font-medium transition-colors" [style.color]="!activa() ? '#111827' : '#6b7280'">
+              <span class="size-[7px] rounded-full bg-[#a3a3a3]"></span>{{ teniaNumero() ? 'Pausada' : 'Sin publicar' }}
+            </button>
+          </div>
+          <div class="flex flex-col rounded-xl px-1.5 py-1 shadow-[0_0_0_1px_#ececec]">
+            @for (r of requisitos(); track r.label) {
+              <button type="button" (click)="irA(r.sec)" class="flex items-center gap-2.5 rounded-lg bg-transparent px-1.5 py-[7px] text-left transition-colors hover:bg-[#f7f7f7]">
+                <span class="grid size-5 shrink-0 place-items-center rounded-full text-white transition-colors duration-300" [style.background]="r.ok ? '#303030' : '#fff'" [style.box-shadow]="r.ok ? 'none' : 'inset 0 0 0 1.5px #d4d4d4'">
+                  @if (r.ok) { <tabler-icon [icon]="i.check" [size]="12" [stroke]="2.5" class="tienda-pop" /> }
+                </span>
+                <span class="flex-1 text-[12.5px] font-medium" [style.color]="r.ok ? '#303030' : '#6b7280'">{{ r.label }}</span>
+                <span class="text-[11.5px]" [style.color]="r.ok ? '#9ca3af' : '#8a6100'">{{ r.nota }}</span>
+              </button>
+            }
+          </div>
+          <div class="flex flex-col gap-2">
+            <ng-container *ngTemplateOutlet="etiqueta; context: { t: 'Compartir', sub: 'Mira abajo cómo se ve antes de mandarlo.' }" />
+            <div class="flex items-center overflow-hidden rounded-[10px] bg-[#fafafa] shadow-[0_0_0_1px_#e5e5e5] transition-opacity duration-300" [style.opacity]="activa() ? 1 : 0.5">
+              <tabler-icon [icon]="i.mundo" [size]="15" [stroke]="2" class="ml-3 text-[#8a8a8a]" />
+              <span class="min-w-0 flex-1 truncate px-2 py-[9px] text-[12.5px] text-[#303030]">{{ prefijo() }}<b class="font-semibold">{{ tienda()?.slug }}</b></span>
+              <button type="button" (click)="copiar()" title="Copiar enlace" class="mr-[3px] flex size-[30px] items-center justify-center rounded-lg bg-transparent text-[#4b5563] hover:bg-[#ececec] hover:text-[#111827]"><tabler-icon [icon]="i.copiar" [size]="15" [stroke]="2" /></button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" (click)="tab.set('chat')" class="flex items-center justify-center gap-1.5 rounded-full bg-white px-3 py-[7px] text-[12.5px] font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow,transform] hover:shadow-[0_0_0_1px_#b5b5b5] active:scale-[.97]"><tabler-icon [icon]="i.wa" [size]="15" [stroke]="2" class="text-[#1d8a4b]" />Por chat</button>
+              <button type="button" (click)="tab.set('estado')" class="flex items-center justify-center gap-1.5 rounded-full bg-white px-3 py-[7px] text-[12.5px] font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow,transform] hover:shadow-[0_0_0_1px_#b5b5b5] active:scale-[.97]"><tabler-icon [icon]="i.estado" [size]="15" [stroke]="2" />En tu estado</button>
+            </div>
+          </div>
         </section>
 
-        <section class="rounded-2xl bg-card-bg p-5 shadow-sm">
-          <h2 class="text-sm font-semibold text-gray-900">Productos</h2>
-          <p class="mt-1.5 text-sm text-gray-500">
-            @if (t.productosPublicados) {
-              Tu tienda muestra <span class="font-medium text-gray-900">{{ t.productosPublicados }} {{ t.productosPublicados === 1 ? 'producto' : 'productos' }}</span>:
-              los que están activos en tu catálogo, con su precio y su foto.
-            } @else {
-              Todavía no tienes productos activos. Cárgalos en tu catálogo y aparecen solos en la tienda.
-            }
-          </p>
-          <a routerLink="/products" class="mt-3 inline-block text-sm font-medium text-gray-900 underline-offset-2 hover:underline">Ir a Products</a>
-        </section>
+        <app-tienda-vista-previa
+          [nombre]="nombreNegocio()" [slug]="fx.slug" [prefijo]="prefijo()" [frase]="fx.frase" [logoUrl]="fx.logoUrl" [waListo]="waLleno()"
+          [productos]="vistaProductos()" [pausada]="!activa()" [marcado]="marcado()" [(tab)]="tab" (ir)="irA($event)" />
       </aside>
     </div>
-  }
-</div>
+  </div>
+}
+
+<ng-template #cabeza let-icono="icono" let-titulo="titulo" let-sub="sub">
+  <div class="flex items-start gap-3">
+    <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f4f4f4] text-[#303030]"><tabler-icon [icon]="icono" [size]="17" [stroke]="1.75" /></span>
+    <span class="flex min-w-0 flex-1 flex-col gap-0.5"><span class="text-[15px] font-semibold tracking-[-0.005em] text-[#111827]">{{ titulo }}</span><span class="text-xs leading-[17px] text-[#8a8a8a]">{{ sub }}</span></span>
+  </div>
+</ng-template>
+<ng-template #etiqueta let-t="t" let-sub="sub" let-req="req" let-opc="opc">
+  <span class="flex flex-col gap-0.5">
+    <span class="flex items-center gap-2 text-[13px] font-semibold text-[#303030]">{{ t }}
+      @if (req) { <span class="rounded-md bg-[#ffe6e5] px-[7px] py-px text-[11px] font-medium leading-[17px] text-[#c4320a]">Requerido</span> }
+      @if (opc) { <span class="rounded-md bg-[#f1f1f1] px-[7px] py-px text-[11px] font-medium leading-[17px] text-[#6b7280]">Opcional</span> }
+    </span>
+    <span class="text-xs leading-4 text-[#8a8a8a]">{{ sub }}</span>
+  </span>
+</ng-template>

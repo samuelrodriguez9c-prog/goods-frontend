@@ -1,362 +1,744 @@
 @switch (estado()) {
   @case ('cargando') {
-    <div class="mx-auto max-w-5xl px-4 pt-8" aria-busy="true" aria-label="Cargando la tienda">
-      <div class="flex items-center gap-4">
-        <div class="size-16 animate-pulse rounded-2xl bg-linea"></div>
-        <div class="flex-1 space-y-2">
-          <div class="h-6 w-48 animate-pulse rounded bg-linea"></div>
-          <div class="h-4 w-64 max-w-full animate-pulse rounded bg-linea"></div>
-        </div>
+    <main class="p-3" aria-busy="true">
+      <div class="flex min-h-[min(880px,calc(100dvh-24px))] flex-col justify-end gap-6 overflow-hidden rounded-[36px] bg-bosque px-[clamp(24px,5vw,72px)] pb-[clamp(36px,5vw,64px)] pt-[140px]">
+        <span class="h-4 w-48 animate-pulse rounded-full bg-white/10"></span>
+        <span class="h-[clamp(72px,12vw,200px)] w-3/4 animate-pulse rounded-[28px] bg-white/10"></span>
+        <span class="h-5 w-96 max-w-full animate-pulse rounded-full bg-white/10"></span>
       </div>
-      <div class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        @for (n of [1, 2, 3, 4, 5, 6]; track n) {
-          <div class="aspect-square animate-pulse rounded-xl bg-linea"></div>
-        }
-      </div>
-    </div>
-  }
-
-  @case ('no-disponible') {
-    <main class="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-16">
-      <h1 class="font-display text-3xl font-bold leading-tight">Esta tienda no está disponible</h1>
-      <p class="mt-3 text-gris">
-        Puede que la dirección esté mal escrita o que el negocio haya pausado su tienda. Si tienes el WhatsApp del negocio, escríbele directamente.
-      </p>
     </main>
   }
-
   @case ('error') {
-    <main class="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-16">
-      <h1 class="font-display text-3xl font-bold leading-tight">No pudimos cargar la tienda</h1>
-      <p class="mt-3 text-gris">Revisa tu conexión a internet y vuelve a intentarlo.</p>
-      <button type="button" (click)="reintentar()"
-        class="mt-6 self-start rounded-full bg-tinta px-5 py-2.5 text-sm font-semibold text-white">
-        Volver a intentar
-      </button>
+    <main class="flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-center">
+      <p class="titular m-0 text-[clamp(44px,8vw,80px)] font-bold text-bosque">Algo falló</p>
+      <p class="m-0 max-w-[40ch] text-base leading-relaxed text-texto-2">No pudimos cargar la tienda. Revisa tu conexión y vuelve a intentarlo.</p>
+      <button type="button" (click)="reintentar()" class="h-[52px] rounded-full bg-bosque px-6 text-[15px] font-semibold text-hoja hover:bg-bosque-2">Reintentar</button>
     </main>
   }
-
+  @case ('no-disponible') {
+    <app-no-disponible [motivo]="noDisponible().motivo" [slug]="slug()" [nombre]="noDisponible().nombre ?? null" [whatsapp]="noDisponible().whatsapp ?? null" />
+  }
   @case ('lista') {
-    @if (tienda(); as t) {
-      <div class="min-h-dvh" [class.pb-28]="unidades() > 0" [attr.inert]="abierto() || detalle() ? '' : null">
-        <header class="mx-auto max-w-5xl px-4 pt-8 pb-4 sm:pt-12">
-          <div class="flex items-start gap-4">
-            @if (t.logoUrl) {
-              <img [src]="t.logoUrl" alt="" class="size-16 shrink-0 rounded-2xl bg-tarjeta object-cover ring-1 ring-linea sm:size-20" />
-            } @else {
-              <div aria-hidden="true"
-                class="grid size-16 shrink-0 place-items-center rounded-2xl bg-tinta font-display text-3xl font-bold text-papel sm:size-20 sm:text-4xl">
-                {{ inicial(t.nombre) }}
-              </div>
-            }
-            <div class="min-w-0 flex-1">
-              <h1 class="font-display text-[1.75rem] font-bold leading-[1.1] tracking-tight text-balance sm:text-4xl">{{ t.nombre }}</h1>
-              @if (t.descripcion) {
-                <p class="mt-1.5 max-w-prose text-[0.95rem] leading-snug text-gris">{{ t.descripcion }}</p>
-              }
-              <a [href]="enlaceChat()" target="_blank" rel="noopener"
-                class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-wa-oscuro underline-offset-4 hover:underline">
-                <tabler-icon [icon]="i.wa" [size]="16" [stroke]="2" />
-                Escribir al negocio
-              </a>
-            </div>
-          </div>
-        </header>
-
-        <nav class="sticky top-0 z-20 border-b border-linea bg-papel/95 backdrop-blur" aria-label="Filtrar productos">
-          <div class="mx-auto max-w-5xl px-4 py-3">
-            @if (conBuscador()) {
-              <label class="mb-3 flex items-center gap-2 rounded-full bg-tarjeta px-4 py-2 ring-1 ring-linea focus-within:ring-2 focus-within:ring-wa">
-                <tabler-icon [icon]="i.buscar" [size]="16" [stroke]="2" class="text-gris" />
-                <span class="sr-only">Buscar</span>
-                <input type="search" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" placeholder="Buscar en {{ t.nombre }}"
-                  class="w-full bg-transparent text-[0.95rem] outline-none placeholder:text-gris/80" />
-              </label>
-            }
-            @if (t.categorias.length) {
-              <div class="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]" role="radiogroup" aria-label="Categoría">
-                <button type="button" role="radio" [attr.aria-checked]="filtro() === null" (click)="filtro.set(null)"
-                  class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
-                  [class]="filtro() === null ? 'bg-tinta text-papel' : 'bg-tarjeta text-tinta ring-1 ring-linea'">
-                  Todo
-                </button>
-                @for (c of t.categorias; track c.id) {
-                  <button type="button" role="radio" [attr.aria-checked]="filtro() === c.id" (click)="filtro.set(c.id)"
-                    class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
-                    [class]="filtro() === c.id ? 'bg-tinta text-papel' : 'bg-tarjeta text-tinta ring-1 ring-linea'">
-                    {{ c.nombre }}
-                  </button>
-                }
-                @if (hayOtros()) {
-                  <button type="button" role="radio" [attr.aria-checked]="filtro() === 0" (click)="filtro.set(0)"
-                    class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
-                    [class]="filtro() === 0 ? 'bg-tinta text-papel' : 'bg-tarjeta text-tinta ring-1 ring-linea'">
-                    Otros
-                  </button>
-                }
-              </div>
-            }
-          </div>
-        </nav>
-
-        <main class="mx-auto max-w-5xl px-4 pt-4 pb-10">
-          @if (!t.productos.length) {
-            <p class="py-16 text-center text-gris">Este negocio todavía no tiene productos publicados.</p>
-          } @else if (!visibles().length) {
-            <p class="py-16 text-center text-gris">Nada coincide con “{{ busqueda() }}”.</p>
-          }
-          <ul class="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-            @for (p of visibles(); track p.id) {
-              <li class="flex flex-col">
-                <button type="button" (click)="detalle.set(p)" class="group relative block overflow-hidden rounded-xl bg-tarjeta text-left ring-1 ring-linea"
-                  [attr.aria-label]="'Ver ' + p.nombre">
-                  @if (p.imagenes.length) {
-                    <img [src]="p.imagenes[0]" alt="" loading="lazy"
-                      class="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                      [class.opacity-50]="p.agotado" />
-                  } @else {
-                    <div aria-hidden="true" class="grid aspect-square w-full place-items-center bg-[#eaece8] font-display text-4xl font-semibold text-[#c3c9c2]">
-                      {{ inicial(p.nombre) }}
-                    </div>
-                  }
-                  @if (p.agotado) {
-                    <span class="absolute top-2 left-2 rounded-full bg-tinta px-2.5 py-1 text-xs font-semibold text-papel">Agotado</span>
-                  } @else if (p.ultimasUnidades) {
-                    <span class="absolute top-2 left-2 rounded-full bg-tarjeta px-2.5 py-1 text-xs font-semibold text-oferta ring-1 ring-linea">Últimas unidades</span>
-                  }
-                </button>
-                <div class="mt-2.5 flex flex-1 flex-col">
-                  <h2 class="text-[0.95rem] font-medium leading-snug">{{ p.nombre }}</h2>
-                  <p class="mt-1 flex flex-wrap items-baseline gap-x-2">
-                    <span class="font-semibold tabular-nums" [class.text-oferta]="p.precioAntes">{{ monto(p.precio) }}</span>
-                    @if (p.precioAntes) {
-                      <s class="text-sm text-gris tabular-nums">{{ monto(p.precioAntes) }}</s>
-                    }
-                  </p>
-                  <div class="mt-auto pt-3">
-                    @if (p.agotado) {
-                      <p class="py-1.5 text-sm text-gris">Sin unidades por ahora</p>
-                    } @else if (cantidad(p.id)) {
-                      <div class="flex items-center justify-between rounded-full bg-tinta p-1 text-papel">
-                        <button type="button" (click)="cambiar(p, -1)" class="grid size-8 place-items-center rounded-full hover:bg-white/15"
-                          [attr.aria-label]="'Quitar uno de ' + p.nombre">
-                          <tabler-icon [icon]="i.menos" [size]="16" [stroke]="2" />
-                        </button>
-                        <span class="text-sm font-semibold tabular-nums" aria-live="polite">{{ cantidad(p.id) }}</span>
-                        <button type="button" (click)="cambiar(p, 1)" class="grid size-8 place-items-center rounded-full hover:bg-white/15"
-                          [attr.aria-label]="'Agregar otro ' + p.nombre">
-                          <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" />
-                        </button>
-                      </div>
-                    } @else {
-                      <button type="button" (click)="cambiar(p, 1)"
-                        class="flex w-full items-center justify-center gap-1.5 rounded-full bg-tarjeta py-2 text-sm font-semibold ring-1 ring-linea hover:ring-tinta">
-                        <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" />
-                        Agregar
-                      </button>
-                    }
-                  </div>
-                </div>
-              </li>
-            }
-          </ul>
-        </main>
-
-        <footer class="mx-auto max-w-5xl px-4 pb-10 text-xs text-gris">
-          Tienda hecha con <a [href]="goodsUrl" target="_blank" rel="noopener" class="font-medium underline underline-offset-2">Goods</a>
-        </footer>
+    @let t = tienda()!;
+    @let n = nav();
+    <div class="relative min-h-dvh overflow-x-clip">
+      <!-- Burbujas de fondo de la página -->
+      <div aria-hidden="true" class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div burbuja="0.02,70,0.06" [parallax]="[0.06, -0.18, 0.03]" class="absolute left-[-14vw] top-[30vh] size-[46vw]"><div class="animate-morph size-full bg-menta opacity-70"></div></div>
+        <div burbuja="0.035,70,0.06" [parallax]="[-0.05, -0.1, -0.025]" class="absolute right-[-12vw] top-[70vh] size-[38vw]"><div class="animate-morph-r size-full bg-menta opacity-70"></div></div>
       </div>
 
-      <!-- Barra del pedido -->
-      @if (unidades() > 0 && !abierto()) {
-        <div class="fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <button type="button" (click)="abierto.set(true)"
-            class="mx-auto flex w-full max-w-md items-center gap-3 rounded-2xl bg-tinta py-3 pr-3 pl-4 text-left text-papel shadow-[0_8px_24px_-8px_rgb(29_33_30/0.5)]">
-            <span class="relative">
-              <tabler-icon [icon]="i.bolsa" [size]="24" [stroke]="2" />
-              <span class="absolute -top-1.5 -right-2 grid min-w-5 place-items-center rounded-full bg-burbuja px-1 text-[0.7rem] font-bold text-tinta tabular-nums">{{ unidades() }}</span>
+      <!-- Nav -->
+      <div class="pointer-events-none fixed inset-x-0 top-0 z-[60] flex justify-center px-3">
+        <header
+          class="pointer-events-auto mt-3 flex w-full items-center gap-4 transition-[max-width,height,padding,border-radius,background-color,box-shadow,color] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]"
+          [style.max-width]="n.max" [style.height]="n.h" [style.padding]="n.px" [style.border-radius]="n.r" [style.background]="n.bg"
+          [style.color]="n.fg" [style.box-shadow]="n.sh" [style.backdrop-filter]="n.blur">
+          <a href="#" (click)="$event.preventDefault(); subir()" class="flex shrink-0 items-center gap-2.5 text-inherit no-underline">
+            <span class="overflow-hidden transition-[width,height,opacity] duration-[450ms]" [style.width]="n.logoW" [style.height]="n.logoH" [style.opacity]="n.logoO">
+              @if (t.logoUrl) { <img [src]="t.logoUrl" [alt]="t.nombre" class="size-full rounded-lg object-contain" /> }
+              @else { <span class="grid size-[34px] place-items-center rounded-lg bg-hoja font-display text-base font-bold text-bosque">{{ inicial(t.nombre) }}</span> }
             </span>
-            <span class="flex-1 pl-1">
-              <span class="block text-xs text-papel/70">Tu pedido</span>
-              <span class="block font-semibold tabular-nums">{{ monto(total()) }}</span>
-            </span>
-            <span class="rounded-xl bg-wa px-4 py-2.5 text-sm font-semibold text-white">Ver pedido</span>
-          </button>
-        </div>
-      }
+            @if (!movil() && !t.logoUrl) { <span class="whitespace-nowrap font-display text-base font-bold tracking-[-0.01em]">{{ t.nombre }}</span> }
+          </a>
 
-      <!-- Hoja del pedido -->
-      @if (abierto()) {
-        <div class="fixed inset-0 z-40 flex items-end justify-center bg-tinta/40 sm:items-center sm:p-6" (click)="abierto.set(false)">
-          <section #hoja tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="titulo-pedido" (click)="$event.stopPropagation()"
-            class="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-tarjeta outline-none sm:rounded-3xl">
-            <div class="flex items-center justify-between border-b border-linea px-5 py-4">
-              <h2 id="titulo-pedido" class="font-display text-xl font-bold">Tu pedido</h2>
-              <button type="button" (click)="abierto.set(false)" class="grid size-9 place-items-center rounded-full hover:bg-papel" aria-label="Cerrar">
-                <tabler-icon [icon]="i.cerrar" [size]="20" [stroke]="2" />
-              </button>
-            </div>
-
-            <div class="flex-1 overflow-y-auto px-5 py-4">
-              @if (!lineas().length) {
-                <p class="py-8 text-center text-gris">Tu pedido está vacío. Agrega productos desde el catálogo.</p>
-              }
-              <ul class="divide-y divide-linea">
-                @for (l of lineas(); track l.producto.id) {
-                  <li class="py-3">
-                    <div class="flex items-start justify-between gap-3">
-                      <p class="font-medium leading-snug">{{ l.producto.nombre }}</p>
-                      <p class="shrink-0 font-semibold tabular-nums">{{ monto(l.producto.precio * l.cantidad) }}</p>
-                    </div>
-                    <div class="mt-2 flex items-center justify-between">
-                      <p class="text-sm text-gris tabular-nums">{{ monto(l.producto.precio) }} c/u</p>
-                      <div class="flex items-center gap-1 rounded-full ring-1 ring-linea">
-                        <button type="button" (click)="cambiar(l.producto, -1)" class="grid size-8 place-items-center rounded-full hover:bg-papel"
-                          [attr.aria-label]="(l.cantidad === 1 ? 'Quitar ' : 'Quitar uno de ') + l.producto.nombre">
-                          <tabler-icon [icon]="l.cantidad === 1 ? i.quitar : i.menos" [size]="16" [stroke]="2" />
-                        </button>
-                        <span class="w-6 text-center text-sm font-semibold tabular-nums">{{ l.cantidad }}</span>
-                        <button type="button" (click)="cambiar(l.producto, 1)" class="grid size-8 place-items-center rounded-full hover:bg-papel"
-                          [attr.aria-label]="'Agregar otro ' + l.producto.nombre">
-                          <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" />
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                }
-              </ul>
-
-              @if (lineas().length) {
-                <div class="mt-4 grid gap-3">
-                  <label class="grid gap-1 text-sm font-medium">
-                    Tu nombre
-                    <input [ngModel]="nombre()" (ngModelChange)="nombre.set($event); errorPedido.set(null)" maxlength="80" autocomplete="name" required
-                      placeholder="¿Cómo te llamas?" [attr.aria-invalid]="faltanDatosVisibles() && !nombreValido()"
-                      [class.ring-oferta]="faltanDatosVisibles() && !nombreValido()"
-                      class="rounded-xl bg-papel px-3.5 py-2.5 font-normal ring-1 ring-linea outline-none focus:ring-2 focus:ring-wa" />
-                  </label>
-                  <label class="grid gap-1 text-sm font-medium">
-                    Tu celular
-                    <input type="tel" inputmode="tel" [ngModel]="telefono()" (ngModelChange)="telefono.set($event); errorPedido.set(null)" maxlength="20"
-                      autocomplete="tel" required placeholder="300 123 4567" [attr.aria-invalid]="faltanDatosVisibles() && !telefonoValido()"
-                      [class.ring-oferta]="faltanDatosVisibles() && !telefonoValido()"
-                      class="rounded-xl bg-papel px-3.5 py-2.5 font-normal ring-1 ring-linea outline-none focus:ring-2 focus:ring-wa" />
-                    <span class="text-xs font-normal text-gris">Con este número {{ t.nombre }} encuentra tu pedido.</span>
-                  </label>
-                  <label class="grid gap-1 text-sm font-medium">
-                    Nota para el negocio
-                    <textarea [ngModel]="nota()" (ngModelChange)="nota.set($event)" maxlength="300" rows="2"
-                      placeholder="Opcional: dirección, hora de entrega, sabores…"
-                      class="resize-none rounded-xl bg-papel px-3.5 py-2.5 font-normal ring-1 ring-linea outline-none focus:ring-2 focus:ring-wa"></textarea>
-                  </label>
-                  <label class="flex items-start gap-2.5 text-sm">
-                    <input type="checkbox" [ngModel]="aceptaPromociones()" (ngModelChange)="aceptaPromociones.set($event)"
-                      class="mt-0.5 size-4 shrink-0 accent-wa" />
-                    <span>Quiero recibir novedades y promociones de {{ t.nombre }} por WhatsApp. <span class="text-gris">Puedes darte de baja cuando quieras respondiendo BAJA.</span></span>
-                  </label>
-                </div>
-
-                <p class="mt-5 text-sm font-medium">Así le llega a {{ t.nombre }}</p>
-                <div class="mt-2 rounded-2xl bg-chat p-3">
-                  <div class="relative ml-auto w-fit max-w-[92%] rounded-xl rounded-tr-sm bg-burbuja px-3 py-2 text-[0.9rem] leading-relaxed shadow-[0_1px_0.5px_rgb(0_0_0/0.13)]">
-                    @for (linea of vistaPrevia(); track $index) {
-                      @if (linea.texto) {
-                        <p [class.font-semibold]="linea.negrita" class="break-words">{{ linea.texto }}</p>
-                      } @else {
-                        <p aria-hidden="true">&nbsp;</p>
-                      }
-                    }
-                  </div>
-                </div>
-              }
-
-              @if (errorPedido()) {
-                <p role="alert" class="mt-4 rounded-xl bg-[#fbeae5] px-4 py-3 text-sm text-oferta">{{ errorPedido() }}</p>
-              }
-            </div>
-
-            @if (lineas().length) {
-              <div class="border-t border-linea px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                <button type="button" (click)="enviar()" [disabled]="enviando()"
-                  class="flex w-full items-center justify-center gap-2 rounded-2xl bg-wa py-3.5 font-semibold text-white hover:bg-wa-oscuro disabled:opacity-60">
-                  <tabler-icon [icon]="i.wa" [size]="20" [stroke]="2" />
-                  {{ enviando() ? 'Preparando el mensaje…' : 'Enviar pedido por WhatsApp' }}
-                </button>
-                @if (enviado()) {
-                  <p class="mt-3 text-center text-sm text-gris">
-                    ¿Ya enviaste el mensaje?
-                    <button type="button" (click)="vaciar()" class="font-medium text-tinta underline underline-offset-2">Vaciar pedido</button>
-                  </p>
-                } @else {
-                  <p class="mt-3 text-center text-sm text-gris">Se abre WhatsApp con el mensaje listo; tú lo envías.</p>
+          <div class="flex min-w-0 flex-1 justify-center">
+            @if (!hayQ() && !movil()) {
+              <div class="sin-barra relative flex items-center gap-0.5 overflow-x-auto rounded-full p-1 transition-colors duration-[450ms]" [style.background]="n.track">
+                <span class="absolute inset-y-1 left-0 rounded-full transition-[transform,width,opacity,background-color] duration-500 ease-[cubic-bezier(.3,1.3,.5,1)]"
+                  [style.width.px]="indicador().w" [style.transform]="'translateX(' + indicador().x + 'px)'" [style.opacity]="indicador().o" [style.background]="n.ind"></span>
+                @for (s of secciones(); track s.id; let k = $index) {
+                  <button #navBtn type="button" (click)="irSeccion(k)" class="relative z-[1] h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors duration-300 hover:opacity-75"
+                    [style.color]="seccionActiva() === s.id ? '#eafff5' : 'inherit'">{{ s.nombre }}</button>
                 }
               </div>
             }
-          </section>
-        </div>
-      }
+            @if (hayQ() && !movil()) {
+              <span class="flex h-9 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium" [style.background]="n.track">{{ filtrados().length }} {{ filtrados().length === 1 ? 'producto' : 'productos' }} para «{{ busqueda().trim() }}»</span>
+            }
+          </div>
 
-      <!-- Detalle de un producto -->
-      @if (detalle(); as p) {
-        <div class="fixed inset-0 z-50 flex items-end justify-center bg-tinta/40 sm:items-center sm:p-6" (click)="detalle.set(null)">
-          <section role="dialog" aria-modal="true" [attr.aria-label]="p.nombre" (click)="$event.stopPropagation()"
-            class="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-tarjeta sm:rounded-3xl">
-            <div class="relative">
-              @if (p.imagenes.length) {
-                <div class="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none]">
-                  @for (img of p.imagenes; track $index) {
-                    <img [src]="img" [alt]="p.nombre" class="aspect-square w-full shrink-0 snap-center object-cover" />
-                  }
-                </div>
-                @if (p.imagenes.length > 1) {
-                  <p class="absolute right-3 bottom-3 rounded-full bg-tinta/70 px-2 py-0.5 text-xs text-papel">Desliza para ver {{ p.imagenes.length }} fotos</p>
-                }
-              }
-              <button type="button" (click)="detalle.set(null)" aria-label="Cerrar"
-                class="absolute top-3 right-3 grid size-9 place-items-center rounded-full bg-tarjeta/90 ring-1 ring-linea">
-                <tabler-icon [icon]="i.cerrar" [size]="20" [stroke]="2" />
-              </button>
-            </div>
-            <div class="overflow-y-auto px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-              <h2 class="pr-10 font-display text-2xl font-bold leading-tight">{{ p.nombre }}</h2>
-              <p class="mt-1 flex items-baseline gap-2">
-                <span class="text-lg font-semibold tabular-nums" [class.text-oferta]="p.precioAntes">{{ monto(p.precio) }}</span>
-                @if (p.precioAntes) {
-                  <s class="text-gris tabular-nums">{{ monto(p.precioAntes) }}</s>
+          <label class="flex h-11 shrink-0 items-center rounded-full transition-colors duration-[450ms]" [style.background]="n.track">
+            <button type="button" (click)="abrirBusqueda()" aria-label="Buscar" class="grid size-11 place-items-center text-inherit"><tabler-icon [icon]="i.buscar" [size]="18" [stroke]="2" /></button>
+            <input #inputBusqueda [ngModel]="busqueda()" (ngModelChange)="alBuscar($event)" (blur)="cerrarBusqueda()" placeholder="Buscar productos"
+              class="min-w-0 border-0 bg-transparent p-0 text-sm text-inherit outline-none transition-[width] duration-[450ms] ease-[cubic-bezier(.2,.8,.2,1)] placeholder:text-gris-2" [style.width]="anchoBusqueda()" />
+            @if (hayQ()) {
+              <button type="button" (mousedown)="limpiarBusqueda($event)" aria-label="Borrar búsqueda" class="mr-1 grid size-9 place-items-center rounded-full text-inherit"><tabler-icon [icon]="i.cerrar" [size]="15" [stroke]="2" /></button>
+            }
+          </label>
+          <button type="button" (click)="abrirPedido()" class="flex h-11 shrink-0 items-center gap-2.5 rounded-full text-sm font-semibold transition-[background-color,color,transform] duration-[450ms] active:scale-[.96]"
+            [style.padding]="n.cartPad" [style.background]="n.cartBg" [style.color]="n.cartFg">
+            @if (movil()) { <tabler-icon [icon]="i.bolsa" [size]="19" [stroke]="2" /> } @else { Pedido }
+            <span class="grid h-8 min-w-8 place-items-center rounded-full px-2 text-[13px] tabular-nums transition-colors duration-[450ms]" [style.background]="n.cartPill" [style.color]="n.cartPillFg">{{ unidades() }}</span>
+          </button>
+        </header>
+      </div>
+
+      <main class="relative z-[1]">
+        <!-- Hero -->
+        <div class="p-3">
+          <section data-screen-label="Inicio" class="relative flex min-h-[min(880px,calc(100dvh-24px))] flex-col justify-end overflow-hidden rounded-[36px] bg-bosque px-[clamp(24px,5vw,72px)] pb-[clamp(36px,5vw,64px)] pt-[140px] text-hoja">
+            <div burbuja="0.03,40,0.04" [parallax]="[-0.12, 0.32, 0.04]" aria-hidden="true" class="absolute right-[-10%] top-[-18%] size-[58vw] max-h-[860px] max-w-[860px]"><div class="animate-morph size-full bg-bosque-2"></div></div>
+            <div burbuja="0.07,70,0.12" [parallax]="[-0.35, 0.12]" aria-hidden="true" class="absolute right-[24%] top-[14%] size-[16vw] max-h-[240px] max-w-[240px]"><div class="animate-morph-r size-full bg-teal"></div></div>
+            <div burbuja="0.1,60,0.18" [parallax]="[0.1, -0.45]" aria-hidden="true" class="absolute right-[14%] top-[10%] size-[4vw] min-h-8 min-w-8 max-h-16 max-w-16"><div class="animate-morph size-full bg-wa"></div></div>
+
+            <div #hero class="relative flex flex-col gap-[clamp(28px,4vw,48px)] will-change-transform">
+              <p class="m-0 flex flex-wrap items-center gap-x-5 gap-y-2">
+                <span class="flex items-center gap-2.5 text-[15px] font-medium text-lima">
+                  <span class="relative flex size-2"><span class="animate-anillo absolute inset-0 rounded-full bg-wa"></span><span class="relative size-2 rounded-full bg-wa"></span></span>Recibiendo pedidos
+                </span>
+                @if (t.ciudad) {
+                  <span class="flex items-center gap-1.5 text-[15px] text-salvia"><tabler-icon [icon]="i.pin" [size]="17" [stroke]="2" />{{ t.ciudad }}</span>
                 }
               </p>
-              @if (p.descripcion) {
-                <p class="mt-3 max-w-prose whitespace-pre-line leading-relaxed text-gris">{{ p.descripcion }}</p>
-              }
-              <div class="mt-5">
-                @if (p.agotado) {
-                  <p class="rounded-xl bg-papel px-4 py-3 text-sm text-gris">Agotado por ahora. Pregúntale al negocio cuándo vuelve.</p>
-                } @else if (cantidad(p.id)) {
-                  <div class="flex items-center gap-3">
-                    <div class="flex items-center gap-1 rounded-full ring-1 ring-linea">
-                      <button type="button" (click)="cambiar(p, -1)" class="grid size-10 place-items-center rounded-full hover:bg-papel" aria-label="Quitar uno">
-                        <tabler-icon [icon]="i.menos" [size]="16" [stroke]="2" />
-                      </button>
-                      <span class="w-8 text-center font-semibold tabular-nums">{{ cantidad(p.id) }}</span>
-                      <button type="button" (click)="cambiar(p, 1)" class="grid size-10 place-items-center rounded-full hover:bg-papel" aria-label="Agregar otro">
-                        <tabler-icon [icon]="i.mas" [size]="16" [stroke]="2" />
-                      </button>
-                    </div>
-                    <button type="button" (click)="detalle.set(null); abierto.set(true)"
-                      class="flex-1 rounded-full bg-tinta py-3 text-sm font-semibold text-papel">Ver pedido</button>
+              <h1 class="titular m-0 max-w-[9ch] text-balance text-[clamp(72px,12.5vw,212px)] font-bold">{{ t.nombre }}</h1>
+              <div class="flex flex-wrap items-end justify-between gap-7">
+                <div class="flex max-w-[520px] flex-col gap-6">
+                  @if (t.descripcion) { <p class="m-0 text-pretty text-[clamp(17px,1.5vw,20px)] leading-normal text-salvia">{{ t.descripcion }}</p> }
+                  <div class="flex flex-wrap gap-2.5">
+                    <button type="button" (click)="irCatalogo()" class="flex h-[52px] items-center gap-2 rounded-full bg-wa px-6 text-[15px] font-semibold text-noche transition-transform hover:bg-wa-hover active:scale-[.97]">Ver productos<tabler-icon [icon]="i.abajo" [size]="17" [stroke]="2" /></button>
+                    <a [href]="waGeneral()" target="_blank" rel="noopener" class="flex h-[52px] items-center gap-2 rounded-full bg-white/10 px-[22px] text-[15px] font-medium text-hoja no-underline hover:bg-white/[.18] hover:text-hoja"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" />Escribir</a>
                   </div>
-                } @else {
-                  <button type="button" (click)="cambiar(p, 1)"
-                    class="flex w-full items-center justify-center gap-2 rounded-full bg-tinta py-3 font-semibold text-papel">
-                    <tabler-icon [icon]="i.mas" [size]="20" [stroke]="2" />
-                    Agregar al pedido
-                  </button>
-                }
+                </div>
+                <ol class="m-0 flex list-none flex-wrap gap-2 p-0">
+                  <li class="flex h-11 items-center gap-2.5 rounded-full bg-white/[.07] py-0 pl-1.5 pr-[18px] text-sm"><span class="grid size-8 place-items-center rounded-full bg-white/10 text-xs font-semibold">1</span>Elige</li>
+                  <li class="flex h-11 items-center gap-2.5 rounded-full bg-white/[.07] py-0 pl-1.5 pr-[18px] text-sm"><span class="grid size-8 place-items-center rounded-full bg-white/10 text-xs font-semibold">2</span>Revisa tu pedido</li>
+                  <li class="flex h-11 items-center gap-2.5 rounded-full bg-turquesa py-0 pl-1.5 pr-[18px] text-sm font-medium text-noche"><span class="grid size-8 place-items-center rounded-full bg-noche text-turquesa"><tabler-icon [icon]="i.wa" [size]="16" [stroke]="2" /></span>Envíalo por WhatsApp</li>
+                </ol>
               </div>
             </div>
           </section>
         </div>
+
+        <!-- Destacado -->
+        @if (destacado(); as d) {
+          <section data-screen-label="Destacado" class="mx-auto max-w-[1320px] px-[clamp(16px,3vw,40px)] pt-[clamp(48px,7vw,96px)]">
+            <div revelar class="relative mx-auto grid max-w-[1140px] grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] items-center gap-[clamp(20px,3vw,48px)] px-[clamp(20px,3vw,44px)] pb-[clamp(20px,3vw,44px)] pt-[clamp(56px,6vw,80px)]">
+              <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden rounded-[44px] bg-menta">
+                <div class="forma-0 absolute bottom-[-18%] right-[-6%] aspect-square w-[42%] bg-menta-2 [animation:morph_22s_ease-in-out_infinite]"></div>
+              </div>
+              <span class="pointer-events-none absolute left-[calc(100%-max(150px,13%))] top-0 z-[3] grid aspect-square w-[clamp(84px,8vw,104px)] -translate-x-1/2 -translate-y-1/2 -rotate-10 place-items-center">
+                <span class="forma-tag absolute inset-0 bg-bosque"></span>
+                <span class="relative flex flex-col items-center gap-[3px] text-center text-[13px] font-bold leading-[1.05] text-hoja"><tabler-icon [icon]="i.estrella" [size]="17" class="text-wa" />Destacado</span>
+              </span>
+
+              <div class="relative aspect-[1/1.05] w-full max-w-[440px] justify-self-center">
+                <button type="button" (click)="abrirDetalle(d)" class="absolute inset-0 cursor-pointer overflow-hidden rounded-[999px_999px_40px_40px] border-0 p-0 transition-transform duration-[600ms] ease-[cubic-bezier(.3,1.3,.5,1)] hover:scale-[.985]" [style.background]="'#bfe3cf'" aria-label="Ver detalle">
+                  @if (d.imagenes[0]) { <img [src]="d.imagenes[0]" [alt]="d.nombre" class="size-full object-cover" /> }
+                  @else {
+                    <div class="animate-morph absolute inset-x-[16%] top-[16%] aspect-square bg-[#a3d1b9] [animation-duration:16s]"></div>
+                    <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-display text-[360px] font-extrabold leading-none text-[rgba(11,61,51,.1)] [font-variation-settings:'wdth'_72]">{{ inicial(d.nombre) }}</span>
+                  }
+                </button>
+                @if (d.precioAntes) {
+                  <span class="forma-1 pointer-events-none absolute left-[2%] top-[8%] grid aspect-square w-[clamp(72px,8vw,96px)] place-items-center bg-bosque font-display text-[clamp(20px,2vw,26px)] font-extrabold tabular-nums text-wa">−{{ porcentaje(d) }}%</span>
+                }
+              </div>
+
+              <div class="relative flex w-full max-w-[480px] flex-col gap-5 justify-self-center p-[clamp(4px,1.5vw,24px)] pl-0">
+                <div class="flex flex-col gap-3">
+                  <h2 class="m-0 text-balance font-display text-[clamp(38px,4.4vw,62px)] font-bold leading-[.92] tracking-[-0.03em] text-bosque [font-variation-settings:'wdth'_80]">{{ d.nombre }}</h2>
+                  @if (d.descripcion) { <p class="m-0 max-w-[42ch] text-pretty text-base leading-[1.55] text-texto-2">{{ d.descripcion }}</p> }
+                </div>
+                <div class="flex flex-col gap-1">
+                  <p class="m-0 flex items-baseline gap-2.5 tabular-nums">
+                    <span class="font-display text-[34px] font-bold tracking-[-0.015em] text-bosque">{{ monto(d.precio) }}</span>
+                    @if (d.precioAntes) { <s class="text-base text-[#6f857d]">{{ monto(d.precioAntes) }}</s> }
+                  </p>
+                  @if (d.precioAntes) {
+                    <span class="flex h-6 items-center self-start rounded-full bg-wa px-2.5 text-xs font-bold tabular-nums text-noche">Ahorras {{ monto((d.precioAntes - d.precio) * destQty()) }}</span>
+                  }
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="flex h-14 shrink-0 items-center rounded-full bg-white px-1">
+                    <button type="button" (click)="destQty.set(Math.max(1, destQty() - 1))" aria-label="Quitar uno" class="grid h-11 w-[38px] place-items-center rounded-full text-bosque hover:bg-hoja"><tabler-icon [icon]="i.menos" [size]="17" [stroke]="2" /></button>
+                    <span class="min-w-7 text-center font-display text-xl font-bold tabular-nums text-bosque">{{ destQty() }}</span>
+                    <button type="button" (click)="destQty.set(Math.min(9, destQty() + 1))" aria-label="Sumar uno" class="grid h-11 w-[38px] place-items-center rounded-full text-bosque hover:bg-hoja"><tabler-icon [icon]="i.mas" [size]="17" [stroke]="2" /></button>
+                  </div>
+                  <button type="button" (click)="agregar(d, $event, destQty()); destQty.set(1)" class="flex h-14 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-bosque px-3.5 text-[14.5px] font-semibold tabular-nums text-hoja transition-transform hover:bg-bosque-2 active:scale-[.97]">
+                    <span class="truncate">Agregar {{ monto(d.precio * destQty()) }}</span>
+                  </button>
+                  @if (!movil()) {
+                    <button type="button" (click)="abrirDetalle(d)" aria-label="Ver detalle" title="Ver detalle" class="grid size-14 shrink-0 place-items-center rounded-full bg-white text-bosque hover:bg-hoja"><tabler-icon [icon]="i.diagonal" [size]="20" [stroke]="2" /></button>
+                  }
+                </div>
+                @if (cantidad(d.id)) {
+                  <span class="-mt-2.5 flex items-center gap-1.5 text-[12.5px] font-medium text-teal"><tabler-icon [icon]="i.checkLleno" [size]="15" />{{ cantidad(d.id) }} en tu pedido</span>
+                }
+              </div>
+            </div>
+          </section>
+        }
+
+        <div #catalogo></div>
+        @if (!hayQ() && movil()) {
+          <div class="sin-barra flex gap-2 overflow-x-auto px-4 pt-14">
+            @for (s of secciones(); track s.id; let k = $index) {
+              <button type="button" (click)="irSeccion(k)" class="h-10 flex-none whitespace-nowrap rounded-full bg-menta px-4 text-sm font-semibold text-bosque">{{ s.nombre }}</button>
+            }
+          </div>
+        }
+
+        @if (sinResultados()) {
+          <section data-screen-label="Sin resultados" class="animate-fundido mx-auto flex max-w-[1320px] flex-col items-center gap-6 px-[clamp(16px,3vw,40px)] pb-40 pt-[clamp(120px,14vw,180px)] text-center">
+            <div aria-hidden="true" class="relative grid size-[120px] place-items-center">
+              <div burbuja="0.05,22,0.14" class="absolute inset-0 bg-menta [animation:morph_10s_ease-in-out_infinite]"></div>
+              <tabler-icon [icon]="i.sinResultados" [size]="40" [stroke]="1.75" class="relative text-teal" />
+            </div>
+            <h2 class="m-0 max-w-[16ch] text-balance break-words font-display text-[clamp(36px,5vw,64px)] font-bold leading-[.95] tracking-[-0.025em] text-bosque [font-variation-settings:'wdth'_78]">Nada con «{{ busqueda().trim() }}»</h2>
+            <p class="m-0 max-w-[44ch] text-pretty text-base leading-[1.55] text-texto-2">Revisa cómo está escrito o mira una categoría. Si no aparece, pregúntale al negocio: puede que lo tenga.</p>
+            <div class="flex flex-wrap justify-center gap-2">
+              @for (c of categorias().slice(0, 3); track c.id; let k = $index) {
+                <button type="button" (click)="sugerir(k)" class="h-11 rounded-full bg-niebla px-[18px] text-sm font-medium text-bosque hover:bg-niebla-2">{{ c.nombre }}</button>
+              }
+            </div>
+            <a [href]="waBusqueda()" target="_blank" rel="noopener" class="flex h-[52px] items-center gap-2 rounded-full bg-wa px-6 text-[15px] font-semibold text-noche no-underline hover:bg-wa-hover hover:text-noche"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" />Preguntar por «{{ busqueda().trim() }}»</a>
+          </section>
+        }
+
+        <!-- Catálogo -->
+        @for (s of secciones(); track s.id) {
+          <section #seccion data-screen-label="Catálogo" class="mx-auto max-w-[1320px] px-[clamp(16px,3vw,40px)] pt-[clamp(72px,8vw,112px)]">
+            <div revelar class="mb-9 flex flex-wrap items-center gap-3.5">
+              <h2 class="m-0 font-display text-[clamp(36px,4.4vw,60px)] font-bold leading-[.95] tracking-[-0.025em] text-bosque [font-variation-settings:'wdth'_78]">{{ s.nombre }}</h2>
+              <span class="relative -mt-[18px] grid size-[46px] place-items-center">
+                <span burbuja="0.05,18,0.16" class="absolute inset-0 bg-wa [animation:morph_9s_ease-in-out_infinite]"></span>
+                <span class="relative text-[15px] font-bold tabular-nums text-noche">{{ s.productos.length }}</span>
+              </span>
+            </div>
+            <div class="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-3.5 gap-y-12 md:grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] md:gap-x-[clamp(16px,2.4vw,32px)] md:gap-y-16">
+              @for (p of s.productos; track p.id; let k = $index) {
+                @let tag = etiqueta(p);
+                @let qty = cantidad(p.id);
+                <article revelar [revelarDelay]="(k % 4) * 90" class="flex flex-col items-center text-center">
+                  <div class="relative aspect-[4/5] w-full">
+                    <button type="button" (click)="abrirDetalle(p)" [attr.aria-label]="'Ver ' + p.nombre"
+                      class="absolute inset-0 cursor-pointer overflow-hidden rounded-[999px_999px_36px_36px] border-0 p-0 transition-transform duration-[600ms] ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1.5" [style.background]="tono(p)">
+                      @if (p.imagenes[0]) {
+                        <img [src]="p.imagenes[0]" [alt]="p.nombre" loading="lazy" class="size-full object-cover" [style.opacity]="p.agotado ? 0.4 : 1" />
+                      } @else {
+                        <div class="absolute inset-x-[14%] top-[20%] aspect-square" [class]="forma(p)" [style.background]="tonoFuerte(p)" [style.opacity]="p.agotado ? 0.4 : 1"></div>
+                        <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-display text-[120px] font-extrabold leading-none text-[rgba(11,61,51,.13)] [font-variation-settings:'wdth'_72] md:text-[180px]" [style.opacity]="p.agotado ? 0.4 : 1">{{ inicial(p.nombre) }}</span>
+                      }
+                      @if (p.agotado) {
+                        <span class="absolute bottom-11 left-1/2 flex h-8 -translate-x-1/2 items-center whitespace-nowrap rounded-full bg-[rgba(242,247,244,.85)] px-3.5 text-[12.5px] font-semibold text-texto-2 backdrop-blur-[6px]">Agotado por ahora</span>
+                      }
+                    </button>
+                    @if (tag) {
+                      <span class="pointer-events-none absolute right-[-6px] top-[14%] grid size-[62px] -rotate-10 place-items-center md:size-[76px]">
+                        <span class="forma-tag absolute inset-0" [style.background]="tag.bg"></span>
+                        <span class="relative whitespace-pre-line text-[12.5px] font-bold leading-[1.05] tabular-nums" [style.color]="tag.fg">{{ tag.texto }}</span>
+                      </span>
+                    }
+                    @if (!p.agotado && !qty) {
+                      <button type="button" (click)="agregar(p, $event)" aria-label="Agregar al pedido"
+                        class="absolute bottom-[-26px] left-1/2 -ml-7 grid size-14 place-items-center rounded-full bg-bosque text-hoja shadow-[0_0_0_6px_#f2f7f4] transition-[transform,background-color,color] duration-300 ease-[cubic-bezier(.3,1.5,.5,1)] hover:rotate-90 hover:scale-110 hover:bg-wa hover:text-noche active:scale-90">
+                        <tabler-icon [icon]="i.mas" [size]="24" [stroke]="2" />
+                      </button>
+                    }
+                    @if (!p.agotado && qty) {
+                      <span class="animate-fundido absolute bottom-[-26px] left-1/2 flex h-14 -translate-x-1/2 items-center rounded-full bg-bosque px-[5px] text-hoja shadow-[0_0_0_6px_#f2f7f4]">
+                        <button type="button" (click)="cambiar(p, -1)" aria-label="Quitar uno" class="grid size-[46px] place-items-center rounded-full text-inherit hover:bg-white/10"><tabler-icon [icon]="i.menos" [size]="18" [stroke]="2" /></button>
+                        <span class="min-w-6 text-center text-base font-bold tabular-nums">{{ qty }}</span>
+                        <button type="button" (click)="agregar(p, $event)" aria-label="Agregar uno" class="grid size-[46px] place-items-center rounded-full bg-wa text-noche"><tabler-icon [icon]="i.mas" [size]="18" [stroke]="2" /></button>
+                      </span>
+                    }
+                  </div>
+                  <div class="mt-11 flex max-w-full flex-col items-center gap-1.5 px-2">
+                    <h3 (click)="abrirDetalle(p)" class="m-0 cursor-pointer text-balance text-[15px] font-semibold leading-tight tracking-[-0.01em] text-bosque md:text-[17px]">{{ p.nombre }}</h3>
+                    @if (!movil() && p.descripcion) { <p class="m-0 max-w-[34ch] text-balance text-[13.5px] leading-[1.45] text-gris">{{ p.descripcion }}</p> }
+                    <div class="mt-1.5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 tabular-nums">
+                      <span class="text-[17px] font-bold" [class.text-teal]="!!p.precioAntes" [class.text-bosque]="!p.precioAntes">{{ monto(p.precio) }}</span>
+                      @if (p.precioAntes) { <s class="text-[13px] text-gris-2">{{ monto(p.precioAntes) }}</s> }
+                      <span class="size-1 rounded-full bg-[#b8d4c8]"></span>
+                      <a [href]="waProducto(p)" target="_blank" rel="noopener" class="flex items-center gap-[5px] text-[13px] font-medium text-teal no-underline hover:text-bosque"><tabler-icon [icon]="i.wa" [size]="16" [stroke]="2" />{{ p.agotado ? 'Avísame cuando llegue' : 'Preguntar' }}</a>
+                    </div>
+                  </div>
+                </article>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- Footer -->
+        <div class="px-3 pb-3 pt-[clamp(96px,12vw,160px)]">
+          <footer data-screen-label="Footer" class="relative flex flex-col overflow-hidden rounded-[36px] bg-bosque text-hoja">
+            <div class="relative z-[1] mx-auto flex w-full max-w-[1180px] flex-col gap-10 px-[clamp(24px,4vw,48px)] pt-[clamp(48px,6vw,80px)]">
+              <div class="flex flex-wrap items-start justify-between gap-x-8 gap-y-9">
+                <div class="flex flex-none flex-col gap-[22px]">
+                  @if (t.logoUrl) { <img [src]="t.logoUrl" [alt]="t.nombre" class="h-[38px] w-[112px] rounded-lg object-contain" /> }
+                  @else { <span class="font-display text-xl font-bold">{{ t.nombre }}</span> }
+                  <div class="-ml-2 flex gap-1.5">
+                    <a [href]="waGeneral()" target="_blank" rel="noopener" aria-label="WhatsApp" class="grid size-9 place-items-center rounded-full text-hoja transition-transform duration-[250ms] hover:-translate-y-0.5 hover:text-wa"><tabler-icon [icon]="i.wa" [size]="21" [stroke]="2" /></a>
+                    @if (t.redes?.instagram) { <a [href]="t.redes!.instagram" target="_blank" rel="noopener" aria-label="Instagram" class="grid size-9 place-items-center rounded-full text-hoja transition-transform duration-[250ms] hover:-translate-y-0.5 hover:text-wa"><tabler-icon [icon]="i.ig" [size]="21" [stroke]="2" /></a> }
+                    @if (t.redes?.facebook) { <a [href]="t.redes!.facebook" target="_blank" rel="noopener" aria-label="Facebook" class="grid size-9 place-items-center rounded-full text-hoja transition-transform duration-[250ms] hover:-translate-y-0.5 hover:text-wa"><tabler-icon [icon]="i.fb" [size]="21" [stroke]="2" /></a> }
+                    @if (t.redes?.tiktok) { <a [href]="t.redes!.tiktok" target="_blank" rel="noopener" aria-label="TikTok" class="grid size-9 place-items-center rounded-full text-hoja transition-transform duration-[250ms] hover:-translate-y-0.5 hover:text-wa"><tabler-icon [icon]="i.tt" [size]="21" [stroke]="2" /></a> }
+                  </div>
+                </div>
+                <div class="grid max-w-[780px] flex-[1_1_520px] grid-cols-[repeat(auto-fit,minmax(min(100%,118px),1fr))] gap-x-5 gap-y-7">
+                  <div class="flex flex-col gap-3">
+                    <span class="mb-1.5 text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Catálogo</span>
+                    @for (s of secciones(); track s.id; let k = $index) {
+                      <button type="button" (click)="irSeccion(k)" class="self-start border-0 bg-transparent p-0 text-left text-sm text-hoja transition-colors hover:text-wa">{{ s.nombre }}</button>
+                    }
+                  </div>
+                  <div class="flex flex-col gap-3">
+                    <span class="mb-1.5 text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Tienda</span>
+                    <button type="button" (click)="abrirPedido()" class="self-start border-0 bg-transparent p-0 text-sm text-hoja hover:text-wa">Tu pedido</button>
+                    <button type="button" (click)="irCatalogo()" class="self-start border-0 bg-transparent p-0 text-sm text-hoja hover:text-wa">Todos los productos</button>
+                    <button type="button" (click)="subir(); abrirBusqueda()" class="self-start border-0 bg-transparent p-0 text-sm text-hoja hover:text-wa">Buscar</button>
+                    <button type="button" (click)="subir()" class="self-start border-0 bg-transparent p-0 text-sm text-hoja hover:text-wa">Volver arriba</button>
+                  </div>
+                  <div class="flex flex-col gap-3">
+                    <span class="mb-1.5 text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Contacto</span>
+                    <a [href]="waGeneral()" target="_blank" rel="noopener" class="text-sm tabular-nums text-hoja no-underline hover:text-wa">+{{ t.whatsapp }}</a>
+                    @if (t.direccionTienda) { <span class="whitespace-pre-line text-sm leading-[1.45]">{{ t.direccionTienda }}</span> }
+                  </div>
+                  @if (t.horario?.length) {
+                    <div class="flex flex-col gap-3">
+                      <span class="mb-1.5 text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Horario</span>
+                      @for (h of t.horario!; track h.dias) {
+                        <span class="text-sm tabular-nums" [class.text-salvia-2]="!h.horas">{{ h.dias }} · {{ h.horas ?? 'Cerrado' }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+              <span class="h-px bg-[rgba(234,255,245,.14)]"></span>
+
+              <!-- Escritorio: fila · Móvil: columna centrada con línea arriba y el crédito primero -->
+              <div class="-mt-2 flex flex-col items-center gap-1.5 border-t border-[rgba(234,255,245,.1)] pt-6 text-center md:mt-[-8px] md:flex-row md:flex-wrap md:gap-x-6 md:gap-y-2.5 md:border-t-0 md:pt-0">
+                <span class="order-2 text-[13px] text-salvia md:order-none">© {{ anio }} {{ t.nombre }}</span>
+                <span class="order-3 text-[13px] text-salvia md:order-none md:ml-auto">Precios en {{ t.moneda === 'USD' ? 'dólares (USD)' : 'pesos colombianos (COP)' }}</span>
+                <a [href]="goodsUrl" target="_blank" rel="noopener" class="order-1 mb-2.5 flex h-10 items-center gap-2 rounded-full bg-white/[.06] px-4 text-[13px] text-salvia no-underline hover:text-hoja md:order-none md:mb-0 md:h-auto md:bg-transparent md:px-0">Tienda creada con<img src="logo-goods.png" alt="Goods" class="h-5 w-auto opacity-85" /></a>
+              </div>
+            </div>
+
+            <!-- Ola de burbujas + CTA -->
+            <div class="relative mt-[clamp(16px,3vw,40px)] h-[clamp(380px,36vw,460px)]">
+              <div aria-hidden="true" class="pointer-events-none absolute inset-0">
+                <div burbuja="0.02,30,0.04" class="absolute left-[-6%] top-[2%] aspect-square w-[max(280px,38%)] bg-menta [animation:morph_24s_ease-in-out_infinite]"></div>
+                <div burbuja="0.03,36,0.05" class="absolute left-[22%] top-[16%] aspect-square w-[max(260px,30%)] bg-menta [animation:morph_19s_ease-in-out_infinite_reverse]"></div>
+                <div burbuja="0.025,32,0.05" class="absolute left-[44%] top-[8%] aspect-square w-[max(270px,34%)] bg-menta [animation:morph_22s_ease-in-out_infinite]"></div>
+                <div burbuja="0.03,30,0.05" class="absolute left-[66%] top-[22%] aspect-square w-[max(260px,28%)] bg-menta [animation:morph_17s_ease-in-out_infinite_reverse]"></div>
+                <div class="absolute inset-x-0 bottom-0 h-[48%] bg-menta"></div>
+                <div burbuja="0.045,44,0.07" class="absolute left-[8%] top-[46%] aspect-square w-[max(200px,22%)] bg-menta-2 [animation:morph_18s_ease-in-out_infinite_reverse]"></div>
+                <div burbuja="0.055,50,0.08" class="absolute left-[34%] top-[58%] aspect-square w-[max(170px,17%)] bg-menta-2 [animation:morph_15s_ease-in-out_infinite]"></div>
+                <div burbuja="0.05,46,0.07" class="absolute left-[52%] top-[42%] aspect-square w-[max(210px,23%)] bg-menta-2 [animation:morph_20s_ease-in-out_infinite_reverse]"></div>
+                <div burbuja="0.06,60,0.1" class="absolute bottom-[-20%] right-[-3%] grid aspect-square w-[30%] place-items-center bg-wa [animation:morph_14s_ease-in-out_infinite]">
+                  <tabler-icon [icon]="i.wa" [size]="120" [stroke]="1.5" class="-translate-x-[8%] -translate-y-[10%] text-bosque" />
+                </div>
+                <div burbuja="0.1,50,0.18" class="absolute bottom-[44%] right-[26%] aspect-square w-[5%] bg-turquesa [animation:morph_11s_ease-in-out_infinite]"></div>
+              </div>
+              <div class="absolute inset-x-0 bottom-0 mx-auto flex max-w-[1180px] flex-col gap-3 px-[clamp(24px,4vw,48px)] pb-[104px] text-bosque">
+                <span class="text-xs font-semibold uppercase tracking-[.08em] text-teal">Pedidos por WhatsApp</span>
+                <p class="m-0 max-w-[24ch] text-balance font-display text-[clamp(30px,3.4vw,48px)] font-bold leading-none tracking-[-0.02em] [font-variation-settings:'wdth'_78]">¿Tienes una pregunta? Escríbenos.</p>
+                <div class="mt-1.5 flex flex-wrap gap-2">
+                  <a [href]="waGeneral()" target="_blank" rel="noopener" class="flex h-12 items-center gap-2 rounded-full bg-bosque px-5 text-[14.5px] font-medium text-hoja no-underline hover:bg-bosque-2 hover:text-hoja"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" />Escribir al negocio</a>
+                  <button type="button" (click)="irCatalogo()" class="h-12 rounded-full bg-white px-5 text-[14.5px] font-medium text-bosque hover:bg-[#eefbf3]">Ver productos</button>
+                </div>
+              </div>
+            </div>
+          </footer>
+        </div>
+      </main>
+
+      <!-- Volver arriba: anillo de progreso de scroll -->
+      <button type="button" (click)="subir()" aria-label="Volver arriba" title="Volver arriba"
+        class="fixed bottom-[23px] right-6 z-[75] grid size-14 place-items-center rounded-full bg-white text-bosque shadow-[0_14px_34px_-14px_rgba(7,42,35,.55)] transition-[opacity,transform] duration-500 ease-[cubic-bezier(.3,1.4,.5,1)] hover:bg-menta"
+        [style.opacity]="verSubir() ? 1 : 0" [style.transform]="verSubir() ? 'scale(1)' : 'scale(.6) translateY(20px)'" [style.pointer-events]="verSubir() ? 'auto' : 'none'">
+        <svg width="56" height="56" viewBox="0 0 56 56" class="absolute inset-0 -rotate-90" aria-hidden="true">
+          <circle cx="28" cy="28" r="25" fill="none" stroke="#e1efe8" stroke-width="2.5" />
+          <circle #anillo cx="28" cy="28" r="25" fill="none" stroke="#25d366" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="157.08" stroke-dashoffset="157.08" />
+        </svg>
+        <tabler-icon [icon]="i.arriba" [size]="21" [stroke]="2" class="relative" />
+      </button>
+
+      <!-- Isla «Tu pedido» -->
+      @if (abierto()) {
+        <div (click)="cerrarPedido()" class="animate-fundido fixed inset-0 z-[70] bg-[rgba(7,42,35,.4)] backdrop-blur-[3px] [animation-duration:.3s]"></div>
       }
-    }
+      <div #islaEl data-screen-label="Pedido" role="dialog" [attr.aria-modal]="abierto()" aria-label="Tu pedido"
+        class="fixed left-1/2 z-[80] overflow-hidden bg-bosque text-hoja shadow-[0_24px_60px_-24px_rgba(7,42,35,.7),0_0_0_1px_rgba(234,255,245,.14)] transition-[width,height,border-radius,bottom,transform,opacity] duration-[600ms] ease-[cubic-bezier(.2,.9,.2,1)]"
+        [style.width]="isla().w" [style.height]="isla().h" [style.border-radius]="isla().r" [style.bottom]="isla().b" [style.transform]="isla().t" [style.opacity]="isla().o">
+
+        <!-- Cerrada -->
+        <button type="button" (click)="abrirPedido()" class="absolute inset-0 flex items-center gap-3.5 whitespace-nowrap border-0 bg-transparent px-2 text-inherit transition-opacity duration-[250ms]"
+          [style.opacity]="abierto() ? 0 : 1" [style.pointer-events]="abierto() ? 'none' : 'auto'">
+          <span class="grid h-[46px] min-w-[46px] place-items-center rounded-full bg-wa px-2.5 text-[15px] font-bold tabular-nums text-noche">{{ unidades() }}</span>
+          <span class="flex flex-col items-start gap-px"><span class="text-xs text-salvia-2">Tu pedido</span><span class="text-base font-semibold tabular-nums">{{ monto(total()) }}</span></span>
+          <span class="ml-auto grid size-[46px] place-items-center rounded-full bg-white/10"><tabler-icon [icon]="i.diagonal" [size]="19" [stroke]="2" /></span>
+        </button>
+
+        <!-- Abierta -->
+        <div class="absolute inset-0 flex flex-col transition-opacity duration-[350ms]" [style.opacity]="abierto() ? 1 : 0" [style.pointer-events]="abierto() ? 'auto' : 'none'" [style.transition-delay]="abierto() ? '.2s' : '0s'">
+          <div aria-hidden="true" burbuja="0.04,30,0.08" class="pointer-events-none absolute right-[-50px] top-[-80px] size-[230px] bg-bosque-2 [animation:morph_16s_ease-in-out_infinite]"></div>
+          <div class="relative flex shrink-0 flex-col pb-1 pl-6 pr-4 pt-[26px]">
+            <div class="absolute right-3.5 top-3.5 z-[2] flex items-center gap-1.5">
+              @if (paso() >= 1 && paso() <= 4) {
+                <button type="button" (click)="volver()" aria-label="Volver" class="grid size-10 place-items-center rounded-full bg-white/[.08] text-inherit hover:bg-white/[.16]"><tabler-icon [icon]="i.izq" [size]="18" [stroke]="2" /></button>
+              }
+              <button type="button" (click)="cerrarPedido()" aria-label="Cerrar" class="grid size-10 place-items-center rounded-full bg-white/10 text-inherit hover:bg-white/[.18]"><tabler-icon [icon]="i.cerrar" [size]="19" [stroke]="2" /></button>
+            </div>
+            <div class="relative flex items-end justify-between gap-4">
+              <div class="flex min-w-0 flex-col gap-2.5 pr-10">
+                <span class="text-balance font-display text-[clamp(34px,6vw,46px)] font-bold leading-[.92] tracking-[-0.03em] [font-variation-settings:'wdth'_74]">{{ tituloPaso() }}</span>
+                <span class="text-sm tabular-nums text-salvia">{{ subPaso() }}</span>
+              </div>
+              @if (paso() < 4) {
+                <span class="flex shrink-0 items-baseline gap-0.5 pb-0.5 font-display tabular-nums"><span class="text-[30px] font-bold leading-none text-wa">{{ pasoNum() }}</span><span class="text-sm font-semibold text-[#5f8a7d]">/04</span></span>
+              }
+            </div>
+          </div>
+          @if (paso() < 4) {
+            <div class="sin-barra relative flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-3.5 pt-3">
+              @for (r of riel(); track r.k) {
+                <button type="button" (click)="irPaso(r.k)" class="flex h-9 flex-none items-center gap-[7px] whitespace-nowrap rounded-full border-0 py-0 pl-2 pr-3.5 text-[13px] font-medium transition-colors duration-[350ms]"
+                  [style.cursor]="r.hecho ? 'pointer' : 'default'"
+                  [style.background]="r.actual ? '#25d366' : r.hecho ? 'rgba(255,255,255,.1)' : 'transparent'"
+                  [style.color]="r.actual ? '#072a23' : r.hecho ? '#eafff5' : '#8fb8ab'">
+                  <span class="grid size-[22px] place-items-center rounded-full transition-colors duration-[350ms]"
+                    [style.background]="r.actual ? '#072a23' : r.hecho ? '#25d366' : 'rgba(255,255,255,.08)'"
+                    [style.color]="r.actual ? '#25d366' : r.hecho ? '#072a23' : '#8fb8ab'"><tabler-icon [icon]="r.hecho ? i.check : r.icono" [size]="13" [stroke]="2.25" /></span>{{ r.texto }}
+                </button>
+              }
+            </div>
+          }
+          @if (errorPedido()) {
+            <p role="alert" class="relative mx-4 mb-2 flex items-center gap-2 rounded-2xl bg-[rgba(255,180,166,.12)] px-3.5 py-2.5 text-[13px] text-coral"><tabler-icon [icon]="i.alerta" [size]="15" [stroke]="2" />{{ errorPedido() }}</p>
+          }
+
+          <div class="relative min-h-0 flex-1 overflow-hidden">
+            <div class="flex h-full w-[600%] transition-transform duration-[600ms] ease-[cubic-bezier(.3,1,.3,1)]" [style.transform]="'translateX(-' + (paso() * 100 / 6) + '%)'">
+
+              <!-- 0 · Tu pedido -->
+              <div class="flex h-full w-1/6 flex-col">
+                @if (!lineas().length) {
+                  <div class="flex flex-1 flex-col items-center justify-center gap-3.5 p-6 text-center">
+                    <div aria-hidden="true" class="relative grid size-24 place-items-center"><div class="absolute inset-0 bg-bosque-2 [animation:morph_10s_ease-in-out_infinite]"></div><tabler-icon [icon]="i.bolsa" [size]="32" [stroke]="1.75" class="relative text-wa" /></div>
+                    <p class="m-0 font-display text-[26px] font-bold">Tu pedido está vacío</p>
+                    <p class="m-0 max-w-[30ch] text-[14.5px] leading-normal text-salvia-2">Agrega productos con el botón + y aquí verás el resumen.</p>
+                    <button type="button" (click)="cerrarPedido()" class="h-[46px] rounded-full bg-wa px-5 text-sm font-semibold text-noche">Ver productos</button>
+                  </div>
+                } @else {
+                  <div data-scroll class="sin-barra flex flex-1 flex-col gap-[26px] overflow-y-auto px-4 pb-5 pt-2">
+                    <div class="flex flex-col gap-2">
+                      <div class="flex items-center justify-between px-1 pb-1">
+                        <span class="flex items-baseline gap-2.5"><span class="text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Productos</span><span class="text-[12.5px] tabular-nums text-salvia">{{ resumenLineas() }}</span></span>
+                        @if (lineas().length > 1) { <span class="flex items-center gap-1 text-xs text-salvia-2">Desliza<tabler-icon [icon]="i.der" [size]="13" [stroke]="2" /></span> }
+                      </div>
+                      <div class="sin-barra -mx-4 flex snap-x snap-proximity gap-3.5 overflow-x-auto px-4 pb-1 pt-2">
+                        @for (l of lineas(); track l.producto.id) {
+                          <div class="animate-fundido flex flex-[0_0_150px] snap-start flex-col items-center gap-2.5 text-center">
+                            <div class="relative h-40 w-[132px]">
+                              <div class="absolute inset-0 overflow-hidden rounded-[999px_999px_26px_26px]" [style.background]="tono(l.producto)">
+                                @if (l.producto.imagenes[0]) { <img [src]="l.producto.imagenes[0]" alt="" class="size-full object-cover" /> }
+                                @else {
+                                  <div class="absolute inset-x-[14%] top-[22%] aspect-square" [class]="forma(l.producto)" [style.background]="tonoFuerte(l.producto)"></div>
+                                  <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-display text-[80px] font-extrabold leading-none text-[rgba(11,61,51,.16)] [font-variation-settings:'wdth'_72]">{{ inicial(l.producto.nombre) }}</span>
+                                }
+                              </div>
+                              <span class="absolute right-[-8px] top-1 grid size-10 place-items-center"><span class="forma-tag absolute inset-0 bg-wa"></span><span class="relative text-sm font-bold tabular-nums text-noche">×{{ l.cantidad }}</span></span>
+                              <span class="absolute bottom-[-18px] left-1/2 flex h-[38px] -translate-x-1/2 items-center rounded-full bg-bosque px-[3px] shadow-[0_0_0_4px_#0b3d33]">
+                                <button type="button" (click)="cambiar(l.producto, -1)" aria-label="Quitar uno" class="grid size-8 place-items-center rounded-full bg-white/10 text-hoja hover:bg-white/[.18]"><tabler-icon [icon]="l.cantidad === 1 ? i.quitar : i.menos" [size]="15" [stroke]="2" /></button>
+                                <span class="min-w-[26px] text-center text-[13px] font-semibold tabular-nums">{{ l.cantidad }}</span>
+                                <button type="button" (click)="cambiar(l.producto, 1)" aria-label="Agregar uno" class="grid size-8 place-items-center rounded-full bg-wa text-noche transition-transform active:scale-90"><tabler-icon [icon]="i.mas" [size]="15" [stroke]="2" /></button>
+                              </span>
+                            </div>
+                            <span class="mt-5 flex max-w-full flex-col gap-[3px]">
+                              <span class="text-balance text-[13.5px] font-medium leading-[1.3]">{{ l.producto.nombre }}</span>
+                              <span class="text-sm font-bold tabular-nums text-lima">{{ monto(l.producto.precio * l.cantidad) }}</span>
+                              <span class="text-[11.5px] tabular-nums text-salvia-2">{{ monto(l.producto.precio) }} c/u</span>
+                            </span>
+                          </div>
+                        }
+                        <button type="button" (click)="cerrarPedido()" class="flex h-40 flex-[0_0_132px] snap-start flex-col items-center justify-center gap-2.5 rounded-[999px_999px_26px_26px] border-0 bg-white/5 text-salvia-2 transition-colors hover:bg-white/10 hover:text-hoja">
+                          <span class="grid size-11 place-items-center rounded-full bg-white/[.08]"><tabler-icon [icon]="i.mas" [size]="20" [stroke]="2" /></span>
+                          <span class="text-[13px] font-medium leading-[1.3]">Seguir<br />comprando</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    @if (sugeridos().length) {
+                      <div class="relative -mx-4 -mb-5 mt-[34px] flex-[1_0_auto] px-4 pb-[22px] text-bosque">
+                        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-[-2px] top-0 overflow-hidden">
+                          <div class="forma-0 absolute left-[-8%] top-0 aspect-square w-[46%] bg-menta"></div>
+                          <div class="forma-1 absolute left-[28%] top-[22px] aspect-square w-[34%] bg-menta"></div>
+                          <div class="forma-2 absolute left-[54%] top-1.5 aspect-square w-[42%] bg-menta"></div>
+                          <div class="forma-3 absolute right-[-10%] top-[30px] aspect-square w-[30%] bg-menta"></div>
+                          <div class="absolute inset-x-0 bottom-0 top-14 bg-menta"></div>
+                          <div class="forma-1 absolute left-[62%] top-[58px] aspect-square w-[22%] bg-menta-2"></div>
+                          <div class="forma-0 absolute left-[8%] top-[150px] aspect-square w-[18%] bg-menta-2 opacity-70"></div>
+                        </div>
+                        <div class="relative flex flex-col gap-[3px] px-1 pt-[42px]">
+                          <span class="font-display text-[22px] font-bold leading-[1.05] tracking-[-0.015em] [font-variation-settings:'wdth'_80]">Agrega también</span>
+                          <span class="text-[12.5px] text-musgo">Toca una burbuja para sumarla a tu pedido</span>
+                        </div>
+                        <div class="sin-barra relative -mx-4 flex items-start gap-1 overflow-x-auto px-4 pb-1 pt-3.5">
+                          @for (g of sugeridos(); track g.p.id) {
+                            <button type="button" (click)="agregarSugerido(g.p, burbujaSug)" [title]="'Agregar ' + g.p.nombre" class="flex flex-[0_0_104px] flex-col items-center gap-2 border-0 bg-transparent p-0 text-center text-inherit" [style.margin-top.px]="g.desfase">
+                              <span #burbujaSug class="relative grid place-items-center transition-transform duration-[350ms] ease-[cubic-bezier(.3,1.5,.5,1)]" [class]="'forma-' + g.forma" [style.width.px]="g.tam" [style.height.px]="g.tam" [style.background]="g.tono">
+                                <span class="font-display text-[34px] font-extrabold text-[rgba(11,61,51,.2)] [font-variation-settings:'wdth'_72]">{{ inicial(g.p.nombre) }}</span>
+                                <span class="absolute bottom-0.5 right-[-2px] grid size-7 place-items-center rounded-full bg-bosque text-hoja shadow-[0_0_0_3px_#d9f5e4]"><tabler-icon [icon]="i.mas" [size]="15" [stroke]="2" /></span>
+                              </span>
+                              <span class="flex max-w-full flex-col gap-px">
+                                <span class="text-balance text-[12.5px] font-medium leading-tight text-bosque">{{ g.p.nombre }}</span>
+                                <span class="text-xs font-bold tabular-nums text-teal">{{ monto(g.p.precio) }}</span>
+                              </span>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                  <ng-container *ngTemplateOutlet="pie; context: { bg: sugeridos().length ? '#d9f5e4' : '#eafff5', etiqueta: 'Subtotal', valor: monto(total()), boton: 'Elegir entrega' }" />
+                }
+              </div>
+
+              <!-- 1 · Entrega -->
+              <div data-screen-label="Entrega" class="flex h-full w-1/6 flex-col">
+                <div data-scroll class="sin-barra flex flex-1 flex-col gap-[22px] overflow-y-auto px-4 pb-12 pt-2">
+                  <div class="flex flex-col gap-2">
+                    <div class="flex items-baseline gap-2.5 px-1 pb-1"><span class="text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Entrega</span><span class="text-[12.5px] text-salvia">Elige una opción</span></div>
+                    <div class="grid grid-cols-2 items-start gap-3.5">
+                      @for (op of [{ k: 'recoger', titulo: 'Recoger en tienda', sub: t.direccionTienda ?? 'Coordina con el negocio', icono: i.tienda, forma: 'forma-0', desfase: 0 }, { k: 'domicilio', titulo: 'Envío a domicilio', sub: 'El costo se acuerda por WhatsApp', icono: i.camion, forma: 'forma-1', desfase: 8 }]; track op.k) {
+                        @let on = entrega() === op.k;
+                        <button type="button" (click)="elegirEntrega($any(op.k))" class="flex flex-col items-center gap-3 border-0 bg-transparent p-0 text-center text-hoja" [style.margin-top.px]="op.desfase">
+                          <span class="relative grid aspect-square w-[min(100%,120px,20vh)] place-items-center transition-[background-color,color,transform] duration-[450ms] ease-[cubic-bezier(.3,1.5,.5,1)]" [class]="op.forma"
+                            [style.background]="on ? '#25d366' : 'rgba(255,255,255,.07)'" [style.color]="on ? '#072a23' : '#b5d8cc'" [style.transform]="'scale(' + (on ? 1 : 0.92) + ')'">
+                            <tabler-icon [icon]="op.icono" [size]="46" [stroke]="1.5" />
+                            <span class="absolute bottom-[8%] right-[8%] grid size-8 place-items-center rounded-full bg-bosque text-wa transition-transform duration-[350ms] ease-[cubic-bezier(.3,1.6,.5,1)]"
+                              [style.box-shadow]="'0 0 0 3px ' + (on ? '#25d366' : 'rgba(255,255,255,.07)')" [style.transform]="'scale(' + (on ? 1 : 0) + ')'"><tabler-icon [icon]="i.check" [size]="17" [stroke]="2.25" /></span>
+                          </span>
+                          <span class="flex flex-col gap-[3px] px-1">
+                            <span class="text-balance text-[15px] font-semibold leading-tight">{{ op.titulo }}</span>
+                            <span class="text-balance text-[12.5px] leading-[1.4] text-salvia-2">{{ op.sub }}</span>
+                          </span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                  <div class="relative -mx-4 -mb-12 mt-3 flex-[1_0_auto] px-4 pb-12 text-bosque">
+                    <ng-container *ngTemplateOutlet="ola" />
+                    @if (esDomicilio()) {
+                      <label class="animate-fundido relative flex flex-col gap-2.5 px-1 pt-[72px]">
+                        <span class="flex flex-col gap-[3px]">
+                          <span class="font-display text-[28px] font-bold leading-[1.05] tracking-[-0.015em] [font-variation-settings:'wdth'_80]">¿A dónde lo enviamos?</span>
+                          <span class="text-[12.5px] text-musgo">Dirección, barrio y alguna referencia</span>
+                        </span>
+                        <span class="flex h-[54px] items-center gap-2.5 rounded-full bg-menta px-2 transition-shadow" [style.box-shadow]="faltaDir() ? 'inset 0 0 0 1.5px #b3261e' : 'none'">
+                          <span class="grid size-[38px] shrink-0 place-items-center rounded-full bg-bosque text-wa"><tabler-icon [icon]="i.pin" [size]="18" [stroke]="2" /></span>
+                          <input #inputDir [ngModel]="direccion()" (ngModelChange)="direccion.set($event); faltaDir.set(false)" placeholder="Calle, número y barrio" autocomplete="street-address"
+                            class="h-full min-w-0 flex-1 border-0 bg-transparent pr-2 text-base font-medium text-bosque outline-none" />
+                        </span>
+                        @if (faltaDir()) { <span class="flex items-center gap-[5px] px-2 text-[12.5px] text-error"><tabler-icon [icon]="i.alerta" [size]="14" [stroke]="2" />Escribe a dónde enviamos tu pedido</span> }
+                      </label>
+                    }
+                  </div>
+                </div>
+                <ng-container *ngTemplateOutlet="pie; context: { bg: '#ffffff', etiqueta: 'Envío', valor: esDomicilio() ? 'Por acordar' : 'Sin costo · recoges tú', boton: 'Continuar', chico: true }" />
+              </div>
+
+              <!-- 2 · Tus datos (se agrega Celular: el backend lo exige) -->
+              <div data-screen-label="Tus datos" class="flex h-full w-1/6 flex-col">
+                <div class="sin-barra flex flex-1 flex-col gap-[22px] overflow-y-auto px-4 pb-12 pt-2">
+                  <label class="-mb-2.5 flex flex-col gap-1.5">
+                    <span class="flex items-baseline gap-2.5 px-1 pb-1"><span class="text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Tu nombre</span><span class="text-[12.5px] text-salvia">Así sabrá {{ t.nombre }} quién pide</span></span>
+                    <span class="flex h-14 items-center gap-3 rounded-full bg-white/[.07] px-2 transition-shadow" [style.box-shadow]="faltaNombre() ? 'inset 0 0 0 1.5px #ffb4a6' : 'none'">
+                      <span class="forma-0 grid size-10 shrink-0 place-items-center bg-wa font-display text-xl font-extrabold text-noche">{{ inicialNombre() }}</span>
+                      <input #inputNombre [ngModel]="nombre()" (ngModelChange)="nombre.set($event); faltaNombre.set(false)" (keydown.enter)="continuar()" placeholder="Escribe tu nombre" autocomplete="name"
+                        class="h-full min-w-0 flex-1 border-0 bg-transparent pr-2 font-display text-[22px] font-semibold tracking-[-0.01em] text-hoja outline-none placeholder:text-salvia-2" />
+                    </span>
+                    @if (faltaNombre()) { <span class="animate-fundido flex items-center gap-[5px] px-2 text-[12.5px] text-coral"><tabler-icon [icon]="i.alerta" [size]="14" [stroke]="2" />Escribe tu nombre para continuar</span> }
+                  </label>
+                  <label class="-mb-2.5 flex flex-col gap-1.5">
+                    <span class="flex items-baseline gap-2.5 px-1 pb-1"><span class="text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Tu celular</span><span class="text-[12.5px] text-salvia">Para ubicar tu pedido</span></span>
+                    <span class="flex h-14 items-center gap-3 rounded-full bg-white/[.07] px-2 transition-shadow" [style.box-shadow]="faltaTelefono() ? 'inset 0 0 0 1.5px #ffb4a6' : 'none'">
+                      <span class="forma-1 grid size-10 shrink-0 place-items-center bg-white/10 text-wa"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" /></span>
+                      <input type="tel" inputmode="tel" [ngModel]="telefono()" (ngModelChange)="telefono.set($event); faltaTelefono.set(false)" (keydown.enter)="continuar()" placeholder="300 123 4567" autocomplete="tel"
+                        class="h-full min-w-0 flex-1 border-0 bg-transparent pr-2 font-display text-[22px] font-semibold tabular-nums tracking-[-0.01em] text-hoja outline-none placeholder:text-salvia-2" />
+                    </span>
+                    @if (faltaTelefono()) { <span class="animate-fundido flex items-center gap-[5px] px-2 text-[12.5px] text-coral"><tabler-icon [icon]="i.alerta" [size]="14" [stroke]="2" />Escribe un celular válido</span> }
+                  </label>
+                  <div class="relative -mx-4 -mb-12 flex-[1_0_auto] px-4 pb-12 text-bosque">
+                    <ng-container *ngTemplateOutlet="ola" />
+                    <label class="relative flex flex-col gap-2.5 px-1 pt-14">
+                      <span class="flex items-end justify-between gap-3">
+                        <span class="flex flex-col gap-[3px]">
+                          <span class="font-display text-[28px] font-bold leading-[1.05] tracking-[-0.015em] [font-variation-settings:'wdth'_80]">Nota para el negocio</span>
+                          <span class="text-[12.5px] text-musgo">Hora de entrega o lo que necesites</span>
+                        </span>
+                        <span class="flex h-6 shrink-0 items-center rounded-full bg-menta px-2.5 text-[11.5px] font-semibold text-musgo">Opcional</span>
+                      </span>
+                      <textarea rows="3" [ngModel]="nota()" (ngModelChange)="nota.set($event)" placeholder="Escribe aquí tu nota…"
+                        class="resize-none rounded-3xl border-0 bg-menta px-[18px] py-3.5 text-[15.5px] leading-normal text-bosque outline-none transition-shadow focus:shadow-[inset_0_0_0_1.5px_#128c7e]"></textarea>
+                    </label>
+                    <div class="relative flex flex-wrap gap-1.5 px-1 pt-3">
+                      @for (nr of notasRapidas; track nr) {
+                        <button type="button" (click)="agregarNota(nr)" class="flex h-9 items-center gap-[7px] rounded-full bg-hoja py-0 pl-[5px] pr-3.5 text-[13px] font-medium text-bosque transition-transform hover:bg-menta active:scale-[.96]">
+                          <span class="grid size-[26px] place-items-center rounded-full bg-bosque text-hoja"><tabler-icon [icon]="i.mas" [size]="13" [stroke]="2" /></span>{{ nr }}
+                        </button>
+                      }
+                    </div>
+                    <label class="relative mt-4 flex cursor-pointer items-start gap-2.5 px-1 text-[13px] leading-[1.4] text-musgo">
+                      <input type="checkbox" [ngModel]="aceptaPromociones()" (ngModelChange)="aceptaPromociones.set($event)" class="mt-0.5 size-4 accent-[#0b3d33]" />
+                      Quiero recibir novedades y promociones de {{ t.nombre }} por WhatsApp
+                    </label>
+                  </div>
+                </div>
+                <ng-container *ngTemplateOutlet="pie; context: { bg: '#ffffff', etiqueta: 'Total', valor: monto(total()), boton: 'Ver mensaje' }" />
+              </div>
+
+              <!-- 3 · Mensaje -->
+              <div data-screen-label="Envío a WhatsApp" class="flex h-full w-1/6 flex-col">
+                <div class="sin-barra flex flex-1 flex-col gap-3 overflow-y-auto px-4 pb-12 pt-2">
+                  <div class="relative -mx-4 -mb-12 flex-[1_0_auto] px-4 pb-12 text-bosque">
+                    <ng-container *ngTemplateOutlet="ola" />
+                    <div class="relative flex flex-col gap-3 px-1 pt-16">
+                      <div class="flex items-center gap-2.5">
+                        <span class="forma-1 grid size-10 shrink-0 place-items-center bg-bosque text-wa"><tabler-icon [icon]="i.tienda" [size]="18" [stroke]="2" /></span>
+                        <span class="flex flex-col gap-px"><span class="font-display text-[28px] font-bold leading-[1.05] tracking-[-0.015em] [font-variation-settings:'wdth'_80]">{{ t.nombre }}</span><span class="flex items-center gap-1 text-xs text-musgo"><tabler-icon [icon]="i.wa" [size]="13" [stroke]="2" class="text-teal" />Por WhatsApp</span></span>
+                      </div>
+                      <div class="overflow-hidden rounded-3xl bg-chat">
+                        <div class="flex flex-col px-3.5 py-4">
+                          <div class="max-w-[92%] self-end rounded-[14px_4px_14px_14px] bg-burbuja px-3 pb-1.5 pt-2.5 text-sm leading-normal text-[#111b21] shadow-[0_1px_.5px_rgba(0,0,0,.1)]">
+                            @for (m of mensaje(); track $index) { <span class="block whitespace-pre-wrap" [class.font-semibold]="m.negrita">{{ m.texto || '\u00a0' }}</span> }
+                            <span class="mt-0.5 flex justify-end gap-[3px] text-[11px] text-[#667781]">ahora<tabler-icon [icon]="i.checks" [size]="14" [stroke]="2" class="text-[#53bdeb]" /></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="relative z-[2] -mt-px flex shrink-0 items-center gap-4 bg-white py-2.5 pl-5 pr-3 text-bosque">
+                  <ng-container *ngTemplateOutlet="nubes; context: { bg: '#ffffff' }" />
+                  <span class="relative flex flex-col"><span class="text-xs text-musgo">Total</span><span class="font-display text-2xl font-bold tracking-[-0.01em] tabular-nums">{{ monto(total()) }}</span></span>
+                  <button type="button" (click)="enviar()" [disabled]="enviando()" class="relative ml-auto flex h-[52px] items-center gap-2 rounded-full bg-bosque pl-[18px] pr-[22px] text-[15px] font-semibold text-hoja transition-transform hover:bg-bosque-2 active:scale-[.97] disabled:opacity-70">
+                    <tabler-icon [icon]="i.wa" [size]="20" [stroke]="2" class="text-wa" />{{ enviando() ? 'Preparando…' : 'Enviar por WhatsApp' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- 4 · ¿Ya lo enviaste? -->
+              <div class="flex h-full w-1/6 flex-col">
+                <div class="sin-barra flex flex-1 flex-col items-center overflow-y-auto px-4 pb-12 pt-1 text-center">
+                  <div class="flex flex-[1_0_auto] flex-col items-center justify-center self-stretch pb-4 pt-3">
+                    <ng-container *ngTemplateOutlet="sello; context: { icono: i.wa }" />
+                    <p class="m-0 mt-2.5 max-w-[13ch] text-balance font-display text-[clamp(36px,7vh,64px)] font-bold leading-[.92] tracking-[-0.025em] [font-variation-settings:'wdth'_78]">¿Ya enviaste el mensaje?</p>
+                  </div>
+                  <div class="relative -mx-4 -mb-12 flex-none self-stretch px-4 pb-10 text-bosque">
+                    <ng-container *ngTemplateOutlet="ola" />
+                    <div class="relative flex justify-center pt-20"><span class="max-w-[340px] text-pretty rounded-[22px_22px_22px_6px] bg-hoja px-4 py-2.5 text-left text-[12.5px] font-medium leading-[1.4] text-bosque">Cuando lo envíes, vaciamos tu pedido aquí para que no lo mandes dos veces.</span></div>
+                  </div>
+                </div>
+                <div class="relative z-[2] -mt-px flex shrink-0 items-center gap-2 bg-white p-3 pt-2.5 text-bosque">
+                  <ng-container *ngTemplateOutlet="nubes; context: { bg: '#ffffff' }" />
+                  <button type="button" (click)="abrirOtraVez()" class="relative flex h-[52px] items-center gap-[7px] rounded-full bg-transparent pl-2.5 pr-4 text-sm font-medium text-bosque hover:bg-hoja"><tabler-icon [icon]="i.wa" [size]="17" [stroke]="2" class="text-teal" />Abrir otra vez</button>
+                  <button type="button" (click)="confirmarEnvio()" class="relative ml-auto flex h-[52px] items-center justify-center gap-2 rounded-full bg-bosque px-6 text-[15px] font-semibold text-hoja transition-transform hover:bg-bosque-2 active:scale-[.97]"><tabler-icon [icon]="i.check" [size]="18" [stroke]="2.25" class="text-wa" />Sí, ya lo envié</button>
+                </div>
+              </div>
+
+              <!-- 5 · Enviado -->
+              <div class="flex h-full w-1/6 flex-col">
+                <div class="sin-barra flex flex-1 flex-col items-center overflow-y-auto px-4 pb-12 pt-1 text-center">
+                  <div class="flex flex-[1_0_auto] flex-col items-center justify-center self-stretch pb-4 pt-3">
+                    <ng-container *ngTemplateOutlet="sello; context: { icono: i.check }" />
+                    <p class="m-0 mt-2.5 font-display text-[clamp(36px,7vh,64px)] font-bold leading-[.92] tracking-[-0.025em] [font-variation-settings:'wdth'_78]">Pedido enviado</p>
+                  </div>
+                  <div class="relative -mx-4 -mb-12 flex-none self-stretch px-4 pb-10 text-bosque">
+                    <ng-container *ngTemplateOutlet="ola" />
+                    <div class="relative flex justify-center pt-20"><span class="max-w-[340px] text-pretty rounded-[22px_22px_22px_6px] bg-hoja px-4 py-2.5 text-left text-[12.5px] font-medium leading-[1.4] text-bosque">{{ t.nombre }} te responderá por WhatsApp para confirmar disponibilidad, pago y entrega.</span></div>
+                  </div>
+                </div>
+                <div class="relative z-[2] -mt-px flex shrink-0 bg-white p-3 pt-2.5 text-bosque">
+                  <ng-container *ngTemplateOutlet="nubes; context: { bg: '#ffffff' }" />
+                  <button type="button" (click)="seguirComprando()" class="relative flex h-[54px] flex-1 items-center justify-center gap-2 rounded-full bg-bosque text-[15px] font-semibold text-hoja transition-transform hover:bg-bosque-2 active:scale-[.97]">Seguir viendo productos<tabler-icon [icon]="i.der" [size]="17" [stroke]="2" /></button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detalle: modal centrado (escritorio) · hoja inferior a todo el ancho (móvil) -->
+      @if (detalle(); as d) {
+        @let tag = etiqueta(d);
+        <div (click)="detalle.set(null)" data-screen-label="Detalle de producto" class="animate-fundido fixed inset-0 z-[90] grid [place-items:end_center] bg-[rgba(7,42,35,.45)] p-0 backdrop-blur-[4px] md:place-items-center md:p-6">
+          <div (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="d.nombre"
+            class="animate-modal sin-barra relative grid max-h-[92vh] w-full max-w-[1040px] grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-2 overflow-y-auto overflow-x-hidden overscroll-contain rounded-[28px_28px_0_0] bg-papel p-2 pb-[max(16px,env(safe-area-inset-bottom))] md:max-h-[calc(100vh-48px)] md:rounded-[36px] md:p-3">
+            <div class="relative aspect-[4/3] overflow-hidden rounded-[22px] md:aspect-[4/5] md:rounded-[28px]" [style.background]="tono(d)">
+              @if (d.imagenes[0]) { <img [src]="d.imagenes[0]" [alt]="d.nombre" class="size-full object-cover" /> }
+              @else { <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-display text-[200px] font-extrabold leading-none text-[rgba(11,61,51,.08)] [font-variation-settings:'wdth'_72] md:text-[320px]">{{ inicial(d.nombre) }}</span> }
+              @if (tag) {
+                <span class="absolute left-[18px] top-[18px] grid size-[88px] -rotate-10 place-items-center"><span class="forma-tag absolute inset-0" [style.background]="tag.bg"></span><span class="relative whitespace-pre-line text-center text-[13.5px] font-bold leading-[1.05] tabular-nums" [style.color]="tag.fg">{{ tag.texto }}</span></span>
+              }
+            </div>
+            <div class="flex flex-col gap-3.5 px-2.5 pb-1 pt-3.5 md:gap-[18px] md:p-[clamp(20px,3vw,36px)]">
+              <div class="flex items-center justify-between gap-3">
+                <span class="flex h-[30px] items-center rounded-full bg-niebla px-3 text-[12.5px] font-medium text-teal">{{ categoriaDe(d) }}</span>
+                <button type="button" (click)="detalle.set(null)" aria-label="Cerrar" class="grid size-11 place-items-center rounded-full bg-niebla text-bosque hover:bg-niebla-2"><tabler-icon [icon]="i.cerrar" [size]="20" [stroke]="2" /></button>
+              </div>
+              <h2 class="m-0 text-balance font-display text-[clamp(34px,3.6vw,52px)] font-bold leading-[.95] tracking-[-0.025em] text-bosque [font-variation-settings:'wdth'_80]">{{ d.nombre }}</h2>
+              <p class="m-0 flex items-baseline gap-3 tabular-nums"><span class="text-2xl font-semibold text-bosque">{{ monto(d.precio) }}</span>@if (d.precioAntes) { <s class="text-[15px] text-gris-2">{{ monto(d.precioAntes) }}</s> }</p>
+              @if (d.descripcion) { <p class="m-0 text-pretty text-base leading-relaxed text-[#3d554d]">{{ d.descripcion }}</p> }
+              <div class="mt-auto flex flex-col gap-2.5 pt-3">
+                @if (!d.agotado) {
+                  <div class="flex gap-2">
+                    <span class="flex h-[60px] items-center rounded-full bg-niebla px-1.5 text-bosque">
+                      <button type="button" (click)="detQty.set(Math.max(1, detQty() - 1))" aria-label="Menos" class="grid size-12 place-items-center rounded-full hover:bg-niebla-2"><tabler-icon [icon]="i.menos" [size]="18" [stroke]="2" /></button>
+                      <span class="min-w-7 text-center text-base font-semibold tabular-nums">{{ detQty() }}</span>
+                      <button type="button" (click)="detQty.set(Math.min(99, detQty() + 1))" aria-label="Más" class="grid size-12 place-items-center rounded-full hover:bg-niebla-2"><tabler-icon [icon]="i.mas" [size]="18" [stroke]="2" /></button>
+                    </span>
+                    <button type="button" (click)="agregarDetalle()" class="flex h-[60px] min-w-0 flex-1 items-center justify-between gap-3 rounded-full bg-bosque px-[18px] text-[15px] font-medium text-hoja transition-transform hover:bg-bosque-2 active:scale-[.98] md:px-[26px]">
+                      <span>{{ cantidad(d.id) ? 'Agregar más' : 'Agregar al pedido' }}</span><span class="font-semibold tabular-nums">{{ monto(d.precio * detQty()) }}</span>
+                    </button>
+                  </div>
+                  @if (cantidad(d.id)) { <span class="px-2 text-[13px] text-gris">Ya tienes {{ cantidad(d.id) }} en tu pedido</span> }
+                } @else {
+                  <div class="flex h-[60px] items-center justify-center rounded-full bg-niebla text-[15px] font-medium text-gris">Agotado por ahora</div>
+                }
+                <a [href]="waProducto(d)" target="_blank" rel="noopener" class="flex h-[52px] items-center justify-center gap-2 rounded-full text-[14.5px] font-medium text-teal no-underline hover:bg-niebla hover:text-bosque"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" />{{ d.agotado ? 'Avisarme por WhatsApp cuando llegue' : 'Preguntar por este producto' }}</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Plantillas internas -->
+    <ng-template #nubes let-bg="bg">
+      <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-[-30px] h-8 overflow-hidden">
+        <div class="absolute left-[-6%] top-1.5 h-20 w-[34%] rounded-[50%]" [style.background]="bg"></div>
+        <div class="absolute left-[22%] top-3.5 h-[70px] w-[30%] rounded-[50%]" [style.background]="bg"></div>
+        <div class="absolute left-[46%] top-0.5 h-20 w-[32%] rounded-[50%]" [style.background]="bg"></div>
+        <div class="absolute right-[-6%] top-3 h-[70px] w-[30%] rounded-[50%]" [style.background]="bg"></div>
+      </div>
+    </ng-template>
+    <ng-template #pie let-bg="bg" let-etiqueta="etiqueta" let-valor="valor" let-boton="boton" let-chico="chico">
+      <div class="relative z-[2] -mt-px flex shrink-0 items-center gap-4 py-2.5 pl-5 pr-3 text-bosque" [style.background]="bg">
+        <ng-container *ngTemplateOutlet="nubes; context: { bg }" />
+        <span class="relative flex flex-col"><span class="text-xs text-musgo">{{ etiqueta }}</span><span class="font-display font-bold tracking-[-0.01em] tabular-nums" [class.text-2xl]="!chico" [class.text-xl]="chico">{{ valor }}</span></span>
+        <button type="button" (click)="continuar()" class="relative ml-auto flex h-[52px] items-center gap-2 rounded-full bg-bosque px-6 text-[15px] font-semibold text-hoja transition-transform hover:bg-bosque-2 active:scale-[.97]">{{ boton }}<tabler-icon [icon]="i.der" [size]="17" [stroke]="2" /></button>
+      </div>
+    </ng-template>
+    <ng-template #ola>
+      <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+        <div class="forma-0 absolute left-[-8%] top-0 aspect-square w-[46%] bg-white"></div>
+        <div class="forma-1 absolute left-[28%] top-[22px] aspect-square w-[34%] bg-white"></div>
+        <div class="forma-2 absolute left-[54%] top-1.5 aspect-square w-[42%] bg-white"></div>
+        <div class="forma-3 absolute right-[-10%] top-[30px] aspect-square w-[30%] bg-white"></div>
+        <div class="absolute inset-x-0 bottom-0 top-14 bg-white"></div>
+      </div>
+    </ng-template>
+    <ng-template #sello let-icono="icono">
+      <span class="relative grid aspect-square w-[min(220px,22vh)] shrink-0 place-items-center">
+        <span burbuja="0.04,14,0.18" class="absolute inset-0 bg-[rgba(37,211,102,.14)] [animation:morph_10s_ease-in-out_infinite]"></span>
+        <span class="forma-0 absolute inset-[14%] bg-[rgba(37,211,102,.18)]"></span>
+        <span class="forma-1 absolute right-[2%] top-[6%] aspect-square w-[16%] bg-wa"></span>
+        <span class="absolute bottom-[10%] left-[4%] aspect-square w-[10%] rounded-full bg-hoja opacity-50"></span>
+        <span class="forma-1 relative grid aspect-square w-[54%] place-items-center bg-wa text-noche shadow-[0_12px_30px_-10px_rgba(37,211,102,.6)]"><tabler-icon [icon]="icono" [size]="56" [stroke]="1.75" /></span>
+      </span>
+    </ng-template>
   }
 }

@@ -34,4 +34,12 @@ export class TiendaService {
   guardar(cambios: CambiosTienda): Observable<MiTienda> {
     return this.http.patch<MiTienda>(this.base, cambios);
   }
+
+  /**
+   * NUEVO (TODO backend): `GET /tienda/mia/slug-disponible?slug=…` → `{ disponible: boolean }`.
+   * Hoy el PATCH responde 409 si el slug está tomado; esto solo adelanta el aviso mientras escribe.
+   */
+  slugDisponible(slug: string): Observable<{ disponible: boolean }> {
+    return this.http.get<{ disponible: boolean }>(`${this.base}/slug-disponible`, { params: { slug } });
+  }
 }
