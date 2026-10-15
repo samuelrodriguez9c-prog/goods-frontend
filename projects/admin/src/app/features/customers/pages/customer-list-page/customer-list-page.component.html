@@ -5,7 +5,9 @@
     <span icono><app-ic nombre="user" [size]="20" /></span>
     <div acciones class="flex items-center gap-2">
       @if (puedeEditar()) {
-        <button type="button" class="gp-btn-primario" (click)="nuevo()"><app-ic nombre="plus" [size]="15" />Nuevo cliente</button>
+        <button type="button" (click)="nuevo()" title="Nuevo cliente (N)" class="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[opacity] duration-200 ease-[ease] hover:opacity-90!">
+          <app-ic nombre="plus" [size]="14" />Nuevo cliente
+        </button>
       }
     </div>
   </app-cabecera-modulo>
