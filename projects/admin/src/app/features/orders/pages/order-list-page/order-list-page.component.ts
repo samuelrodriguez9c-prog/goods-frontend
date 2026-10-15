@@ -252,6 +252,9 @@ export class OrderListPageComponent {
     } else if (cliente) {
       this.fCliente.set(+cliente);
     }
+    // `?canal=tienda` (desde Tienda en línea) filtra por canal.
+    const canal = qp.get('canal');
+    if (canal && canal in CANAL) this.fCanal.set(canal as Canal);
     // «Vendido» según el período de la cabecera.
     effect(() => this.v.cargarVendido(this.desde(this.periodo())));
     // Abrir un pedido trae su detalle (eventos, pagos, código, quién lo cargó).

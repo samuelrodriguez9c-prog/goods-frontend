@@ -982,3 +982,29 @@ app-topbar {
 @utility gp-menu-item {
   @apply flex h-[34px] w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] text-gray-900 transition-colors hover:bg-[#f4f4f4];
 }
+
+/* ── Sin barras de scroll en la página (2026-10-15) ──────────────────────
+ * Con el panel montado (shell `h-screen`) la ventana nunca se desplaza:
+ * solo el contenido (`main`), que se sigue moviendo con la rueda, el
+ * trackpad o el teclado pero sin mostrar la barra. Login y registro no
+ * tienen el shell y conservan el scroll normal de la ventana. */
+html:has(.shell-raiz),
+html:has(.shell-raiz) body {
+  overflow: hidden;
+}
+.sin-barra {
+  scrollbar-width: none;
+}
+.sin-barra::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Tienda en línea (rediseño 2026-10-15) ─────────────────────────────── */
+/* El cartel de la puerta se balancea; el neón de «ABIERTO» respira. */
+@keyframes cartel-mece { 0%, 100% { transform: rotate(-1.6deg); } 50% { transform: rotate(1.6deg); } }
+@keyframes neon { 0%, 100% { opacity: 1; } 46% { opacity: 1; } 48% { opacity: .72; } 50% { opacity: 1; } 52% { opacity: .85; } 54% { opacity: 1; } }
+/* Lo que cambió en la vitrina destella un instante. */
+@keyframes destello { from { background-color: rgba(43, 224, 213, .45); } to { background-color: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[cartel-mece_4\.5s_ease-in-out_infinite\], .animate-\[neon_3\.2s_ease-in-out_infinite\] { animation: none; }
+}

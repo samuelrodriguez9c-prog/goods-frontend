@@ -1378,3 +1378,18 @@ app-topbar {
 .escala-contenido {
   zoom: var(--escala-contenido);
 }
+/* ── Sin barras de scroll en la página (2026-10-15) ──────────────────────
+ * Con el panel montado (shell `h-screen`) la ventana nunca se desplaza:
+ * solo el contenido (`main`), que se sigue moviendo con la rueda, el
+ * trackpad o el teclado pero sin mostrar la barra. Login y registro no
+ * tienen el shell y conservan el scroll normal de la ventana. */
+html:has(.shell-raiz),
+html:has(.shell-raiz) body {
+  overflow: hidden;
+}
+.sin-barra {
+  scrollbar-width: none;
+}
+.sin-barra::-webkit-scrollbar {
+  display: none;
+}
