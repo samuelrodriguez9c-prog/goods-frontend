@@ -11,7 +11,7 @@ import { ListaPlantillasComponent } from './components/lista-plantillas/lista-pl
 import { PLANTILLA_VACIA, ordenar } from './plantillas.util';
 
 /**
- * Plantillas de WhatsApp (rediseño 2026-10-13, LEEME §5): los mensajes que
+ * Plantillas de WhatsApp: los mensajes que
  * Meta revisa y aprueba, los únicos con los que se le puede escribir a un
  * cliente pasadas 24 horas de su último mensaje. Se crean aquí, Goods las
  * manda a revisión y el estado se actualiza solo (webhook) o con

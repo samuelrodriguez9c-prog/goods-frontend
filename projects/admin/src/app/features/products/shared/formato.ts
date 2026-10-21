@@ -1,4 +1,4 @@
-/** Formatos del módulo Productos (es-CO, igual que el prototipo). */
+// Formatos del módulo Productos (es-CO).
 const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const aFecha = (d: string | Date) => (typeof d === 'string' && d.length === 10 ? new Date(d + 'T09:00:00') : new Date(d));
 

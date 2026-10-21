@@ -36,16 +36,13 @@ type Parcial = Partial<Omit<AlertaOverlay, 'variante'>>;
 const SALIDA_MS = 300;
 
 /**
- * Único dueño de las alertas del panel (LEEME §12, v2 "Pila oscura").
+ * Único dueño de las alertas del panel.
  *
- * - **en línea** (`enLinea()`): pila abajo al centro. La más nueva al frente;
- *   las demás esperan detrás. **Solo corre el tiempo de la del frente** — las
- *   de atrás no se cierran sin que nadie las lea. La operación en curso y su
- *   resultado siguen siendo la misma alerta: `mostrar()` → `resolver(id, …)`.
- * - **overlay** (`overlay()`): sin cambios.
- *
- * API pública igual que antes (`mostrar`, `resolver`, `cerrar`, `seguir`):
- * ninguna página tiene que cambiar.
+ * - **En línea** (`enLinea()`): pila abajo al centro, la más nueva al frente.
+ *   Solo corre el tiempo de la del frente, para que las de atrás no se
+ *   cierren sin que nadie las lea. La operación en curso y su resultado son
+ *   la misma alerta: `mostrar()` → `resolver(id, …)`.
+ * - **Overlay** (`overlay()`): modal o velo sobre la pantalla.
  */
 @Injectable({ providedIn: 'root' })
 export class AlertaService {
@@ -67,8 +64,12 @@ export class AlertaService {
     return n ? this.altoFrente() + 9 * Math.min(n - 1, 2) : 0;
   });
 
-  // ── En línea ──────────────────────────────────────────────────────────
+  // En línea.
 
+  /**
+   * Agrega una alerta a la pila.
+   * @returns El id para `resolver()` o `cerrar()`. Por defecto arranca en `cargando`, sin auto-cierre.
+   */
   mostrar(alerta: Omit<AlertaEnLinea, 'id' | 'estado' | 'autoCierre' | 'abierta' | 'vuelta' | 'saliendo'> & {
     estado?: EstadoAlerta;
     autoCierre?: number | null;
@@ -91,6 +92,7 @@ export class AlertaService {
     return id;
   }
 
+  /** Cambia el estado de una alerta y reinicia su tiempo; un `error` se abre y no se cierra solo. */
   resolver(
     id: number,
     cambio: Partial<Omit<AlertaEnLinea, 'id' | 'vuelta' | 'saliendo'>> & { estado: EstadoAlerta },
@@ -141,13 +143,16 @@ export class AlertaService {
   }
 
   /**
-   *   this.alertas.seguir(this.rolService.asignarPermisos(id, ids), {
-   *     titulo: 'Guardando permisos', texto: 'Rol “Soporte”',
-   *     exito: { titulo: 'Permisos guardados' },
-   *     error: { titulo: 'No se pudo guardar', texto: 'El servidor rechazó el cambio.' },
-   *   }).subscribe();
+   * Muestra una alerta `cargando` mientras corre `origen` y la resuelve con
+   * `exito` o `error`. No traga el error: sigue en el observable para que la
+   * página decida.
    *
-   * No traga el error: lo vuelve a lanzar para que la página decida.
+   * @example
+   * this.alertas.seguir(this.rolService.asignarPermisos(id, ids), {
+   *   titulo: 'Guardando permisos', texto: 'Rol “Soporte”',
+   *   exito: { titulo: 'Permisos guardados' },
+   *   error: { titulo: 'No se pudo guardar', texto: 'El servidor rechazó el cambio.' },
+   * }).subscribe();
    */
   seguir<T>(
     origen: Observable<T>,
@@ -167,7 +172,7 @@ export class AlertaService {
     );
   }
 
-  // ── Overlay (sin cambios) ─────────────────────────────────────────────
+  // Overlay.
 
   abrirOverlay(cfg: Omit<AlertaOverlay, 'estado'> & { estado?: EstadoAlerta }): void {
     this.overlay.set({ estado: 'cargando', ...cfg });
@@ -185,7 +190,7 @@ export class AlertaService {
     this.overlay.set(null);
   }
 
-  // ── Interno ───────────────────────────────────────────────────────────
+  // Interno.
 
   /** El error no se cierra solo: una alerta que se va sola es una alerta que nadie leyó. */
   private autoCierrePorDefecto(estado: EstadoAlerta): number | null {

@@ -5,14 +5,13 @@ import { environment } from '../../../environments/environment';
 import { RespuestaPaginada } from '../usuarios/models/usuario.model';
 import { Producto, ProductoCatalogo, ProductoImagen, ProductoPayload } from './models/producto.model';
 
-/** pageSize tope del backend (PaginationQueryDto). */
+/** `pageSize` máximo que acepta el backend. */
 const TOPE = 100;
 const DECIMALES = ['precio', 'precioComparacion', 'costo', 'altoCm', 'anchoCm', 'largoCm'] as const;
 
 /**
- * Cliente de `ProductoController`. `listar()` queda igual (Asistente de IA);
- * el resto es nuevo para la pantalla de Productos (handoff-productos §2).
- * El backend ya filtra por la Empresa del token.
+ * Cliente de `ProductoController`. `listar()` lo usa el asistente; el resto,
+ * la pantalla de Productos. El backend filtra por la Empresa del token.
  */
 @Injectable({ providedIn: 'root' })
 export class ProductoService {
@@ -20,9 +19,9 @@ export class ProductoService {
   private readonly base = `${environment.apiUrl}/productos`;
 
   /**
-   * Momento (ms) de la última escritura propia, al salir y al volver. La
-   * página la usa para no contar como "cambio nuevo en vivo" el eco de
-   * `datos:cambio` que el backend emite por nuestra propia escritura.
+   * Momento (ms) de la última escritura propia, al salir y al volver. Sirve
+   * para no contar como «cambio nuevo en vivo» el eco de `datos:cambio` de
+   * nuestra propia escritura.
    */
   ultimaEscritura = 0;
 
@@ -41,8 +40,10 @@ export class ProductoService {
 
   /**
    * Todo el catálogo, página por página. La pantalla filtra, agrupa y cuenta
-   * en el cliente (como el prototipo) — alcanza para catálogos de cientos.
-   * Si un cliente pasa de ~2.000 productos, mover búsqueda/filtros al backend
+   * en el cliente, que alcanza para catálogos de cientos.
+   *
+   * @remarks
+   * Si un negocio pasa de ~2.000 productos, conviene filtrar en el backend
    * (`buscar`, `categoriaId`, `estado`, `precioMin/Max` ya existen).
    */
   catalogo(): Observable<ProductoCatalogo[]> {

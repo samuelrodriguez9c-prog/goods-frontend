@@ -303,7 +303,23 @@
                     @if (m.override?.motivo) {
                       <span class="truncate text-[11.5px] text-gray-400">“{{ m.override?.motivo }}”</span>
                     }
+                    @if (m.ajustesPropios) {
+                      <span class="text-[11.5px] text-gray-400">{{ m.ajustesPropios }} {{ m.ajustesPropios === 1 ? 'ajuste propio' : 'ajustes propios' }}</span>
+                    }
                   </span>
+                  @if (m.ajustable) {
+                    <button
+                      type="button"
+                      (click)="alternarAjustes(m)"
+                      [attr.aria-expanded]="ajustesDe() === m.id"
+                      [attr.aria-label]="'Ajustes de ' + m.nombre"
+                      title="Ajustes del módulo"
+                      class="flex rounded-lg p-1 text-gray-500 transition-colors duration-150 hover:bg-[#f0f0f0] hover:text-gray-900"
+                      [class.bg-[#f0f0f0]]="ajustesDe() === m.id"
+                    >
+                      <tabler-icon [icon]="i.ajustes" [size]="16" />
+                    </button>
+                  }
                   <button
                     type="button"
                     role="switch"
@@ -316,9 +332,12 @@
                     <span class="absolute top-[2px] size-3.5 rounded-full bg-white transition-[left] duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)]" [style.left.px]="m.efectivo ? 16 : 2"></span>
                   </button>
                 </div>
+                @if (ajustesDe() === m.id) {
+                  <app-ajustes-modulo [empresaId]="empresa().id" [empresaNombre]="empresa().nombre" [codigo]="m.codigo" (cerrar)="ajustesDe.set(null)" (guardado)="recargarModulos()" />
+                }
                 @if (m.editando) {
                   <div class="ml-[19px] mt-2 flex animate-[fade-in-up_0.18s_ease-out] flex-col gap-2 rounded-xl bg-[#f7f7f7] p-3">
-                    <p class="text-xs text-gray-600">{{ m.efectivo ? '¿Por qué le quitás' : '¿Por qué le das' }} {{ m.nombre }}?</p>
+                    <p class="text-xs text-gray-600">{{ m.efectivo ? '¿Por qué le quitas' : '¿Por qué le das' }} {{ m.nombre }}?</p>
                     <div class="flex flex-wrap gap-1.5">
                       @for (r of m.efectivo ? motivosModulo.revocar : motivosModulo.conceder; track r) {
                         <button type="button" (click)="parcheMod(r)" class="rounded-full bg-white px-2.5 py-1 text-xs text-[#303030] hover:bg-[#ececec]">{{ r }}</button>

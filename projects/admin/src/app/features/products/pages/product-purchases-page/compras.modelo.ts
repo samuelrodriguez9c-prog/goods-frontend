@@ -3,7 +3,7 @@ import { cop } from '../../shared/formato';
 import { CompraV5, EstadoCompra, LineaCompra, ProductoV5, ProveedorV5 } from '../../shared/modelos';
 import { variacion } from '../../shared/proveedores.util';
 
-// ── Tipos de la pantalla ────────────────────────────────────────────────
+// Tipos de la pantalla
 export type Periodo = 'hoy' | '7' | '30';
 export type Agrupacion = 'estado' | 'proveedor' | 'mes';
 export type Orden = 'fecha' | 'edad' | 'total' | 'proveedor';
@@ -76,7 +76,7 @@ export interface VariacionPrecio {
   detalle: string;
 }
 
-// ── Constantes ──────────────────────────────────────────────────────────
+// Constantes
 export const ORDENES: { k: Orden; titulo: string; icono: string }[] = [
   { k: 'fecha', titulo: 'Más recientes', icono: 'calendar-down' },
   { k: 'edad', titulo: 'Más antiguas', icono: 'calendar-up' },
@@ -118,7 +118,7 @@ export const CHIP_ESTADO: Record<EstadoCompra, string> = {
 /** Avatar del proveedor de una compra cancelada (gris en vez del tono del proveedor). */
 export const AVATAR_CANCELADA = 'bg-[#f1f1f1] text-[#9ca3af]';
 
-// ── Utilidades ──────────────────────────────────────────────────────────
+// Utilidades
 export const soloDigitos = (v: unknown) => String(v ?? '').replace(/[^\d]/g, '');
 export const clonar = <T>(o: T): T => JSON.parse(JSON.stringify(o));
 export const iguales = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);

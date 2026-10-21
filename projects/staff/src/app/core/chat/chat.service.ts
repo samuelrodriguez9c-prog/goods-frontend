@@ -6,14 +6,8 @@ import { RespuestaPaginada } from '../catalog/models/empresa.model';
 import { Conversacion, Mensaje } from './models/conversacion.model';
 
 /**
- * Cliente de `POST /chat/conversaciones` (backend, `modules/chat/`) para el
- * lado de `staff` — la bandeja de soporte de §7.2/§8 de
- * `PIVOTE_SAAS_MULTITENANT.md`, que hasta ahora era un placeholder (ver
- * `SoportePageComponent`). Exige `conversaciones.ver` para `listarBandeja`/
- * `obtener`/`listarMensajes` de una conversación ajena, y
- * `conversaciones.gestionar` para `cerrar`/`asignar` — ver la migración
- * `AjustarPermisosDeConversacionesPorRol` (2026-09-23), que le dio esos
- * permisos a `admin_goods`/`staff_goods`/`empleado_goods`.
+ * Bandeja de soporte (`/chat/conversaciones`). Leer conversaciones ajenas
+ * exige `conversaciones.ver`; cerrar y asignar, `conversaciones.gestionar`.
  */
 @Injectable({ providedIn: 'root' })
 export class ChatService {
@@ -21,12 +15,8 @@ export class ChatService {
   private readonly base = `${environment.apiUrl}/chat/conversaciones`;
 
   /**
-   * `SoportePageComponent` pide la bandeja SIN filtro (pageSize alto) y
-   * calcula "sin asignar"/"mías" en el cliente a partir de esa misma
-   * lista — más simple que tres requests en paralelo por cada filtro, y a
-   * esta escala (decenas de conversaciones, no miles) no hace falta la
-   * paginación real todavía. El parámetro queda igual disponible para
-   * cuando haga falta.
+   * `SoportePageComponent` la pide sin filtro y separa "sin asignar" y
+   * "mías" en el cliente: con decenas de conversaciones no hace falta paginar.
    */
   listarBandeja(
     filtro?: 'sin_asignar' | 'mias',
@@ -44,21 +34,17 @@ export class ChatService {
     return this.http.get<Conversacion>(`${this.base}/${id}`);
   }
 
-  /** `pageSize` tope 100 — `PaginationQueryDto` del backend lo valida con
-   * `@Max(100)` y rechaza (400) cualquier valor mayor, sin excepción para
-   * este endpoint. Una conversación con más de 100 mensajes no está
-   * contemplada en esta primera versión (no hay paginación real del
-   * hilo todavía — ver el comentario de `listarBandeja` sobre por qué a
-   * esta escala no hace falta). */
+  /**
+   * Primera página del hilo.
+   * @param pageSize - Máximo 100: el backend responde 400 si es mayor.
+   */
   listarMensajes(id: number, pageSize = 100): Observable<RespuestaPaginada<Mensaje>> {
+    // TODO(front): paginar el hilo; hoy una conversación con más de 100 mensajes se corta.
     const params = new HttpParams().set('page', 1).set('pageSize', pageSize);
     return this.http.get<RespuestaPaginada<Mensaje>>(`${this.base}/${id}/mensajes`, { params });
   }
 
-  /** `respondeAId` opcional — "responder a un mensaje" (ver
-   * `EnviarMensajeDto`/migración `AgregarRespondeAIdAMensajes` del
-   * backend, 2026-09-23). El backend valida que pertenezca a esta misma
-   * conversación. */
+  /** @param respondeAId - Mensaje citado; debe ser de esta misma conversación. */
   enviarMensaje(id: number, cuerpo: string, respondeAId?: number): Observable<Mensaje> {
     return this.http.post<Mensaje>(`${this.base}/${id}/mensajes`, { cuerpo, respondeAId });
   }

@@ -156,7 +156,7 @@
               @switch (fase()) {
                 @case ('preparar') {
                   <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 py-[18px]">
-                    <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Corroborá</span>
+                    <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Corrobora</span>
                     <div class="flex flex-col gap-2.5">
                       <div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5">
                         @for (c of campos(); track c.clave) {
@@ -175,7 +175,7 @@
                       @if (!telefono()) {
                         <p class="flex items-start gap-2 rounded-xl bg-[#fff4dc] px-3 py-2.5 text-[12.5px] leading-[18px] text-[#8a5300]">
                           <tabler-icon [icon]="i.sinTel" [size]="15" [stroke]="1.75" class="mt-px" />
-                          No dejó teléfono en el registro. Escribile a {{ e.correoContacto }} para conseguirlo, o cargalo acá si ya lo tenés.
+                          No dejó teléfono en el registro. Escríbele a {{ e.correoContacto }} para conseguirlo, o cargalo acá si ya lo tienes.
                         </p>
                       }
                     </div>
@@ -198,7 +198,7 @@
                       </div>
                       @if (agendaAbierta()) {
                         <div class="flex animate-[fade-in-up_0.18s_ease-out] flex-col gap-2 rounded-xl bg-[#f7f7f7] p-3">
-                          <p class="text-xs font-medium text-gray-600">¿Cuándo la llamás?</p>
+                          <p class="text-xs font-medium text-gray-600">¿Cuándo la llamas?</p>
                           <div class="flex flex-wrap gap-1.5">
                             @for (a of atajosAgenda(); track a.valor) {
                               <button type="button" (click)="agendaFecha.set(a.valor)" class="rounded-full px-2.5 py-1 text-xs font-medium" [class]="agendaFecha() === a.valor ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] hover:bg-[#ececec]'">{{ a.texto }}</button>
@@ -251,7 +251,7 @@
                       </span>
                     </button>
                   }
-                  <p class="mt-3 text-xs text-gray-400">Cuando cortes, tocá “Terminé la llamada” para confirmar los datos y mandar el enlace.</p>
+                  <p class="mt-3 text-xs text-gray-400">Cuando cortes, toca “Terminé la llamada” para confirmar los datos y mandar el enlace.</p>
                 }
 
                 @case ('confirmar') {
@@ -264,7 +264,7 @@
                   <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px] mt-4">
                     <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Módulos extra</span>
                     <div class="flex flex-col gap-2">
-                      <p class="text-xs text-gray-500">{{ pedidos().length ? 'Ya vienen marcados los que pidió en el checkout.' : 'No pidió ninguno; marcá si surgió en la llamada.' }}</p>
+                      <p class="text-xs text-gray-500">{{ pedidos().length ? 'Ya vienen marcados los que pidió en el checkout.' : 'No pidió ninguno; marca si surgió en la llamada.' }}</p>
                       <div class="flex flex-wrap gap-1.5">
                         @for (x of extrasPosibles(); track x.id) {
                           <button
@@ -287,7 +287,7 @@
                     <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Prueba gratis</span>
                     <div class="flex flex-col gap-2">
                       <p class="text-xs text-gray-500">
-                        El plan {{ plan()?.nombre ?? '' }} trae {{ plan()?.diasPrueba ?? 7 }} días. Podés darle más (hasta {{ diasPruebaMax }}) o ninguno. Una sola prueba por negocio.
+                        El plan {{ plan()?.nombre ?? '' }} trae {{ plan()?.diasPrueba ?? 7 }} días. Puedes darle más (hasta {{ diasPruebaMax }}) o ninguno. Una sola prueba por negocio.
                       </p>
                       <div class="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Días de prueba">
                         @for (d of opcionesPrueba; track d) {

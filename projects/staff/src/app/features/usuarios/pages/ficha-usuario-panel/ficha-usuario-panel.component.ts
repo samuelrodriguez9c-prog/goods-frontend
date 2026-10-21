@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { IconArrowRight, IconBan, IconPencil, IconX, TablerIconComponent, type TablerIcon } from '@tabler/icons-angular';
@@ -27,45 +27,18 @@ interface MatrizFila {
 }
 
 /**
- * Ficha de una persona ya existente — componente aparte, sibling de
- * `usuarios-page` en `pages/`, mismo patrón que el resto de los paneles
- * de la app.
+ * Panel con la ficha de una persona: permisos de su rol, actividad y datos.
  *
- * A diferencia de los paneles que cargan sus propios datos por id
- * (`EmpresaDetallePanelComponent`, `AccionDetallePanelComponent`), este
- * recibe `[usuario]`/`[roles]`/`[acceso]` ya resueltos por la página —
- * recalcularlos acá significaría repetir el `forkJoin` de 500 acciones de
- * auditoría que ya hizo `UsuariosPageComponent.cargar()` solo para abrir
- * una ficha.
+ * Recibe `[usuario]`, `[roles]` y `[acceso]` ya resueltos por la página para
+ * no repetir la carga de auditoría al abrir una ficha. `matrizPanel` y
+ * `textoCambioRol` también llegan armados, y el rol en vista previa vive en
+ * la página (`[rolPreviewId]` / `(rolPreviewSeleccionado)`) porque la fila
+ * de la matriz tiene que mostrar el mismo diff.
  *
- * Tampoco calcula `matrizPanel`/`textoCambioRol` por su cuenta: la
- * necesitan `nivelDe()` + `MODULOS`, que viven en la página porque la fila
- * de esta misma persona en la matriz (a la izquierda, fuera de este
- * panel) tiene que mostrar el mismo diff de rol mientras hay un cambio en
- * preview — por eso `rolPreview` tampoco es estado interno del panel: lo
- * recibe como `[rolPreviewId]` y lo cambia emitiendo
- * `(rolPreviewSeleccionado)`, para que la página lo aplique a la fila y al
- * panel a la vez. Es la misma clase de excepción que `[mrrTotal]` en
- * `GestionarSuscripcionPanelComponent` o `[acciones]` en
- * `AccionDetallePanelComponent`.
- *
- * El resto (pestaña activa, buffer de edición de "Datos", las llamadas a
- * `UsuarioService` de cambiar rol / actualizar / quitar acceso) es
- * enteramente interno: el panel hace sus propias mutaciones y le avisa a
- * la página el resultado por output, la misma forma en que
- * `GestionarSuscripcionPanelComponent` gestiona sus propias acciones.
- * El aviso de éxito/error de cada una lo muestra el panel mismo con
- * `AlertaService.seguir()` (integración del sistema de alertas
- * transversal, LEEME.md §12) — ya no sube por `avisoTexto`/`errorTexto` a
- * un banner de la página: ese patrón mandaba el error lejos de donde
- * pasó la acción.
- *
- * El `effect` del constructor reinicia pestaña y el buffer de "Datos"
- * solo cuando cambia la PERSONA (`usuario().id`), no cada vez que
- * `[usuario]` recibe una referencia nueva — que pasa cada vez que se
- * guarda algo, porque la página reemplaza el objeto en su lista. Si
- * reiniciara con cualquier cambio de referencia, guardar datos estando en
- * la pestaña "Datos" te mandaría de vuelta a "Permisos" cada vez.
+ * Los cambios (rol, datos, quitar acceso) los hace el propio panel, con su
+ * aviso vía `AlertaService.seguir()`, y avisa el resultado por los outputs.
+ * Al cambiar de persona vuelve a «Permisos»; el borrador de «Datos» se
+ * actualiza con cada versión nueva de `[usuario]`.
  */
 @Component({
   selector: 'app-ficha-usuario-panel',
@@ -86,9 +59,8 @@ export class FichaUsuarioPanelComponent {
   readonly usuario = input.required<UsuarioGoods>();
   readonly roles = input.required<Rol[]>();
   readonly acceso = input<Acceso | undefined>();
-  /** Ver `EventoPresenciaCambio`/`enLineaIds` en `usuarios-page.component.ts`
-   * — la página ya resuelve si esta persona está conectada ahora mismo, acá
-   * solo se refleja en `fichaEstado`. */
+  /** Si la persona está conectada ahora; lo resuelve la página
+   * (`enLineaIds`). */
   readonly enLinea = input(false);
   readonly rolPreviewId = input<number | null>(null);
   readonly matrizPanel = input.required<MatrizFila[]>();
@@ -101,9 +73,10 @@ export class FichaUsuarioPanelComponent {
 
   protected readonly pestana = signal<TabPanel>('permisos');
   protected readonly datos = signal({ nombres: '', apellidos: '', telefono: '' });
+  /** Id y datos de la última versión recibida de `[usuario]`, para saber si cambió la persona o si el borrador tiene cambios. */
+  private idCargado: number | null = null;
+  private datosBase = { nombres: '', apellidos: '', telefono: '' };
   protected readonly guardando = signal(false);
-
-  private readonly usuarioId = computed(() => this.usuario().id);
 
   protected readonly hayCambioRol = computed(() => {
     const id = this.rolPreviewId();
@@ -137,11 +110,20 @@ export class FichaUsuarioPanelComponent {
   });
 
   constructor() {
+    // Con otra persona vuelve a «Permisos» y carga sus datos. Con una versión nueva de la
+    // misma persona (al guardar, o un cambio en vivo) no cambia de pestaña y solo
+    // actualiza el borrador de «Datos» si no lo estás editando.
     effect(() => {
-      this.usuarioId();
       const u = this.usuario();
-      this.pestana.set('permisos');
-      this.datos.set({ nombres: u.nombres, apellidos: u.apellidos, telefono: u.telefono ?? '' });
+      const nuevos = { nombres: u.nombres, apellidos: u.apellidos, telefono: u.telefono ?? '' };
+      untracked(() => {
+        const otraPersona = u.id !== this.idCargado;
+        const d = this.datos(), sinEditar = d.nombres === this.datosBase.nombres && d.apellidos === this.datosBase.apellidos && d.telefono === this.datosBase.telefono;
+        if (otraPersona) this.pestana.set('permisos');
+        if (otraPersona || sinEditar) this.datos.set(nuevos);
+        this.idCargado = u.id;
+        this.datosBase = nuevos;
+      });
     });
   }
 
@@ -153,12 +135,8 @@ export class FichaUsuarioPanelComponent {
     return etiquetaRolTexto(rol.nombre);
   }
 
-  /** Mismo criterio que `ultimoMsEfectivo` en `usuarios-page.component.ts`
-   * (duplicado a propósito, ver el docstring de la clase sobre qué se
-   * importa de la página y qué no): combina `Usuario.ultimoAcceso` (campo
-   * propio, real desde el fix de "nunca entró para todos") con
-   * `acceso.ultimoMs` (reconstruido desde auditoría) en vez de reemplazar
-   * uno por el otro. */
+  /** Copia de `ultimoMsEfectivo` de `usuarios-page.component.ts`: el más
+   * reciente entre `Usuario.ultimoAcceso` y `acceso.ultimoMs` (auditoría). */
   private ultimoMsEfectivo(u: UsuarioGoods, acceso: Acceso | undefined): number | null {
     const desdeUsuario = u.ultimoAcceso ? new Date(u.ultimoAcceso).getTime() : null;
     const desdeAuditoria = acceso?.ultimoMs ?? null;

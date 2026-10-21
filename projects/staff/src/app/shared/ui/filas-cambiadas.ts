@@ -1,5 +1,5 @@
 /**
- * Qué filas son nuevas o cambiaron entre dos cargas (LEEME §8, v2).
+ * Qué filas son nuevas o cambiaron entre dos cargas.
  * El evento en vivo solo trae `entidad`, así que el diff se hace en cliente.
  * Comparación superficial por JSON — suficiente para filas de tabla planas.
  */

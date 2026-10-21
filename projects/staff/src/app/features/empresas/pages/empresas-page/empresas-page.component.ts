@@ -35,7 +35,7 @@ import { traerTodo } from '../../../../shared/ui/lista-hoja/traer-todo';
 export const EN_ALTA: EstadoEmpresa[] = ['solicitud_recibida', 'pendiente', 'informacion_corroborada'];
 export const INACTIVAS: EstadoEmpresa[] = ['suspendida', 'rechazada', 'cancelada'];
 
-/** Texto + color del punto por estado (diseño `Empresas - Lista y ficha v2`). */
+/** Texto y color del punto de cada estado. */
 export const ESTADO_EMPRESA: Record<EstadoEmpresa, { texto: string; punto: string }> = {
   solicitud_recibida: { texto: 'Solicitud recibida', punto: '#8a8a8a' },
   pendiente: { texto: 'Pendiente', punto: '#b07400' },
@@ -57,14 +57,12 @@ type Orden = 'urgencia' | 'desc' | 'asc';
 type FiltroMetrica = EstadoEmpresa | 'inactivas';
 
 /**
- * Empresas — lista + ficha (diseño `Empresas - Lista y ficha v2.dc.html`).
- *
- * Reemplaza la tabla paginada + el side panel por el esqueleto lista/hoja.
- * Mismos datos que antes (`forkJoin` empresas + suscripciones activas +
- * planes); la ficha de la derecha (`EmpresaFichaComponent`) carga el resto.
+ * Empresas: lista agrupada a la izquierda y ficha (`EmpresaFichaComponent`,
+ * que carga el resto) a la derecha.
  *
  * Grupos:
- * - Para hoy: en alta, o activas con acceso en mora/bloqueado o que vencen en ≤3 días.
+ * - Para hoy: en alta, o activas con el acceso no al día o que vencen en ≤3 días
+ *   (las que están en prueba, solo cuando les quedan ≤3 días).
  * - Al día: activas sin nada pendiente.
  * - Inactivas: suspendida / rechazada / cancelada (arranca plegado).
  */
@@ -146,7 +144,7 @@ export class EmpresasPageComponent {
     if (EN_ALTA.includes(f.estado)) return 'accion';
     if (f.estado === 'activa') {
       const venc = f.acceso?.fechaProximoVencimiento;
-      // En prueba (2026-10-10): solo pide atención cuando le quedan ≤3 días.
+      // En prueba solo pide atención cuando le quedan ≤3 días.
       if (f.acceso?.estado === 'en_prueba') return venc && dias(venc) <= 3 ? 'accion' : 'aldia';
       return f.acceso?.estado !== 'ok' || (venc && dias(venc) <= 3) ? 'accion' : 'aldia';
     }
@@ -272,7 +270,7 @@ export class EmpresasPageComponent {
     this.cargando.set(this.filas().length === 0);
     this.error.set(null);
     forkJoin({
-      // Todas las páginas (2026-10-07): antes se cortaba en 100.
+      // Todas las páginas: la lista agrupa, filtra y exporta en el cliente.
       empresas: traerTodo((page) => this.empresaService.listar({ page })),
       activas: traerTodo((page) => this.suscripcionService.listar('activa', undefined, page)),
       planes: this.planService.listarTodos(),
@@ -334,10 +332,6 @@ export class EmpresasPageComponent {
 
   protected abrirNuevaEmpresa(): void {
     window.open(environment.registroPublicoUrl, '_blank', 'noopener');
-  }
-
-  protected volver(): void {
-    this.router.navigateByUrl('/empresas');
   }
 
   protected exportar(): void {

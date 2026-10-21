@@ -4,16 +4,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import { RealtimeService } from './realtime.service';
 
-/**
- * Punto del sidebar (LEEME §8, v2 — en `admin` desde 2026-10-07, el backend
- * emite `datos:cambio` también a la sala de la Empresa): marca las rutas con cambios en vivo que
- * el usuario NO está viendo. Se limpia al entrar a esa ruta.
- *
- * Mismo evento `datos:cambio` que `CambiosEnVivoService`, pero acá sí hace
- * falta la `entidad` para decidir qué items marcar. Las listas de entidades
- * son las mismas que cada página ya pasa a `huboCambio([...])`.
- * `'*'` = cualquier entidad (Auditoría registra toda escritura).
- */
+// Las mismas entidades que cada página pasa a `huboCambio([...])`; `'*'` es cualquier entidad.
 const ENTIDADES_POR_RUTA: Record<string, string[]> = {
   '/orders': ['pedido', 'pago'],
   '/products': ['producto', 'inventario'],
@@ -29,6 +20,11 @@ const ENTIDADES_POR_RUTA: Record<string, string[]> = {
   '/settings/solicitudes': ['missolicitudes'],
 };
 
+/**
+ * Punto del sidebar: marca las rutas con cambios en vivo que el usuario no
+ * está viendo, y lo limpia al entrar. Usa `datos:cambio` como
+ * `CambiosEnVivoService`, pero mirando la `entidad`.
+ */
 @Injectable({ providedIn: 'root' })
 export class CambiosPendientesService {
   private readonly router = inject(Router);
@@ -62,8 +58,7 @@ export class CambiosPendientesService {
     return this.rutas().has(ruta);
   }
 
-  /** En `admin` las rutas tienen dos niveles (`/products/compras`,
-   *  `/settings/usuarios`): se compara la ruta completa, no el primer tramo. */
+  // Hay rutas de dos niveles (`/products/compras`): se compara la ruta completa, no el primer tramo.
   private rutaActual(): string {
     return this.router.url.split(/[?#]/)[0];
   }

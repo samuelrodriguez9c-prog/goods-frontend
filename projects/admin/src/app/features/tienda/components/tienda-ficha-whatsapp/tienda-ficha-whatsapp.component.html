@@ -1,0 +1,56 @@
+@let fx = s.f();
+<section #sec (mouseenter)="s.hov.set('whatsapp')" (mouseleave)="s.hov.set(null)"
+  class="tienda-ficha grid grid-cols-[repeat(auto-fit,minmax(min(100%,270px),1fr))] overflow-hidden rounded-2xl border bg-white transition-[border-color,box-shadow] duration-[250ms] [animation-delay:.05s]" [style.border-color]="s.borde('whatsapp')" [style.box-shadow]="s.sombra('whatsapp')">
+  <div class="flex flex-col gap-[18px] p-5">
+    <app-tienda-cabeza [icono]="i.wa" titulo="WhatsApp para pedidos" sub="Cada pedido de la tienda te llega aquí, ya escrito." />
+    <div class="flex flex-col gap-2">
+      <app-tienda-etiqueta t="País del número" sub="Ponemos el indicativo por ti." />
+      <div class="relative grid grid-cols-3 rounded-[10px] bg-[#f1f1f1] p-[3px]">
+        <span class="absolute inset-y-[3px] left-[3px] w-[calc((100%-6px)/3)] rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)] transition-transform duration-[350ms] ease-[cubic-bezier(.3,1.3,.5,1)]"
+          [style.transform]="'translateX(' + (['CO', 'US', 'otro'].indexOf(fx.pais) * 100) + '%)'"></span>
+        @for (p of [['CO', '🇨🇴 Colombia'], ['US', '🇺🇸 EE. UU.'], ['otro', 'Otro']]; track p[0]) {
+          <button type="button" (click)="s.set('pais', $any(p[0]))" class="relative h-[30px] bg-transparent text-[12.5px] font-medium transition-colors" [style.color]="fx.pais === p[0] ? '#111827' : '#6b7280'">{{ p[1] }}</button>
+        }
+      </div>
+    </div>
+    <label class="flex flex-col gap-2">
+      <app-tienda-etiqueta t="Número" sub="WhatsApp Business o personal. No se lo damos a nadie." [req]="true" />
+      <span class="flex items-center rounded-[10px] bg-[#fafafa] transition-shadow" [style.box-shadow]="s.sombraNumero()">
+        <span class="py-[9px] pl-3 text-[13px] tabular-nums text-[#8a8a8a]">{{ fx.pais === 'otro' ? '+' : (fx.pais === 'CO' ? '+57' : '+1') }}</span>
+        <input type="tel" inputmode="tel" [ngModel]="fx.numero" (ngModelChange)="s.set('numero', $event)" [placeholder]="fx.pais === 'CO' ? '300 123 4567' : fx.pais === 'US' ? '305 555 0123' : 'Indicativo y número'"
+          class="min-w-0 flex-1 border-0 bg-transparent py-[9px] pl-1.5 pr-3 text-[13px] font-medium tabular-nums text-[#111827] outline-none" />
+      </span>
+      @if (!s.waLleno()) {
+        <span class="tienda-sube flex items-center gap-[5px] text-xs" [style.color]="s.waOk() ? '#8a6100' : '#b42318'"><tabler-icon [icon]="i.alerta" [size]="13" [stroke]="2" />{{ numeroError() }}</span>
+      }
+    </label>
+    @if (s.waLleno()) {
+      <button type="button" (click)="s.probarChat()" class="flex items-center gap-1.5 self-start rounded-full bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow,transform] hover:shadow-[0_0_0_1px_#b5b5b5] active:scale-[.97]"><tabler-icon [icon]="i.enviar" [size]="14" [stroke]="2" class="text-[#1d8a4b]" />Probar el chat</button>
+    }
+  </div>
+  <!-- Así te llega -->
+  <div class="flex flex-col bg-[#efe7de] shadow-[inset_1px_0_0_#e8dfd4]">
+    <div class="flex items-center gap-[9px] border-b border-[#e4e2de] bg-[#f0f2f5] px-3 py-2.5">
+      <span class="grid size-7 place-items-center rounded-full bg-[#1d211e] font-display text-xs font-bold text-[#f5f6f3]">{{ s.nombreNegocio().charAt(0) }}</span>
+      <span class="flex min-w-0 flex-1 flex-col"><span class="text-[12.5px] font-semibold text-[#111b21]">Tu WhatsApp</span><span class="truncate text-[11px] tabular-nums text-[#667781]">{{ s.waLleno() ? numeroFormateado() : 'Sin número todavía' }}</span></span>
+      <span class="text-[10.5px] font-medium text-[#667781]">Así te llega</span>
+    </div>
+    <div class="flex min-h-[250px] flex-1 flex-col justify-end gap-1.5 px-3 py-3.5">
+      <span class="self-center rounded-md bg-white px-2 py-0.5 text-[10.5px] text-[#54656f] shadow-[0_1px_.5px_rgba(0,0,0,.08)]">Hoy</span>
+      @if (!s.waLleno()) {
+        <div class="max-w-[90%] self-center rounded-lg bg-[#fff8e1] px-2.5 py-2 text-center text-[11.5px] leading-4 text-[#6b4e00] shadow-[0_1px_.5px_rgba(0,0,0,.08)]">Escribe tu número para ver cómo te llega un pedido.</div>
+      } @else if (s.tecleando()) {
+        <span class="tienda-entra flex gap-1 self-start rounded-[3px_10px_10px_10px] bg-white px-3 py-2.5 shadow-[0_1px_.5px_rgba(0,0,0,.13)]">
+          <span class="tienda-punto size-1.5 rounded-full bg-[#8696a0]"></span><span class="tienda-punto size-1.5 rounded-full bg-[#8696a0] [animation-delay:.15s]"></span><span class="tienda-punto size-1.5 rounded-full bg-[#8696a0] [animation-delay:.3s]"></span>
+        </span>
+      } @else {
+        <div class="tienda-entra max-w-[94%] self-start rounded-[3px_10px_10px_10px] bg-white px-2.5 pb-1 pt-[7px] text-[12.5px] leading-[18px] text-[#111b21] shadow-[0_1px_.5px_rgba(0,0,0,.13)]">
+          <p class="mb-0.5 text-[11.5px] font-semibold text-[#1f7aec]">María · cliente</p>
+          @for (l of pedidoEjemplo(); track $index) { <p class="m-0" [class.font-semibold]="l.negrita">{{ l.texto || '\u00a0' }}</p> }
+          <p class="mt-0.5 text-right text-[10px] text-[#667781]">10:42</p>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+

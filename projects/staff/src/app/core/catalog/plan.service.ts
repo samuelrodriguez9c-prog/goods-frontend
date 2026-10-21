@@ -5,27 +5,20 @@ import { environment } from '../../../environments/environment';
 import { Plan } from './models/plan.model';
 import { RespuestaPaginada } from './models/empresa.model';
 
-/** Body de `POST /planes` / `PATCH /planes/:id` — mismos campos que
- * `CreatePlanDto` del backend, todos opcionales para el PATCH (el
- * componente decide qué manda). `activo` solo tiene efecto real por PATCH
- * (reactivar un plan desactivado) — ver el comentario agregado en
- * `CreatePlanDto` del backend. */
+/** Body de `POST /planes` y `PATCH /planes/:id` (en el PATCH todo es
+ * opcional). `activo` solo tiene efecto por PATCH, para reactivar. */
 export interface GuardarPlanPayload {
   nombre: string;
   descripcion?: string | null;
   precioMensual?: number | null;
   caracteristicas?: string[];
   activo?: boolean;
-  /** Días de prueba (2026-10-10; 0 = sin prueba, hasta 90). */
+  /** 0 = sin prueba; hasta `DIAS_PRUEBA_MAX`. */
   diasPrueba?: number;
 }
 
-/** `precio_mensual` es `decimal` en Postgres — TypeORM/pg lo manda como
- * string por JSON (ver el mismo bug ya documentado en
- * `RegistroPublicoService` de `admin`, ADMIN_DISENO.md > "Registro
- * público (checkout)"). Se coerce acá, una sola vez por respuesta, para
- * que el resto de este servicio y de `PlanesPageComponent` trabajen con
- * un number de verdad. */
+/** `precio_mensual` es `decimal` en Postgres y llega como string por JSON:
+ * se convierte a number una vez por respuesta. */
 function coercerPlan(plan: Plan): Plan {
   return {
     ...plan,
@@ -34,23 +27,17 @@ function coercerPlan(plan: Plan): Plan {
 }
 
 /**
- * `GET /planes/todos` — catálogo completo (incluye planes desactivados),
- * exige `planes.ver` (solo `staff_goods`). A diferencia de `GET /planes`
- * (público, para el checkout — ver `PlanController`), acá sí hace falta
- * ver planes inactivos: una Suscripción vieja puede apuntar a un plan que
- * el staff ya retiró del catálogo público.
- *
- * `crear`/`actualizar`/`eliminar` son la pantalla de Planes del sidebar
- * de staff (PIVOTE_SAAS_MULTITENANT.md §8) — `eliminar` en realidad
- * desactiva (`PlanService.remove` del backend no borra la fila, ver esa
- * entidad: un plan con Suscripciones apuntándole no se puede borrar de
- * verdad), por eso el botón en la pantalla dice "Desactivar", no
- * "Eliminar".
+ * Catálogo de planes para staff (`planes.ver`). Los planes no se borran,
+ * se desactivan: una suscripción puede seguir apuntando a ellos.
  */
 @Injectable({ providedIn: 'root' })
 export class PlanService {
   private readonly http = inject(HttpClient);
 
+  /**
+   * `GET /planes/todos`: incluye los desactivados (el `GET /planes` público no),
+   * porque una suscripción vieja puede apuntar a uno. Trae hasta 100.
+   */
   listarTodos(): Observable<RespuestaPaginada<Plan>> {
     const params = new HttpParams().set('pageSize', 100);
     return this.http
@@ -70,14 +57,12 @@ export class PlanService {
       .pipe(map(coercerPlan));
   }
 
-  /** Desactiva (`DELETE /planes/:id`) — ver el comentario de la clase. */
+  /** `DELETE /planes/:id`: el backend desactiva el plan, no borra la fila. */
   desactivar(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.apiUrl}/planes/${id}`);
   }
 
-  /** Reactiva un plan ya desactivado — mismo endpoint que `actualizar`,
-   * con `activo: true` explícito (ver el campo nuevo en `CreatePlanDto`
-   * del backend). */
+  /** Reactiva un plan desactivado (`PATCH` con `activo: true`). */
   reactivar(id: number): Observable<Plan> {
     return this.actualizar(id, { activo: true });
   }

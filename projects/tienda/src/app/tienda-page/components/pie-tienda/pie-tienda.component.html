@@ -1,0 +1,86 @@
+@let t = st.tienda()!;
+<div class="px-3 pb-3 pt-[clamp(96px,12vw,160px)]">
+  <footer data-screen-label="Footer" class="relative flex flex-col overflow-hidden rounded-[36px] bg-bosque text-hoja">
+    <div class="relative z-[1] mx-auto flex w-full max-w-[1180px] flex-col gap-10 px-[clamp(24px,4vw,48px)] pt-[clamp(48px,6vw,80px)]">
+      <div class="flex flex-wrap items-start justify-between gap-x-8 gap-y-9">
+        <div class="flex flex-none flex-col gap-[22px]">
+          @if (t.logoUrl) { <img [src]="t.logoUrl" [alt]="t.nombre" class="h-[38px] w-[112px] rounded-lg object-contain" /> }
+          @else {
+            <div class="flex items-center gap-3.5">
+              <span aria-hidden="true" class="forma-1 grid size-[52px] shrink-0 place-items-center bg-wa font-display text-xl font-extrabold leading-none tracking-[-0.02em] text-noche [font-variation-settings:'wdth'_72]">{{ st.iniciales(t.nombre) }}</span>
+              <span class="max-w-[16ch] text-balance font-display text-[22px] font-bold leading-[1.05] tracking-[-0.015em] [font-variation-settings:'wdth'_78]">{{ t.nombre }}</span>
+            </div>
+          }
+          <div class="-ml-2 flex gap-1.5">
+            <a [href]="st.waGeneral()" target="_blank" rel="noopener" aria-label="WhatsApp" class="grid size-9 place-items-center rounded-full text-hoja transition-transform duration-[250ms] hover:-translate-y-0.5 hover:text-wa"><tabler-icon [icon]="i.wa" [size]="21" [stroke]="2" /></a>
+            @if (t.redes?.instagram) { <a [href]="t.redes!.instagram" target="_blank" rel="noopener" aria-label="Instagram" class="grid size-9 place-items-center rounded-full text-hoja transition-transform duration-[250ms] hover:-translate-y-0.5 hover:text-wa"><tabler-icon [icon]="i.ig" [size]="21" [stroke]="2" /></a> }
+            @if (t.redes?.facebook) { <a [href]="t.redes!.facebook" target="_blank" rel="noopener" aria-label="Facebook" class="grid size-9 place-items-center rounded-full text-hoja transition-transform duration-[250ms] hover:-translate-y-0.5 hover:text-wa"><tabler-icon [icon]="i.fb" [size]="21" [stroke]="2" /></a> }
+            @if (t.redes?.tiktok) { <a [href]="t.redes!.tiktok" target="_blank" rel="noopener" aria-label="TikTok" class="grid size-9 place-items-center rounded-full text-hoja transition-transform duration-[250ms] hover:-translate-y-0.5 hover:text-wa"><tabler-icon [icon]="i.tt" [size]="21" [stroke]="2" /></a> }
+          </div>
+        </div>
+        <div class="grid max-w-[780px] flex-[1_1_520px] grid-cols-[repeat(auto-fit,minmax(min(100%,118px),1fr))] gap-x-5 gap-y-7">
+          <div class="flex flex-col gap-3">
+            <span class="mb-1.5 text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Catálogo</span>
+            @for (s of st.secciones(); track s.id; let k = $index) {
+              <button type="button" (click)="st.irSeccion(k)" class="self-start border-0 bg-transparent p-0 text-left text-sm text-hoja transition-colors hover:text-wa">{{ s.nombre }}</button>
+            }
+          </div>
+          <div class="flex flex-col gap-3">
+            <span class="mb-1.5 text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Tienda</span>
+            <button type="button" (click)="pd.abrirPedido()" class="self-start border-0 bg-transparent p-0 text-sm text-hoja hover:text-wa">Tu pedido</button>
+            <button type="button" (click)="st.irCatalogo()" class="self-start border-0 bg-transparent p-0 text-sm text-hoja hover:text-wa">Todos los productos</button>
+            <button type="button" (click)="st.subir(); st.abrirBusqueda()" class="self-start border-0 bg-transparent p-0 text-sm text-hoja hover:text-wa">Buscar</button>
+            <button type="button" (click)="st.subir()" class="self-start border-0 bg-transparent p-0 text-sm text-hoja hover:text-wa">Volver arriba</button>
+          </div>
+          <div class="flex flex-col gap-3">
+            <span class="mb-1.5 text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Contacto</span>
+            <a [href]="st.waGeneral()" target="_blank" rel="noopener" class="text-sm tabular-nums text-hoja no-underline hover:text-wa">+{{ t.whatsapp }}</a>
+            @if (t.direccionTienda) { <span class="whitespace-pre-line text-sm leading-[1.45]">{{ t.direccionTienda }}</span> }
+          </div>
+          @if (t.horario?.length) {
+            <div class="flex flex-col gap-3">
+              <span class="mb-1.5 text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Horario</span>
+              @for (h of t.horario!; track h.dias) {
+                <span class="text-sm tabular-nums" [class.text-salvia-2]="!h.horas">{{ h.dias }} · {{ h.horas ?? 'Cerrado' }}</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+      <span class="h-px bg-[rgba(234,255,245,.14)]"></span>
+
+      <!-- Escritorio: fila · Móvil: columna centrada con línea arriba y el crédito primero -->
+      <div class="-mt-2 flex flex-col items-center gap-1.5 border-t border-[rgba(234,255,245,.1)] pt-6 text-center md:mt-[-8px] md:flex-row md:flex-wrap md:gap-x-6 md:gap-y-2.5 md:border-t-0 md:pt-0">
+        <span class="order-2 text-[13px] text-salvia md:order-none">© {{ anio }} {{ t.nombre }}</span>
+        <span class="order-3 text-[13px] text-salvia md:order-none md:ml-auto">Precios en {{ t.moneda === 'USD' ? 'dólares (USD)' : 'pesos colombianos (COP)' }}</span>
+        <a [href]="goodsRegistro" target="_blank" rel="noopener" class="order-1 mb-2.5 flex h-10 items-center gap-2 rounded-full bg-white/[.06] px-4 text-[13px] text-salvia no-underline hover:text-hoja md:order-none md:mb-0 md:h-auto md:bg-transparent md:px-0">Tienda creada con<img src="logo-goods.png" alt="Goods" class="h-5 w-auto opacity-85" /></a>
+      </div>
+    </div>
+
+    <!-- Ola de burbujas + CTA -->
+    <div class="relative mt-[clamp(16px,3vw,40px)] h-[clamp(380px,36vw,460px)]">
+      <div aria-hidden="true" class="pointer-events-none absolute inset-0">
+        <div burbuja="0.02,30,0.04" class="absolute left-[-6%] top-[2%] aspect-square w-[max(280px,38%)] bg-menta [animation:morph_24s_ease-in-out_infinite]"></div>
+        <div burbuja="0.03,36,0.05" class="absolute left-[22%] top-[16%] aspect-square w-[max(260px,30%)] bg-menta [animation:morph_19s_ease-in-out_infinite_reverse]"></div>
+        <div burbuja="0.025,32,0.05" class="absolute left-[44%] top-[8%] aspect-square w-[max(270px,34%)] bg-menta [animation:morph_22s_ease-in-out_infinite]"></div>
+        <div burbuja="0.03,30,0.05" class="absolute left-[66%] top-[22%] aspect-square w-[max(260px,28%)] bg-menta [animation:morph_17s_ease-in-out_infinite_reverse]"></div>
+        <div class="absolute inset-x-0 bottom-0 h-[48%] bg-menta"></div>
+        <div burbuja="0.045,44,0.07" class="absolute left-[8%] top-[46%] aspect-square w-[max(200px,22%)] bg-menta-2 [animation:morph_18s_ease-in-out_infinite_reverse]"></div>
+        <div burbuja="0.055,50,0.08" class="absolute left-[34%] top-[58%] aspect-square w-[max(170px,17%)] bg-menta-2 [animation:morph_15s_ease-in-out_infinite]"></div>
+        <div burbuja="0.05,46,0.07" class="absolute left-[52%] top-[42%] aspect-square w-[max(210px,23%)] bg-menta-2 [animation:morph_20s_ease-in-out_infinite_reverse]"></div>
+        <div burbuja="0.06,60,0.1" class="absolute bottom-[-20%] right-[-3%] grid aspect-square w-[30%] place-items-center bg-wa [animation:morph_14s_ease-in-out_infinite]">
+          <tabler-icon [icon]="i.wa" [size]="120" [stroke]="1.5" class="-translate-x-[8%] -translate-y-[10%] text-bosque" />
+        </div>
+        <div burbuja="0.1,50,0.18" class="absolute bottom-[44%] right-[26%] aspect-square w-[5%] bg-turquesa [animation:morph_11s_ease-in-out_infinite]"></div>
+      </div>
+      <div class="absolute inset-x-0 bottom-0 mx-auto flex max-w-[1180px] flex-col gap-3 px-[clamp(24px,4vw,48px)] pb-[104px] text-bosque">
+        <span class="text-xs font-semibold uppercase tracking-[.08em] text-teal">Pedidos por WhatsApp</span>
+        <p class="m-0 max-w-[24ch] text-balance font-display text-[clamp(30px,3.4vw,48px)] font-bold leading-none tracking-[-0.02em] [font-variation-settings:'wdth'_78]">¿Tienes una pregunta? Escríbenos.</p>
+        <div class="mt-1.5 flex flex-wrap gap-2">
+          <a [href]="st.waGeneral()" target="_blank" rel="noopener" class="flex h-12 items-center gap-2 rounded-full bg-bosque px-5 text-[14.5px] font-medium text-hoja no-underline hover:bg-bosque-2 hover:text-hoja"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" />Escribir al negocio</a>
+          <button type="button" (click)="st.irCatalogo()" class="h-12 rounded-full bg-white px-5 text-[14.5px] font-medium text-bosque hover:bg-[#eefbf3]">Ver productos</button>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>

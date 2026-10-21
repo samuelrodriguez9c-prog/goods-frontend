@@ -43,7 +43,7 @@ const MEDIDOR_NIVEL: Record<Nivel, string> = { sin: 'bg-[#d82c0d]', bajo: 'bg-[#
 const NOTA_MEDIDOR_NIVEL: Record<Nivel, string> = { sin: 'text-[#b42318]', bajo: 'text-[#8a5a00]', ok: 'text-[#9ca3af]' };
 
 /**
- * Inventario (Productos v5): cabecera, franja de métricas, lista agrupada con
+ * Inventario: cabecera, franja de métricas, lista agrupada con
  * ajuste rápido ±1 y la hoja del producto (Resumen · Movimientos · Compras).
  * Los ajustes y el mínimo quedan como borrador hasta guardar ("Cambios sin guardar").
  */
@@ -82,7 +82,7 @@ export class ProductInventoryPageComponent {
   private readonly franja = viewChild(FranjaMetricasComponent);
   private readonly buscador = viewChild<ElementRef<HTMLInputElement>>('buscador');
 
-  // ── Estado de la pantalla ──
+  // Estado de la pantalla
   protected readonly periodo = signal('hoy');
   protected readonly busqueda = signal('');
   protected readonly metrica = signal<Metrica | null>(null);
@@ -110,7 +110,7 @@ export class ProductInventoryPageComponent {
   private tEscribiendo: ReturnType<typeof setTimeout> | undefined;
   private tDestello: ReturnType<typeof setTimeout> | undefined;
 
-  // ── Datos ──
+  // Datos
   private readonly stock = (id: number) => this.catalogo.stockDe(id);
   private readonly nivel = (id: number) => nivelDe(this.stock(id));
   private readonly nombreCategoria = (id: number | null) => this.catalogo.categoria(id)?.nombre ?? 'Sin categoría';
@@ -130,7 +130,7 @@ export class ProductInventoryPageComponent {
   /** Error o vacío: solo la tarjeta de estado, sin lista ni hoja. */
   protected readonly soloEstado = computed(() => this.carga() === 'error' || this.carga() === 'vacio');
 
-  // ── Cabecera y métricas ──
+  // Cabecera y métricas
   private readonly totales = computed(() => {
     const ps = this.productos(), stock = ps.map((p) => this.stock(p.id));
     return {
@@ -161,7 +161,7 @@ export class ProductInventoryPageComponent {
     ];
   });
 
-  // ── Lista ──
+  // Lista
   private coincide(p: ProductoV5): boolean {
     const m = this.metrica(), q = this.busqueda().trim().toLowerCase(), s = this.stock(p.id);
     if (q && !(p.nombre.toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q))) return false;
@@ -224,7 +224,7 @@ export class ProductInventoryPageComponent {
   private readonly idsVisibles = computed(() => this.grupos().flatMap((g) => (g.abierto ? g.filas.map((f) => f.id) : [])));
   protected readonly cuentaVisibles = computed(() => pl(this.grupos().reduce((a, g) => a + g.filas.length, 0), 'producto', 'productos'));
 
-  // ── Hoja del producto ──
+  // Hoja del producto
   protected readonly hoja = computed(() => {
     const id = this.seleccionado(), producto = id != null ? this.catalogo.producto(id) : undefined;
     if (!producto || this.soloEstado()) return null;
@@ -323,7 +323,7 @@ export class ProductInventoryPageComponent {
     });
   }
 
-  // ── Selección y navegación ──
+  // Selección y navegación
   protected abrir(id: number): void {
     if (id !== this.seleccionado() && this.cambios()) return this.alertas.sacudir();
     this.seleccionado.set(id);
@@ -358,7 +358,7 @@ export class ProductInventoryPageComponent {
     this.router.navigate(['/products']);
   }
 
-  // ── Filtros y grupos ──
+  // Filtros y grupos
   protected alternarMetrica(k: string): void {
     this.metrica.update((m) => (m === k ? null : (k as Metrica)));
     this.plegados.set({});
@@ -385,7 +385,7 @@ export class ProductInventoryPageComponent {
     this.plegados.update((p) => ({ ...p, [clave]: !p[clave] }));
   }
 
-  // ── Ajustes ──
+  // Ajustes
   /** ±1 desde la fila: se guarda al instante. */
   protected sumar(id: number, d: number): void {
     if (this.catalogo.niega('inventario.editar')) return;
@@ -447,7 +447,7 @@ export class ProductInventoryPageComponent {
     this.tDestello = setTimeout(() => this.destello.set(null), 900);
   }
 
-  // ── Exportar y reponer ──
+  // Exportar y reponer
   protected exportar(): void {
     const celda = (v: unknown) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
     const estado = { sin: 'sin stock', bajo: 'bajo', ok: 'ok' };
@@ -478,7 +478,7 @@ export class ProductInventoryPageComponent {
       );
   }
 
-  // ── Atajos ──
+  // Atajos
   protected atajos(e: KeyboardEvent): void {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && this.cambios()) {
       e.preventDefault();

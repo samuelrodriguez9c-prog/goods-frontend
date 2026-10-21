@@ -15,18 +15,14 @@ export interface FiltroAuditoria {
 }
 
 /**
- * `GET /auditoria` — exige `auditoria.ver` (`admin`/`staff_goods`, ver la
- * migración `SeedPermisosAuditoria`). Es un historial de solo lectura
- * (lo llena únicamente `AuditoriaAccionInterceptor` del backend en cada
- * acción de escritura — nadie escribe acá a mano, ver la entidad), por
- * eso este servicio no tiene crear/editar/eliminar: la pantalla de
- * Auditoría del sidebar de staff (PIVOTE_SAAS_MULTITENANT.md §8) es
- * listado + filtros, nunca CRUD.
+ * Historial de auditoría (`auditoria.ver`). Es de solo lectura: lo llena el
+ * backend en cada escritura, por eso no hay crear, editar ni eliminar.
  */
 @Injectable({ providedIn: 'root' })
 export class AuditoriaService {
   private readonly http = inject(HttpClient);
 
+  /** Páginas de 30 por defecto (`filtro.pageSize` para cambiarlo). */
   listar(filtro: FiltroAuditoria = {}): Observable<RespuestaPaginada<AuditoriaAccion>> {
     let params = new HttpParams().set('pageSize', filtro.pageSize ?? 30);
     if (filtro.page) {

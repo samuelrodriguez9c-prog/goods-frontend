@@ -3,59 +3,29 @@ import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 
 const CLAVE_SESSION = 'goods.admin.navTrail';
-/** En el admin, solo las 2 últimas (2026-10-08): deja lugar al buscador. */
+/** Solo las 2 últimas, para dejar lugar al buscador del topbar. */
 const MAX_ITEMS = 2;
 
 export interface TrailItem {
-  /** Identificador estable del módulo/página — el path SIN query params
-   *  (ej. '/empresas', '/settings'). Se usa para dedupe/`track`: dos
-   *  visitas a la misma página con distintos query params (ej. Settings
-   *  con `?seccion=perfil` vs `?seccion=seguridad`) son la MISMA entrada,
-   *  no dos. */
+  /** Path sin query params: la misma página con otros params es la misma entrada. */
   id: string;
-  /** Texto a mostrar — viene de `route.data['breadcrumb']`. */
+  /** Sale de `route.data['breadcrumb']`. */
   etiqueta: string;
-  /** Nombre de ícono Tabler en kebab-case (resuelto contra el registro
-   *  global de `provideTablerIcons`, mismo mecanismo que
-   *  `SidebarComponent.navItems`), o `'ia'` para el ícono de marca del
-   *  Asistente de IA (`app-ia-marca`, no es un ícono Tabler). */
+  /** Ícono Tabler en kebab-case (registrado en `provideTablerIcons`), o `'ia'` para la marca del asistente. */
   icono: string;
-  /** URL completa (con query params) a la que navegar al hacer click —
-   *  se actualiza in-place cuando cambian los query params de la página
-   *  ACTIVA (misma `id`), sin crear una entrada nueva ni reordenar. */
+  /** URL completa (con query params) a la que vuelve el clic. */
   href: string;
 }
 
 /**
- * Rastro de navegación global (rediseño del topbar, 2026-10-02) —
- * "breadcrumb" de los últimos módulos/páginas visitados, pintado por
- * `BreadcrumbTrailComponent` dentro de `TopbarComponent` y clickeable
- * para volver a cualquiera. Reemplaza el breadcrumb fijo que antes
- * existía, hardcodeado, solo en la pantalla del Asistente de IA (ver
- * `PROPUESTA_ASISTENTE_IA_RAG.md` §5.4.4 "Unificación del topbar") — acá
- * se generaliza para cualquier pantalla de `staff`.
+ * Rastro de las últimas páginas visitadas que pinta el topbar, una entrada
+ * por ruta con `data.breadcrumb`.
  *
- * Unidad de rastro: CADA RUTA (`route.data['breadcrumb']`), no solo los
- * 11 módulos de primer nivel del sidebar — pedido explícito del usuario
- * ("cada página/ruta distinta"). Hoy eso da el mismo resultado que "solo
- * módulos de primer nivel" porque ningún feature de `staff` tiene
- * todavía una ruta hija real (detalle/sub-página, ej. `/empresas/:id`):
- * cada `*.routes.ts` solo define `{ path: '' }`. El mecanismo ya queda
- * listo para cuando algún módulo sume una, sin tener que tocar esto de
- * nuevo.
- *
- * Dedupe por `id`: revisitar un módulo ya presente en el rastro lo MUEVE
- * al final (más reciente) en vez de dejar una entrada duplicada — mismo
- * criterio que una lista MRU ("most recently used") de pestañas/archivos
- * recientes, así nunca se ve el mismo nombre dos veces. Tope de
- * `MAX_ITEMS` = 5 entradas (el usuario pidió "mínimo 3"; 5 lo cubre sin
- * saturar el topbar).
- *
- * Persiste en `sessionStorage` (sobrevive un F5 dentro de la misma
- * pestaña del navegador) — se vacía explícitamente al hacer logout
- * (`AuthService.limpiarSesion()` llama a `reiniciar()`) para que una
- * sesión de otra cuenta en la misma pestaña no herede el rastro de la
- * anterior.
+ * @remarks
+ * Funciona como una lista de recientes: volver a una página la mueve al
+ * final en vez de duplicarla. Se guarda en `sessionStorage` (sobrevive a un
+ * F5 en la misma pestaña) y se vacía al cerrar sesión para que otra cuenta
+ * no herede el rastro.
  */
 @Injectable({ providedIn: 'root' })
 export class NavigationTrailService {
@@ -72,7 +42,7 @@ export class NavigationTrailService {
 
   private registrar(url: string): void {
     const datos = this.datosRutaActiva();
-    // Rutas sin `data.breadcrumb` (hoy, solo `/login`) no se registran.
+    // Las rutas sin `data.breadcrumb` (como `/login`) no se registran.
     if (!datos.breadcrumb) return;
 
     const id = url.split('?')[0];
@@ -88,9 +58,7 @@ export class NavigationTrailService {
     this.guardar(trail);
   }
 
-  /** Camina el árbol de rutas activadas hasta la más profunda, quedándose
-   *  con el último `data.breadcrumb` definido en el camino (un hijo sin
-   *  `data` propio hereda el del padre más cercano que sí lo tenga). */
+  /** Se queda con el último `data.breadcrumb` del camino: un hijo sin `data` hereda el del padre. */
   private datosRutaActiva(): { breadcrumb?: string; icon?: string } {
     let actual: ActivatedRouteSnapshot | null = this.router.routerState.snapshot.root;
     let datos: { breadcrumb?: string; icon?: string } = {};
@@ -115,14 +83,11 @@ export class NavigationTrailService {
     try {
       sessionStorage.setItem(CLAVE_SESSION, JSON.stringify(trail));
     } catch {
-      // Almacenamiento lleno/deshabilitado (ej. navegación privada) — el
-      // rastro sigue funcionando en memoria para el resto de la sesión,
-      // solo no sobrevive un F5.
+      // Storage lleno o deshabilitado: el rastro sigue en memoria, solo no sobrevive a un F5.
     }
   }
 
-  /** Vacía el rastro — llamado desde `AuthService.limpiarSesion()` al
-   *  hacer logout. */
+  /** Vacía el rastro. Lo llama `AuthService.limpiarSesion()`. */
   reiniciar(): void {
     this._trail.set([]);
     try {

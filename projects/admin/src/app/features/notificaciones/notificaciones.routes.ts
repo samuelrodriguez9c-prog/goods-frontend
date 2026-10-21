@@ -5,8 +5,7 @@ export const NOTIFICACIONES_ROUTES: Routes = [
   {
     path: '',
     component: NotificacionesPageComponent,
-    // Rastro de navegación global del topbar (§5.4.4, 2026-10-02) —
-    // ver `NavigationTrailService`.
+    // Miga del rastro del topbar (ver `NavigationTrailService`).
     data: { breadcrumb: 'Notificaciones', icon: 'bell' },
   },
 ];

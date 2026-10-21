@@ -34,6 +34,8 @@ export class PantallaEstadoComponent {
   /** Pie técnico: "GET /api/auditoria — 504". Vacío = no se muestra. */
   readonly detalle = input<string>('');
   readonly intento = input<string>('');
+  /** `false` en la pantalla que ya es el inicio: ahí «Volver al inicio» no llevaría a ningún lado. */
+  readonly conVolver = input(true);
 
   readonly reintentar = output<void>();
   readonly volver = output<void>();

@@ -1,4 +1,3 @@
-// projects/admin/src/app/core/ui/pista.service.ts
 import { Injectable, signal } from '@angular/core';
 
 export type TipoPista = 'navegar' | 'hecho' | 'atajo' | 'filtro';
@@ -19,11 +18,11 @@ const CORTA = 2_200;
 const LARGA = 5_000;
 
 /**
- * Aviso liviano abajo al centro (LEEME §18). Confirma algo que YA pasó.
- * Una sola a la vez: la nueva reemplaza a la anterior. Nunca para errores
- * ni para operaciones que llaman al backend y pueden fallar — eso es
- * `AlertaService` (§12).
+ * Aviso liviano abajo al centro que confirma algo que ya pasó. Una sola a la
+ * vez: la nueva reemplaza a la anterior. Nunca para errores ni para llamadas
+ * al backend que pueden fallar: eso es `AlertaService`.
  *
+ * @example
  *   pista.navegar('Settings · Perfil');
  *   pista.hecho('Código de referido copiado');
  *   pista.hecho('5 marcadas como leídas', () => deshacer());

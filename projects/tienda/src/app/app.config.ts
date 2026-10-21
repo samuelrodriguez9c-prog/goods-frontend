@@ -4,10 +4,9 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
 
 /**
- * Proyecto `tienda` (tercer proyecto del workspace, previsto en
- * PIVOTE_SAAS_MULTITENANT.md §7.1): lo ve cualquiera, sin sesión, casi
- * siempre desde el celular. Sin PrimeNG ni `shared-ui`: es una sola
- * pantalla y tiene que cargar rápido con datos móviles.
+ * La tienda pública la ve cualquiera, sin sesión, casi siempre desde el
+ * celular. Sin PrimeNG ni `shared-ui`: es una sola pantalla y tiene que
+ * cargar rápido con datos móviles.
  */
 export const appConfig: ApplicationConfig = {
   providers: [

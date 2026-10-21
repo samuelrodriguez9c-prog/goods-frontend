@@ -19,39 +19,13 @@ interface CamposInvalidos {
 }
 
 /**
- * Pantalla `/reset-password` (§8 punto 6 de
- * PROPUESTA_FLUJO_ALTA_ASISTIDA.md — hasta ahora esta ruta no existía en
- * el admin). Es la pantalla a la que apunta el enlace del correo de
- * "restablecer contraseña" / confirmación de alta asistida: lee `token`
- * de la query string y llama `POST /auth/reset-password`
- * (`AuthController.resetPassword`), endpoint que ya existía en el
- * backend desde antes de esta pantalla (ver `AuthService.resetPassword`
- * del backend: valida el JWT del token, actualiza la contraseña, revoca
- * todas las sesiones activas y, si el usuario pertenece a una Empresa en
- * alta asistida, la activa — todo en la misma llamada).
+ * `/reset-password`: destino del enlace para definir o restablecer la
+ * contraseña (también confirma el alta asistida). Lee `token` de la URL y
+ * llama `POST /auth/reset-password`.
  *
- * Diseño calcado del flujo de reseteo de contraseña de Shopify (capturas
- * "Shopify Web Resetting password 0-5", aprobadas por el cliente
- * 2026-09-15) en su estructura (tarjeta con "New password"/"Confirm new
- * password", medidor de fuerza, ayuda de "al menos 8 caracteres..."),
- * pero con los tokens/convenciones ya establecidos de Goods (mismo
- * fondo/tarjeta que `LoginComponent`), no un skin literal de Shopify. La
- * caja informativa de la captura 3 sobre "esta contraseña es compartida
- * entre 2 stores..." no aplica acá: en Goods una cuenta de dueño
- * pertenece a una sola Empresa, así que se omite.
- *
- * Sin Angular Forms, mismo patrón que `LoginComponent`/
- * `RegistroPublicoPageComponent`: `<input>` nativo + signals a mano.
- *
- * Sin token en la URL (alguien entra a `/reset-password` directo, sin
- * pasar por un enlace de correo) no tiene sentido mostrar el formulario
- * — se corta antes con una pantalla de "enlace no válido". Un token
- * presente pero inválido/expirado recién se descubre al enviar el
- * formulario: el backend no tiene un endpoint aparte para "validar" el
- * token sin consumirlo (ver comentario de `AuthService.resetPassword`
- * del backend), así que ese caso se muestra como el resto de errores del
- * formulario (banner rojo con el mensaje que devuelve el backend:
- * "Token inválido o expirado").
+ * @remarks
+ * Sin token en la URL se muestra «enlace no válido». Un token vencido recién
+ * se descubre al enviar: el backend no tiene cómo validarlo sin consumirlo.
  */
 @Component({
   selector: 'app-reset-password',
@@ -81,10 +55,7 @@ export class ResetPasswordComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly camposInvalidos = signal<CamposInvalidos>({});
 
-  // Mismos requisitos que la ayuda de la captura 3 de Shopify ("at least
-  // 8 characters, and can't begin or end with a space"): el backend solo
-  // exige @MinLength(8) (ver ResetPasswordDto) — el resto es validación
-  // de UX del lado del cliente, calcada de la referencia.
+  // Solo orientativo: no bloquea el envío.
   protected readonly fuerza = computed<FuerzaPassword>(() => {
     const valor = this.password();
     if (valor.length === 0) {
@@ -133,6 +104,7 @@ export class ResetPasswordComponent implements OnInit {
 
     const password = this.password();
     const confirmar = this.confirmarPassword();
+    // El backend solo exige 8 caracteres; lo de los espacios en los bordes es validación del cliente.
     const invalidos: CamposInvalidos = {
       password: password.length < 8 || password !== password.trim(),
       confirmar: password !== confirmar,
@@ -161,10 +133,7 @@ export class ResetPasswordComponent implements OnInit {
     this.router.navigateByUrl('/login');
   }
 
-  // Mismo criterio que LoginComponent/RegistroPublicoPageComponent: el
-  // backend devuelve mensajes en español ya listos para mostrar (acá en
-  // particular "Token inválido o expirado" — ver AuthService.resetPassword
-  // del backend).
+  // El backend ya manda el mensaje en español (por ejemplo, «Token inválido o expirado»).
   private mensajeDeError(err: unknown): string {
     if (err instanceof HttpErrorResponse) {
       if (err.status === 0) {

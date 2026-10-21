@@ -53,50 +53,22 @@ interface FilaMatriz {
 }
 
 /**
- * Catálogo de planes — rediseño del 2026-09-18 ("catálogo comparado"),
- * integrado 2026-09-21 (LEEME.md §6, siguiente componente del mismo
- * handoff tras `altas-pendientes-page`/`activar-empresa-wizard`).
+ * Catálogo de planes como matriz: un plan por columna y las características
+ * como filas compartidas, porque un plan solo se entiende al lado de sus vecinos.
  *
- * Deja de ser una tabla de cinco columnas con un modal de edición y pasa a
- * ser una matriz: **un plan por columna, las características como filas
- * compartidas**. La tesis es que un plan no significa nada solo — solo se
- * entiende al lado del que está abajo y el que está arriba, así que la
- * pantalla tiene la forma de la decisión que el staff está tomando.
- *
- * Lo que eso cambia respecto de la versión anterior:
- *
- * 1. **Se fue el modal.** `ModalComponent`, `FormularioPlan` y el textarea
- *    de "una característica por línea" ya no existen: era el punto más
- *    frágil (se editaba a ciegas, sin ver cómo quedaba el plan al lado de
- *    sus vecinos). Ahora se edita en la celda. `ModalComponent` sigue
- *    intacto, en uso en otras pantallas.
- * 2. **Se fue la columna "N ítems"**, que escondía justo lo que diferencia
- *    un plan de otro.
- * 3. **Los huecos se detectan solos** (`esHueco`): si un plan más caro NO
- *    incluye algo que sí incluye uno más barato, la celda sale en ámbar con
- *    un triángulo, y el párrafo de arriba lo dice en palabras
- *    (`lectura()`). Ese chequeo es imposible de hacer a ojo en una tabla.
- * 4. **Nada se guarda al tocar**: los cambios viven en `borrador` y se
- *    publican juntos desde la barra de abajo, porque esto lo ve el cliente
- *    en la página de precios — no es un ajuste interno.
- * 5. **Desactivar/reactivar es una acción directa** en la columna (sí pega
- *    contra el backend al instante, `DELETE /planes/:id` y `PATCH` con
- *    `activo: true`), no un badge distinto en una celda.
- *
- * SUPOSICIÓN A VALIDAR (del propio handoff): el modelo `Plan` guarda
- * `caracteristicas` como `string[]` libre por plan. La matriz necesita el
- * *union* de todas las características del catálogo (`caracteristicas`),
- * y al publicar reconstruye el array de cada plan a partir de las celdas
- * marcadas. Eso funciona con el backend actual sin cambios, pero renombrar
- * una característica es un renombre por texto en todos los planes que la
- * tienen. Si esto se usa mucho, conviene una tabla `caracteristica` real
- * con relación N:M — ver la nota de `renombrarCaracteristica`.
- *
- * Un ajuste propio sobre el handoff: `mostrarSuscripciones` pedía
- * `SuscripcionService.listar()` SIN filtro de estado, así que el conteo
- * "Empresas por plan" incluía suscripciones canceladas/vencidas — contaba
- * clientes que ya se fueron. Se agregó el filtro `'activa'`, el mismo que
- * ya usa `EmpresasPageComponent` (`listar('activa')`) para lo mismo.
+ * @remarks
+ * - Los huecos se detectan solos (`esHueco`): si un plan más caro no incluye
+ *   algo que sí incluye uno más barato, la celda sale en ámbar y `lectura()` lo
+ *   dice en palabras.
+ * - Nada se guarda al tocar: los cambios viven en `borrador` y se publican
+ *   juntos desde la barra de abajo, porque el cliente los ve en la página de precios.
+ * - Desactivar/reactivar sí va al backend al instante (`DELETE /planes/:id` y
+ *   `PATCH` con `activo: true`).
+ * - `caracteristicas` es un `string[]` libre por plan: la matriz usa la unión de
+ *   todas y al publicar reconstruye el array de cada plan. Renombrar una
+ *   característica es un renombre por texto en todos los planes que la tienen.
+ * - "Empresas por plan" cuenta solo suscripciones `activa`, para no contar
+ *   clientes que ya se fueron.
  */
 @Component({
   selector: 'app-planes-page',
@@ -113,7 +85,7 @@ export class PlanesPageComponent {
   private readonly cambiosEnVivoService = inject(CambiosEnVivoService);
 
   /** Mostrar cuántas Empresas hay en cada plan. Requiere
-   * `SuscripcionService.listar()` — apagalo si el endpoint no está. */
+   * `SuscripcionService.listar()`: apágalo si el endpoint no está. */
   protected readonly mostrarSuscripciones = true;
 
   protected readonly skeletons = [0, 1, 2, 3];
@@ -127,9 +99,8 @@ export class PlanesPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
-  /** Cambios en vivo acumulados desde la última carga — alimenta la
-   *  píldora "N cambios nuevos · Actualizar" (handoff-alertas-pila §2). */
+  /** Cambios en vivo (`CambiosEnVivoService`) acumulados desde la última carga;
+   *  alimenta el aviso "Hay cambios nuevos". */
   protected readonly cambiosEnVivo = signal(0);
   /** Filas resaltadas 2 s después de tocar "Actualizar". */
   protected readonly resaltadas = signal<ReadonlySet<number>>(new Set());
@@ -149,9 +120,8 @@ export class PlanesPageComponent {
   /** Union de características, en el orden en que se muestran las filas. */
   private readonly caracteristicas = signal<string[]>([]);
   protected readonly suscripcionesPorPlan = signal<Map<number, number>>(new Map());
-  /** `creadoEn` de las suscripciones activas — solo para la línea de
-   * "Empresas suscritas" de la cabecera (LEEME.md §16); el conteo por
-   * plan de arriba no necesita la fecha. */
+  /** `creadoEn` de las suscripciones activas, solo para la línea de
+   * "Empresas suscritas" de la cabecera. */
   private readonly suscripcionesActivasCreadas = signal<string[]>([]);
 
   private proximoIdTemporal = -1;
@@ -176,19 +146,10 @@ export class PlanesPageComponent {
     return `${total} ${total === 1 ? 'plan' : 'planes'} · ${activos} a la venta`;
   });
 
-  /** Cabecera compartida (LEEME.md §14, migrada a v2 —badge + líneas—
-   *  por LEEME.md §16, 2026-09-24). Sin período: no hay una noción de
-   *  "hoy" acá, es el catálogo tal como está ahora. "Empresas suscritas"
-   *  y "Más elegido" solo aparecen si `mostrarSuscripciones` está
-   *  prendido (mismo criterio que el resto de la pantalla).
-   *
-   *  Series (tabla del §16): "A la venta"/"Inactivos" son un conteo del
-   *  catálogo tal como está ahora, no una serie temporal real — se les
-   *  pasa una línea CONSTANTE con la cifra actual (`Array(8).fill(n)`,
-   *  tal como pide la tabla), no una acumulada. "Empresas suscritas" sí
-   *  tiene fecha real (`creadoEn` de cada Suscripción activa) y usa
-   *  `serieAcumulada`. "Más elegido" no lleva serie: su valor es el
-   *  nombre de un plan, no un número. */
+  /** Métricas de la cabecera, sin período: es el catálogo tal como está ahora.
+   *  "A la venta" e "Inactivos" no tienen historia, así que su serie es una
+   *  línea constante con la cifra actual. "Empresas suscritas" sí acumula por
+   *  `creadoEn`; "Más elegido" no lleva serie porque su valor es un nombre. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const planes = this.planes();
     const nVenta = planes.filter((p) => p.activo).length;
@@ -245,10 +206,10 @@ export class PlanesPageComponent {
           faltantes.length > 1
             ? ` y ${faltantes.length - 1} cosa${faltantes.length > 2 ? 's' : ''} más`
             : '';
-        return `${caro.nombre} cuesta más que ${barato.nombre} pero le falta ${faltantes[0].toLowerCase()}${resto}. Revisá qué incluye cada uno antes de seguir vendiéndolos.`;
+        return `${caro.nombre} cuesta más que ${barato.nombre} pero le falta ${faltantes[0].toLowerCase()}${resto}. Revisa qué incluye cada uno antes de seguir vendiéndolos.`;
       }
       if (!extra.length) {
-        return `${caro.nombre} cuesta más que ${barato.nombre} y no agrega nada. Revisá qué incluye cada uno antes de seguir vendiéndolos.`;
+        return `${caro.nombre} cuesta más que ${barato.nombre} y no agrega nada. Revisa qué incluye cada uno antes de seguir vendiéndolos.`;
       }
     }
 
@@ -318,9 +279,8 @@ export class PlanesPageComponent {
     this.cargar();
   }
 
-  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar"
-   *  (handoff-alertas-pila §2). `clave` = id de la fila en pantalla, por si
-   *  no coincide con el id del dato comparado. */
+  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar". `clave` =
+   *  id de la fila en pantalla, por si no coincide con el id del dato comparado. */
   private resaltarCambios<T>(
     antes: readonly T[],
     despues: readonly T[],
@@ -338,7 +298,7 @@ export class PlanesPageComponent {
     this.cargando.set(true);
     this.error.set(null);
 
-    // Ajuste propio: 'activa' — ver la nota en el docstring de la clase.
+    // Solo 'activa': las canceladas o vencidas no cuentan como clientes del plan.
     const peticiones = this.mostrarSuscripciones
       ? forkJoin({ planes: this.planService.listarTodos(), suscripciones: traerTodo((page) => this.suscripcionService.listar('activa', undefined, page)) })
       : forkJoin({ planes: this.planService.listarTodos() });
@@ -357,8 +317,6 @@ export class PlanesPageComponent {
             conteo.set(s.planId, (conteo.get(s.planId) ?? 0) + 1);
           }
           this.suscripcionesPorPlan.set(conteo);
-          // Solo para la línea de "Empresas suscritas" (LEEME.md §16) —
-          // el conteo por plan de arriba no necesita la fecha.
           this.suscripcionesActivasCreadas.set(respuesta.suscripciones.data.map((s) => s.creadoEn));
         }
         this.cargando.set(false);
@@ -414,7 +372,7 @@ export class PlanesPageComponent {
     this.borrador.update((planes) => planes.map((p, i) => (i === indice ? { ...p, ...cambios } : p)));
   }
 
-  /** Días de prueba del plan (2026-10-10): 0 a 90. */
+  /** Días de prueba del plan: de 0 a 90. */
   protected editarDiasPrueba(indice: number, valor: string): void {
     const n = Number(String(valor).replace(/[^\d]/g, '') || 0);
     this.editarPlan(indice, { diasPrueba: Math.max(0, Math.min(90, n)) });
@@ -443,8 +401,8 @@ export class PlanesPageComponent {
     );
   }
 
-  /** Renombre por texto: toca todos los planes que tenían la etiqueta
-   * anterior. Ver la SUPOSICIÓN A VALIDAR en el comentario de la clase. */
+  // TODO(backend): si los renombres se vuelven comunes, pasar a una tabla `caracteristica` con relación N:M.
+  /** Renombre por texto: toca todos los planes que tenían la etiqueta anterior. */
   protected renombrarCaracteristica(indice: number, nuevo: string): void {
     const anterior = this.caracteristicas()[indice];
     this.caracteristicas.update((cs) => cs.map((c, i) => (i === indice ? nuevo : c)));
@@ -488,9 +446,8 @@ export class PlanesPageComponent {
         caracteristicas: [],
         activo: false,
         diasPrueba: 7,
-        // Un plan recién creado en el borrador todavía no existe en el
-        // backend, así que no tiene módulos asignados — se cargan después
-        // desde el catálogo, esta pantalla no los edita (§11.6).
+        // Un plan del borrador todavía no existe en el backend, así que no
+        // tiene módulos: se asignan desde el catálogo, esta pantalla no los edita.
         modulos: [],
       } as PlanBorrador,
     ]);
@@ -512,11 +469,8 @@ export class PlanesPageComponent {
     }
 
     this.accionandoId.set(plan.id);
-    // Tipado explícito a `Observable<unknown>`: `desactivar` devuelve
-    // `Observable<void>` y `reactivar` `Observable<Plan>` — sin esto, el
-    // union de los dos tipos de Observable hace que TS no pueda resolver
-    // qué sobrecarga de `subscribe` aplica (el `next` de acá no usa el
-    // valor emitido de todos modos, así que el tipo real no importa).
+    // `Observable<unknown>` explícito: con la unión de `Observable<void>` y
+    // `Observable<Plan>`, TS no resuelve la sobrecarga de `subscribe`.
     const request: Observable<unknown> = plan.activo
       ? this.planService.desactivar(plan.id)
       : this.planService.reactivar(plan.id);
@@ -596,7 +550,7 @@ export class PlanesPageComponent {
           titulo: 'Publicando el catálogo',
           texto: modificados.length === 1 ? modificados[0].nombre : `${modificados.length} planes`,
           exito: { titulo: 'Catálogo publicado' },
-          error: { titulo: 'No se pudo publicar el catálogo', texto: 'Revisá los planes e intenta de nuevo.' },
+          error: { titulo: 'No se pudo publicar el catálogo', texto: 'Revisa los planes e intenta de nuevo.' },
         },
       )
       .subscribe({
@@ -620,9 +574,8 @@ export class PlanesPageComponent {
     this.cargar();
   }
 
-  /** `(volver)` de `app-pantalla-estado` — mismo criterio que
-   * `EmpresasPageComponent.volver()`: recarga la propia pantalla. */
+  /** «Volver al inicio» de la pantalla de error: va a la portada de staff. */
   protected volver(): void {
-    this.router.navigateByUrl('/planes');
+    this.router.navigateByUrl('/');
   }
 }

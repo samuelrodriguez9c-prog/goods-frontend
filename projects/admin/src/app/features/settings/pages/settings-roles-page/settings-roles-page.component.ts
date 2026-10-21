@@ -14,29 +14,16 @@ interface FormularioRol {
 const FORMULARIO_VACIO: FormularioRol = { nombre: '', descripcion: '' };
 
 /**
- * "Roles y permisos" del lado `admin` — Fase 6 de
- * `PROPUESTA_ROLES_Y_ACCESOS.md` (§5.4/§6 paso 5). Reemplaza la pantalla
- * de solo lectura de la Fase 5: ahora que `Rol.empresaId` existe, un
- * dueño puede armar sus propios roles (ej. "Cajero", "Repartidor") sin
- * afectar a ninguna otra Empresa — antes cualquier edición le pegaría al
- * catálogo GLOBAL compartido por todos los clientes de Goods, por eso
- * esa versión no dejaba editar nada.
+ * Roles y permisos de la Empresa: el dueño arma sus propios roles («Cajero»,
+ * «Repartidor») sin afectar a ninguna otra Empresa.
  *
- * `GET /roles` (vía `listar()`) ahora devuelve una mezcla: los templates
- * de siempre (`empresaId: null` — `admin`/`cliente`/`dueno_empresa`/
- * `empleado_empresa`) más los roles propios de mi Empresa. Los templates
- * se muestran de solo lectura (el backend los rechazaría igual —
- * `RolService.puedeModificar` — pero ocultar los botones evita mandar
- * una request que sabemos que va a fallar); solo mis propios roles
- * (`rol.empresaId !== null`, que por construcción del filtro del backend
- * solo puede ser MI empresaId) tienen edición/borrado/permisos.
- *
- * El catálogo de permisos para el checklist de "asignar" viene de
- * `GET /permisos/asignables` (`listarPermisosAsignables()`), no de
- * `GET /permisos` — ver `RolService.findAsignablesPermisos` del backend:
- * un dueño no tiene `permisos.ver`, así que ni siquiera se le muestran
- * como opción los códigos reservados de administración de Goods
- * (`PERMISOS_RESERVADOS_STAFF`) que el backend igual rechazaría.
+ * @remarks
+ * - `GET /roles` mezcla las plantillas (`empresaId: null`) con los roles
+ *   propios. Las plantillas se muestran de solo lectura: el backend igual
+ *   rechazaría editarlas, y ocultar los botones evita una llamada que va a
+ *   fallar.
+ * - Los permisos para asignar vienen de `GET /permisos/asignables`, sin los
+ *   reservados a staff.
  */
 @Component({
   selector: 'app-settings-roles-page',
@@ -110,9 +97,7 @@ export class SettingsRolesPageComponent {
     });
   }
 
-  /** Solo mis propios roles (empresaId no nulo) son editables — los
-   * templates (`admin`/`cliente`/`dueno_empresa`/`empleado_empresa`) son
-   * de solo lectura acá, ver el comentario de la clase. */
+  /** Solo los roles propios (`empresaId` no nulo) son editables; las plantillas son de solo lectura. */
   protected esPropio(rol: Rol): boolean {
     return rol.empresaId !== null;
   }
@@ -130,7 +115,7 @@ export class SettingsRolesPageComponent {
       .map(([modulo, perms]) => ({ modulo, permisos: perms }));
   }
 
-  // --- Crear / editar rol propio ---
+  // Crear / editar rol propio
 
   protected abrirCrear(): void {
     this.rolEditando.set(null);
@@ -188,7 +173,7 @@ export class SettingsRolesPageComponent {
     });
   }
 
-  // --- Asignar permisos ---
+  // Asignar permisos
 
   protected abrirPermisos(rol: Rol): void {
     if (!this.esPropio(rol)) {
@@ -241,7 +226,7 @@ export class SettingsRolesPageComponent {
     });
   }
 
-  // --- Eliminar ---
+  // Eliminar
 
   protected abrirEliminar(rol: Rol): void {
     if (!this.esPropio(rol)) {

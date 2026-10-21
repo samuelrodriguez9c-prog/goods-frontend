@@ -7,7 +7,7 @@
  *
  * `featureType: 'whatsapp_business_app_onboarding'` es la coexistencia: el
  * dueño conecta el número que ya usa en la app WhatsApp Business del
- * celular y la sigue usando (PROPUESTA_WHATSAPP.md §4.3).
+ * celular y la sigue usando.
  */
 interface FacebookSdk {
   init(o: { appId: string; autoLogAppEvents: boolean; xfbml: boolean; version: string }): void;

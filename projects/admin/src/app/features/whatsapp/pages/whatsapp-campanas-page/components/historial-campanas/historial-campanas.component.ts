@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { Campana } from '../../../../../../core/whatsapp/whatsapp.model';
-import { OpcionSegmentado, SegmentadoComponent } from '../../../../components/segmentado/segmentado.component';
+import { OpcionSegmentado, SegmentadoComponent } from '../../../../../../shared/ui/segmentado/segmentado.component';
 import { esProxima } from '../../campanas.util';
 import { FilaCampanaComponent } from '../fila-campana/fila-campana.component';
 
@@ -9,7 +9,7 @@ type Filtro = 'todas' | 'proximas' | 'enviadas';
 const fechaDe = (c: Campana) => new Date(c.enviadaEn ?? c.programadaPara).getTime();
 
 /**
- * Historial de campañas (LEEME §7): resumen (próximas · enviadas en 30 días
+ * Historial de campañas: resumen (próximas · enviadas en 30 días
  * · % que las leen), segmentado Todas / Próximas / Enviadas y los grupos
  * "Próximas" (la que sale antes, primero) y "Enviadas" (la más reciente,
  * primero).

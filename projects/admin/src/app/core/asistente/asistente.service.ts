@@ -9,20 +9,16 @@ import {
 } from './models/asistente.model';
 
 /**
- * Cliente de los 4 endpoints de `AsistenteController` (backend,
- * `modules/asistente/`) — ver PROPUESTA_ASISTENTE_IA_RAG.md §4.5/§5.1
- * pasos 8-9. Los 4 exigen el módulo `asistente_ia` (Plan Plus): si la
- * Empresa no lo tiene, el backend responde 403 (`ModuloGuard`) — acá no
- * se duplica ese chequeo, solo se oculta/deshabilita el ícono del topbar
- * (§5.1 paso 12, ver `TopbarComponent`) para no ofrecer un botón que
- * siempre falla.
+ * Cliente de `AsistenteController` (conversaciones, mensajes y lectura de
+ * facturas de proveedor).
  *
- * `abierto` (signal): estado global de visibilidad del panel lateral —
- * vive acá (no en `AsistentePanelComponent`) porque quien lo ABRE es
- * `TopbarComponent` y quien lo RENDERIZA es `ShellComponent`
- * (`AsistentePanelComponent`), dos componentes hermanos sin relación
- * padre/hijo directa — un service `providedIn: 'root'` es más simple acá
- * que inventar un `@Output` que suba hasta `ShellComponent` y baje nada.
+ * @remarks
+ * Todo exige el módulo `asistente_ia`: sin él, el backend responde 403. Acá
+ * no se repite ese chequeo; el topbar oculta el ícono para no ofrecer un
+ * botón que siempre falla.
+ *
+ * `abierto` vive acá porque el mini chat lo abre el topbar y lo pinta
+ * `AsistenteDockComponent`, que no tienen relación padre e hijo.
  */
 @Injectable({ providedIn: 'root' })
 export class AsistenteService {
@@ -55,11 +51,12 @@ export class AsistenteService {
     );
   }
 
-  /** El backend devuelve únicamente el mensaje FINAL del asistente (no el
-   * del usuario que lo disparó, ya guardado del lado del servidor antes
-   * de llamar a OpenRouter) — `AsistentePanelComponent` refresca con
-   * `listarMensajes` después de esto en vez de tratar de reconstruir el
-   * mensaje del usuario a mano acá. */
+  /**
+   * Envía un mensaje del usuario al asistente.
+   *
+   * @returns Solo la respuesta final del asistente; el mensaje del usuario
+   * ya quedó guardado en el servidor y no vuelve en la respuesta.
+   */
   enviarMensaje(conversacionId: number, cuerpo: string): Observable<AsistenteMensaje> {
     return this.http.post<AsistenteMensaje>(
       `${this.base}/conversaciones/${conversacionId}/mensajes`,
@@ -67,10 +64,11 @@ export class AsistenteService {
     );
   }
 
-  /** §5.5.6 (2026-09-30) — guarda una confirmación de rol 'asistente' SIN
-   * pasar por OpenRouter, usada por el modo documento tras registrar una
-   * Compra: sin esto, confirmar volvía al chat sin dejar ningún rastro en
-   * el hilo (bug real reportado por el usuario). */
+  /**
+   * Guarda un mensaje de rol `asistente` sin pasar por el modelo. Lo usa el
+   * modo documento para dejar en el hilo la confirmación de una compra
+   * registrada.
+   */
   registrarMensajeSistema(conversacionId: number, cuerpo: string): Observable<AsistenteMensaje> {
     return this.http.post<AsistenteMensaje>(
       `${this.base}/conversaciones/${conversacionId}/mensajes-sistema`,
@@ -78,23 +76,23 @@ export class AsistenteService {
     );
   }
 
-  /** §5.5 — modo documento: sube la factura (imagen o PDF) y devuelve lo
-   * que el modelo detectó + el cruce contra catálogo, sin persistir nada
-   * todavía (ver `ExtraccionFacturaProveedorService`, backend: el
-   * archivo viaja en memoria, se descarta si el usuario nunca confirma).
-   * `multipart/form-data` — nunca se fija manualmente el header
-   * `Content-Type` acá: `HttpClient` arma el boundary solo a partir del
-   * `FormData`, fijarlo a mano rompería el parseo en el backend. */
-  /** `PATCH /asistente/conversaciones/:id` — renombrar desde el rail. */
   renombrarConversacion(id: number, titulo: string): Observable<AsistenteConversacion> {
     return this.http.patch<AsistenteConversacion>(`${this.base}/conversaciones/${id}`, { titulo });
   }
 
-  /** `DELETE /asistente/conversaciones/:id`. */
   eliminarConversacion(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/conversaciones/${id}`);
   }
 
+  /**
+   * Sube una factura (imagen o PDF) y devuelve lo que leyó el modelo, cruzado
+   * con el catálogo. No guarda nada: la compra se crea cuando el usuario
+   * confirma.
+   *
+   * @remarks
+   * No se fija `Content-Type`: `HttpClient` arma el boundary del `FormData`;
+   * fijarlo a mano rompe el parseo en el backend.
+   */
   extraerFacturaProveedor(archivo: File): Observable<FacturaProveedorExtraida> {
     const formData = new FormData();
     formData.append('file', archivo);

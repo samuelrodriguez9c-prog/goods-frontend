@@ -1,9 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-/**
- * Placeholder — el contenido real (tarjetas de KPI + sparkline, ver
- * ADMIN_DISENO.md > "Dashboard / Analítica") todavía no está construido.
- */
+/** Placeholder del Dashboard. */
+// TODO(backend): módulo de analítica (ventas, pedidos, productos); después, las tarjetas de KPI acá.
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,

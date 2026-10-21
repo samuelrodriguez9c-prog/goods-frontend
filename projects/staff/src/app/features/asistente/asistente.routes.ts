@@ -1,16 +1,8 @@
-// projects/staff/src/app/features/asistente/asistente.routes.ts
-//
-// Hasta el 2026-10-02, `/asistente` era una entrada única (`loadComponent`
-// directo en `app.routes.ts`). Pasa a `loadChildren` acá porque sumó una
-// segunda pantalla (`documentos`, Fase 6 — gestión de los documentos
-// internos que el asistente busca por similitud) que necesita su PROPIO
-// breadcrumb ("Documentos internos", distinto de "Asistente de IA") sin
-// dejar de vivir bajo el mismo paraguas: `TopbarComponent.enAsistente`
-// chequea `startsWith('/asistente')`, así que las dos rutas siguen
-// mostrando el mismo botón "Volver al panel" sin tocar ese componente.
-//
-// Mismo `canActivate: [authGuard]` que antes (movido del objeto de ruta
-// de `app.routes.ts` a cada hijo acá, `loadChildren` no lo hereda solo).
+// Rutas hijas de `/asistente`: el chat y la gestión de los documentos internos
+// que el asistente busca por similitud. Cada una lleva su propio breadcrumb;
+// las dos quedan bajo `/asistente`, así que `TopbarComponent.enAsistente`
+// (`startsWith('/asistente')`) les muestra el botón "Volver al panel".
+// `canActivate` va en cada hija porque `loadChildren` no lo hereda.
 import { Routes } from '@angular/router';
 import { authGuard } from '../../core/auth/auth.guard';
 

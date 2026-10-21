@@ -50,7 +50,7 @@ const GRUPOS: { k: string; t: string; filas: Fila[] }[] = [
 ];
 
 /**
- * Guía de atajos (Ctrl + . o "Atajos" del menú). handoff-productos §4.
+ * Guía de atajos (Ctrl + . o «Atajos» del menú).
  * "Cambiar" deja la fila esperando una tecla; Esc o Cancelar sale sin cambiar.
  */
 @Component({

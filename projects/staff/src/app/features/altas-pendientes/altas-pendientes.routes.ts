@@ -5,8 +5,7 @@ export const ALTAS_PENDIENTES_ROUTES: Routes = [
   {
     path: '',
     component: AltasPendientesPageComponent,
-    // Rastro de navegación global del topbar (§5.4.4, 2026-10-02) —
-    // ver `NavigationTrailService`.
+    // Lo lee el rastro de navegación del topbar (`NavigationTrailService`).
     data: { breadcrumb: 'Altas pendientes', icon: 'user-plus' },
   },
 ];

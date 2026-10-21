@@ -29,7 +29,7 @@ import { icono } from '../../../../shared/ui/iconos';
   `,
 })
 export class TarjetaHojaComponent {
-  /** Nombre del ícono (webfont del prototipo). */
+  /** Nombre del ícono (ver `icono()` en `shared/ui/iconos.ts`). */
   readonly icono = input.required<string>();
   readonly titulo = input.required<string>();
   readonly descripcion = input('');

@@ -52,6 +52,7 @@ import {
   IconTrash,
   IconInbox,
   IconPackages,
+  IconUsers,
   IconTrophy,
   IconX,
   TablerIconComponent,
@@ -102,20 +103,26 @@ const SUGERENCIAS = [
   { icono: IconTrophy, texto: '¿Cuáles son mis productos más vendidos?' },
 ];
 
+/** Lo que el asistente puede consultar con sus herramientas del backend (solo lectura). */
+const ALCANCE = [
+  { icono: IconPackages, texto: 'Productos e inventario' },
+  { icono: IconInbox, texto: 'Pedidos y ventas' },
+  { icono: IconUsers, texto: 'Clientes y descuentos' },
+  { icono: IconFileText, texto: 'Tus notas y documentos' },
+];
+
 /**
- * Asistente de IA a pantalla completa (ruta `/asistente`, fuera del Shell)
- * — calcado del de staff (2026-10-07).
+ * Asistente de IA a pantalla completa (`/asistente`, fuera del Shell).
  *
+ * @remarks
  * - Rail izquierdo (272 px, colapsable): Nueva conversación, búsqueda,
  *   Registrar compra, Documentos, Fijadas/Recientes con menú ⋮.
  * - Inicio vacío: composer centrado + sugerencias. Al primer mensaje el
  *   composer baja al pie.
- * - Registrar compra (lo que en staff es "Registrar pago"): tarjeta DENTRO
- *   del hilo, 2 pasos Factura → Revisión. La IA lee la factura del
- *   proveedor (`POST /asistente/facturas-proveedor/extraer`) y prellena
- *   proveedor, número, fecha y líneas; al confirmar se crea el proveedor si
- *   es nuevo, se sube la factura y se guarda la Compra (entra al
- *   inventario). Mismo flujo que tenía el panel lateral viejo.
+ * - Registrar compra: tarjeta dentro del hilo, en 2 pasos Factura → Revisión.
+ *   La IA lee la factura del proveedor y prellena proveedor, número, fecha y
+ *   líneas; al confirmar se crea el proveedor si es nuevo, se sube la factura
+ *   y se guarda la compra (el stock no entra hasta recibirla).
  */
 @Component({
   selector: 'app-asistente-page',
@@ -155,10 +162,11 @@ export class AsistentePageComponent implements OnInit {
     const repetidas = new Set(this.preguntasSaludo().map(norm));
     return SUGERENCIAS.filter((s) => !repetidas.has(norm(s.texto)));
   });
+  protected readonly alcance = ALCANCE;
   protected readonly acceptComprobante = ACCEPT_COMPROBANTE;
   protected readonly totalLineas = (it: ItemDraft) => (it.cantidad ?? 0) * (it.precioUnitario ?? 0);
 
-  // ── Rail ────────────────────────────────────────────────────
+  // Rail
   protected readonly railAbierto = signal(true);
   protected readonly buscando = signal(false);
   protected readonly busqueda = signal('');
@@ -184,7 +192,7 @@ export class AsistentePageComponent implements OnInit {
     return m ? (this.store.conversaciones().find((c) => c.id === m.id) ?? null) : null;
   });
 
-  // ── Composer ────────────────────────────────────────────────
+  // Composer
   protected readonly texto = signal('');
   /** Pregunta de la palabra visible del saludo (placeholder del composer en vacío). */
   protected readonly sugerencia = signal<string | null>(null);
@@ -195,7 +203,7 @@ export class AsistentePageComponent implements OnInit {
   protected readonly vacio = computed(() => !this.store.mensajes().length && !this.compra() && !this.doc());
   protected readonly puedeEnviar = computed(() => !!this.texto().trim() || !!this.adjunto());
 
-  // ── Compra (tarjeta en el hilo) ─────────────────────────────
+  // Compra (tarjeta en el hilo)
   protected readonly compra = signal<PasoCompra | null>(null);
   protected readonly comprobante = signal<{ archivo: File; url: string | null } | null>(null);
   protected readonly proveedores = signal<Proveedor[]>([]);
@@ -217,7 +225,7 @@ export class AsistentePageComponent implements OnInit {
     this.items().reduce((t, it) => t + (it.cantidad ?? 0) * (it.precioUnitario ?? 0), 0),
   );
 
-  // ── Documento interno (tarjeta en el hilo) ─────────────────
+  // Documento interno (tarjeta en el hilo)
   /** `key` fuerza a recrear la tarjeta si se arranca otra carga. */
   protected readonly doc = signal<{ key: number; archivo: File | null; activo: boolean } | null>(null);
 
@@ -305,7 +313,7 @@ export class AsistentePageComponent implements OnInit {
     history.length > 1 ? history.back() : this.router.navigate(['/']);
   }
 
-  // ── Rail ────────────────────────────────────────────────────
+  // Rail
   protected titulo(c: AsistenteConversacion): string {
     return c.titulo ?? 'Nueva conversación';
   }
@@ -318,9 +326,6 @@ export class AsistentePageComponent implements OnInit {
     setTimeout(() => this.composerRef?.nativeElement.focus(), 60);
   }
 
-  /** Entrada a la pantalla de gestión de documentos (Fase 6,
-   * §5.6.4 de PROPUESTA_ASISTENTE_IA_RAG.md) — hasta el 2026-10-02 esto
-   * se cargaba a mano por Postman porque no existía ninguna pantalla. */
   protected irADocumentos(): void {
     this.router.navigateByUrl('/asistente/documentos');
   }
@@ -381,7 +386,7 @@ export class AsistentePageComponent implements OnInit {
     setTimeout(() => this.toast() === t && this.toast.set(null), 4200);
   }
 
-  // ── Composer ────────────────────────────────────────────────
+  // Composer
   protected enviar(t?: string): void {
     const cuerpo = (t ?? this.texto()).trim();
     const adj = t === undefined ? this.adjunto() : null;
@@ -427,7 +432,7 @@ export class AsistentePageComponent implements OnInit {
     this.docsRef?.nativeElement.click();
   }
 
-  // ── Documento interno ───────────────────────────────────────
+  // Documento interno
   protected iniciarDoc(archivo?: File): void {
     if (this.store.generando()) return;
     if (this.doc()?.activo) return;
@@ -482,7 +487,7 @@ export class AsistentePageComponent implements OnInit {
     setTimeout(() => this.copiado.set(null), 1400);
   }
 
-  // ── Compra ──────────────────────────────────────────────────
+  // Compra
   protected iniciarCompra(archivo?: File): void {
     if (this.store.generando()) return;
     if (this.compra() && !['guardado', 'cancelado'].includes(this.compra()!)) return;

@@ -2,17 +2,12 @@ import { Plan } from './models/plan.model';
 import { Suscripcion } from './models/suscripcion.model';
 
 /**
- * Cruza suscripciones + planes (ambos ya en memoria, ver
- * `SuscripcionService`/`PlanService`) en un `Map<empresaId, nombreDelPlan>`
- * — `Suscripcion` del backend no trae el nombre del plan (solo `planId`,
- * ver `Suscripcion.model.ts`), así que hace falta este cruce en vez de
- * leer `suscripcion.plan.nombre` directo.
+ * Cruza suscripciones y planes ya cargados en un `Map<empresaId, nombreDelPlan>`,
+ * porque `Suscripcion` solo trae `planId`.
  *
- * Si una Empresa tuviera más de una fila en `suscripciones` para el mismo
- * estado (no debería pasar — ver la invariante documentada en
- * `Suscripcion` del backend: "a lo sumo una pendiente/activa a la vez"),
- * se queda con la primera que encuentre; no es su responsabilidad
- * detectar esa inconsistencia de datos.
+ * @remarks
+ * Si una Empresa tiene más de una suscripción en la lista (no debería: el
+ * backend admite a lo sumo una pendiente o activa), se queda con la primera.
  */
 export function construirMapaPlanPorEmpresa(
   suscripciones: Suscripcion[],

@@ -127,8 +127,7 @@
           (input)="actualizarCampo('correo', $any($event.target).value)"
         />
       </label>
-      <!-- Invitación (2026-10-06): la contraseña la crea la persona invitada
-           desde el correo; quien la invita nunca la conoce. -->
+      <!-- Invitación: la contraseña la crea la persona invitada desde el correo; quien invita nunca la conoce. -->
       <p class="rounded-lg bg-canvas-bg px-3 py-2.5 text-xs leading-5 text-gray-600">
         Le enviamos un correo para que cree su contraseña. El enlace vale 48 horas y se usa una sola vez.
       </p>
@@ -160,7 +159,7 @@
 @if (usuarioEliminando(); as usuario) {
   <app-modal titulo="Eliminar usuario" (cerrar)="cerrarEliminar()">
     <p class="text-sm text-gray-600">
-      ¿Seguro que querés eliminar a <strong>{{ usuario.nombres }} {{ usuario.apellidos }}</strong>?
+      ¿Seguro que quieres eliminar a <strong>{{ usuario.nombres }} {{ usuario.apellidos }}</strong>?
       Esta acción no se puede deshacer.
     </p>
     <div class="mt-4 flex justify-end gap-2">

@@ -1,4 +1,4 @@
-/** Formatos compartidos por los módulos con lista + hoja (2026-10-05). */
+/** Formatos compartidos por los módulos con lista + hoja. */
 
 export const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 export const MES_LARGO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -62,7 +62,10 @@ export const iniciales = (nombre: string) =>
     .join('')
     .toUpperCase();
 
-/** Trazo de 84×28 para las líneas de las métricas (mismo de la cabecera v2). */
+/**
+ * Trazo de 84×28 para las líneas de las métricas. A diferencia de
+ * `CabeceraModuloComponent`, escala desde 0 (no desde el mínimo de la serie).
+ */
 export const linea = (serie: number[]) => {
   const mx = Math.max(...serie, 1);
   return serie.map((v, i) => (i ? 'L' : 'M') + (i * 84) / Math.max(1, serie.length - 1) + ' ' + (26 - (v / mx) * 22)).join(' ');

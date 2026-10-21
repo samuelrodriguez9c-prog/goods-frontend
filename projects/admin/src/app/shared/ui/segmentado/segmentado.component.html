@@ -1,0 +1,29 @@
+@if (variante() === 'caja') {
+  @for (o of opciones(); track o.k) {
+    <button type="button" (click)="elegir($event, o.k)"
+      class="h-7 flex-1 cursor-pointer rounded-lg px-2.5 text-[12.5px] whitespace-nowrap transition-[background-color,color,box-shadow] duration-200 ease-[ease]"
+      [class]="o.k === valor() ? 'bg-white font-semibold text-[#111827] shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)]' : 'bg-transparent font-medium text-[#6b7280] hover:text-[#111827]'">
+      {{ o.label }}
+    </button>
+  }
+} @else if (variante() === 'rejilla') {
+  @for (o of opciones(); track o.k) {
+    <button type="button" (click)="elegir($event, o.k)"
+      class="h-7 cursor-pointer rounded-lg text-[12px] font-medium whitespace-nowrap transition-[background-color,color] duration-200 ease-[ease]"
+      [class]="o.k === valor() ? 'bg-white text-[#111827] shadow-[0_1px_2px_rgba(0,0,0,.08),0_0_0_1px_rgba(0,0,0,.04)]' : 'bg-transparent text-[#6b7280]'">
+      {{ o.label }}
+    </button>
+  }
+} @else {
+  <span class="seg-indicador" [style.left]="left()" [style.width]="width()"></span>
+  @for (o of opciones(); track o.k) {
+    <button type="button" (click)="elegir($event, o.k)"
+      class="relative flex h-7 cursor-pointer items-center justify-center gap-[5px] rounded-full border-0 bg-transparent text-[12px] font-medium whitespace-nowrap transition-colors duration-200 hover:text-[#111827]"
+      [class]="(ancho() === 'normal' ? 'px-[11px] ' : 'px-2.5 ') + (valor() === o.k ? 'text-[#111827]' : 'text-[#6b7280]')">
+      {{ o.label }}
+      @if (o.n != null) {
+        <span class="text-[10.5px] tabular-nums transition-colors duration-200" [class]="valor() === o.k ? 'text-[#6b7280]' : 'text-[#a3a3a3]'">{{ o.n }}</span>
+      }
+    </button>
+  }
+}

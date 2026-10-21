@@ -14,32 +14,13 @@ interface RespuestaTokens {
 }
 
 /**
- * Estado de sesión del panel de staff — mismo diseño que
- * `admin/core/auth/auth.service.ts` (tokens en localStorage, perfil en
- * memoria), duplicado a propósito en vez de compartido vía `shared-ui`:
- * son dos apps con sesiones completamente independientes (un usuario de
- * staff nunca comparte sesión con un usuario de una Empresa), y
- * `shared-ui` es para composites de UI, no para lógica de negocio — ver
- * PIVOTE_SAAS_MULTITENANT.md §4 sobre por qué son proyectos aparte.
+ * Sesión del panel de staff: tokens en localStorage y perfil en memoria.
  *
- * Claves de localStorage con prefijo `staff.` distinto al de `admin`
- * (`goods.accessToken`) — aunque cada Angular app ya vive en su propio
- * origen (puerto/dominio distinto) y por lo tanto en su propio
- * localStorage, el prefijo deja explícito en el propio nombre de la clave
- * a qué app pertenece, para cuando alguien mire el localStorage del
- * navegador durante un debug.
- *
- * `POST /auth/login-staff` (Fase 7 de PROPUESTA_ROLES_Y_ACCESOS.md, §5.5)
- * — YA NO es el mismo endpoint que usa `admin` (ese sigue en
- * `/auth/login`). Este es el único que sabe emitir, además de la sesión
- * normal de un usuario que YA es de staff, una sesión "prestando"
- * identidad de staff para la única cuenta con acceso especial de
- * superadmin (`Usuario.accesoStaffGoods`) — sin tocar su rol/Empresa
- * reales (ver `AuthService.loginParaStaff` del backend). El backend
- * rechaza con 403 a cualquier cuenta que no sea de staff y no tenga ese
- * acceso especial, así que `LoginComponent.submit()` ya no depende
- * únicamente de la verificación del lado del cliente que tenía antes
- * (queda como defensa en profundidad, no como el único control).
+ * @remarks
+ * Duplicado a propósito del `AuthService` de `admin` en vez de compartido:
+ * son apps con sesiones independientes y `shared-ui` es solo para UI.
+ * Las claves llevan el prefijo `goods.staff.` para que se sepa de qué app
+ * son al mirar el localStorage.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -59,6 +40,14 @@ export class AuthService {
 
   readonly isAuthenticated = computed(() => this._accessToken() !== null);
 
+  /**
+   * Inicia sesión con `POST /auth/login-staff`, guarda los tokens y carga el perfil.
+   *
+   * @remarks
+   * El backend responde 403 si la cuenta no es de staff ni tiene el acceso
+   * especial de superadmin (`Usuario.accesoStaffGoods`); con ese acceso,
+   * la sesión se abre prestando identidad de staff sin tocar su rol real.
+   */
   login(correo: string, password: string): Observable<CurrentUser> {
     return this.http
       .post<RespuestaTokens>(`${environment.apiUrl}/auth/login-staff`, { correo, password })
@@ -74,6 +63,7 @@ export class AuthService {
     );
   }
 
+  /** Pide tokens nuevos con el refresh token guardado y los guarda. */
   refrescarToken(): Observable<RespuestaTokens> {
     const refreshToken = this._refreshToken();
     return this.http
@@ -81,6 +71,7 @@ export class AuthService {
       .pipe(tap((tokens) => this.guardarTokens(tokens)));
   }
 
+  /** Revoca el refresh token en el backend (sin esperar ni avisar errores) y limpia la sesión local. */
   logout(): void {
     const refreshToken = this._refreshToken();
     if (refreshToken) {
@@ -91,35 +82,34 @@ export class AuthService {
     this.limpiarSesion();
   }
 
-  /** `POST /auth/forgot-password` — mismo endpoint que ya usa la pantalla
-   *  de "olvidé mi contraseña" del login, reusado acá para el botón
-   *  "Cambiar contraseña" de `features/settings/` (decisión 2026-09-22:
-   *  no se construyó un endpoint nuevo de "cambiar con la actual" —
-   *  UpdateUsuarioDto excluye `password` a propósito, "el cambio de
-   *  contraseña pasa por auth: reset/forgot-password" — así que Settings
-   *  dispara este mismo correo a la cuenta logueada). El backend responde
-   *  igual exista o no el correo, así que acá siempre hay éxito: no hace
-   *  falta manejar un caso de error especial más allá del de red. */
+  /**
+   * Envía el correo de recuperación de contraseña (`POST /auth/forgot-password`).
+   *
+   * @remarks
+   * Settings lo usa para "Cambiar contraseña": el backend no permite cambiarla
+   * por `PATCH` de usuario. Responde igual exista o no el correo, así que
+   * solo hay que manejar errores de red.
+   */
   solicitarRecuperacionPassword(correo: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/forgot-password`, {
       correo,
     });
   }
 
-  /** `POST /auth/send-verification` — reenvía el código de verificación de
-   *  correo (Settings lo ofrece cuando `UsuarioGoods.correoVerificado` es
-   *  `false`). Mismo criterio de privacidad que el de arriba: la
-   *  respuesta no distingue si el correo ya estaba verificado o no. */
+  /**
+   * Reenvía el código de verificación de correo (`POST /auth/send-verification`).
+   * La respuesta no distingue si el correo ya estaba verificado.
+   */
   reenviarVerificacionCorreo(correo: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/send-verification`, {
       correo,
     });
   }
 
-  /** `POST /auth/verify-email` — confirma el código de 6 dígitos que
-   *  mandó el endpoint de arriba. A diferencia de forgot-password, este SÍ
-   *  puede fallar de verdad (código vencido o incorrecto) — el error se
-   *  propaga tal cual para que `SettingsPageComponent` lo muestre. */
+  /**
+   * Confirma el código de 6 dígitos de verificación de correo (`POST /auth/verify-email`).
+   * Falla si el código venció o es incorrecto: el que llama debe mostrar el error.
+   */
   verificarCorreoConCodigo(correo: string, codigo: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/verify-email`, {
       correo,
@@ -127,15 +117,14 @@ export class AuthService {
     });
   }
 
+  /** Borra tokens, perfil y el rastro de navegación, sin llamar al backend. */
   limpiarSesion(): void {
     localStorage.removeItem(CLAVE_ACCESS_TOKEN);
     localStorage.removeItem(CLAVE_REFRESH_TOKEN);
     this._accessToken.set(null);
     this._refreshToken.set(null);
     this._currentUser.set(null);
-    // Rastro de navegación del topbar (§5.4.4, 2026-10-02) — se vacía acá
-    // para que una sesión de otra cuenta en la misma pestaña no herede el
-    // rastro de la anterior (ver `NavigationTrailService`).
+    // Para que otra cuenta en la misma pestaña no herede el rastro de la anterior.
     this.navigationTrailService.reiniciar();
   }
 

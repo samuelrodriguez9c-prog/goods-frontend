@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { Parte } from '../../plantillas.util';
 
 /**
- * Vista previa de un mensaje de plantilla como lo ve el cliente en WhatsApp
- * (LEEME §2): fondo `#efe7de`, burbuja blanca y las variables resaltadas
- * en turquesa con su valor de ejemplo.
+ * Vista previa de un mensaje de plantilla como lo ve el cliente en WhatsApp:
+ * fondo `#efe7de`, burbuja blanca y las variables resaltadas en turquesa con
+ * su valor de ejemplo.
  */
 @Component({
   selector: 'app-vista-previa-whatsapp',

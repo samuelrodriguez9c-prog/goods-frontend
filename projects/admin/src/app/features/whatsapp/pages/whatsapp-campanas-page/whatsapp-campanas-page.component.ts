@@ -12,7 +12,7 @@ import { HistorialCampanasComponent } from './components/historial-campanas/hist
 import { esProxima, fechaCorta, hora } from './campanas.util';
 
 /**
- * Campañas de WhatsApp (rediseño 2026-10-13, LEEME §7): una plantilla de
+ * Campañas de WhatsApp: una plantilla de
  * promoción a los clientes que aceptaron recibirlas.
  *
  * Izquierda: alcance de hoy e Historial (próximas y enviadas, con su embudo

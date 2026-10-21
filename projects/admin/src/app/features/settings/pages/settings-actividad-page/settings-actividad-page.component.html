@@ -1,0 +1,129 @@
+<div class="p-8">
+  <div class="max-w-[640px]">
+    <h1 class="text-lg font-semibold text-gray-900">Actividad del equipo</h1>
+    <p class="mt-2 text-sm text-gray-500">
+      Qué hizo cada persona de tu equipo: pedidos que confirmó, productos que editó, stock que ajustó y más. Toca una acción para
+      ver lo que se cambió.
+    </p>
+  </div>
+
+  <div class="mt-6 flex max-w-[860px] flex-col gap-3">
+    <!-- Período -->
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="inline-grid grid-cols-4 rounded-[11px] bg-[#ebebeb] p-[3px]" role="radiogroup" aria-label="Período">
+        @for (p of periodos; track p.k) {
+          @let on = periodo() === p.k;
+          <button
+            type="button"
+            role="radio"
+            [attr.aria-checked]="on"
+            (click)="periodo.set(p.k)"
+            class="h-8 whitespace-nowrap rounded-lg px-3.5 text-[13px] transition-[background-color,color,box-shadow] duration-200"
+            [class]="on ? 'bg-white font-semibold text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,.08)]' : 'font-medium text-gray-500 hover:text-gray-900'"
+          >{{ p.t }}</button>
+        }
+      </div>
+      @if (datos(); as d) {
+        <span class="text-xs tabular-nums text-gray-500">{{ totalPeriodo() }} {{ totalPeriodo() === 1 ? 'acción' : 'acciones' }} en el período</span>
+      }
+    </div>
+
+    <!-- Personas -->
+    @if (datos()?.porPersona?.length) {
+      <div class="flex flex-wrap gap-1.5">
+        <button type="button" (click)="elegirPersona(null)" class="h-8 rounded-full px-3 text-[12.5px] font-medium transition-colors" [class]="persona() === null ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] shadow-[inset_0_0_0_1px_#e3e3e3] hover:bg-[#f7f7f7]'">Todo el equipo</button>
+        @for (p of datos()!.porPersona; track p.usuarioId) {
+          @let on = persona() === p.usuarioId;
+          @let t = tono(p.usuarioId);
+          <button
+            type="button"
+            (click)="elegirPersona(p.usuarioId)"
+            [attr.aria-pressed]="on"
+            class="flex h-8 items-center gap-2 rounded-full py-0 pl-1 pr-3 text-[12.5px] font-medium transition-colors"
+            [class]="on ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] shadow-[inset_0_0_0_1px_#e3e3e3] hover:bg-[#f7f7f7]'"
+          >
+            <span class="flex size-6 items-center justify-center rounded-full text-[10.5px] font-semibold" [style.background]="t[0]" [style.color]="t[1]">{{ iniciales(p.nombre) }}</span>
+            {{ p.nombre }}
+            <span class="tabular-nums" [class]="on ? 'text-white/60' : 'text-gray-400'">{{ p.acciones }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Áreas -->
+    @if (areasConDatos().length > 1 || area()) {
+      <div class="flex flex-wrap gap-1.5">
+        @for (a of areasConDatos(); track a[0]) {
+          @let on = area() === a[0];
+          <button
+            type="button"
+            (click)="elegirArea(a[0])"
+            [attr.aria-pressed]="on"
+            class="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors"
+            [class]="on ? 'bg-[#303030] text-white' : 'bg-[#f1f1f1] text-[#4b5563] hover:bg-[#e8e8e8]'"
+          >
+            <tabler-icon [icon]="areas[a[0]].ic" [size]="13" />{{ areas[a[0]].t }}<span class="tabular-nums" [class]="on ? 'text-white/60' : 'text-gray-400'">{{ a[1] }}</span>
+          </button>
+        }
+        @if (area() && !areasConDatos().length) {
+          <button type="button" (click)="area.set(null)" class="h-7 rounded-full bg-[#303030] px-2.5 text-xs font-medium text-white">{{ areas[area()!].t }} ✕</button>
+        }
+      </div>
+    }
+
+    <!-- Línea de tiempo -->
+    @if (cargando()) {
+      <div class="mt-2 flex flex-col gap-2">
+        @for (x of [1, 2, 3, 4]; track x) {
+          <span class="h-14 animate-pulse rounded-xl bg-[#f1f1f1]"></span>
+        }
+      </div>
+    } @else if (error()) {
+      <div class="mt-2 flex flex-col items-start gap-2 rounded-2xl bg-[#fef3f2] px-4 py-3.5">
+        <p class="m-0 text-[13px] text-[#b42318]">{{ error() }}</p>
+        <button type="button" (click)="reintentar()" class="rounded-full bg-white px-3 py-1 text-[12.5px] font-medium text-gray-900 shadow-[inset_0_0_0_1px_#e3e3e3]">Reintentar</button>
+      </div>
+    } @else if (!items().length) {
+      <div class="mt-2 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[#e3e3e3] px-6 py-10 text-center">
+        <span class="flex size-10 items-center justify-center rounded-xl bg-[#f4f4f4] text-gray-500"><tabler-icon [icon]="i.historial" [size]="20" /></span>
+        <p class="m-0 text-sm font-medium text-gray-900">Sin actividad en este período</p>
+        <p class="m-0 max-w-[420px] text-xs leading-[18px] text-gray-500">Prueba con un período más largo o quita los filtros.</p>
+      </div>
+    } @else {
+      <div class="mt-1 flex flex-col gap-5">
+        @for (d of dias(); track d.k) {
+          <section class="flex flex-col">
+            <h2 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ d.t }}</h2>
+            <div class="overflow-hidden rounded-2xl border border-[#ebebeb] bg-white shadow-[0_1px_2px_rgba(0,0,0,.03)]">
+              @for (it of d.items; track it.id) {
+                @let t = tono(it.usuario?.id);
+                <button
+                  type="button"
+                  (click)="abrir(it)"
+                  [disabled]="!it.enlace"
+                  class="group flex w-full items-start gap-3 border-b border-[#f2f2f2] px-4 py-3 text-left last:border-b-0 enabled:hover:bg-[#fafafa] disabled:cursor-default"
+                >
+                  <span class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold" [style.background]="t[0]" [style.color]="t[1]">{{ iniciales(it.usuario?.nombre ?? '') }}</span>
+                  <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span class="text-[13.5px] leading-5 text-gray-900"><span class="font-semibold">{{ it.usuario?.nombre ?? 'Alguien del equipo' }}</span> · {{ it.texto }}</span>
+                    <span class="flex items-center gap-1.5 text-xs text-gray-500">
+                      <tabler-icon [icon]="areas[it.area].ic" [size]="12" />{{ areas[it.area].t }} · {{ hora(it.fecha) }}
+                      @if (it.enlace) {
+                        <span class="text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">· Ver</span>
+                      }
+                    </span>
+                  </span>
+                </button>
+              }
+            </div>
+          </section>
+        }
+        @if (hayMas()) {
+          <button type="button" (click)="verMas()" [disabled]="cargandoMas()" class="self-center rounded-full bg-white px-4 py-1.5 text-[13px] font-medium text-gray-900 shadow-[inset_0_0_0_1px_#e3e3e3] hover:bg-[#f7f7f7] disabled:opacity-50">
+            {{ cargandoMas() ? 'Cargando…' : 'Ver más' }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+</div>

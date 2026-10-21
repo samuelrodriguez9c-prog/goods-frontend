@@ -3,7 +3,7 @@ import { Plantilla } from '../../../../../../core/whatsapp/whatsapp.model';
 import { ESTADO_PLANTILLA, partes, pctLeida } from '../../plantillas.util';
 
 /**
- * Una plantilla en la lista (LEEME §5): punto de estado, nombre mono, nota
+ * Una plantilla en la lista: punto de estado, nombre mono, nota
  * ("94% la leen", "Meta revisando", "Rechazada"), el mensaje en 2 líneas
  * (4 al elegirla) y, a la derecha, los envíos con una barra comparativa.
  */

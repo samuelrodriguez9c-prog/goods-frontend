@@ -8,16 +8,8 @@ export interface ArchivoSubido {
 }
 
 /**
- * `POST /upload` — subida genérica autenticada del backend
- * (`UploadController`): cualquier cuenta logueada puede subir un archivo y
- * recibir su URL de vuelta; asociar esa URL a algo puntual (acá,
- * `Usuario.imagenPerfil` vía `UsuarioService.actualizar`) es un paso
- * aparte, este servicio no sabe ni le importa para qué se va a usar.
- *
- * Vive en `core/upload/` (no en `core/usuarios/` ni en `features/settings/`)
- * porque el endpoint es genérico — el primer consumidor es la foto de
- * perfil de Settings, pero cualquier feature futura que necesite subir un
- * archivo reusa este mismo servicio en vez de otro POST a mano.
+ * Subida genérica de archivos (`POST /upload`): devuelve la URL. Asociarla a
+ * algo (p. ej. la foto de perfil) es un paso aparte de quien llama.
  */
 @Injectable({ providedIn: 'root' })
 export class UploadService {

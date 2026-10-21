@@ -111,5 +111,20 @@
         {{ d.activo ? 'Aparece en la lista al crear compras.' : 'No aparece al crear compras. Su historial se conserva.' }}
       </p>
     </app-seccion-hoja>
+
+    @if (campos().length || gestionarCampos()) {
+      <app-seccion-hoja holgada icono="forms" titulo="Campos propios" detalle="Los datos que tu negocio guarda de cada proveedor." class="col-span-full">
+        @if (gestionarCampos()) {
+          <a accion routerLink="/settings/campos" [queryParams]="{ entidad: 'proveedor' }"
+            class="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium text-[#4b5563] hover:bg-[#f4f4f4] hover:text-[#111827]">{{ campos().length ? 'Editar campos' : 'Crear campos' }}</a>
+        }
+        @if (campos().length) {
+          <app-campos-propios [campos]="campos()" [valores]="d.atributos" [errores]="erroresCampos()" [mostrarErrores]="mostrarErroresCampos()"
+            [soloLectura]="!editable()" (cambio)="editarCampo($event.clave, $event.valor)" />
+        } @else {
+          <p class="m-0 text-[12.5px] leading-[18px] text-[#6b7280]">¿Necesitas guardar días de crédito, cuenta bancaria o algo propio de tu negocio? Crea tus campos y aparecen aquí y en la exportación.</p>
+        }
+      </app-seccion-hoja>
+    }
   </div>
 }

@@ -15,14 +15,14 @@ export interface AlertaEnLinea {
   texto?: string;
   /** Botón principal (turquesa). No se muestra mientras `estado === 'cargando'`. */
   accion?: AccionAlerta;
-  /** NUEVO (Productos v5): botón secundario oscuro, ej. "Descartar". */
+  /** Botón secundario oscuro, por ejemplo «Descartar». */
   accion2?: AccionAlerta;
   /** ms hasta el auto-cierre. `null` = queda hasta que la cierren. */
   autoCierre: number | null;
   abierta: boolean;
   vuelta: number;
   saliendo: boolean;
-  /** NUEVO: alerta fija de "Cambios sin guardar". No tiene X ni tiempo; va siempre al fondo. */
+  /** Alerta fija de «Cambios sin guardar»: sin X ni tiempo, siempre al fondo. */
   fija?: boolean;
 }
 
@@ -51,17 +51,18 @@ const SALIDA_MS = 300;
 const ID_CAMBIOS = -1;
 
 /**
- * Único dueño de las alertas del panel (LEEME §12, v2 "Pila oscura").
- * API anterior intacta (`mostrar`, `resolver`, `cerrar`, `seguir`, overlay).
+ * Único dueño de las alertas del panel: la pila de abajo (`mostrar`,
+ * `resolver`, `seguir`…) y el overlay.
  *
- * Agregado para Productos v5:
- * - `actualizar(id, cambio)` muta una alerta sin reiniciar su tiempo (progreso "Subiendo 42 %").
- * - `fijarCambios(cfg)` / `soltarCambios()`: alerta fija "Cambios sin guardar" con
- *   Guardar / Descartar. Mientras haya otra alerta al frente, la fija espera detrás.
- *   Al aparecer sola se abre 420 ms después (para que se lea la animación de entrada).
- * - `sacudir()`: sacude la pila (420 ms) cuando el usuario intenta salir con cambios.
- * - `desplazamiento`: px extra sobre el borde inferior (la barra de selección masiva usa 54).
- * - `accion2` en cualquier alerta.
+ * @remarks
+ * - `actualizar(id, cambio)` cambia una alerta sin reiniciar su tiempo
+ *   (progreso «Subiendo 42 %»).
+ * - `fijarCambios(cfg)` / `soltarCambios()`: alerta fija «Cambios sin guardar»
+ *   con Guardar / Descartar. Si hay otra alerta al frente, espera detrás; si
+ *   aparece sola, se abre 420 ms después para que se lea la entrada.
+ * - `sacudir()`: sacude la pila cuando el usuario intenta salir con cambios.
+ * - `desplazamiento`: px extra sobre el borde inferior (la barra de selección
+ *   masiva usa 54).
  */
 @Injectable({ providedIn: 'root' })
 export class AlertaService {
@@ -94,7 +95,7 @@ export class AlertaService {
     return n ? this.altoFrente() + 9 * Math.min(n - 1, 2) : 0;
   });
 
-  // ── En línea ──────────────────────────────────────────────────────────
+  // En línea
 
   mostrar(alerta: Omit<AlertaEnLinea, 'id' | 'estado' | 'autoCierre' | 'abierta' | 'vuelta' | 'saliendo'> & {
     estado?: EstadoAlerta;
@@ -202,13 +203,13 @@ export class AlertaService {
     );
   }
 
-  // ── Cambios sin guardar (fija) ────────────────────────────────────────
+  // Cambios sin guardar (fija)
 
   /** Llamar desde un `effect` de la página cada vez que cambie el borrador. `null` = soltar. */
   fijarCambios(cfg: CambiosSinGuardar | null): void {
-    // Se llama desde un effect() que mira el borrador: sin untracked, leer
-    // `cambios`/`alertas` acá suscribe el effect a lo que este mismo método
-    // escribe y queda en un bucle infinito (la página se congela al primer cambio).
+    // Se llama desde un effect() que mira el borrador: sin `untracked`, leer
+    // `cambios`/`alertas` acá suscribe el effect a lo que este método escribe
+    // y la página se congela en un bucle infinito.
     untracked(() => this.fijarCambiosAhora(cfg));
   }
 
@@ -247,7 +248,7 @@ export class AlertaService {
     this.cambios.update((c) => (c ? { ...c, abierta: true } : c));
   }
 
-  // ── Overlay (sin cambios) ─────────────────────────────────────────────
+  // Overlay
 
   abrirOverlay(cfg: Omit<AlertaOverlay, 'estado'> & { estado?: EstadoAlerta }): void {
     this.overlay.set({ estado: 'cargando', ...cfg });
@@ -265,7 +266,7 @@ export class AlertaService {
     this.overlay.set(null);
   }
 
-  // ── Interno ───────────────────────────────────────────────────────────
+  // Interno
 
   private autoCierrePorDefecto(estado: EstadoAlerta): number | null {
     if (estado === 'cargando' || estado === 'error') return null;

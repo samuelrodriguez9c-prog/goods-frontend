@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TablerIconComponent } from '@tabler/icons-angular';
+import { atributosDe, erroresCampos, textoValor } from '../../../../core/campos/campo-personalizado.model';
+import { CampoPersonalizadoService } from '../../../../core/campos/campo-personalizado.service';
 import { AlertaService } from '../../../../core/ui/alerta.service';
 import { CatalogoStore } from '../../shared/catalogo.store';
 import { esGuardar, vigilarCambios } from '../../shared/cambios-sin-guardar';
@@ -24,8 +26,8 @@ import { PestanaProductosComponent } from './components/pestana-productos/pestan
 import { TarjetaContactoComponent } from './components/tarjeta-contacto/tarjeta-contacto.component';
 import { TarjetaProveedorComponent } from './components/tarjeta-proveedor/tarjeta-proveedor.component';
 import {
-  Agrupacion, CampoTexto, ETIQUETAS_CAMPOS, Errores, FilaProveedor, FiltroCompras, GrupoProveedores, MESES_CORTOS, Menu, Metrica, Modal,
-  PestanaProveedor, Vista, borradorDe, proveedorVacio, puntosSpark,
+  Agrupacion, BorradorProveedor, CampoTexto, ETIQUETAS_CAMPOS, Errores, FilaProveedor, FiltroCompras, GrupoProveedores, MESES_CORTOS, Menu, Metrica, Modal,
+  PestanaProveedor, Vista, borradorDe, conFirma, proveedorVacio, puntosSpark,
 } from './proveedores.modelo';
 
 const AGRUPACIONES: { k: Agrupacion; titulo: string; detalle: string; icono: string }[] = [
@@ -55,7 +57,7 @@ const FILTRO_METRICA: Record<Metrica, string> = {
 };
 
 /**
- * Proveedores (Productos v5): cabecera, franja de métricas, lista agrupable
+ * Proveedores: cabecera, franja de métricas, lista agrupable
  * (Lista / Tarjetas) con la próxima acción de cada proveedor y la hoja
  * (tarjeta de contacto · General · Compras · Productos). La ficha queda como
  * borrador hasta guardar ("Cambios sin guardar"); compra rápida y baja van en modales.
@@ -80,6 +82,7 @@ export class ProductSuppliersPageComponent {
   protected readonly catalogo = inject(CatalogoStore);
   private readonly alertas = inject(AlertaService);
   private readonly router = inject(Router);
+  private readonly camposApi = inject(CampoPersonalizadoService);
 
   protected readonly icono = icono;
   protected readonly num = num;
@@ -93,7 +96,7 @@ export class ProductSuppliersPageComponent {
   private readonly general = viewChild(PestanaGeneralComponent);
   private readonly buscador = viewChild<ElementRef<HTMLInputElement>>('buscador');
 
-  // ── Estado de la pantalla ──
+  // Estado de la pantalla
   /** Período de la franja: 'hoy' · '7' · '30' (días por tramo de las sparklines). */
   protected readonly periodo = signal('hoy');
   protected readonly busqueda = signal('');
@@ -112,15 +115,15 @@ export class ProductSuppliersPageComponent {
   /** Se conserva al cambiar de pestaña o de proveedor. */
   protected readonly filtroCompras = signal<FiltroCompras>('todas');
   // Borrador de la ficha (alimenta "Cambios sin guardar").
-  private readonly guardado = signal<ProveedorV5 | null>(null);
-  private readonly borrador = signal<ProveedorV5 | null>(null);
+  private readonly guardado = signal<BorradorProveedor | null>(null);
+  private readonly borrador = signal<BorradorProveedor | null>(null);
   /** Pidió editar con "Editar" (con cambios o errores visibles también se queda en edición). */
   private readonly editando = signal(false);
   /** Intentó guardar: muestra todos los errores, no solo los de campos tocados. */
   private readonly intento = signal(false);
   private readonly guardando = signal(false);
 
-  // ── Datos ──
+  // Datos
   private readonly stat = (id: number) => statProveedor(this.catalogo, id);
   private readonly proxima = (ds: number[] | undefined) => proximaEntrega(ds ?? [], this.catalogo.hoy());
 
@@ -129,10 +132,13 @@ export class ProductSuppliersPageComponent {
   protected readonly puedeEditar = computed(() => this.catalogo.puede('proveedores.editar'));
   protected readonly puedeComprar = computed(() => this.catalogo.puede('compras.crear'));
   protected readonly puedeEliminar = computed(() => this.catalogo.puede('proveedores.eliminar'));
+  protected readonly puedeGestionarCampos = computed(() => this.catalogo.puede('campos.gestionar'));
+  /** Campos propios activos de los proveedores (vacío hasta que cargan). */
+  protected readonly campos = computed(() => this.camposApi.activos('proveedor'));
   private readonly esNuevo = computed(() => this.seleccionado() === 'nuevo');
   private readonly sucio = computed(() => {
     const b = this.borrador(), g = this.guardado();
-    return !!b && !!g && JSON.stringify(b) !== JSON.stringify(g);
+    return !!b && !!g && JSON.stringify(conFirma(b)) !== JSON.stringify(conFirma(g));
   });
 
   protected readonly carga = computed<'cargando' | 'error' | 'vacio' | 'lista'>(() => {
@@ -143,7 +149,7 @@ export class ProductSuppliersPageComponent {
   /** Error o vacío: solo la tarjeta de estado, sin lista ni hoja. */
   protected readonly soloEstado = computed(() => this.carga() === 'error' || this.carga() === 'vacio');
 
-  // ── Cabecera y métricas ──
+  // Cabecera y métricas
   protected readonly lectura = computed(() => {
     const ps = this.catalogo.proveedores(), cs = this.catalogo.compras(), hoy = this.catalogo.hoy();
     if (!ps.length) return '';
@@ -191,7 +197,7 @@ export class ProductSuppliersPageComponent {
     ];
   });
 
-  // ── Lista ──
+  // Lista
   private coincide(p: ProveedorV5): boolean {
     const q = this.busqueda().trim().toLowerCase(), m = this.metrica(), st = this.stat(p.id);
     if (q && ![p.nombre, p.nit, p.contactoNombre, p.correo].some((v) => (v || '').toLowerCase().includes(q))) return false;
@@ -250,7 +256,7 @@ export class ProductSuppliersPageComponent {
   private readonly idsVisibles = computed(() => this.grupos().flatMap((g) => (g.abierto ? g.filas.map((f) => f.proveedor.id) : [])));
   protected readonly cuentaVisibles = computed(() => pl(this.grupos().reduce((t, g) => t + g.filas.length, 0), 'proveedor', 'proveedores'));
 
-  // ── Hoja ──
+  // Hoja
   private readonly errores = computed<Errores>(() => {
     const d = this.borrador(), e: Errores = {};
     if (!d) return e;
@@ -260,6 +266,12 @@ export class ProductSuppliersPageComponent {
     if (d.nit && this.catalogo.proveedores().some((p) => p.id !== id && (p.nit || '') === d.nit.trim())) e.nit = 'Ya existe un proveedor con este NIT.';
     return e;
   });
+  /** Errores de los campos propios, por clave (se muestran al intentar guardar). */
+  protected readonly erroresAtributos = computed(() => {
+    const d = this.borrador();
+    return d ? erroresCampos(d.atributos, this.campos()) : {};
+  });
+  protected readonly mostrarErroresAtributos = computed(() => this.intento());
   /** Errores que se muestran: los de campos que cambiaron, o todos si ya intentó guardar. */
   protected readonly erroresVisibles = computed(() => {
     const e = this.errores(), d = this.borrador(), g = this.guardado(), visibles: Partial<Record<CampoTexto, string>> = {};
@@ -277,7 +289,7 @@ export class ProductSuppliersPageComponent {
     const nuevo = sel === 'nuevo', id = nuevo ? 0 : sel, proveedor = nuevo ? null : this.catalogo.proveedor(id);
     const ids = this.idsVisibles(), posicion = ids.indexOf(id), st = this.stat(id);
     const recibido = this.catalogo.compras().filter((c) => c.estado === 'recibida').reduce((t, c) => t + this.catalogo.totalCompra(c), 0);
-    const conError = Object.keys(this.erroresVisibles()).length > 0;
+    const conError = Object.keys(this.erroresVisibles()).length > 0 || (this.intento() && Object.keys(this.erroresAtributos()).length > 0);
     return {
       nuevo, id, borrador: d, proveedor, conError,
       editable: this.catalogo.puede(nuevo ? 'proveedores.crear' : 'proveedores.editar'),
@@ -306,13 +318,24 @@ export class ProductSuppliersPageComponent {
   });
 
   constructor() {
+    // Se compara con la firma de los campos propios: los vacíos no cuentan como cambio.
+    const comparable = (s: () => BorradorProveedor | null) => computed(() => {
+      const b = s();
+      return b ? conFirma(b) : null;
+    });
     vigilarCambios({
-      borrador: this.borrador, guardado: this.guardado, etiquetas: ETIQUETAS_CAMPOS, nuevo: () => this.esNuevo(),
+      borrador: comparable(this.borrador), guardado: comparable(this.guardado), etiquetas: ETIQUETAS_CAMPOS, nuevo: () => this.esNuevo(),
       tituloNuevo: 'Proveedor sin guardar', textoNuevo: 'Todavía no se ha creado. Guárdalo para que aparezca al crear compras.',
       guardar: () => this.guardar(), descartar: () => this.descartar(),
-      invalido: () => (this.intento() && Object.keys(this.errores()).length ? { titulo: 'Revisa los campos marcados', texto: Object.values(this.errores())[0]! } : null),
+      invalido: () => {
+        if (!this.intento()) return null;
+        const ea = this.erroresAtributos(), campo = this.campos().find((c) => ea[c.clave]);
+        const texto = Object.values(this.errores())[0] ?? (campo ? `${campo.etiqueta}: ${ea[campo.clave]}` : '');
+        return texto ? { titulo: 'Revisa los campos marcados', texto } : null;
+      },
     });
     this.catalogo.asegurar();
+    this.camposApi.asegurar('proveedor');
     const id = Number(inject(ActivatedRoute).snapshot.queryParamMap.get('proveedor'));
     if (id) this.catalogo.alListo(() => this.abrir(id));
     // Un menú a la vez: al abrir el del período se cierran los de la página.
@@ -321,14 +344,14 @@ export class ProductSuppliersPageComponent {
     });
   }
 
-  // ── Selección y navegación ──
+  // Selección y navegación
   /** Hay cambios que se perderían: sacude la alerta y no deja seguir. */
   private bloqueado(): boolean {
     if (!this.sucio()) return false;
     this.alertas.sacudir();
     return true;
   }
-  private cargarBorrador(id: number | 'nuevo', d: ProveedorV5): void {
+  private cargarBorrador(id: number | 'nuevo', d: BorradorProveedor): void {
     this.seleccionado.set(id);
     this.guardado.set(structuredClone(d));
     this.borrador.set(d);
@@ -339,12 +362,12 @@ export class ProductSuppliersPageComponent {
     if (id === this.seleccionado() || this.bloqueado()) return;
     const p = this.catalogo.proveedor(id);
     if (!p) return;
-    this.cargarBorrador(id, borradorDe(p));
+    this.cargarBorrador(id, borradorDe(p, this.campos()));
     this.editando.set(false);
   }
   protected nuevo(): void {
     if (this.catalogo.niega('proveedores.crear') || this.bloqueado()) return;
-    this.cargarBorrador('nuevo', proveedorVacio());
+    this.cargarBorrador('nuevo', proveedorVacio(this.campos()));
     this.pestana.set('general');
     this.editando.set(true);
     setTimeout(() => this.general()?.enfocarNombre(), 80);
@@ -381,8 +404,8 @@ export class ProductSuppliersPageComponent {
     else this.compraRapida(proveedorId);
   }
 
-  // ── Ficha ──
-  protected editar(cambio: Partial<ProveedorV5>): void {
+  // Ficha
+  protected editar(cambio: Partial<BorradorProveedor>): void {
     this.borrador.update((b) => (b ? { ...b, ...cambio } : b));
   }
   protected ponerActivo(activo: boolean): void {
@@ -402,21 +425,24 @@ export class ProductSuppliersPageComponent {
     if (!b || this.guardando()) return;
     const nuevo = this.esNuevo();
     if (this.catalogo.niega(nuevo ? 'proveedores.crear' : 'proveedores.editar')) return;
-    if (Object.keys(this.errores()).length) {
+    if (Object.keys(this.errores()).length || Object.keys(this.erroresAtributos()).length) {
       this.intento.set(true);
       this.pestana.set('general');
       return this.alertas.sacudir();
     }
-    const limpio = { ...b, nombre: b.nombre.trim(), nit: b.nit.trim(), correo: b.correo.trim(), telefono: b.telefono.trim(), direccion: b.direccion.trim(), contactoNombre: b.contactoNombre.trim() };
+    const { atributos, ...resto } = b, campos = this.campos();
+    const limpio = { ...resto, nombre: b.nombre.trim(), nit: b.nit.trim(), correo: b.correo.trim(), telefono: b.telefono.trim(), direccion: b.direccion.trim(), contactoNombre: b.contactoNombre.trim() };
     this.guardando.set(true);
     const r = await this.catalogo.guardarProveedor(
       limpio,
       nuevo,
       nuevo ? { texto: `${limpio.nombre} ya aparece al crear compras`, accion: (p) => ({ label: 'Nueva compra', ejecutar: () => this.compraRapida(p.id) }) } : {},
+      // Sin campos activos no se mandan: así no se exigen obligatorios que no se ven.
+      campos.length ? atributosDe(atributos, campos) : undefined,
     );
     this.guardando.set(false);
     if (!r) return; // el error ya está en la pila; el borrador queda para corregir
-    const d = borradorDe(r);
+    const d = borradorDe(r, this.campos());
     this.seleccionado.set(r.id);
     this.guardado.set(structuredClone(d));
     this.borrador.set(d);
@@ -435,7 +461,7 @@ export class ProductSuppliersPageComponent {
     this.alertas.mostrar({ estado: 'info', titulo: 'NIT copiado', texto: nit });
   }
 
-  // ── Compra rápida y baja ──
+  // Compra rápida y baja
   protected compraRapida(id: number): void {
     if (this.catalogo.niega('compras.crear') || this.bloqueado()) return;
     this.menu.set(null);
@@ -471,18 +497,21 @@ export class ProductSuppliersPageComponent {
 
   protected exportar(): void {
     const celda = (v: unknown) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const campos = this.campos();
     const filas = this.catalogo.proveedores().map((p) => {
       const st = this.stat(p.id), dias = (p.diasEntrega ?? []).map((n) => DIAS.find((x) => x[0] === n)?.[1] ?? '').join(' ');
-      return [p.nombre, p.nit, p.contactoNombre, p.correo, p.telefono, p.direccion, dias, p.activo ? 'si' : 'no', st.total, st.pendientes.length].map(celda).join(',');
+      return [p.nombre, p.nit, p.contactoNombre, p.correo, p.telefono, p.direccion, dias, p.activo ? 'si' : 'no', st.total, st.pendientes.length, ...campos.map((c) => textoValor(c, p.atributos?.[c.clave]))]
+        .map(celda).join(',');
     });
+    const cabecera = 'nombre,nit,contacto,correo,telefono,direccion,dias_entrega,activo,total_recibido,pendientes' + campos.map((c) => ',' + celda(c.etiqueta)).join('');
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿nombre,nit,contacto,correo,telefono,direccion,dias_entrega,activo,total_recibido,pendientes\n' + filas.join('\n')], { type: 'text/csv' }));
+    a.href = URL.createObjectURL(new Blob(['﻿' + cabecera + '\n' + filas.join('\n')], { type: 'text/csv' }));
     a.download = 'proveedores.csv';
     a.click();
     this.alertas.mostrar({ estado: 'success', titulo: `${filas.length} proveedores exportados a CSV` });
   }
 
-  // ── Filtros, grupos y menús ──
+  // Filtros, grupos y menús
   protected alternarMetrica(k: string): void {
     this.metrica.update((m) => (m === k ? null : (k as Metrica)));
     this.plegados.set({});
@@ -509,7 +538,7 @@ export class ProductSuppliersPageComponent {
     this.plegados.update((p) => ({ ...p, [clave]: !p[clave] }));
   }
 
-  // ── Atajos ──
+  // Atajos
   protected atajos(e: KeyboardEvent): void {
     if (esGuardar(e)) {
       e.preventDefault();

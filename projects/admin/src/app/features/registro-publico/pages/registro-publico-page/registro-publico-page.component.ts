@@ -43,7 +43,7 @@ import { ModuloPublico, PlanPublico } from '../../models/plan-publico.model';
 import { RegistroPublicoService } from '../../services/registro-publico.service';
 import { EMISOR_FACTURA } from '../../emisor-factura';
 
-/** COP sin decimales y con "." de miles — ver el comentario original. */
+/** Pesos con el separador de miles de es-CO («$100.000»). */
 function formatCop(value: number): string {
   return `$${value.toLocaleString('es-CO')}`;
 }
@@ -51,8 +51,8 @@ function formatCop(value: number): string {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * IVA de los planes en la pre-factura (2026-10-05). Todavía no está
- * decidido si `precioMensual` incluye IVA:
+ * IVA de los planes en la pre-factura. Todavía no está decidido si
+ * `precioMensual` incluye IVA:
  *  - `null`        → se muestra el precio tal cual y el IVA "por definir".
  *  - `'adicional'` → el IVA se suma al precio (100.000 + 19.000).
  *  - `'incluido'`  → el precio ya trae el IVA y se desglosa por dentro.
@@ -115,12 +115,11 @@ interface CamposFormulario {
 
 type Campo = keyof CamposFormulario;
 
-/** Forma de cada entrada de `camposPaso()` — anotada explícita a
- * propósito: sin esto, TS infiere el tipo de retorno del `computed` como
- * una unión de las formas exactas de cada array literal (paso 2 vs paso
- * 3), y el template type-checking rechaza leer `c.opcional`/`c.bloqueado`
- * porque no están en TODAS las variantes de esa unión (no se compiló al
- * traer el handoff, corregido acá). */
+/**
+ * Forma de cada entrada de `camposPaso()`. Se anota explícita porque, si no,
+ * TS infiere una unión de los arrays de los pasos 2 y 3 y la plantilla no
+ * deja leer `c.opcional` / `c.bloqueado`, que no están en todas las variantes.
+ */
 interface CampoDeFormulario {
   campo: Campo;
   label: string;
@@ -173,9 +172,9 @@ const UI_MODULO: Record<string, { icono: typeof IconPuzzle; desc: string }> = {
 const uiModulo = (codigo: string) => UI_MODULO[codigo] ?? { icono: IconPuzzle, desc: '' };
 
 /**
- * Página pública de registro/checkout (`/registro`, fuera del shell).
+ * Página pública de registro (`/registro`, fuera del shell).
  *
- * Rediseño 2026-09-27 (`Registro - Rediseño.dc.html`):
+ * @remarks
  * - Topbar de ancho completo: logo a la izquierda, stepper al centro,
  *   "Iniciar sesión" a la derecha con hover animado.
  * - Sin tarjeta blanca: los pasos van directo sobre `bg-login-bg`, con
@@ -187,9 +186,6 @@ const uiModulo = (codigo: string) => UI_MODULO[codigo] ?? { icono: IconPuzzle, d
  *   con chips), 3 persona dueña ("Voy a operar la cuenta yo" reutiliza el
  *   correo de contacto), 4 módulos extra (opcional), 5 enviado.
  * - Enter avanza, Esc vuelve.
- *
- * Mismo contrato con el backend que antes: `listarPlanes()`,
- * `listarCatalogoModulos()` y `registrar()` sin cambios.
  */
 @Component({
   selector: 'app-registro-publico-page',
@@ -227,7 +223,7 @@ export class RegistroPublicoPageComponent implements OnInit {
   /** Pasos donde ya se intentó avanzar — recién ahí se pintan los errores. */
   private readonly intentados = signal<Set<number>>(new Set());
 
-  // ── Datos ───────────────────────────────────────────────────────────
+  // Datos
   protected readonly planes = signal<PlanPublico[]>([]);
   protected readonly cargandoPlanes = signal(true);
   protected readonly errorPlanes = signal<string | null>(null);
@@ -240,22 +236,17 @@ export class RegistroPublicoPageComponent implements OnInit {
   protected readonly enviando = signal(false);
   protected readonly errorEnvio = signal<string | null>(null);
 
-  // ── Derivados ───────────────────────────────────────────────────────
+  // Derivados
   /** Ordenados por precio: el primero es el "de entrada". */
   protected readonly planesOrdenados = computed(() =>
     [...this.planes()].sort((a, b) => (a.precioMensual ?? Infinity) - (b.precioMensual ?? Infinity)),
   );
-  /** Anotado explícito (`PlanPublico | null`) a propósito: sin esto, TS
-   * infiere el tipo de `planesOrdenados()[0]` como `PlanPublico` (no
-   * `| undefined`, porque el proyecto no tiene `noUncheckedIndexedAccess`)
-   * y termina creyendo que `plan()` nunca puede ser `null` — Angular
-   * entonces marca como redundante (`NG8107`) cada `plan()?.` del
-   * template. Esa "certeza" es falsa en tiempo de ejecución: mientras
-   * `cargandoPlanes()` sigue en `true` (o si `GET /planes` devuelve una
-   * lista vacía), `planesOrdenados()` está vacío y `[0]` es
-   * `undefined` de verdad — el "ticket en vivo" (aside, sin guardas de
-   * carga) lee `plan()` en ese momento. La anotación deja el tipo
-   * correcto y quita los warnings sin sacar ningún `?.` real. */
+  /**
+   * Tipado explícito `PlanPublico | null`: sin `noUncheckedIndexedAccess`, TS
+   * cree que `planesOrdenados()[0]` nunca es `undefined` y Angular marca cada
+   * `plan()?.` como redundante (NG8107). Mientras cargan los planes (o si no
+   * hay) sí es `undefined`, y la pre-factura lo lee en ese momento.
+   */
   protected readonly plan = computed<PlanPublico | null>(
     () => this.planes().find((p) => p.id === this.planId()) ?? this.planesOrdenados()[0] ?? null,
   );
@@ -454,7 +445,7 @@ export class RegistroPublicoPageComponent implements OnInit {
     ];
   });
 
-  // ── Ciclo de vida ──────────────────────────────────────────────────
+  // Ciclo de vida
   ngOnInit(): void {
     this.cargarPlanes();
     this.registroPublicoService.listarCatalogoModulos().subscribe({
@@ -489,7 +480,7 @@ export class RegistroPublicoPageComponent implements OnInit {
     }
   }
 
-  // ── Acciones ───────────────────────────────────────────────────────
+  // Acciones
   protected irA(n: Paso): void {
     if (n <= this.pasoMax() && this.paso() < 5) {
       this.paso.set(n);
@@ -502,15 +493,7 @@ export class RegistroPublicoPageComponent implements OnInit {
     this.modulosExtraSeleccionados.set(new Set());
   }
 
-  /** "Incluye:" para el plan de entrada (el más barato), "Todo lo de
-   * <entrada>, más:" para el resto — mismo criterio que la versión
-   * anterior de esta página (`planDeEntrada`/`encabezadoCaracteristicas`,
-   * ver el handoff `handoff-registro`). El rediseño 2026-09-27 dejó de
-   * pintar `plan.caracteristicas` por completo (regresión no señalada en
-   * su LEEME — el bullet de marketing de Plus, ej. "Tienda pública
-   * propia"/"Asistente de IA", desapareció de la tarjeta); se reincorpora
-   * acá con el mismo encabezado condicional, adaptado al estilo oscuro
-   * nuevo. */
+  /** «Incluye:» para el plan de entrada (el más barato); «Todo lo de <entrada>, más:» para el resto. */
   protected encabezadoCaracteristicas(plan: PlanPublico): string {
     const entrada = this.planesOrdenados()[0];
     if (!entrada || plan.id === entrada.id) {

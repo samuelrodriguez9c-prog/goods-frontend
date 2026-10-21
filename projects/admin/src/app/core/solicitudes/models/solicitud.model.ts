@@ -1,4 +1,4 @@
-/** Formas de `/mis-solicitudes` (backend `SolicitudService`, 2026-10-04). */
+// Formas de `/mis-solicitudes`.
 
 export type TipoSolicitud = 'modulo_nuevo' | 'ajuste_modulo' | 'campo_personalizado' | 'otro';
 export type EstadoSolicitud =

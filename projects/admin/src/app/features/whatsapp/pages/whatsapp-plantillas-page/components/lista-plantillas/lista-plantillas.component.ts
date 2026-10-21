@@ -6,12 +6,12 @@ import { cop } from '../../../../shared/secciones';
 import { FiltroPlantillas } from '../../../../shared/whatsapp-modulo.store';
 import { costoDe, esPromo, normalizar } from '../../plantillas.util';
 import { FilaPlantillaComponent } from '../fila-plantilla/fila-plantilla.component';
-import { OpcionSegmentado, SegmentadoComponent } from '../../../../components/segmentado/segmentado.component';
+import { OpcionSegmentado, SegmentadoComponent } from '../../../../../../shared/ui/segmentado/segmentado.component';
 
 const ETIQUETAS: Record<FiltroPlantillas, string> = { todas: 'Todas', aprobada: 'Aprobadas', pendiente: 'En revisión', rechazada: 'Rechazadas' };
 
 /**
- * Lista de plantillas (LEEME §5): buscador, segmentado de estado con
+ * Lista de plantillas: buscador, segmentado de estado con
  * contadores, sincronizar con WhatsApp y los grupos Servicio / Promoción.
  */
 @Component({

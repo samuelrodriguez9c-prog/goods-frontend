@@ -46,14 +46,15 @@ import { cuando, dias, fmt, pl, plata } from '../../../../shared/ui/lista-hoja/f
 import { filasCambiadas } from '../../../../shared/ui/filas-cambiadas';
 import { traerTodo } from '../../../../shared/ui/lista-hoja/traer-todo';
 
+/** Días de espera desde el alta a partir de los cuales una llamada cuenta como atrasada. */
 const UMBRAL = 10;
 
 const GUION: [string, string | null][] = [
-  ['Confirmá que hablás con el dueño', 'Nombre completo y si tiene autorización para contratar'],
-  ['Repasá el nombre del negocio y el rubro', 'Así aparece en su panel y en sus comprobantes'],
-  ['Confirmá el plan y el precio', null],
-  ['Preguntá si necesita algún módulo extra', 'Lo marcás en el paso siguiente'],
-  ['Contale que le llega un enlace por correo', 'Para definir su contraseña y activar la cuenta'],
+  ['Confirma que hablas con el dueño', 'Nombre completo y si tiene autorización para contratar'],
+  ['Repasa el nombre del negocio y el rubro', 'Así aparece en su panel y en sus comprobantes'],
+  ['Confirma el plan y el precio', null],
+  ['Pregunta si necesita algún módulo extra', 'Lo marcas en el paso siguiente'],
+  ['Cuéntale que le llega un enlace por correo', 'Para definir su contraseña y activar la cuenta'],
 ];
 
 type Fase = 'preparar' | 'enCurso' | 'confirmar' | 'esperando' | 'activada';
@@ -67,14 +68,12 @@ interface FilaAlta extends Empresa {
 }
 
 /**
- * Altas pendientes — cola + hoja de la llamada (diseño `Altas pendientes - Cola y llamada`).
+ * Altas pendientes: cola de Empresas por activar y hoja de la llamada, con cinco
+ * fases (preparar → llamada en curso → confirmar → esperando al cliente → activada).
  *
- * Reemplaza la lista + `ActivarEmpresaWizardComponent` (modal) por una hoja
- * inline con cinco fases: preparar → llamada en curso → confirmar →
- * esperando al cliente → activada. Mismos endpoints que el wizard:
- * `corregirNombre`, `actualizar`, `cambiarPlan`, `programarLlamada`,
- * `llamadaFinalizada`, `reenviarEnlace`, `rechazar`, y el poll de 30s
- * mientras se espera al cliente.
+ * @remarks
+ * Mientras alguna Empresa espera al cliente, la cola se recarga cada 30 s para
+ * detectar cuándo se activa.
  */
 @Component({
   selector: 'app-altas-pendientes-page',
@@ -128,7 +127,7 @@ export class AltasPendientesPageComponent {
   protected readonly segundos = signal(0);
   protected readonly guionHecho = signal<ReadonlySet<number>>(new Set());
   protected readonly extras = signal<ReadonlySet<number>>(new Set());
-  /** Días de prueba acordados en la llamada (2026-10-10). `null` = los del plan. */
+  /** Días de prueba acordados en la llamada. `null` = los del plan. */
   protected readonly diasPrueba = signal<number | null>(null);
   protected readonly diasPruebaMax = DIAS_PRUEBA_MAX;
   protected readonly opcionesPrueba = [0, 7, 15, 30];
@@ -168,11 +167,25 @@ export class AltasPendientesPageComponent {
       hoy: { titulo: 'Activadas hoy', icono: IconCheck, color: '#087b5d', fondo: '#d5f5e3' },
     };
     const o = this.orden();
-    const porFecha = (a: FilaAlta, b: FilaAlta) => (o === 'desc' ? -1 : 1) * (a.creadoEn < b.creadoEn ? -1 : 1);
+    const viejasPrimero = (a: FilaAlta, b: FilaAlta) => (a.creadoEn < b.creadoEn ? -1 : a.creadoEn > b.creadoEn ? 1 : 0);
+    const porFecha = (a: FilaAlta, b: FilaAlta) => (o === 'desc' ? -1 : 1) * viejasPrimero(a, b);
+    // «Por urgencia», lo que hay que atender primero en cada grupo: las atrasadas y
+    // con teléfono antes (se pueden llamar ya), la llamada agendada más próxima,
+    // y entre las activadas, la más reciente. «Más recientes/antiguas» ordena
+    // todos los grupos solo por fecha de registro.
+    const urgencia: Record<Grupo, (a: FilaAlta, b: FilaAlta) => number> = {
+      llamar: (a, b) =>
+        Number(this.espera(b) >= UMBRAL) - Number(this.espera(a) >= UMBRAL) ||
+        Number(!!b.telefonoContacto) - Number(!!a.telefonoContacto) ||
+        viejasPrimero(a, b),
+      agendadas: (a, b) => (a.llamadaProgramadaPara! < b.llamadaProgramadaPara! ? -1 : 1),
+      esperando: viejasPrimero,
+      hoy: (a, b) => -viejasPrimero(a, b),
+    };
     return (['llamar', 'agendadas', 'esperando', 'hoy'] as Grupo[])
       .map((k): GrupoLista | null => {
         let l = this.filtradas().filter((x) => this.grupoDe(x) === k);
-        l = [...l].sort(k === 'agendadas' ? (a, b) => (a.llamadaProgramadaPara! < b.llamadaProgramadaPara! ? -1 : 1) : porFecha);
+        l = [...l].sort(o === 'urgencia' ? urgencia[k] : porFecha);
         // Sin filas no hay subtítulo que calcular (`l[0]`, `Math.max()` de vacío): el grupo se descarta.
         return l.length ? { clave: k, ...META[k], sub: this.subGrupo(k, l), filas: l.map((x) => this.fila(x, k)) } : null;
       })
@@ -184,7 +197,7 @@ export class AltasPendientesPageComponent {
       const at = l.filter((x) => this.espera(x) >= UMBRAL).length;
       return `la más vieja espera ${Math.max(...l.map(this.espera))} días` + (at ? ` · ${pl(at, 'atrasada', 'atrasadas')}` : '');
     }
-    if (k === 'agendadas') return `próxima: ${cuando(l[0].llamadaProgramadaPara!)}`;
+    if (k === 'agendadas') return `próxima: ${cuando(l.map((x) => x.llamadaProgramadaPara!).sort()[0])}`;
     if (k === 'esperando') return 'tienen el enlace, falta que confirmen';
     return pl(l.length, 'cliente nuevo', 'clientes nuevos');
   }
@@ -258,7 +271,7 @@ export class AltasPendientesPageComponent {
     if (!silencioso) this.cargando.set(this.cola().length === 0);
     this.error.set(null);
     forkJoin({
-      // Todas las páginas (2026-10-07): antes se cortaba en 100.
+      // Todas las páginas: la cola crece con la cantidad de clientes.
       pendientes: traerTodo((page) => this.empresaService.listar({ estado: 'pendiente', page })),
       esperando: traerTodo((page) => this.empresaService.listar({ estado: 'informacion_corroborada', page })),
       suscripciones: traerTodo((page) => this.suscripcionService.listar('pendiente', undefined, page)),
@@ -422,7 +435,7 @@ export class AltasPendientesPageComponent {
       .seguir(forkJoin(pedidos), {
         titulo: 'Guardando cambios', texto: x.nombre,
         exito: { titulo: 'Datos corroborados', texto: pl(pedidos.length, 'dato actualizado', 'datos actualizados') },
-        error: { titulo: 'No se pudo guardar', texto: 'Revisá los datos.' },
+        error: { titulo: 'No se pudo guardar', texto: 'Revisa los datos.' },
       })
       .subscribe({
         next: () => {
@@ -441,7 +454,7 @@ export class AltasPendientesPageComponent {
       .seguir(this.suscripcionService.cambiarPlan(x.id, p.id), {
         titulo: 'Cambiando el plan', texto: `${x.nombre} → ${p.nombre}`,
         exito: { titulo: 'Plan actualizado', texto: `Arranca con ${p.nombre}.` },
-        error: { titulo: 'No se pudo cambiar el plan', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo cambiar el plan', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: () => this.cola.update((xs) => xs.map((y) => (y.id === x.id ? { ...y, planId: p.id } : y))), error: () => undefined });
   }
@@ -483,12 +496,12 @@ export class AltasPendientesPageComponent {
       .seguir(this.empresaService.programarLlamada(x.id, iso), {
         titulo: 'Agendando la llamada', texto: x.nombre,
         exito: { titulo: 'Llamada agendada', texto: cuando(iso) },
-        error: { titulo: 'No se pudo agendar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo agendar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: () => this.cola.update((xs) => xs.map((y) => (y.id === x.id ? { ...y, llamadaProgramadaPara: iso } : y))), error: () => undefined });
   }
 
-  /** Lo que pidió en el checkout + lo que ya trae el plan. */
+  /** Módulos del catálogo solicitados en el checkout (`modulosSolicitados`). */
   protected readonly pedidos = computed(() => {
     const cods = this.sel()?.modulosSolicitados ?? [];
     return this.catalogo().filter((m) => cods.includes(m.codigo));
@@ -541,7 +554,7 @@ export class AltasPendientesPageComponent {
         this.fase.set('esperando');
       },
       // El backend explica por qué (ej. "este negocio ya usó su prueba gratis").
-      error: (err) => this.alertas.resolver(id, { estado: 'error', titulo: 'No se pudo confirmar', texto: mensajeDeError(err, 'No se cambió nada. Intentá de nuevo.') }),
+      error: (err) => this.alertas.resolver(id, { estado: 'error', titulo: 'No se pudo confirmar', texto: mensajeDeError(err, 'No se cambió nada. Intenta de nuevo.') }),
     });
   }
 
@@ -565,7 +578,7 @@ export class AltasPendientesPageComponent {
       .seguir(this.empresaService.reenviarEnlace(x.id), {
         titulo: 'Reenviando el enlace', texto: x.nombre,
         exito: { titulo: 'Enlace reenviado', texto: x.duenoCorreo ?? x.correoContacto },
-        error: { titulo: 'No se pudo reenviar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo reenviar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ error: () => undefined });
   }
@@ -579,7 +592,7 @@ export class AltasPendientesPageComponent {
       .seguir(this.empresaService.rechazar(x.id, motivo), {
         titulo: 'Rechazando la solicitud', texto: x.nombre,
         exito: { titulo: 'Solicitud rechazada', texto: `${x.nombre} queda en Empresas como rechazada.` },
-        error: { titulo: 'No se pudo rechazar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo rechazar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({
         next: () => {
@@ -590,8 +603,9 @@ export class AltasPendientesPageComponent {
       });
   }
 
+  /** «Volver al inicio» de la pantalla de error: va a la portada de staff. */
   protected volver(): void {
-    this.router.navigateByUrl('/altas-pendientes');
+    this.router.navigateByUrl('/');
   }
 }
 

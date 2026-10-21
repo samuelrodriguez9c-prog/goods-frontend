@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, model, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, model, output, signal } from '@angular/core';
 import { IconChevronRight, TablerIconComponent } from '@tabler/icons-angular';
 
 export interface DatosConexionManual {
@@ -28,8 +28,11 @@ export class ConexionManualComponent {
   protected readonly phoneNumberId = signal('');
   protected readonly wabaId = signal('');
 
+  /** Token de Meta (largo) e identificador del número (solo dígitos, 6 o más). */
+  protected readonly valido = computed(() => this.token().trim().length > 20 && /^\d{6,}$/.test(this.phoneNumberId().trim()));
+
   protected enviar(): void {
-    if (this.conectando() || !this.token().trim() || !this.phoneNumberId().trim()) return;
+    if (this.conectando() || !this.valido()) return;
     this.conectar.emit({
       token: this.token().trim(),
       phoneNumberId: this.phoneNumberId().trim(),

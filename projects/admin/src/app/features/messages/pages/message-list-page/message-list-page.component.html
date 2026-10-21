@@ -168,7 +168,7 @@
             <div class="flex items-center gap-2 px-3 py-2.5">
               @if (c.estado === 'cerrada') {
                 <p class="flex-1 px-1 text-xs text-gray-400">
-                  Esta conversación está cerrada — abrí una nueva si necesitás seguir hablando con soporte.
+                  Esta conversación está cerrada — abre una nueva si necesitas seguir hablando con soporte.
                 </p>
               } @else {
                 <input
@@ -177,7 +177,7 @@
                   [ngModel]="mensajeNuevo()"
                   (ngModelChange)="mensajeNuevo.set($event)"
                   (keydown.enter)="enviar()"
-                  placeholder="Escribí un mensaje…"
+                  placeholder="Escribe un mensaje…"
                   class="min-w-0 flex-1 rounded-[9px] border border-gray-200 bg-card-bg px-3 py-2 text-[13.5px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400"
                 />
                 <button
@@ -195,7 +195,7 @@
         } @else {
           <div class="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
             <tabler-icon [icon]="iconModulo" [size]="28" [stroke]="1.5" class="text-gray-300" />
-            <p class="text-[13px] font-medium text-gray-500">Elegí una conversación de la lista.</p>
+            <p class="text-[13px] font-medium text-gray-500">Elige una conversación de la lista.</p>
           </div>
         }
       </div>
@@ -210,7 +210,7 @@
       [ngModel]="nuevoMensaje()"
       (ngModelChange)="nuevoMensaje.set($event)"
       rows="4"
-      placeholder="Escribí tu mensaje…"
+      placeholder="Escribe tu mensaje…"
       [disabled]="creandoConversacion()"
       class="mt-3 w-full resize-none rounded-lg border border-gray-200 bg-card-bg px-3 py-2 text-[13.5px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400 disabled:opacity-60"
     ></textarea>

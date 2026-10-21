@@ -25,8 +25,8 @@ const TITULOS: Record<string, string> = {
 };
 
 /**
- * Aviso de acceso de la Empresa (2026-10-04), dos variantes según
- * `CurrentUser.accesoEmpresa` (backend `ModuloAccessService.estadoAcceso`):
+ * Aviso de acceso de la Empresa según `CurrentUser.accesoEmpresa`, en tres
+ * variantes:
  *
  * - `variante="cobro"` — el cobro del próximo mes ya se generó: franja
  *   informativa con fecha y monto.
@@ -51,7 +51,7 @@ const TITULOS: Record<string, string> = {
         </p>
       </div>
     } @else if (variante() === 'prueba') {
-      <!-- Período de prueba (2026-10-10): azul mientras quedan días, ámbar los últimos 3. -->
+      <!-- Período de prueba: azul mientras quedan días, ámbar los últimos 3. -->
       <div
         class="flex items-start gap-3 border-b px-6 py-3 text-[13px]"
         [class]="pruebaUrgente() ? 'border-[#f3d38a] bg-[#fff8e1] text-[#5c4300]' : 'border-[#cfe3f5] bg-[#f0f7fd] text-[#0c4a6e]'"

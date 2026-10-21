@@ -1,15 +1,11 @@
 import { CanDeactivateFn, Routes } from '@angular/router';
 import { ProductListPageComponent } from './pages/product-list-page/product-list-page.component';
-import { ProductDetailPageComponent } from './pages/product-detail-page/product-detail-page.component';
 
 /** Con cambios sin guardar no se sale: la pila se sacude y abre "Cambios sin guardar". */
 const sinCambiosPendientes: CanDeactivateFn<ProductListPageComponent> = (pagina) => pagina.puedeSalir();
 
-/**
- * Products (v4, conectado) + Categorías, Inventario, Proveedores y Compras
- * (v5, handoff-productos-v5) — estas cuatro se cargan por separado.
- * Las rutas estáticas van ANTES de ':id' (si no, 'categorias' se toma como id).
- */
+// Products y sus cuatro módulos (Categorías, Inventario, Proveedores, Compras), que se cargan por separado.
+// Las rutas fijas van antes de ':id'; si no, 'categorias' se toma como un id.
 export const PRODUCTS_ROUTES: Routes = [
   {
     path: '',
@@ -40,5 +36,6 @@ export const PRODUCTS_ROUTES: Routes = [
     loadComponent: () => import('./pages/product-purchases-page/product-purchases-page.component').then((m) => m.ProductPurchasesPageComponent),
     data: { breadcrumb: 'Compras', icon: 'shopping-cart' },
   },
-  { path: ':id', component: ProductDetailPageComponent, data: { breadcrumb: 'Producto', icon: 'tag' } },
+  // La ficha vive en la hoja de Products.
+  { path: ':id', redirectTo: ({ params }) => `/products?producto=${params['id']}` },
 ];

@@ -1,0 +1,53 @@
+@let fx = s.f();
+<section #sec (mouseenter)="s.hov.set('local')" (mouseleave)="s.hov.set(null)"
+  class="tienda-ficha flex flex-col gap-[18px] rounded-2xl border bg-white p-5 transition-[border-color,box-shadow] duration-[250ms] [animation-delay:.12s]" [style.border-color]="s.borde('local')" [style.box-shadow]="s.sombra('local')">
+  <app-tienda-cabeza [icono]="i.pin" titulo="Ubicación y horario" sub="Dónde encontrarte y cuándo atiendes. Lo que dejes vacío no se muestra." />
+  <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3">
+    <label class="flex flex-col gap-2">
+      <app-tienda-etiqueta t="Ciudad" sub="Va bajo el nombre, junto a «Recibiendo pedidos»." [opc]="true" />
+      <input [ngModel]="fx.ciudad" (ngModelChange)="s.set('ciudad', $event)" maxlength="80" placeholder="Ej. Pereira, Risaralda" autocomplete="address-level2"
+        class="w-full rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] text-[#111827] shadow-[0_0_0_1px_#e5e5e5] outline-none transition-[box-shadow,background-color] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]" />
+    </label>
+    <label class="flex flex-col gap-2">
+      <app-tienda-etiqueta t="Dirección del local" sub="Para «Recoger en tienda». Sin dirección, la tienda arranca en domicilio." [opc]="true" />
+      <input [ngModel]="fx.direccionTienda" (ngModelChange)="s.set('direccionTienda', $event)" maxlength="200" placeholder="Ej. Cra. 7 # 19-28, local 3" autocomplete="street-address"
+        class="w-full rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] text-[#111827] shadow-[0_0_0_1px_#e5e5e5] outline-none transition-[box-shadow,background-color] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]" />
+    </label>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <app-tienda-etiqueta t="Horario" sub="Una fila por grupo de días. Va en el pie de la tienda." [opc]="true" />
+    @if (fx.horario.length) {
+      <div class="flex flex-col gap-2">
+        @for (h of fx.horario; track $index; let k = $index) {
+          <div data-fila class="tienda-sube grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_auto_auto] items-center gap-2 max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:rounded-xl max-sm:p-2 max-sm:shadow-[0_0_0_1px_#ececec]">
+            <input [ngModel]="h.dias" (ngModelChange)="cambiar(k, { dias: $event })" maxlength="40" placeholder="Días" [attr.aria-label]="'Días de la fila ' + (k + 1)"
+              class="min-w-0 rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] text-[#111827] outline-none transition-[box-shadow,background-color] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)] max-sm:col-span-2"
+              [style.box-shadow]="!valida(h) && !h.dias.trim() ? '0 0 0 1px #e0605a' : '0 0 0 1px #e5e5e5'" />
+            <input [ngModel]="h.cerrado ? '' : h.horas" (ngModelChange)="cambiar(k, { horas: $event })" [disabled]="h.cerrado" maxlength="40" [placeholder]="h.cerrado ? 'Cerrado' : 'Horas, ej. 9:00 a. m. – 5:00 p. m.'" [attr.aria-label]="'Horas de la fila ' + (k + 1)"
+              class="min-w-0 rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] text-[#111827] outline-none transition-[box-shadow,background-color] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)] disabled:bg-[#f1f1f1] disabled:placeholder:text-[#6b7280] max-sm:col-span-2"
+              [style.box-shadow]="!valida(h) && h.dias.trim() ? '0 0 0 1px #e0605a' : '0 0 0 1px #e5e5e5'" />
+            <button type="button" (click)="cambiar(k, { cerrado: !h.cerrado })" [attr.aria-pressed]="h.cerrado"
+              class="flex h-[34px] items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12.5px] font-medium transition-colors"
+              [class]="h.cerrado ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] shadow-[0_0_0_1px_#e5e5e5] hover:shadow-[0_0_0_1px_#b5b5b5]'">Cerrado</button>
+            <button type="button" (click)="quitar(k)" [attr.aria-label]="'Quitar la fila ' + (h.dias || k + 1)" title="Quitar fila"
+              class="flex size-[34px] items-center justify-center rounded-full bg-transparent text-[#8a8a8a] hover:bg-[#fff1f0] hover:text-[#b42318]"><tabler-icon [icon]="i.quitar" [size]="15" [stroke]="2" /></button>
+          </div>
+        }
+      </div>
+      @if (!s.horarioOk()) {
+        <span class="tienda-sube text-xs text-[#b42318]">Cada fila necesita los días y las horas, o márcala como cerrada.</span>
+      }
+    }
+    <div class="flex flex-wrap gap-1.5">
+      @if (fx.horario.length < max) {
+        <button type="button" (click)="agregar()" class="flex items-center gap-[5px] rounded-full bg-white px-[11px] py-[5px] text-xs font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow,transform] hover:shadow-[0_0_0_1px_#b5b5b5] active:scale-[.96]"><tabler-icon [icon]="i.reloj" [size]="13" [stroke]="2" class="text-[#8a8a8a]" />Agregar fila</button>
+        @for (sug of sugerencias(); track sug.dias) {
+          <button type="button" (click)="agregar(sug)" class="tienda-sube flex items-center gap-[5px] rounded-full bg-white px-[11px] py-[5px] text-xs font-medium text-[#374151] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow,transform] hover:shadow-[0_0_0_1px_#b5b5b5] active:scale-[.96]"><tabler-icon [icon]="i.plus" [size]="12" [stroke]="2" class="text-[#8a8a8a]" />{{ textoSugerencia(sug) }}</button>
+        }
+      } @else {
+        <span class="text-xs text-[#8a8a8a]">Hasta {{ max }} filas.</span>
+      }
+    </div>
+  </div>
+</section>

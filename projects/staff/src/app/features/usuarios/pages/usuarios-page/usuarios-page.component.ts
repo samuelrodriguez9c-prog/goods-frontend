@@ -35,11 +35,10 @@ import {
 } from '../../../../shared/ui/cabecera-modulo/cabecera-modulo.component';
 import { filasCambiadas } from '../../../../shared/ui/filas-cambiadas';
 
-/** Payload real de `RealtimeGateway.EVENTO_PRESENCIA_CAMBIO` (backend,
- * `modules/realtime/realtime.constants.ts`) — mismo criterio que
- * `EventoEmpresaActivada` en `ActivarEmpresaWizardComponent`: el nombre del
- * evento se repite acá como string literal (`'presencia:cambio'`), no se
- * importa nada del backend. */
+/** Payload de `EVENTO_PRESENCIA_CAMBIO` (backend,
+ * `modules/nucleo/realtime/realtime.constants.ts`). El nombre del evento se
+ * repite como literal (`'presencia:cambio'`): el front no importa nada del
+ * backend. */
 interface EventoPresenciaCambio {
   usuarioId: number;
   enLinea: boolean;
@@ -48,20 +47,17 @@ interface EventoPresenciaCambio {
 type ModoPanel = 'ficha' | 'crear' | null;
 export type EstadoAcceso = 'activo' | 'dormido' | 'sin_estrenar' | 'desactivado';
 
-/** Columna de la matriz. `id` tiene que coincidir con el prefijo del
- * `Permiso.codigo` del backend (`empresas.ver`, `auditoria.ver`, …) o con
- * `Permiso.modulo` si lo tenés poblado — salvo que tenga `codigos`, ver
- * abajo. Agregá una fila por módulo nuevo. */
+/** Columna de la matriz. `id` tiene que coincidir con `Permiso.modulo` o,
+ * si no viene, con el prefijo de `Permiso.codigo` (`empresas.ver`, …), salvo
+ * que la columna tenga `codigos`. Agrega una fila por módulo nuevo. */
 export interface ModuloDef {
   id: string;
   corto: string;
   completo: string;
   icono: TablerIcon;
-  /** Ajuste propio (no estaba en el handoff): cuando el `modulo` real del
-   * backend no coincide 1:1 con la columna, se listan acá los códigos
-   * exactos que la componen y `nivelDe()` los usa en vez del match por
-   * prefijo/`modulo`. Hace falta para "Altas pendientes" — ver el
-   * comentario en `MODULOS`. */
+  /** Códigos exactos que componen la columna cuando el `modulo` del backend
+   * no coincide 1:1 con ella; `nivelDe()` los usa en vez del match por
+   * `modulo`/prefijo. Ver "Altas pendientes" en `MODULOS`. */
   codigos?: string[];
 }
 
@@ -72,14 +68,9 @@ export const MODULOS: ModuloDef[] = [
     corto: 'Altas',
     completo: 'Altas pendientes',
     icono: IconPhoneCall,
-    // Ajuste propio: en la tabla `permiso` real NO existe ningún
-    // `modulo = 'altas'` — `empresas.activar` / `empresas.rechazar` /
-    // `empresas.gestionar_alta` están agrupados bajo `modulo: 'empresas'`
-    // junto con el resto de Empresas (verificado con
-    // `SELECT codigo, modulo FROM permisos`, no solo leyendo migraciones).
-    // Sin este override la columna "Altas" da "Sin acceso" para TODOS los
-    // roles, incluido admin/staff_goods — exactamente el bug que el LEEME
-    // pedía revisar ("ojo altas"). Ver ADMIN_DISENO.md.
+    // En el backend no existe `modulo = 'altas'`: estos permisos están bajo
+    // `modulo: 'empresas'`. Sin `codigos` la columna daría "Sin acceso" para
+    // todos los roles.
     codigos: ['empresas.activar', 'empresas.rechazar', 'empresas.gestionar_alta'],
   },
   { id: 'planes', corto: 'Plan', completo: 'Planes', icono: IconLayoutGrid },
@@ -88,14 +79,9 @@ export const MODULOS: ModuloDef[] = [
   { id: 'usuarios', corto: 'Usr', completo: 'Usuarios', icono: IconUsers },
 ];
 
-/** Verbos que convierten un permiso en "Todo" (nivel 3). El resto de los
- * códigos que no son `.ver` valen "Editar" (nivel 2). Contrastado contra
- * la tabla `permiso` real: los verbos reales son activar/crear/editar/
- * eliminar/gestionar_alta/rechazar/ver/cambiar_rol/asignar/gestionar —
- * `desactivar` todavía no existe en datos reales (queda como supuesto a
- * futuro, tal como lo dejó el handoff) y `cambiar_rol`/`asignar` cuentan
- * como "Editar" por no estar en esta lista (clasificación del diseño
- * original, no un bug — se deja igual). */
+/** Verbos que convierten un permiso en "Todo" (nivel 3); cualquier otro que
+ * no sea `.ver` vale "Editar" (nivel 2), incluido `cambiar_rol`, a propósito.
+ * `desactivar` todavía no existe en el backend: queda previsto. */
 export const VERBOS_TOTALES = ['eliminar', 'rechazar', 'desactivar', 'gestionar', 'gestionar_alta'];
 
 export const NIVEL = ['Sin acceso', 'Solo ver', 'Editar', 'Todo'];
@@ -109,24 +95,14 @@ const MS_DIA = 86_400_000;
 /** Cuántos días sin entrar convierten a alguien en "dormido". */
 const UMBRAL_DORMIDO = 90;
 /** Cuántas acciones de auditoría se piden para reconstruir los accesos.
- * Ajuste propio: el handoff traía 500, pero TODO endpoint paginado del
- * backend hereda de `PaginationQueryDto`, que fuerza `@Max(100)` en
- * `pageSize` a propósito ("sin límite, alguien podría pedir
- * pageSize=999999") — pedir 500 no da menos cobertura, hace que
- * `GET /auditoria` responda 400 SIEMPRE, lo que revienta el `forkJoin`
- * entero y deja la pantalla mostrando "No se pudo cargar el personal de
- * Goods" de forma permanente (no es un problema de escala, es que la
- * pantalla no cargaba nunca). Con más personal del que entra en esta
- * ventana de 100 acciones, mover el cálculo al backend sigue siendo la
- * solución real (ver LEEME / ADMIN_DISENO.md). */
+ * No puede pasar de 100: `PaginationQueryDto` del backend tiene `@Max(100)`
+ * en `pageSize` y con más responde 400, lo que tumba todo el `forkJoin`.
+ * TODO(backend): calcular los accesos en el servidor; con mucho personal
+ * 100 acciones no alcanzan. */
 const PAGINA_AUDITORIA = 100;
-/** Ajuste propio: el handoff traía `/^\/api\/auth\/login$/`, que nunca
- * matchea — el staff siempre entra por `/api/auth/login-staff`
- * (`POST /api/auth/login` es la ruta pública de clientes). Con la regex
- * original `reconstruirAccesos()` nunca encuentra un login de staff y
- * toda la función (estado, último acceso, tira de 14 días) queda rota
- * para el propio personal de Goods. Mismo bug ya corregido en
- * `auditoria-page`. Ver ADMIN_DISENO.md. */
+/** Incluye `login-staff`: el personal de Goods entra por
+ * `/api/auth/login-staff` (`/api/auth/login` es la de clientes); sin ella
+ * `reconstruirAccesos()` no encontraría ningún login de staff. */
 const RUTA_LOGIN = /^\/api\/auth\/login(-staff)?$/;
 
 export interface Acceso {
@@ -168,14 +144,11 @@ export const ESTADO_UI: Record<EstadoAcceso, { texto: string; punto: string; tin
   desactivado: { texto: 'Desactivado', punto: '#d82c0d', tinta: 'text-badge-error-solid' },
 };
 
-/** Color del punto de cada rol en las cabeceras de grupo. Por nombre de rol
- * del backend (ver `ROL_*` en `rol.service.ts`); el fallback gris sirve
- * para roles nuevos o ad-hoc (ver `RolService.listar()`, que trae los
- * roles reales, no una lista fija). Familia de verdes/gris oscuro para
- * los roles de staff de Goods, familia de azul/violeta para los roles
- * propios de una Empresa cliente — distinción útil ahora que `admin` ve
- * a ambos grupos mezclados en la misma matriz (ver `filtroTenantUsuarios`
- * del backend). */
+/** Color del punto de cada rol en las cabeceras de grupo, por nombre de rol
+ * del backend (`ROL_*` en `rol.service.ts`); los roles que no estén aquí
+ * caen a gris. Verdes/gris oscuro para el staff de Goods y azul/violeta para
+ * los roles de una Empresa cliente: `admin` ve los dos grupos en la misma
+ * matriz (ver `filtroTenantUsuarios` del backend). */
 export const PUNTO_ROL: Record<string, string> = {
   admin: '#303030',
   staff_goods: '#087b5d',
@@ -187,10 +160,9 @@ export const PUNTO_ROL: Record<string, string> = {
   empleado_empresa: '#7c3aed',
 };
 
-/** Etiqueta legible por nombre técnico de rol — un trabajador ve "Dueño
- * de la Empresa", no el slug `dueno_empresa` tal cual viene de la base.
- * Roles conocidos del sistema (ver `ROL_*` en `rol.service.ts` del
- * backend); cualquier otro cae al fallback de `etiquetaRolTexto()`. */
+/** Etiqueta legible de los roles conocidos (`ROL_*` en `rol.service.ts` del
+ * backend): "Dueño de la Empresa" en vez de `dueno_empresa`. Los demás
+ * pasan por el fallback de `etiquetaRolTexto()`. */
 export const ETIQUETA_ROL: Record<string, string> = {
   admin: 'Administrador',
   staff_goods: 'Staff Goods',
@@ -202,12 +174,8 @@ export const ETIQUETA_ROL: Record<string, string> = {
   empleado_empresa: 'Empleado de la Empresa',
 };
 
-/** Traduce el nombre técnico (slug) de un rol a algo legible para
- * cualquiera que no conozca la base de datos. Los roles conocidos (arriba)
- * tienen una etiqueta a mano; cualquier rol nuevo o ad-hoc (creado desde
- * "Roles y permisos", o un slug de prueba) cae acá: separa por `_`/`-` y
- * pone cada palabra en mayúscula inicial, en vez de mostrar el slug
- * crudo. */
+/** Nombre legible de un rol: usa `ETIQUETA_ROL` y, para roles creados desde
+ * "Roles y permisos", separa el slug por `_`/`-` y pone mayúscula inicial. */
 export function etiquetaRolTexto(nombre: string): string {
   return (
     ETIQUETA_ROL[nombre] ??
@@ -220,40 +188,18 @@ export function etiquetaRolTexto(nombre: string): string {
 }
 
 /**
- * Personal de Goods como matriz quién × qué: una fila por persona, una
- * columna por módulo, el nivel de acceso como medidor de tres barras.
- * Reemplaza la tabla + tres modales de la pantalla anterior.
+ * Personal como matriz quién × qué: una fila por persona, una columna por
+ * módulo y el nivel de acceso como medidor de tres barras.
  *
- * Los accesos (tira de 14 días, "último acceso", estado) NO vienen de
- * `Usuario`: se reconstruyen desde `GET /auditoria` filtrando
- * `POST /api/auth/login(-staff)?`. Ver ADMIN_DISENO.md — conviene un
- * `ultimoAccesoEn` en el backend y esta pantalla se simplifica entera.
+ * El estado, el último acceso y la tira de 14 días se reconstruyen desde
+ * `GET /auditoria` (logins); el estado y el último acceso también usan
+ * `Usuario.ultimoAcceso`.
  *
- * El panel se separó en dos componentes aparte, sibling en `pages/`, mismo
- * patrón que el resto de los módulos (`EmpresaDetallePanelComponent`,
- * `ActivarEmpresaWizardComponent`, `GestionarSuscripcionPanelComponent`,
- * `AccionDetallePanelComponent`): `FichaUsuarioPanelComponent` (ver/editar
- * a alguien que ya existe) y `CrearUsuarioPanelComponent` (dar de alta),
- * porque el handoff los trataba como dos cuerpos muy distintos compartiendo
- * solo el contenedor deslizable — separarlos en dos componentes, uno por
- * concepto, es más consistente con el resto de la app que uno solo
- * cambiando de modo por dentro.
- *
- * `CrearUsuarioPanelComponent` es completamente autónomo (no hay ninguna
- * fila existente con la que cruzar un "diff"), así que carga sus propias
- * constantes `MODULOS`/`nivelDe()` — se duplican a propósito, mismo criterio
- * que `fechaCorta`/`horaCorta` en `AccionDetallePanelComponent`.
- *
- * `FichaUsuarioPanelComponent` en cambio SÍ tiene una dependencia real con
- * la página: mientras hay un cambio de rol en preview, la fila de la
- * persona en la matriz (acá, a la izquierda del panel) tiene que pintar el
- * mismo diff, y el velo del panel se vuelve transparente para que se vea.
- * Por eso `rolPreview` (qué rol se está previsualizando) sigue viviendo en
- * la página — el panel lo recibe como `[rolPreviewId]` y lo cambia emitiendo
- * `(rolPreviewSeleccionado)`, en vez de manejarlo por su cuenta — y
- * `matrizPanel()`/`textoCambioRol()` (que si necesitan `nivelDe()`/
- * `MODULOS`) se calculan acá y se pasan ya armados, mismo tipo de excepción
- * que `[mrrTotal]`/`[acciones]` en los paneles anteriores.
+ * `CrearUsuarioPanelComponent` es autónomo y duplica `MODULOS`/`nivelDe()`.
+ * `FichaUsuarioPanelComponent` no: mientras se previsualiza un cambio de rol,
+ * la fila de la matriz pinta el mismo diff. Por eso `rolPreview`,
+ * `matrizPanel()` y `textoCambioRol()` viven aquí y el panel los recibe ya
+ * armados.
  */
 @Component({
   selector: 'app-usuarios-page',
@@ -290,24 +236,18 @@ export class UsuariosPageComponent implements OnDestroy {
   protected readonly usuarios = signal<UsuarioGoods[]>([]);
   protected readonly roles = signal<Rol[]>([]);
   protected readonly accesos = signal<Map<number, Acceso>>(new Map());
-  /** Fechas sueltas (`creadoEn`) de los mismos eventos de login que arma
-   * `reconstruirAccesos`, sin agregar por usuario — `accesos()` ya reduce
-   * todo a un resumen por persona (`dias`/`accesos30`/`fallidos`) y pierde
-   * las fechas individuales, pero la cabecera v2 (LEEME.md §16) necesita
-   * un `serieConteo` de actividad global para las métricas "Con acceso" e
-   * "Intentos fallidos". Se pueblan junto con `accesos` en `cargar()`. */
+  /** Fechas (`creadoEn`) de los logins sin agrupar por persona: `accesos()`
+   * las pierde al resumir, y la cabecera las necesita para la serie de
+   * "Con acceso" e "Intentos fallidos". */
   private readonly accesosExitososFechas = signal<string[]>([]);
   private readonly fallidosFechas = signal<string[]>([]);
-  /** Quién está conectado AHORA — la carga inicial sale de `GET
-   * /usuarios/en-linea` (foto del momento), y `escucharPresencia()` la
-   * mantiene al día en vivo con `EVENTO_PRESENCIA_CAMBIO` mientras la
-   * pantalla sigue abierta. Ver ADMIN_DISENO.md. */
+  /** Quién está conectado ahora: arranca con `GET /usuarios/en-linea` y
+   * `escucharPresencia()` la mantiene al día. */
   protected readonly enLineaIds = signal<Set<number>>(new Set());
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
-  /** Cambios en vivo acumulados desde la última carga — alimenta la
-   *  píldora "N cambios nuevos · Actualizar" (handoff-alertas-pila §2). */
+  /** Cambios en vivo desde la última carga, para la píldora
+   *  "N cambios nuevos · Actualizar" (ver `CambiosEnVivoService`). */
   protected readonly cambiosEnVivo = signal(0);
   /** Filas resaltadas 2 s después de tocar "Actualizar". */
   protected readonly resaltadas = signal<ReadonlySet<number>>(new Set());
@@ -344,8 +284,8 @@ export class UsuariosPageComponent implements OnDestroy {
     this.cargar();
   }
 
-  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar"
-   *  (handoff-alertas-pila §2). `clave` = id de la fila en pantalla, por si
+  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar".
+   *  `clave` = id de la fila en pantalla, por si
    *  no coincide con el id del dato comparado. */
   private resaltarCambios<T>(
     antes: readonly T[],
@@ -362,6 +302,7 @@ export class UsuariosPageComponent implements OnDestroy {
 
   private cargar(): void {
     this.cargando.set(true);
+    this.error.set(null);
     forkJoin({
       usuarios: this.usuarioService.listar(),
       roles: this.rolService.listar(),
@@ -386,21 +327,17 @@ export class UsuariosPageComponent implements OnDestroy {
     });
   }
 
-  /** `GET /usuarios/en-linea` solo da la foto de arranque; esto la
-   * mantiene al día mientras la pantalla sigue abierta, sin tener que
-   * volver a pedir la lista entera. Se suscribe una sola vez (constructor),
-   * no en cada `cargar()` — un re-fetch de usuarios no debería reabrir el
-   * socket. */
-  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver
-   *  `CambiosEnVivoService`. Mismo patrón (`Subscription` propia +
-   *  `ngOnDestroy`) que `escucharPresencia()`, no `takeUntilDestroyed`:
-   *  esta clase ya maneja sus suscripciones así. */
+  /** Cuenta los cambios de usuarios y roles para el aviso "Hay cambios
+   *  nuevos" (ver `CambiosEnVivoService`). */
   private escucharCambiosEnVivo(): void {
     this.cambiosEnVivoSub = this.cambiosEnVivoService
       .huboCambio(['usuario', 'rol'])
       .subscribe(() => this.cambiosEnVivo.update((n) => n + 1));
   }
 
+  /** `GET /usuarios/en-linea` solo da la foto de arranque; esto la mantiene
+   * al día sin volver a pedir la lista. Se suscribe una sola vez (en el
+   * constructor), no en cada `cargar()`. */
   private escucharPresencia(): void {
     this.presenciaSub = this.realtimeService
       .escuchar<EventoPresenciaCambio>('presencia:cambio')
@@ -495,15 +432,10 @@ export class UsuariosPageComponent implements OnDestroy {
 
   // ── Derivados de la lista ───────────────────────────────────────────────
 
-  /** `Usuario.ultimoAcceso` (columna propia, escrita por
-   * `AuthService.registrarAccesoExitoso` desde el fix de "nunca entró para
-   * todos") combinado con `acceso.ultimoMs` (reconstruido desde `GET
-   * /auditoria`, ver `reconstruirAccesos`) — el que sea más reciente gana.
-   * No se reemplaza uno por el otro: `ultimoAcceso` es `null` para
-   * cualquier cuenta que no haya vuelto a entrar desde que el campo
-   * empezó a escribirse, mientras que la auditoría ya tenía historial real
-   * de antes (51 logins del acceso especial de superadmin, por ejemplo) —
-   * usar solo el campo nuevo perdería ese historial de golpe. */
+  /** El más reciente entre `Usuario.ultimoAcceso` y el último login de la
+   * auditoría. Se usan los dos porque `ultimoAcceso` es `null` en las
+   * cuentas que no han entrado desde que existe el campo, y la auditoría sí
+   * tiene esos logins anteriores. */
   private ultimoMsEfectivo(u: UsuarioGoods, acceso: Acceso | undefined): number | null {
     const desdeUsuario = u.ultimoAcceso ? new Date(u.ultimoAcceso).getTime() : null;
     const desdeAuditoria = acceso?.ultimoMs ?? null;
@@ -641,20 +573,9 @@ export class UsuariosPageComponent implements OnDestroy {
     () => 'Quién entra, con qué permisos y desde cuándo no aparece. El rol se elige viendo lo que concede, no por su nombre.',
   );
 
-  /** Cabecera compartida (LEEME.md §14). "Intentos fallidos" solo aparece
-   *  si hubo alguno — `accesos()` ya trae `fallidos` por usuario (ver el
-   *  Map poblado en `cargar()`).
-   *
-   *  Migrada a v2 (badge + serie) por LEEME.md §16, 2026-09-24. La tabla del
-   *  handoff sugiere `serieConteo(accesos.map(a => a.creadoEn), 8, 24)` para
-   *  las tiles de acceso, pero esta pantalla no tiene tiles "Sin entrar" ni
-   *  "Invitaciones" — son "Sin estrenar" y "Dormidos", que leen el ESTADO
-   *  actual de cada cuenta (`estadoDe()`), no una lista de eventos con
-   *  fecha, así que no tienen una serie real que armarles (mismo criterio
-   *  que "sin serie: no hay historia" de Roles en §14). Donde sí hay
-   *  eventos con fecha — logins exitosos y fallidos — se usa `serieConteo`
-   *  sobre `accesosExitososFechas`/`fallidosFechas` (ver el comentario en su
-   *  declaración). */
+  /** "Intentos fallidos" solo aparece si hubo alguno. "Sin estrenar" y
+   *  "Dormidos" no llevan serie: miden el estado actual de cada cuenta, no
+   *  eventos con fecha. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const metricas: MetricaCabecera[] = [
       {
@@ -841,13 +762,12 @@ export class UsuariosPageComponent implements OnDestroy {
     this.cerrarPanel();
   }
 
-  /** `(reintentar)` de `app-pantalla-estado`. */
   protected reintentar(): void {
     this.cargar();
   }
 
-  /** `(volver)` — mismo criterio que `EmpresasPageComponent.volver()`. */
+  /** «Volver al inicio» de la pantalla de error: va a la portada de staff. */
   protected volver(): void {
-    this.router.navigateByUrl('/usuarios');
+    this.router.navigateByUrl('/');
   }
 }

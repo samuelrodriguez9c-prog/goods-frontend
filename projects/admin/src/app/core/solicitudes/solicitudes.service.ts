@@ -10,8 +10,8 @@ interface Paginado<T> {
 }
 
 /**
- * Lo que la Empresa le pide a Goods (`/mis-solicitudes`, 2026-10-04). La
- * Empresa sale del token: no hay forma de ver ni pedir por otra.
+ * Lo que la Empresa le pide a Goods (`/mis-solicitudes`). La Empresa sale del
+ * token: no hay forma de ver ni pedir por otra.
  */
 @Injectable({ providedIn: 'root' })
 export class SolicitudesService {

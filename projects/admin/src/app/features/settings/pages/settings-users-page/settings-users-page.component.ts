@@ -22,18 +22,9 @@ const FORMULARIO_VACIO: FormularioEmpleado = {
 };
 
 /**
- * "Usuarios" del lado `admin` — pantalla real,
- * `PROPUESTA_ROLES_Y_ACCESOS.md` §6 paso 5 (reemplaza el placeholder
- * "TODO: listado real de usuarios"). Es el equipo de MI Empresa
- * (`GET /usuarios` ya viene filtrado por tenant, ver `UsuarioService` del
- * backend) — acá es donde de verdad se cumple lo que pidió gerencia
- * ("un dueño puede asignarle un rol acotado a alguien de su equipo"):
- * dar de alta un empleado (`POST /usuarios/empleado`, siempre nace
- * `empleado_empresa`) y después, si hace falta, subirlo a
- * `dueno_empresa` o bajarlo de nuevo — el selector de rol de cada fila
- * solo ofrece los roles de `GET /roles/asignables` (ver
- * `SettingsRolesPageComponent` para el catálogo completo, de solo
- * lectura).
+ * Usuarios: el equipo de la Empresa (el backend ya filtra por Empresa).
+ * Invitar a alguien (`POST /usuarios/empleado`, nace `empleado_empresa`) y
+ * cambiarle el rol entre los de `GET /roles/asignables`.
  */
 @Component({
   selector: 'app-settings-users-page',
@@ -69,7 +60,7 @@ export class SettingsUsersPageComponent {
   // para poder deshabilitarlo mientras la request está en curso.
   protected readonly cambiandoRolDe = signal<number | null>(null);
 
-  // Confirmación de borrado (mismo patrón que `staff`'s UsuariosPageComponent).
+  // Confirmación de borrado.
   protected readonly usuarioEliminando = signal<Usuario | null>(null);
   protected readonly eliminando = signal(false);
 
@@ -96,7 +87,7 @@ export class SettingsUsersPageComponent {
     });
   }
 
-  // --- Dar de alta empleado ---
+  // Dar de alta empleado
 
   protected abrirCrear(): void {
     this.formulario.set({ ...FORMULARIO_VACIO });
@@ -139,7 +130,7 @@ export class SettingsUsersPageComponent {
     });
   }
 
-  // --- Reenviar invitación ---
+  // Reenviar invitación
 
   protected reenviar(usuario: Usuario): void {
     if (this.reenviandoA() !== null) return;
@@ -159,7 +150,7 @@ export class SettingsUsersPageComponent {
     });
   }
 
-  // --- Cambiar rol ---
+  // Cambiar rol
 
   protected cambiarRol(usuario: Usuario, rolIdTexto: string): void {
     const rolId = Number(rolIdTexto);
@@ -181,7 +172,7 @@ export class SettingsUsersPageComponent {
     });
   }
 
-  // --- Eliminar ---
+  // Eliminar
 
   protected abrirEliminar(usuario: Usuario): void {
     this.usuarioEliminando.set(usuario);

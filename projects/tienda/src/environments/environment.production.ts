@@ -1,6 +1,8 @@
-/** Placeholders hasta tener dominio real, igual que `admin` y `staff`. */
+// TODO(infra): reemplazar los dominios de ejemplo por los reales (igual en `admin` y `staff`).
 export const environment = {
   production: true,
   apiUrl: 'https://api.goods.example.com/api',
-  goodsUrl: 'https://app.goods.example.com/registro',
+  goodsRegistro: 'https://app.goods.example.com/registro',
+  goodsInicio: 'https://app.goods.example.com/',
+  goodsLogin: 'https://app.goods.example.com/login',
 };

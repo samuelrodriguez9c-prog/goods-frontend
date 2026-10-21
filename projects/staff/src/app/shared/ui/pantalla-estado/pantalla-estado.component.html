@@ -38,13 +38,15 @@
         </div>
 
         <div class="mt-5 flex justify-center gap-2.5">
-          <button
-            type="button"
-            (click)="volver.emit()"
-            class="rounded-lg border border-neutral-200 px-[15px] py-[9px] text-[13px] font-medium text-neutral-800 hover:border-neutral-400"
-          >
-            Volver al inicio
-          </button>
+          @if (conVolver()) {
+            <button
+              type="button"
+              (click)="volver.emit()"
+              class="rounded-lg border border-neutral-200 px-[15px] py-[9px] text-[13px] font-medium text-neutral-800 hover:border-neutral-400"
+            >
+              Volver al inicio
+            </button>
+          }
           <button
             type="button"
             (click)="reintentar.emit()"

@@ -3,7 +3,7 @@ import { Campana } from '../../../../../../core/whatsapp/whatsapp.model';
 import { ESTADO_CAMPANA, calendario, clientesDe, costoCampana, fechaCorta } from '../../campanas.util';
 
 /**
- * Una campaña del historial (LEEME §7): punto + nombre + estado, plantilla y
+ * Una campaña del historial: punto + nombre + estado, plantilla y
  * costo; la fecha a la derecha. Enviando / enviada: embudo enviados →
  * entregados → leídos → respondieron. Programada: tarjeta-calendario con
  * "Editar" y "Cancelar" (el primer toque pide confirmación).

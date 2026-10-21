@@ -1,62 +1,49 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /*
- * Tipografía — Inter, self-hosted vía @fontsource (sin depender de
- * Google Fonts en cada carga). Elegida por parecido visual con la
- * tipografía de las capturas de Shopify (grotesco geométrico — ver
- * ADMIN_DISENO.md > "Topbar > Tipografía e íconos"). Solo se importan
- * los pesos que el admin realmente usa hoy (400/500/600/700 + itálicas
- * para el wordmark del logo y el badge de versión) para no cargar peso
- * de más.
+ * Inter, servida desde @fontsource (sin depender de Google Fonts en cada
+ * carga). Solo los pesos que se usan: 400/500/600/700 e itálicas para el
+ * wordmark y el badge de versión.
  */
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/400-italic.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
-@import "@fontsource/inter/700-italic.css";
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/400-italic.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/inter/700-italic.css';
 
 /*
- * Archivo — tipografía "display" para títulos/números grandes, sumada
- * en `staff` para el rediseño de `empresas-page` del 2026-09-17 (embudo
- * de alta) y duplicada acá por el mismo criterio que el resto de este
- * archivo (ver comentario de cabecera de `staff/src/styles.css`) —
- * `admin` no la usa todavía, pero los tokens se mantienen en paridad.
+ * Archivo: tipografía "display" para títulos y cifras grandes.
  */
-@import "@fontsource/archivo/500.css";
-@import "@fontsource/archivo/600.css";
-@import "@fontsource/archivo/700.css";
+@import '@fontsource/archivo/500.css';
+@import '@fontsource/archivo/600.css';
+@import '@fontsource/archivo/700.css';
+/* Archivo variable con eje wdth: solo la vista previa de Tienda en línea
+ * (`font-archivo-ancho`), para que el nombre se vea angosto como en la
+ * tienda pública. El navegador baja el archivo solo si se usa. */
+@import '@fontsource-variable/archivo/wdth.css';
 
 /*
- * Pre-factura del registro público (2026-10-05): tirilla tipo factura POS
- * en monoespaciada de impresora, con títulos en una sans condensada.
- * Solo se cargan los pesos que usa ese componente.
+ * Pre-factura del registro público: tirilla tipo factura POS en monoespaciada
+ * de impresora, con títulos en una sans condensada. Solo los pesos que usa.
  */
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/400-italic.css";
-@import "@fontsource/ibm-plex-mono/600.css";
-@import "@fontsource/ibm-plex-mono/700.css";
-@import "@fontsource/ibm-plex-sans-condensed/700.css";
-
-/* You can add global styles to this file, and also import other style files */
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/400-italic.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+@import '@fontsource/ibm-plex-mono/700.css';
+@import '@fontsource/ibm-plex-sans-condensed/700.css';
 
 /*
- * Design tokens — extraídos con pipeta de las capturas reales del admin
- * de Shopify (referencia aprobada por el cliente). Ver ADMIN_DISENO.md,
- * sección "Lenguaje visual general > Tokens de color", para la
- * metodología de extracción y la captura fuente de cada valor.
+ * Tokens de diseño, tomados de capturas de Shopify usadas como referencia.
  *
- * Definidos como @theme de Tailwind v4: cada variable queda disponible
- * como utilidad de Tailwind (ej. --color-topbar genera bg-topbar,
- * text-topbar, border-topbar, etc.) además de como custom property CSS
- * plana (var(--color-topbar)) para usarla en objetos `pt` (pass-through)
- * de PrimeNG.
+ * Como @theme de Tailwind v4, cada variable genera sus utilidades
+ * (--color-topbar → bg-topbar, text-topbar…) y queda también como custom
+ * property (var(--color-topbar)) para los `pt` de PrimeNG.
  */
 @theme {
-  --font-sans:
-    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-archivo-ancho: 'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, sans-serif;
   --font-factura: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-factura-titulo: 'IBM Plex Sans Condensed', 'Archivo', ui-sans-serif, sans-serif;
 
@@ -74,52 +61,37 @@
   --color-badge-success-bg: #a4ffb6;
   --color-success-solid: #087b5d;
 
-  /* Ver el mismo token en `staff/src/styles.css` — duplicado en
-   * paridad, `admin` no lo usa todavía. */
+  /* Info: avisos de período de prueba y cobro en `AccesoEmpresaComponent`. */
   --color-badge-info-bg: #c8ecff;
   --color-badge-info-solid: #0284c7;
 
-  /* Topbar > badge de versión (pill junto al logo, calcado del badge
-   * "Spring '26" de Shopify) y buscador global — ver ADMIN_DISENO.md >
-   * "Topbar". */
+  /* Topbar: badge de versión junto al logo y buscador global. */
   --color-topbar-badge-border: #2a2a2a;
   --color-topbar-badge-text: #f0f0f0;
   --color-topbar-search-bg: #282828;
   --color-topbar-kbd-bg: #2f2f2f;
 
-  /* Topbar > avatar de usuario (derecha). En Shopify el color real es
-   * aleatorio por cuenta (no es un token de marca), pero se pipeteó el
-   * de la captura 106 para calcar el look exacto de la referencia — ver
-   * ADMIN_DISENO.md > "Topbar > Derecha". */
+  /* Topbar: avatar de usuario. En Shopify el color varía por cuenta; acá
+   * es fijo. */
   --color-topbar-avatar-bg: #2be0d5;
   --color-topbar-avatar-text: #004442;
 
-  /* Confirmado (2026-09-14) con pipeta sobre un error real: capturas
-   * 1055/1056 (login, "Incorrect password") — el rojo que ya estaba acá
-   * como placeholder razonable resultó ser prácticamente el mismo que el
-   * real, así que se queda tal cual. Ver ADMIN_DISENO.md > "Login". */
+  /* Rojo de error, tomado con pipeta de un error real del login. */
   --color-badge-error-solid: #d82c0d;
 
-  /* Login (capturas 1050-1056) — ver ADMIN_DISENO.md > "Login". Fondo de
-   * página oscuro: mismo negro casi puro que el topbar (--color-topbar),
-   * pero como token aparte porque es una zona distinta (si el topbar
-   * cambia de color más adelante, el fondo del login no tiene por qué
-   * seguirlo). El campo normal reutiliza --color-canvas-bg (mismo gris
-   * #f1f1f1, pipeteado igual en la captura) en vez de un token nuevo.
-   * El rojo de error reutiliza --color-badge-error-solid de arriba. */
+  /* Fondo del login: el mismo negro que el topbar, pero como token aparte
+   * porque es otra zona (si el topbar cambia, el login no tiene por qué
+   * seguirlo). El campo normal usa --color-canvas-bg y el error,
+   * --color-badge-error-solid. */
   --color-login-bg: #0a0a0a;
   --color-field-error-bg: #ffe6e5;
 }
 
 /*
- * Animación de entrada — login (pedido explícito 2026-09-14: "cada
- * acción debe tener un golpe suave"). Se usa vía la utilidad arbitraria
- * de Tailwind `animate-[fade-in-up_...]` en vez de Angular Animations:
- * son elementos que Angular agrega/saca del DOM con @if (el mensaje de
- * error, el paso de contraseña, etc.), y una animación CSS @keyframes
- * arranca sola apenas el elemento se inserta — no hace falta el módulo
- * de animaciones solo para esto. Sin animación de salida a propósito:
- * el pedido es sobre cómo aparecen las cosas, no cómo desaparecen.
+ * `fade-in-up`: entrada suave de lo que aparece con @if (mensajes de error,
+ * pasos del login…). Un @keyframes CSS arranca solo al insertarse el
+ * elemento, sin el módulo de animaciones de Angular. Sin animación de
+ * salida a propósito.
  */
 @keyframes fade-in-up {
   from {
@@ -132,12 +104,8 @@
   }
 }
 
-/* `slide-in-right` — entrada del panel lateral del Asistente de IA
- * (`layout/asistente-panel/`, PROPUESTA_ASISTENTE_IA_RAG.md §4.6/§5.1
- * paso 10) — copiado tal cual de `staff/src/styles.css` (mismo patrón
- * que usa `SidePanelComponent` ahí): mismo criterio que `fade-in-up`
- * arriba, pero deslizando desde la derecha, acorde a un panel anclado al
- * borde derecho de la pantalla. */
+/* `slide-in-right`: como `fade-in-up`, pero desde la derecha, para paneles
+ * anclados al borde derecho (`SidePanelComponent`). */
 @keyframes slide-in-right {
   from {
     opacity: 0;
@@ -149,26 +117,44 @@
   }
 }
 
-/* ── Registro público (rediseño 2026-09-27) ──────────────────────────────
- * Agregar al final de projects/admin/src/styles.css.
- * `fade-in-up` ya existe; estos son los nuevos. */
+/* Registro público */
 
 @keyframes linea-in {
-  from { opacity: 0; transform: translateX(-4px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes latido {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(164 255 182 / 0.5); }
-  50% { box-shadow: 0 0 0 6px rgb(164 255 182 / 0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(164 255 182 / 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(164 255 182 / 0);
+  }
 }
 
 /* Sello "RECIBIDA": cae sobre el talón de la pre-factura, nunca sobre
  * los datos. */
 @keyframes sello {
-  0% { opacity: 0; transform: rotate(-8deg) scale(1.7); }
-  60% { opacity: 1; transform: rotate(-8deg) scale(0.95); }
-  100% { opacity: 1; transform: rotate(-8deg) scale(1); }
+  0% {
+    opacity: 0;
+    transform: rotate(-8deg) scale(1.7);
+  }
+  60% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+  }
 }
 .sello {
   animation: sello 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -176,7 +162,15 @@
 
 /* Código de barras decorativo del talón (folio de la solicitud). */
 .codigo-barras {
-  background: repeating-linear-gradient(90deg, #16181d 0 2px, transparent 2px 4px, #16181d 4px 5px, transparent 5px 8px, #16181d 8px 11px, transparent 11px 13px);
+  background: repeating-linear-gradient(
+    90deg,
+    #16181d 0 2px,
+    transparent 2px 4px,
+    #16181d 4px 5px,
+    transparent 5px 8px,
+    #16181d 8px 11px,
+    transparent 11px 13px
+  );
 }
 
 /* Scroll propio de la tirilla dentro del panel fijo: fino y discreto. */
@@ -187,25 +181,28 @@
 
 /* Borde inferior dentado del ticket (recorta también el sello). */
 .ticket {
-  -webkit-mask: radial-gradient(circle 7px at 50% calc(100% + 1px), transparent 6.5px, #000 7px) bottom / 18px 100% repeat-x;
-  mask: radial-gradient(circle 7px at 50% calc(100% + 1px), transparent 6.5px, #000 7px) bottom / 18px 100% repeat-x;
+  -webkit-mask: radial-gradient(circle 7px at 50% calc(100% + 1px), transparent 6.5px, #000 7px)
+    bottom / 18px 100% repeat-x;
+  mask: radial-gradient(circle 7px at 50% calc(100% + 1px), transparent 6.5px, #000 7px) bottom /
+    18px 100% repeat-x;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sello { animation: none; transform: rotate(-8deg); }
+  .sello {
+    animation: none;
+    transform: rotate(-8deg);
+  }
 }
 
-/* ════════════════════════════════════════════════════════════════════════
- * Paridad con `staff` (2026-10-07): topbar, sidebar, notificaciones,
- * asistente de IA, Settings y contenido al 90 %. Copiado de
- * `projects/staff/src/styles.css`; `latido` y `linea-in` de arriba (registro
- * público) se mantienen: la `linea-in` de staff se renombró
- * `linea-in-soporte`.
- * ════════════════════════════════════════════════════════════════════════ */
+/*
+ * Panel en general: topbar, sidebar, notificaciones, asistente de IA,
+ * Settings y contenido al 90 %. Son los mismos estilos que `staff`;
+ * la `linea-in` de Soporte se llama `linea-in-soporte` para no chocar con
+ * la del registro.
+ */
 
-/* `aparecer` — entrada del paso 2 completo y de los dos modales inline
- * (confirmar llamada / rechazar), más suave que `fade-in-up` porque no
- * lleva desplazamiento vertical. */
+/* `aparecer`: entrada de bloques y modales en línea; más suave que
+ * `fade-in-up` porque no lleva desplazamiento vertical. */
 @keyframes aparecer {
   from {
     opacity: 0;
@@ -217,9 +214,8 @@
   }
 }
 
-/* `pop` — el círculo verde de tilde en la pantalla "Activada", con
- * rebote (cubic-bezier con overshoot) para que se sienta como un logro,
- * no como una notificación más. */
+/* `pop`: aparición con rebote (cubic-bezier con overshoot) para un logro,
+ * como un check de éxito o el contador de la campanita. */
 @keyframes pop {
   0% {
     transform: scale(0.2);
@@ -235,8 +231,8 @@
   }
 }
 
-/* `onda` — el anillo que se expande y se desvanece detrás del círculo de
- * "Activada", en loop, para que la pantalla final no se sienta estática. */
+/* `onda`: anillo que se expande y se desvanece en loop detrás de un ícono
+ * de éxito, para que la pantalla final no quede estática. */
 @keyframes onda {
   0% {
     transform: scale(0.85);
@@ -249,27 +245,8 @@
   }
 }
 
-/* `slide-up` — rediseño de `planes-page` integrado 2026-09-21 (LEEME.md
- * §6): entrada de la barra de publicación de `PlanesPageComponent`,
- * anclada al borde inferior de la pantalla (`fixed inset-x-0 bottom-0`),
- * análoga a `slide-in-right` pero deslizando desde abajo. */
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* `desplegar` — rediseño de `suscripciones-page` integrado 2026-09-21
- * (LEEME.md §7): apertura del historial de planes de una Empresa dentro
- * de su fila, un fade con leve desplazamiento vertical hacia arriba —
- * mismo criterio que `fade-in-up`, pero con menos recorrido porque es
- * contenido que se despliega dentro de la fila, no un elemento nuevo que
- * entra a la pantalla. */
+/* `desplegar`: contenido que se abre dentro de una fila. Como `fade-in-up`
+ * pero con menos recorrido, porque no es un elemento nuevo en pantalla. */
 @keyframes desplegar {
   from {
     opacity: 0;
@@ -281,13 +258,10 @@
   }
 }
 
-/* `rise` — rediseño de `roles-page` integrado 2026-09-22 (LEEME.md §10):
- * entrada de la barra flotante de "cambios sin guardar" y del aviso de
- * confirmación, ambos anclados y centrados en el borde inferior
- * (`fixed bottom-6 left-1/2 -translate-x-1/2`). El `-50%` en X va DENTRO
- * de la keyframe (no alcanza con la clase `-translate-x-1/2` sola): si
- * la keyframe solo anima Y, el paso final pisa el translateX de la clase
- * y el elemento salta a la izquierda apenas termina la animación. */
+/* `rise`: entrada de barras y avisos centrados en el borde inferior
+ * (`fixed bottom-6 left-1/2 -translate-x-1/2`). El `-50%` en X va dentro
+ * del keyframe: si solo animara Y, el paso final pisaría el translateX de
+ * la clase y el elemento saltaría a la izquierda al terminar. */
 @keyframes rise {
   from {
     opacity: 0;
@@ -299,14 +273,10 @@
   }
 }
 
-/* Sistema transversal de alertas y estados de carga (LEEME.md §12,
- * integrado 2026-09-22): `AlertaService` + `AlertaPilaComponent` +
- * `AlertaOverlayComponent` + `EstadoIconoComponent` + `PantallaEstadoComponent`
- * en `shared/ui/` y `core/ui/`. No hacen falta tokens de color nuevos —
- * los sólidos salen de `--color-success-solid`, `--color-badge-error-solid`
- * y `--color-badge-info-solid` ya definidos arriba, más `#b07400` para
- * warning (el mismo `--color-badge-warning-solid` bajado a 4.5:1 sobre
- * blanco, sin tokenizar porque por ahora solo lo usa este sistema). */
+/* Alertas y estados de carga (`AlertaService`, `AlertaPilaComponent`,
+ * `AlertaOverlayComponent`, `EstadoIconoComponent`, `PantallaEstadoComponent`).
+ * Usan los sólidos de arriba más `#b07400` para warning: el
+ * --color-badge-warning-solid oscurecido hasta 4.5:1 sobre blanco. */
 
 /* `girar` — el arco de `EstadoIconoComponent` mientras `estado==='cargando'`. */
 @keyframes girar {
@@ -315,51 +285,83 @@
   }
 }
 
-/* ── Alertas en línea v2 · Pila oscura (handoff-alertas-pila, 2026-10-02) ─
- * Reemplaza a `aparecer-alerta` (v1). `girar` (arriba) lo sigue usando
- * EstadoIconoComponent. */
+/* Pila de alertas en línea */
 
 /* entrada de cada alerta en AlertaPilaComponent */
 @keyframes alerta-entrar {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); filter: blur(2px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
 }
 
 /* barra de tiempo de la alerta del frente */
 @keyframes alerta-barra {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 
 /* píldora "N cambios nuevos · Actualizar" (AvisoDatosNuevosComponent) */
 @keyframes vivo-entrar {
-  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-/* punto del sidebar: crece apenas y vuelve. Renombrado a `latido-cambio`
- * porque `latido` ya existe (asistente de activación / Usuarios) con otra forma. */
+/* Punto del sidebar: crece apenas y vuelve. Se llama `latido-cambio`
+ * porque `latido` ya existe con otra forma. */
 @keyframes latido-cambio {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(43, 224, 213, 0); }
-  50% { transform: scale(1.3); box-shadow: 0 0 0 3px rgba(43, 224, 213, 0.18); }
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(43, 224, 213, 0);
+  }
+  50% {
+    transform: scale(1.3);
+    box-shadow: 0 0 0 3px rgba(43, 224, 213, 0.18);
+  }
 }
 
 /* fila nueva o modificada después de tocar Actualizar */
 @keyframes fila-resaltada {
-  0%, 35% { background-color: #e6fbf9; box-shadow: inset 3px 0 0 #2be0d5; }
-  100% { background-color: transparent; box-shadow: inset 3px 0 0 transparent; }
+  0%,
+  35% {
+    background-color: #e6fbf9;
+    box-shadow: inset 3px 0 0 #2be0d5;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
 }
-.fila-resaltada { animation: fila-resaltada 2s ease-out both; }
+.fila-resaltada {
+  animation: fila-resaltada 2s ease-out both;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .fila-resaltada { animation-duration: 1ms; }
+  .fila-resaltada {
+    animation-duration: 1ms;
+  }
 }
 
-/* `aparecer-modal` — entrada de `AlertaOverlayComponent` y de los modales
- * nuevos de Settings (código de verificación, confirmar cambio de
- * contraseña). Deliberadamente distinta de `aparecer` (arriba, sin
- * translateY): esta lleva un leve desplazamiento vertical además del
- * scale, pensada para un modal centrado en pantalla completa. */
+/* `aparecer-modal`: entrada de `AlertaOverlayComponent` y de los modales de
+ * Settings. Distinta de `aparecer`: suma un leve desplazamiento vertical,
+ * pensada para un modal centrado. */
 @keyframes aparecer-modal {
   from {
     opacity: 0;
@@ -395,8 +397,7 @@
   }
 }
 
-/* Settings (LEEME.md §13, integrado 2026-09-22): modal de código de
- * verificación de correo. */
+/* Settings: modal del código de verificación de correo. */
 
 /* `parpadeo` — el cursor del input invisible de 6 dígitos, en la caja activa. */
 @keyframes parpadeo {
@@ -431,12 +432,11 @@
   }
 }
 
-/* Pista (LEEME.md §18, integrado 2026-09-23): aviso liviano abajo al
- * centro, montado una sola vez en el shell. Dos pares de keyframes
- * IDÉNTICAS a propósito (`pista-in`/`pista-in-b`, `barra`/`barra-b`):
- * `PistaComponent` alterna entre ellas según la paridad del `id` de cada
- * pista, para que el navegador reinicie la animación sin recrear el nodo
- * del DOM (mismo truco que `sacudir-a`/`sacudir-b` arriba). */
+/* Pista: aviso liviano abajo al centro, montado una sola vez en el shell.
+ * Dos pares de keyframes idénticos a propósito (`pista-in`/`pista-in-b`,
+ * `barra`/`barra-b`): `PistaComponent` alterna según la paridad del `id`
+ * para que el navegador reinicie la animación sin recrear el nodo (mismo
+ * truco que `sacudir-a`/`sacudir-b`). */
 @keyframes pista-in {
   from {
     opacity: 0;
@@ -500,9 +500,8 @@
   }
 }
 
-/* Topbar (LEEME.md §17, integrado 2026-09-24): campanita de
- * notificaciones — sacudida al llegar una nueva (`campana`), el contador
- * hace `pop`, y cada fila nueva del panel entra con `entra`. */
+/* Topbar: la campanita se sacude al llegar una notificación (`campana`), el
+ * contador hace `pop` y cada fila nueva del panel entra con `entra`. */
 @keyframes campana {
   0%,
   100% {
@@ -562,13 +561,11 @@
   }
 }
 
-/* Soporte (LEEME.md §15, integrado 2026-09-24): bandeja rediseñada —
- * mensajes/líneas de sistema entrando en el hilo (`msg-in`/`linea-in`),
- * el hilo entero al cambiar de conversación (`hilo-in`), y filas nuevas
- * que llegan en vivo en la lista agrupada (`fila-in`). Plegar grupos, la
- * cita sobre el input, el menú de asignar y el aviso inferior usan
- * transiciones (grid-rows 0fr↔1fr, opacidad, escala), no keyframes: por
- * eso esos elementos quedan siempre en el DOM (ver el HTML). */
+/* Chat (Messages): mensajes y líneas de sistema que entran al hilo
+ * (`msg-in`/`linea-in-soporte`), el hilo al cambiar de conversación
+ * (`hilo-in`) y filas nuevas en vivo (`fila-in`). Plegar grupos, la cita
+ * y los menús usan transiciones (grid-rows, opacidad, escala), no
+ * keyframes: por eso esos elementos quedan siempre en el DOM. */
 @keyframes msg-in {
   from {
     opacity: 0;
@@ -630,154 +627,596 @@
   }
 }
 
-/* ─── Asistente de IA (rediseño 2026-09-30 · v3 2026-10-02) ─────────────────────────────
-   Pegar al final de projects/staff/src/styles.css.
-   Todo lleva prefijo `ia-` porque styles.css ya tiene `latido`, `pop`,
-   `brillo` y `msg-in` con otras curvas. */
+/* Asistente de IA. Todo lleva prefijo `ia-` porque ya existen `latido`,
+   `pop`, `brillo` y `msg-in` con otras curvas. */
 
-@keyframes ia-girar { to { transform: rotate(360deg); } }
-@keyframes ia-latido { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .55; transform: scale(.7); } }
-@keyframes ia-ping { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(2.6); opacity: 0; } }
-@keyframes ia-palabra { from { opacity: 0; filter: blur(8px); transform: translateY(8px); } to { opacity: 1; filter: blur(0); transform: none; } }
-@keyframes ia-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-@keyframes ia-caret { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
-@keyframes ia-msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes ia-user-in { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
-@keyframes ia-card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@keyframes ia-paso-in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
-@keyframes ia-chip-in { from { opacity: 0; transform: scale(.92) translateY(4px); } to { opacity: 1; transform: none; } }
-@keyframes ia-menu-in { from { opacity: 0; transform: scale(.95) translateY(-4px); } to { opacity: 1; transform: none; } }
-@keyframes ia-menu-up { from { opacity: 0; transform: scale(.95) translateY(6px); } to { opacity: 1; transform: none; } }
-@keyframes ia-toast-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
-@keyframes ia-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-@keyframes ia-scan { 0% { transform: translateY(-40px); } 100% { transform: translateY(200px); } }
-@keyframes ia-relleno { 0% { background: #bff3ee; } 100% { background: rgba(224, 247, 245, 0); } }
-@keyframes ia-flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-@keyframes ia-puntos { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
-@keyframes ia-mini-in { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: none; } }
-@keyframes ia-saluda { 0% { transform: rotate(0); } 25% { transform: rotate(-14deg) scale(1.08); } 55% { transform: rotate(10deg) scale(1.08); } 80% { transform: rotate(-4deg); } 100% { transform: rotate(0); } }
-@keyframes ia-anillo { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.45); opacity: 0; } }
-@keyframes ia-tecleo { 0%, 64%, 100% { transform: translateY(0) scale(.78); opacity: .28; background: #0a0a0a; } 28% { transform: translateY(-4px) scale(1); opacity: 1; background: #0a0a0a; } 40% { background: #00a19a; } }
-@keyframes ia-tip-in { from { opacity: 0; transform: translate(-4px, -50%); } to { opacity: 1; transform: translate(0, -50%); } }
-@keyframes ia-sub-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@keyframes ia-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ia-latido {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.7);
+  }
+}
+@keyframes ia-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+@keyframes ia-palabra {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+@keyframes ia-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes ia-caret {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ia-msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ia-user-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ia-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ia-paso-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ia-chip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ia-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ia-menu-up {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ia-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@keyframes ia-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes ia-scan {
+  0% {
+    transform: translateY(-40px);
+  }
+  100% {
+    transform: translateY(200px);
+  }
+}
+@keyframes ia-relleno {
+  0% {
+    background: #bff3ee;
+  }
+  100% {
+    background: rgba(224, 247, 245, 0);
+  }
+}
+@keyframes ia-flota {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes ia-puntos {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+@keyframes ia-mini-in {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ia-saluda {
+  0% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-14deg) scale(1.08);
+  }
+  55% {
+    transform: rotate(10deg) scale(1.08);
+  }
+  80% {
+    transform: rotate(-4deg);
+  }
+  100% {
+    transform: rotate(0);
+  }
+}
+@keyframes ia-anillo {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+@keyframes ia-tecleo {
+  0%,
+  64%,
+  100% {
+    transform: translateY(0) scale(0.78);
+    opacity: 0.28;
+    background: #0a0a0a;
+  }
+  28% {
+    transform: translateY(-4px) scale(1);
+    opacity: 1;
+    background: #0a0a0a;
+  }
+  40% {
+    background: #00a19a;
+  }
+}
+@keyframes ia-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(-4px, -50%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+}
+@keyframes ia-sub-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 
-.ia-latido { animation: ia-latido 2.4s ease-in-out infinite; }
-.ia-palabra { animation: ia-palabra 720ms cubic-bezier(.2, .8, .2, 1) both; }
-.ia-msg-in { animation: ia-msg-in 380ms cubic-bezier(.2, .8, .2, 1); }
-.ia-user-in { animation: ia-user-in 380ms cubic-bezier(.2, .8, .2, 1); transform-origin: bottom right; }
-.ia-card-in { animation: ia-card-in 440ms cubic-bezier(.2, .8, .2, 1) both; }
-.ia-paso-in { animation: ia-paso-in 340ms cubic-bezier(.2, .8, .2, 1); }
-.ia-chip-in { animation: ia-chip-in 300ms cubic-bezier(.2, .8, .2, 1); }
-.ia-pop { animation: ia-pop 360ms cubic-bezier(.2, .8, .2, 1) both; }
-/* v3: el caret es un punto turquesa que late al final del texto que se va escribiendo. */
-.ia-caret { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 9999px; background: #2be0d5; vertical-align: 2px; animation: ia-latido 900ms ease-in-out infinite; }
-/* v3: puntos de "escribiendo" (app-ia-escribiendo). */
-.ia-tecleo { animation: ia-tecleo 1.25s cubic-bezier(.45, 0, .55, 1) infinite; }
+.ia-latido {
+  animation: ia-latido 2.4s ease-in-out infinite;
+}
+.ia-palabra {
+  animation: ia-palabra 720ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.ia-msg-in {
+  animation: ia-msg-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ia-user-in {
+  animation: ia-user-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: bottom right;
+}
+.ia-card-in {
+  animation: ia-card-in 440ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.ia-paso-in {
+  animation: ia-paso-in 340ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ia-chip-in {
+  animation: ia-chip-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ia-pop {
+  animation: ia-pop 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+/* El caret es un punto turquesa que late al final del texto que se va escribiendo. */
+.ia-caret {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 5px;
+  border-radius: 9999px;
+  background: #2be0d5;
+  vertical-align: 2px;
+  animation: ia-latido 900ms ease-in-out infinite;
+}
+/* Puntos de "escribiendo" (app-ia-escribiendo). */
+.ia-tecleo {
+  animation: ia-tecleo 1.25s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
 
-/* Markdown del Asistente de IA (`MarkdownLigeroPipe`) — reglas mínimas a
-   mano en vez de un plugin de "prose" (Tailwind v4 acá no tiene
-   @tailwindcss/typography instalado): solo lo que el modelo realmente usa
-   (negrita, listas, código inline, enlaces, párrafos), con los mismos
-   tonos/espaciados que ya usa el resto del chat. Sin estilos para
-   bloques de código con lenguaje/resaltado — no hacía falta todavía. */
-.ia-markdown { display: flex; flex-direction: column; gap: 10px; }
-.ia-markdown p { margin: 0; }
-.ia-markdown strong { font-weight: 600; color: #111827; }
-.ia-markdown em { font-style: italic; }
-.ia-markdown ul, .ia-markdown ol { margin: 0; padding-left: 1.25em; display: flex; flex-direction: column; gap: 4px; }
-.ia-markdown ul { list-style: disc; }
-.ia-markdown ol { list-style: decimal; }
-.ia-markdown li::marker { color: #9ca3af; }
-.ia-markdown a { color: #00807a; text-decoration: underline; text-underline-offset: 2px; }
-.ia-markdown a:hover { color: #00605b; }
-.ia-markdown code { background: #f1f1f1; color: #b43d00; border-radius: 4px; padding: 1px 5px; font-size: 0.92em; font-family: ui-monospace, monospace; }
-.ia-markdown pre { background: #f4f4f4; border-radius: 10px; padding: 10px 12px; overflow-x: auto; }
-.ia-markdown pre code { background: transparent; padding: 0; color: #111827; }
-.ia-markdown blockquote { margin: 0; padding-left: 10px; border-left: 2px solid #e5e5e5; color: #6b7280; }
-.ia-markdown h1, .ia-markdown h2, .ia-markdown h3 { margin: 2px 0 0; font-weight: 600; color: #111827; }
-.ia-markdown h1 { font-size: 1.05em; }
-.ia-markdown h2 { font-size: 1em; }
-.ia-markdown h3 { font-size: 0.97em; }
-.ia-markdown hr { border: none; border-top: 1px solid #ececec; margin: 2px 0; }
-.ia-markdown table { border-collapse: collapse; font-size: 0.95em; }
-.ia-markdown th, .ia-markdown td { border: 1px solid #e5e5e5; padding: 4px 8px; text-align: left; }
-.ia-markdown th { background: #fafafa; font-weight: 600; }
+/* Markdown del asistente (`MarkdownLigeroPipe`): reglas mínimas a mano,
+   porque no está instalado @tailwindcss/typography. Solo lo que el modelo
+   usa (negrita, listas, código inline, enlaces, párrafos), con los tonos
+   del chat. */
+.ia-markdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ia-markdown p {
+  margin: 0;
+}
+.ia-markdown strong {
+  font-weight: 600;
+  color: #111827;
+}
+.ia-markdown em {
+  font-style: italic;
+}
+.ia-markdown ul,
+.ia-markdown ol {
+  margin: 0;
+  padding-left: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ia-markdown ul {
+  list-style: disc;
+}
+.ia-markdown ol {
+  list-style: decimal;
+}
+.ia-markdown li::marker {
+  color: #9ca3af;
+}
+.ia-markdown a {
+  color: #00807a;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ia-markdown a:hover {
+  color: #00605b;
+}
+.ia-markdown code {
+  background: #f1f1f1;
+  color: #b43d00;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.92em;
+  font-family: ui-monospace, monospace;
+}
+.ia-markdown pre {
+  background: #f4f4f4;
+  border-radius: 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+.ia-markdown pre code {
+  background: transparent;
+  padding: 0;
+  color: #111827;
+}
+.ia-markdown blockquote {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 2px solid #e5e5e5;
+  color: #6b7280;
+}
+.ia-markdown h1,
+.ia-markdown h2,
+.ia-markdown h3 {
+  margin: 2px 0 0;
+  font-weight: 600;
+  color: #111827;
+}
+.ia-markdown h1 {
+  font-size: 1.05em;
+}
+.ia-markdown h2 {
+  font-size: 1em;
+}
+.ia-markdown h3 {
+  font-size: 0.97em;
+}
+.ia-markdown hr {
+  border: none;
+  border-top: 1px solid #ececec;
+  margin: 2px 0;
+}
+.ia-markdown table {
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+.ia-markdown th,
+.ia-markdown td {
+  border: 1px solid #e5e5e5;
+  padding: 4px 8px;
+  text-align: left;
+}
+.ia-markdown th {
+  background: #fafafa;
+  font-weight: 600;
+}
 
-/* Texto con barrido (v3: ya no se usa para "Pensando…"; queda para otros estados). */
+/* Texto con barrido (shimmer). */
 .ia-shimmer-texto {
-  background: linear-gradient(90deg, #a3a3a3 0%, #a3a3a3 35%, #111827 50%, #a3a3a3 65%, #a3a3a3 100%);
+  background: linear-gradient(
+    90deg,
+    #a3a3a3 0%,
+    #a3a3a3 35%,
+    #111827 50%,
+    #a3a3a3 65%,
+    #a3a3a3 100%
+  );
   background-size: 200% 100%;
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   animation: ia-shimmer 1.8s linear infinite;
 }
 .ia-skeleton {
-  background: linear-gradient(90deg, #f3f3f3 0%, #f3f3f3 35%, #e7e7e7 50%, #f3f3f3 65%, #f3f3f3 100%);
+  background: linear-gradient(
+    90deg,
+    #f3f3f3 0%,
+    #f3f3f3 35%,
+    #e7e7e7 50%,
+    #f3f3f3 65%,
+    #f3f3f3 100%
+  );
   background-size: 200% 100%;
   animation: ia-shimmer 1.3s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [class*='ia-'], [class*='ia-'] * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+  [class*='ia-'],
+  [class*='ia-'] * {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }
 
-/* Pegar al final de styles.css: "aplastón" del botón al pegarse a la pared */
-@keyframes ia-pegar-x{0%{transform:scale(1,1)}28%{transform:scale(.82,1.1)}58%{transform:scale(1.07,.96)}80%{transform:scale(.98,1.01)}100%{transform:scale(1,1)}}
-@keyframes ia-pegar-y{0%{transform:scale(1,1)}28%{transform:scale(1.1,.82)}58%{transform:scale(.96,1.07)}80%{transform:scale(1.01,.98)}100%{transform:scale(1,1)}}
+/* "Aplastón" del botón del asistente al pegarse a la pared. */
+@keyframes ia-pegar-x {
+  0% {
+    transform: scale(1, 1);
+  }
+  28% {
+    transform: scale(0.82, 1.1);
+  }
+  58% {
+    transform: scale(1.07, 0.96);
+  }
+  80% {
+    transform: scale(0.98, 1.01);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+@keyframes ia-pegar-y {
+  0% {
+    transform: scale(1, 1);
+  }
+  28% {
+    transform: scale(1.1, 0.82);
+  }
+  58% {
+    transform: scale(0.96, 1.07);
+  }
+  80% {
+    transform: scale(1.01, 0.98);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
 
-/* Pegar en projects/staff/src/styles.css (handoff módulos v2, 2026-10-05).
-   `fade-in-up`, `vivo-entrar` y `.fila-resaltada` ya están de handoffs anteriores. */
+/* Módulos lista + hoja */
 
 /* Entrada de la hoja al cambiar de selección. La página recrea el nodo con
    `@for (k of [clave]; track k)` para que la animación vuelva a correr. */
 @keyframes ficha {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-.animar-ficha { animation: ficha 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.animar-cuerpo { animation: ficha 380ms cubic-bezier(0.2, 0.8, 0.2, 1) 40ms both; }
+.animar-ficha {
+  animation: ficha 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animar-cuerpo {
+  animation: ficha 380ms cubic-bezier(0.2, 0.8, 0.2, 1) 40ms both;
+}
 
 /* Esquinas cóncavas de la fila unida a la hoja (lista-hoja). */
-.esquina-concava-arriba { background: radial-gradient(circle at 0 0, transparent 11.5px, #fff 12px); }
-.esquina-concava-abajo { background: radial-gradient(circle at 0 100%, transparent 11.5px, #fff 12px); }
-
-/* Llamada en curso (Altas pendientes). */
-@keyframes latido-anillo {
-  0% { box-shadow: 0 0 0 0 rgba(43, 224, 213, 0.55); }
-  70% { box-shadow: 0 0 0 10px rgba(43, 224, 213, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(43, 224, 213, 0); }
+.esquina-concava-arriba {
+  background: radial-gradient(circle at 0 0, transparent 11.5px, #fff 12px);
 }
-.latido-anillo { animation: latido-anillo 1.6s ease-out infinite; }
+.esquina-concava-abajo {
+  background: radial-gradient(circle at 0 100%, transparent 11.5px, #fff 12px);
+}
 
-/* Placeholder rayado del comprobante (Facturación). */
-.rayado-comprobante { background: repeating-linear-gradient(135deg, #f7f7f7 0 10px, #f1f1f1 10px 20px); }
+/* Llamada en curso (pulso del indicador). */
+@keyframes latido-anillo {
+  0% {
+    box-shadow: 0 0 0 0 rgba(43, 224, 213, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(43, 224, 213, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(43, 224, 213, 0);
+  }
+}
+.latido-anillo {
+  animation: latido-anillo 1.6s ease-out infinite;
+}
+
+/* Placeholder rayado de un comprobante sin archivo. */
+.rayado-comprobante {
+  background: repeating-linear-gradient(135deg, #f7f7f7 0 10px, #f1f1f1 10px 20px);
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .animar-ficha, .animar-cuerpo, .latido-anillo { animation: none; }
+  .animar-ficha,
+  .animar-cuerpo,
+  .latido-anillo {
+    animation: none;
+  }
 }
 
-/* Cerrar sesión "puerta" del menú de cuenta (topbar, 2026-10-05): la
- * puerta se cierra de un portazo y la despedida entra letra por letra. */
+/* Cerrar sesión "puerta" del menú de cuenta: la puerta se cierra de un
+ * portazo y la despedida entra letra por letra. */
 @keyframes salir-portazo {
-  0% { transform: scaleX(0.25); }
-  70% { transform: scaleX(1.08); }
-  85% { transform: scaleX(0.96); }
-  100% { transform: scaleX(1); }
+  0% {
+    transform: scaleX(0.25);
+  }
+  70% {
+    transform: scaleX(1.08);
+  }
+  85% {
+    transform: scaleX(0.96);
+  }
+  100% {
+    transform: scaleX(1);
+  }
 }
 @keyframes salir-ola {
-  0% { transform: translateY(6px); opacity: 0; }
-  60% { transform: translateY(-2px); opacity: 1; }
-  100% { transform: none; opacity: 1; }
+  0% {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
 }
-.salir-portazo { animation: salir-portazo 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both; }
-.salir-ola { animation: salir-ola 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.salir-portazo {
+  animation: salir-portazo 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.salir-ola {
+  animation: salir-ola 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .salir-portazo, .salir-ola { animation-duration: 1ms; }
+  .salir-portazo,
+  .salir-ola {
+    animation-duration: 1ms;
+  }
 }
 
-/* Escala de la interfaz (2026-10-05): el topbar y el contenido de los
- * módulos se ven un poco más chicos, como un zoom del navegador al 90 %; el
- * sidebar queda a su tamaño. `zoom` (no `transform: scale`) para que el
- * layout, el scroll y los paneles fijos se acomoden solos. */
+/* Escala de la interfaz: el topbar y el contenido se ven un poco más chicos,
+ * como un zoom del navegador al 90 %; el sidebar queda a su tamaño. `zoom`
+ * (no `transform: scale`) para que el layout, el scroll y los paneles fijos
+ * se acomoden solos. */
 :root {
   --escala-contenido: 0.9;
 }
@@ -789,28 +1228,7 @@ app-topbar {
   zoom: var(--escala-contenido);
 }
 
-/* Pegar al final de projects/admin/src/styles.css (fuera de @theme).
-   El resto de keyframes que usan Productos ya existen: ficha, entra, brillo,
-   fade-in-up, pop, vivo-entrar, alerta-entrar, alerta-barra, latido. */
-
-/* Pila v3: sacudida al intentar salir con cambios sin guardar.
-   Dos copias idénticas para poder re-dispararla alternando el nombre. */
-@keyframes pila-sacudir-a {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-7px); }
-  40%, 80% { transform: translateX(7px); }
-}
-@keyframes pila-sacudir-b {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-7px); }
-  40%, 80% { transform: translateX(7px); }
-}
-
-/* Lista de productos: la fila recién guardada o cambiada en vivo. */
-@keyframes producto-destello {
-  from { background-color: #e0f7f5; }
-  to { background-color: transparent; }
-}
+/* Productos */
 
 /* Rango de precio: dos <input type="range"> superpuestos; solo las perillas reciben el puntero. */
 .rango-doble {
@@ -840,29 +1258,169 @@ app-topbar {
   cursor: pointer;
 }
 
-/* ── Productos v5 (handoff-productos-v5). Los keyframes que chocaban con
-   los existentes van con prefijo gp- (gp-entra, gp-brillo, gp-latido). ── */
-/* Pegar al final de projects/admin/src/styles.css (keyframes que usa el módulo Productos v5). */
-@keyframes barra-crece{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@keyframes mov-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@keyframes gp-entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@keyframes sube{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
-@keyframes fade{from{opacity:0}to{opacity:1}}
-@keyframes gp-brillo{0%{background-position:-240px 0}100%{background-position:calc(240px + 100%) 0}}
-@keyframes gp-latido{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
-@keyframes sacudeA{0%,100%{transform:translateX(-50%)}20%,60%{transform:translateX(calc(-50% - 7px))}40%,80%{transform:translateX(calc(-50% + 7px))}}
-@keyframes sacudeB{0%,100%{transform:translateX(-50%)}20%,60%{transform:translateX(calc(-50% - 7px))}40%,80%{transform:translateX(calc(-50% + 7px))}}
-@keyframes escanea{0%{top:4%}50%{top:90%}100%{top:4%}}
-@keyframes gira{to{transform:rotate(360deg)}}
-@keyframes fade-in{from{opacity:0}to{opacity:1}}
-@keyframes ping{75%,100%{transform:scale(2);opacity:0}}
-@keyframes tecleo{0%,64%,100%{transform:translateY(0) scale(.78);opacity:.28;background:#0a0a0a}28%{transform:translateY(-4px) scale(1);opacity:1;background:#0a0a0a}40%{background:#00a19a}}
-@keyframes trazo{from{stroke-dashoffset:60}to{stroke-dashoffset:0}}
-@keyframes alerta-in{from{opacity:0;transform:translateY(10px) scale(.98);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}
-@keyframes barra-a{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+/* Módulos de Productos. Los keyframes que chocaban con otros existentes
+   llevan el prefijo gp- (gp-entra, gp-brillo, gp-latido). */
+@keyframes barra-crece {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes mov-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes gp-entra {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sube {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes gp-brillo {
+  0% {
+    background-position: -240px 0;
+  }
+  100% {
+    background-position: calc(240px + 100%) 0;
+  }
+}
+@keyframes gp-latido {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+@keyframes sacudeA {
+  0%,
+  100% {
+    transform: translateX(-50%);
+  }
+  20%,
+  60% {
+    transform: translateX(calc(-50% - 7px));
+  }
+  40%,
+  80% {
+    transform: translateX(calc(-50% + 7px));
+  }
+}
+@keyframes sacudeB {
+  0%,
+  100% {
+    transform: translateX(-50%);
+  }
+  20%,
+  60% {
+    transform: translateX(calc(-50% - 7px));
+  }
+  40%,
+  80% {
+    transform: translateX(calc(-50% + 7px));
+  }
+}
+@keyframes gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+@keyframes tecleo {
+  0%,
+  64%,
+  100% {
+    transform: translateY(0) scale(0.78);
+    opacity: 0.28;
+    background: #0a0a0a;
+  }
+  28% {
+    transform: translateY(-4px) scale(1);
+    opacity: 1;
+    background: #0a0a0a;
+  }
+  40% {
+    background: #00a19a;
+  }
+}
+@keyframes trazo {
+  from {
+    stroke-dashoffset: 60;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes alerta-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes barra-a {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
 
-/* Piezas repetidas de formularios y tarjetas del módulo (Tailwind v4: @apply en global). */
-/* Piezas repetidas (Tailwind v4: @utility para poder componerlas con @apply). */
+/* Piezas repetidas de formularios y tarjetas. Son @utility porque Tailwind
+   v4 no deja usar @apply con clases de @layer components. */
 @utility gp-label {
   @apply mb-1.5 block text-[12.5px] font-medium text-gray-500;
 }
@@ -897,62 +1455,518 @@ app-topbar {
   @apply relative inline-flex size-4 items-center justify-center rounded-full bg-[#0a0a0a] shadow-[0_0_0_1.5px_#fff];
 }
 
-/* ── WhatsApp · rediseño 2026-10-13 (handoff-whatsapp/styles-whatsapp.css) ── */
-/* ── WhatsApp (handoff 2026-10-13) · pegar al final de projects/admin/src/styles.css ── */
+/* WhatsApp */
 
-@keyframes wa-entra { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
-@keyframes wa-sube { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@keyframes wa-abre { from { opacity: 0; transform: scaleY(.55); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
-@keyframes wa-latido { 0%, 100% { box-shadow: 0 0 0 0 rgba(43,224,213,.55); } 50% { box-shadow: 0 0 0 5px rgba(43,224,213,0); } }
-@keyframes wa-latido-ambar { 0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,.5); } 50% { box-shadow: 0 0 0 5px rgba(245,158,11,0); } }
+@keyframes wa-entra {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wa-sube {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes wa-abre {
+  from {
+    opacity: 0;
+    transform: scaleY(0.55);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes wa-latido {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(43, 224, 213, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(43, 224, 213, 0);
+  }
+}
+@keyframes wa-latido-ambar {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0);
+  }
+}
 
-.latido { animation: wa-latido 1.4s ease-in-out infinite; }
-.latido-ambar { animation: wa-latido-ambar 1.6s ease-in-out infinite; }
+.latido {
+  animation: wa-latido 1.4s ease-in-out infinite;
+}
+.latido-ambar {
+  animation: wa-latido-ambar 1.6s ease-in-out infinite;
+}
 
 /* Popover del compositor (Mostrador, Respuestas rápidas). */
-.animar-popover { transform-origin: 24px 100%; animation: wa-abre .22s cubic-bezier(.2,.8,.2,1); }
+.animar-popover {
+  transform-origin: 24px 100%;
+  animation: wa-abre 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 
 /* Panel derecho: cada bloque entra en cascada (35 ms entre uno y otro).
    El nodo se recrea con @for (k of [clave()]; track k) para reiniciar. */
-.animar-panel > * { animation: wa-sube .32s cubic-bezier(.2,.8,.2,1) backwards; }
-.animar-panel > *:nth-child(2) { animation-delay: 35ms; }
-.animar-panel > *:nth-child(3) { animation-delay: 70ms; }
-.animar-panel > *:nth-child(4) { animation-delay: 105ms; }
-.animar-panel > *:nth-child(5) { animation-delay: 140ms; }
-.animar-panel > *:nth-child(6) { animation-delay: 175ms; }
-.animar-panel > *:nth-child(n+7) { animation-delay: 210ms; }
+.animar-panel > * {
+  animation: wa-sube 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.animar-panel > *:nth-child(2) {
+  animation-delay: 35ms;
+}
+.animar-panel > *:nth-child(3) {
+  animation-delay: 70ms;
+}
+.animar-panel > *:nth-child(4) {
+  animation-delay: 105ms;
+}
+.animar-panel > *:nth-child(5) {
+  animation-delay: 140ms;
+}
+.animar-panel > *:nth-child(6) {
+  animation-delay: 175ms;
+}
+.animar-panel > *:nth-child(n + 7) {
+  animation-delay: 210ms;
+}
 
 /* Indicador blanco del segmentado; `left` y `width` van inline. */
 .seg-indicador {
-  position: absolute; top: 2px; bottom: 2px; border-radius: 9999px; background: #fff;
-  box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 2px 6px -2px rgba(0,0,0,.08);
-  transition: left .32s cubic-bezier(.32,.72,0,1);
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 2px 6px -2px rgba(0, 0, 0, 0.08);
+  transition: left 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* Filas de Plantillas y Campañas: sin elevación; fondo + borde suave. */
-.fila-plantilla, .fila-campana {
-  transition: background .25s ease, box-shadow .25s ease, transform .25s cubic-bezier(.32,.72,0,1);
-  animation: wa-entra .35s cubic-bezier(.2,.8,.2,1) backwards; /* backwards: no bloquea el transform de :active */
+.fila-plantilla,
+.fila-campana {
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: wa-entra 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; /* backwards: no bloquea el transform de :active */
 }
-.fila-plantilla:hover, .fila-campana:hover { background: #fcfcfc; box-shadow: inset 0 0 0 1px #ececec, 0 4px 12px -8px rgba(0,0,0,.12); }
-.fila-plantilla:active { transform: scale(.995); }
-.fila-plantilla--elegida, .fila-plantilla--elegida:hover { background: #fff; box-shadow: inset 0 0 0 1px #dcdcdc, 0 6px 18px -12px rgba(0,0,0,.22); }
+.fila-plantilla:hover,
+.fila-campana:hover {
+  background: #fcfcfc;
+  box-shadow:
+    inset 0 0 0 1px #ececec,
+    0 4px 12px -8px rgba(0, 0, 0, 0.12);
+}
+.fila-plantilla:active {
+  transform: scale(0.995);
+}
+.fila-plantilla--elegida,
+.fila-plantilla--elegida:hover {
+  background: #fff;
+  box-shadow:
+    inset 0 0 0 1px #dcdcdc,
+    0 6px 18px -12px rgba(0, 0, 0, 0.22);
+}
 
 /* Mensaje de la fila: 2 líneas → 4 al elegirla, con transición de altura. */
-.mensaje-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-height: 38px; transition: max-height .35s cubic-bezier(.32,.72,0,1); }
-.mensaje-clamp--abierto { -webkit-line-clamp: 4; max-height: 76px; }
+.mensaje-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-height: 38px;
+  transition: max-height 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.mensaje-clamp--abierto {
+  -webkit-line-clamp: 4;
+  max-height: 76px;
+}
 
 /* Dato variable dentro de un mensaje ({{1}} → "Ana"). */
-.var-token { border-radius: 4px; background: #e0f7f5; color: #00605b; font-weight: 500; padding: 0 3px; }
+.var-token {
+  border-radius: 4px;
+  background: #e0f7f5;
+  color: #00605b;
+  font-weight: 500;
+  padding: 0 3px;
+}
 
 /* Campo de formulario del panel. */
-.campo { border: 0; border-radius: 8px; background: #f7f7f7; padding-inline: 11px; color: #111827; caret-color: #111827; box-shadow: inset 0 0 0 1px #e5e7eb; outline: none; }
-.campo:focus { box-shadow: inset 0 0 0 1.5px #303030; background: #fff; }
+.campo {
+  border: 0;
+  border-radius: 8px;
+  background: #f7f7f7;
+  padding-inline: 11px;
+  color: #111827;
+  caret-color: #111827;
+  box-shadow: inset 0 0 0 1px #e5e7eb;
+  outline: none;
+}
+.campo:focus {
+  box-shadow: inset 0 0 0 1.5px #303030;
+  background: #fff;
+}
 
-.kbd-mini { border-radius: 4px; background: #f5f5f5; padding: 0 4px; font-family: inherit; font-weight: 600; color: #6b7280; box-shadow: inset 0 0 0 1px #e3e3e3; }
+.kbd-mini {
+  border-radius: 4px;
+  background: #f5f5f5;
+  padding: 0 4px;
+  font-family: inherit;
+  font-weight: 600;
+  color: #6b7280;
+  box-shadow: inset 0 0 0 1px #e3e3e3;
+}
 
-.barra-rayada { background: repeating-linear-gradient(-45deg, #e5e5e5 0 4px, #f3f3f3 4px 8px); }
-/* Extras del prototipo (sus nombres chocan con keyframes ya usados en admin). */
-@keyframes wa-punto { 0%, 60%, 100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
-@keyframes wa-halo { 0%, 100% { transform: scale(1); opacity: .6; } 50% { transform: scale(2.4); opacity: 0; } }
-@keyframes wa-drum { from { opacity: 0; transform: scaleY(.55); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
+.barra-rayada {
+  background: repeating-linear-gradient(-45deg, #e5e5e5 0 4px, #f3f3f3 4px 8px);
+}
+/* Con prefijo wa- porque sus nombres chocan con keyframes ya usados. */
+@keyframes wa-punto {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+@keyframes wa-halo {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+@keyframes wa-drum {
+  from {
+    opacity: 0;
+    transform: scaleY(0.55);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* WhatsApp · Conectar número: punto que viaja por el puente celular → Goods
+ * mientras conecta. */
+@keyframes wa-viaja {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 8px);
+    opacity: 0;
+  }
+}
+
+@layer components {
+  .wa-input {
+    @apply h-9 rounded-lg border-0 bg-[#f7f7f7] px-3 text-[13px] text-gray-900 shadow-[inset_0_0_0_1px_#e5e7eb] outline-none transition-shadow focus:bg-white focus:shadow-[inset_0_0_0_1px_#303030,0_0_0_3px_rgba(48,48,48,.08)];
+  }
+}
+
+/* Pedidos y Clientes */
+/* El papel del comprobante sale de la ranura; las barras de la huella de compras suben. */
+@keyframes imprime {
+  0% {
+    transform: translateY(-105%);
+  }
+  70% {
+    transform: translateY(4%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+@keyframes barra-sube {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+/* Libreta del cliente (pestaña Notas): hoja amarilla con margen rojo y renglones cada 28 px. */
+.papel-libreta {
+  background-color: #fffbea;
+  background-image:
+    linear-gradient(90deg, transparent 33px, #f6c9bf 33px, #f6c9bf 34px, transparent 34px),
+    repeating-linear-gradient(transparent 0, transparent 27px, #f1e6bd 27px, #f1e6bd 28px);
+  background-position:
+    0 0,
+    0 14px;
+  line-height: 28px;
+}
+/* Tiquete de la tienda en la franja de Pedidos: borde inferior dentado (papel de impresora). */
+.tiquete-papel {
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 4px) no-repeat,
+    radial-gradient(circle at 50% 100%, transparent 2.6px, #000 3px) bottom left / 7px 4px repeat-x;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 4px) no-repeat,
+    radial-gradient(circle at 50% 100%, transparent 2.6px, #000 3px) bottom left / 7px 4px repeat-x;
+}
+
+/* Fila de menú "Más acciones" de la hoja (34 px, radio 9). */
+@utility gp-menu-item {
+  @apply flex h-[34px] w-full cursor-pointer items-center gap-2 rounded-[9px] px-2.5 text-left text-[13px] text-gray-900 transition-colors hover:bg-[#f4f4f4];
+}
+
+/* Sin barras de scroll en la página.
+ * Con el panel montado (shell `h-dvh`) la ventana nunca se desplaza: solo el
+ * contenido (`main`), que se sigue moviendo con la rueda, el trackpad o el
+ * teclado pero sin mostrar la barra. Login y registro no tienen el shell y
+ * conservan el scroll normal.
+ * El shell mide `100dvh` y no `100vh`: en el celular `100vh` incluye la
+ * barra del navegador y el final del contenido quedaba fuera de alcance. */
+html:has(.shell-raiz),
+html:has(.shell-raiz) body {
+  overflow: hidden;
+}
+.sin-barra {
+  scrollbar-width: none;
+}
+.sin-barra::-webkit-scrollbar {
+  display: none;
+}
+/* Tienda en línea. La vista previa usa Archivo variable con eje wdth
+ * (`font-archivo-ancho`), como la tienda pública. */
+
+@keyframes tienda-ficha {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tienda-sube {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tienda-entra {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tienda-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes tienda-pop {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes tienda-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes tienda-tacha {
+  from {
+    background-size: 0 1.5px;
+  }
+  to {
+    background-size: 100% 1.5px;
+  }
+}
+@keyframes tienda-desliza {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tienda-ping {
+  75%,
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+@keyframes tienda-respira {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 2px rgba(34, 197, 94, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 5px rgba(34, 197, 94, 0);
+  }
+}
+@keyframes tienda-punto {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+@keyframes tienda-progreso {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes tienda-morph {
+  0%,
+  100% {
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+  }
+  33% {
+    border-radius: 61% 39% 45% 55% / 55% 62% 38% 45%;
+  }
+  66% {
+    border-radius: 38% 62% 56% 44% / 63% 36% 64% 37%;
+  }
+}
+@keyframes tienda-anillo {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.tienda-ficha {
+  animation: tienda-ficha 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.tienda-sube {
+  animation: tienda-sube 0.2s ease-out both;
+}
+.tienda-entra {
+  animation: tienda-entra 0.3s cubic-bezier(0.3, 1.3, 0.5, 1) both;
+}
+.tienda-fade {
+  animation: tienda-fade 0.15s both;
+}
+.tienda-pop {
+  animation: tienda-pop 0.35s ease-out both;
+}
+.tienda-gira {
+  animation: tienda-gira 0.7s linear infinite;
+}
+.tienda-tacha {
+  background-image: linear-gradient(#e0605a, #e0605a);
+  background-repeat: no-repeat;
+  background-position: 0 55%;
+  background-size: 100% 1.5px;
+  animation: tienda-tacha 0.5s ease-out 0.15s both;
+}
+.tienda-desliza {
+  animation: tienda-desliza 0.3s ease-out both;
+}
+.tienda-ping {
+  animation: tienda-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.tienda-respira {
+  animation: tienda-respira 2.8s ease-in-out infinite;
+}
+.tienda-punto {
+  animation: tienda-punto 1s infinite;
+}
+.tienda-progreso {
+  animation: tienda-progreso 5s linear both;
+}
+.tienda-morph {
+  animation: tienda-morph 24s ease-in-out infinite;
+}
+.tienda-anillo {
+  animation: tienda-anillo 2.4s ease-out infinite;
+}
+.tienda-cortina {
+  animation: tienda-fade 0.35s ease-out both;
+}
+
+.forma-0 {
+  border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+}
+.forma-1 {
+  border-radius: 61% 39% 45% 55% / 55% 62% 38% 45%;
+}
+.forma-2 {
+  border-radius: 38% 62% 56% 44% / 63% 36% 64% 37%;
+}
+.forma-3 {
+  border-radius: 52% 48% 40% 60% / 46% 58% 42% 54%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*='tienda-'] {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -16,7 +16,7 @@ const PASO = 9; // px que asoma cada alerta de atrás
 const ALTO_FILA = 44;
 
 /**
- * Pila de alertas en línea — v2 "Pila oscura" (LEEME §12).
+ * Pila oscura de alertas en línea.
  * Va **una sola vez** en el shell. Abajo al centro, misma piel que la Pista.
  *
  * - La más nueva al frente; hasta 2 más asoman detrás (más chicas, sin

@@ -44,11 +44,11 @@ import { IaMenuMasComponent } from '../../shared/ui/ia-menu-mas/ia-menu-mas.comp
 
 type Lado = 'right' | 'left' | 'top' | 'bottom';
 interface Dock { lado: Lado; t: number }
-/** Estilo de la etiqueta hover (`etiqueta()`, más abajo): `left`/`right`/
- * `top`/`bottom` se acceden dinámicamente por nombre de lado (bracket
- * notation en el template), mientras que `transform`/`opacidad` son
- * siempre las mismas dos propiedades — declaradas explícitas para poder
- * leerlas con notación de punto pese al índice (`noPropertyAccessFromIndexSignature`). */
+/**
+ * Estilo de la etiqueta del hover. El lado (`left`, `right`…) se lee por
+ * nombre en la plantilla; `transform` y `opacidad` se declaran aparte para
+ * poder leerlos con punto pese al índice (`noPropertyAccessFromIndexSignature`).
+ */
 interface EtiquetaEstilo {
   [lado: string]: string | number | undefined;
   transform: string;
@@ -76,19 +76,17 @@ const SUGERENCIAS = [
 ];
 
 /**
- * Botón del Asistente pegado a un borde de la ventana + mini chat.
- * Calcado del de staff (2026-10-07); reemplaza a `AsistentePanelComponent`
- * (el panel lateral) en `ShellComponent`.
+ * Botón del asistente pegado a un borde de la ventana, con su mini chat.
  *
- * - En reposo: círculo negro de 52 px, medio escondido tras el borde.
- * - Hover: crece (scale 1.2) desde el borde sin despegarse, la marca gira
- *   más rápido y hace un "saludo", aparece la etiqueta.
- * - Arrastre: se mueve libre por la pantalla; al soltar se pega al borde
- *   más cercano (cualquiera de los 4) con rebote. La posición se guarda
- *   en localStorage (`goods-ia-dock`).
- * - Clic (sin arrastrar): abre/cierra el mini chat junto al botón.
- * - Maximizar: el panel se expande a pantalla completa y navega a
- *   `/asistente` (misma conversación, vía `AsistenteChatStore`).
+ * @remarks
+ * - Reposo: píldora negra que asoma 40 px del borde (se lee como un círculo).
+ * - Hover: asoma más sin despegarse del borde, la marca saluda y aparece la
+ *   etiqueta.
+ * - Arrastre: se mueve libre; al soltar se pega con rebote al borde más
+ *   cercano. La posición se guarda en localStorage (`goods-admin-ia-dock`).
+ * - Clic sin arrastrar: abre o cierra el mini chat.
+ * - Maximizar: navega a `/asistente` con la misma conversación
+ *   (`AsistenteChatStore`).
  */
 @Component({
   selector: 'app-asistente-dock',
@@ -122,7 +120,7 @@ export class AsistenteDockComponent implements OnDestroy {
     (this.auth.currentUser()?.modulosDisponibles ?? []).includes('asistente_ia'),
   );
 
-  // ── Posición ───────────────────────────────────────────────
+  // Posición
   private readonly vw = signal(window.innerWidth);
   private readonly vh = signal(window.innerHeight);
   protected readonly dock = signal<Dock>(this.leerDock());
@@ -150,14 +148,13 @@ export class AsistenteDockComponent implements OnDestroy {
   protected readonly lado = computed<Lado>(() => (this.drag() ? this.masCercano(this.base().x, this.base().y) : this.dock().lado));
 
   /**
-   * Forma del botón (v3), relativa a la caja de 52×52 pegada al borde:
-   *  - Reposo: píldora pegada al borde. Asoma 40 px (el extremo redondo,
-   *    se lee como un círculo) y sigue 40 px más detrás del borde, así que
-   *    su final del lado del borde nunca se ve.
-   *  - Hover: sale el rectángulo redondeado (radio 20): asoma 74 px.
-   *  - Arrastre: círculo perfecto de 56 px, igual en cualquier lado.
+   * Forma del botón, relativa a la caja de 52×52 pegada al borde:
+   *  - Reposo: píldora que asoma 40 px (el extremo redondo se lee como un
+   *    círculo) y sigue 40 px detrás del borde, así su otro extremo nunca se ve.
+   *  - Hover: rectángulo redondeado (radio 20) que asoma 58 px.
+   *  - Arrastre: círculo de 56 px, igual en cualquier lado.
    *  - Abierto: círculo de 52 px con el chevron.
-   * La marca (26 px) se ubica cerca del extremo visible.
+   * La marca (26 px) va cerca del extremo visible.
    */
   protected readonly forma = computed(() => {
     const lado = this.lado();
@@ -255,7 +252,7 @@ export class AsistenteDockComponent implements OnDestroy {
     };
   });
 
-  // ── Chat ────────────────────────────────────────────────────
+  // Chat
   protected readonly texto = signal('');
   /** Pregunta de la palabra visible del saludo (placeholder del composer en vacío). */
   protected readonly sugerencia = signal<string | null>(null);
@@ -309,7 +306,7 @@ export class AsistenteDockComponent implements OnDestroy {
     if (this.abierto()) this.cerrar();
   }
 
-  // ── Arrastre ────────────────────────────────────────────────
+  // Arrastre
   protected onPointerDown(e: PointerEvent): void {
     if (e.button !== 0 || this.maximizando()) return;
     e.preventDefault();
@@ -363,7 +360,7 @@ export class AsistenteDockComponent implements OnDestroy {
     if (!this.p0) this.hover.set(false);
   }
 
-  // ── Abrir / cerrar / maximizar ──────────────────────────────
+  // Abrir, cerrar, maximizar
   protected toggle(): void {
     this.abierto() ? this.cerrar() : this.abrir();
   }
@@ -394,7 +391,7 @@ export class AsistenteDockComponent implements OnDestroy {
     }, 480);
   }
 
-  // ── Chat ────────────────────────────────────────────────────
+  // Chat (envío)
   protected enviar(t?: string): void {
     const cuerpo = (t ?? this.texto()).trim();
     if (!cuerpo) return;

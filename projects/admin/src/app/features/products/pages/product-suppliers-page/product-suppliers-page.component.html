@@ -268,6 +268,7 @@
                 @switch (pestanaActiva()) {
                   @case ('general') {
                     <app-pestana-general [borrador]="h.borrador" [nuevo]="h.nuevo" [editando]="h.editando" [editable]="h.editable" [errores]="erroresVisibles()"
+                      [campos]="campos()" [erroresCampos]="erroresAtributos()" [mostrarErroresCampos]="mostrarErroresAtributos()" [gestionarCampos]="puedeGestionarCampos()"
                       (editar)="editar($event)" (alternarEdicion)="alternarEdicion()" (verCompra)="verCompra($event)" />
                   }
                   @case ('compras') {

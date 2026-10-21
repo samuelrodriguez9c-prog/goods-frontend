@@ -14,30 +14,6 @@ import {
   viewChildren,
 } from '@angular/core';
 
-/**
- * Saludo del asistente (rediseño 2026-10-12, reemplaza al saludo de tres
- * líneas «Buenas noches, Laura · ¿Qué revisamos hoy en Goods?»).
- *
- * Una sola línea: «¿Empezamos por stock?». Solo gira la palabra final
- * (turquesa con subrayado punteado) y su ancho se acomoda.
- * Versión staff: mismas mecánicas que admin, con preguntas de la plataforma
- * (Empresas, altas, cobros, soporte) en vez de las del negocio.
- * - Familia por apertura: cada vez que el componente se monta (abrir el
- *   mini chat, abrir /asistente o "Nueva conversación") pasa a la
- *   siguiente familia: curiosear → recordar → qué hacer. El turno queda en
- *   localStorage y es compartido entre el mini chat y la pantalla completa.
- * - La palabra gira cada 2,3 s. Se pausa con el mouse encima, cuando hay
- *   texto en el composer y con prefers-reduced-motion.
- * - Si el usuario escribe algo que coincide con una palabra («stock»,
- *   «pagos»…), el giro salta a esa palabra.
- * - Solo la palabra visible lleva el subrayado: el de la palabra de arriba
- *   caía 3 px dentro de la ventana y se veía como una línea punteada encima
- *   (también pasa en el prototipo).
- * - Clic en la palabra → `elegir` emite la pregunta completa.
- * - `sugerencia` emite la pregunta de la palabra visible (para usarla de
- *   placeholder del composer).
- */
-
 interface Palabra {
   t: string;
   /** Pregunta que se manda al composer. */
@@ -99,6 +75,22 @@ function siguienteFamilia(): number {
   }
 }
 
+/**
+ * Saludo del asistente en una sola línea: «¿Empezamos por cobros?». Solo gira
+ * la palabra final (turquesa con subrayado punteado) y su ancho se acomoda.
+ * Mismas mecánicas que en admin, con preguntas de la plataforma (Empresas,
+ * altas, cobros, soporte) en vez de las del negocio.
+ * - Familia por apertura: cada vez que el componente se monta (abrir el
+ *   mini chat, abrir /asistente o "Nueva conversación") pasa a la
+ *   siguiente familia: curiosear → recordar → qué hacer. El turno queda en
+ *   localStorage y es compartido entre el mini chat y la pantalla completa.
+ * - La palabra gira cada 2,3 s. Se pausa con el mouse encima, cuando hay
+ *   texto en el composer y con prefers-reduced-motion.
+ * - Si el usuario escribe algo que coincide con una palabra («alta»,
+ *   «pago»…), el giro salta a esa palabra.
+ * - Solo la palabra visible lleva el subrayado: el de la palabra de arriba
+ *   caía 3 px dentro de la ventana y se veía como una línea punteada encima.
+ */
 @Component({
   selector: 'app-ia-saludo',
   standalone: true,

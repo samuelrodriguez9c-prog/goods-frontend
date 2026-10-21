@@ -28,39 +28,18 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    // Primera vez que `staff` hace llamadas HTTP reales (ver
-    // PIVOTE_SAAS_MULTITENANT.md §8 paso 5) — mismo `authInterceptor` que
-    // `admin`, pero la copia propia de `staff` (ver comentario de
-    // `AuthService` sobre por qué no se comparte).
+    // Copia propia del interceptor de `admin` (ver `AuthService` sobre por qué no se comparte).
     provideHttpClient(withInterceptors([authInterceptor])),
-    // Mismo criterio que `admin` (ver ese app.config.ts): PrimeNG solo por
-    // comportamiento (overlays/accesibilidad), sin preset de estilo — el
-    // look final lo da Tailwind vía `pt`. `shared-ui` depende de esto
-    // (ej. StatusBadgeComponent envuelve `p-tag`), así que cualquier
-    // proyecto que consuma la librería necesita configurarlo igual.
+    // PrimeNG solo por comportamiento (overlays, accesibilidad), sin preset:
+    // el estilo lo da Tailwind vía `pt`. `shared-ui` lo necesita (p. ej.
+    // `StatusBadgeComponent` envuelve `p-tag`).
     provideAnimationsAsync(),
     providePrimeNG({ theme: 'none' }),
-    // Íconos del sidebar propio de staff (10 items planos + Settings al
-    // fondo, sin árbol de submenús como el de `admin` — ver
-    // layout/sidebar/sidebar.component.ts y
-    // PIVOTE_SAAS_MULTITENANT.md §7.2/§8). Mismo mecanismo que `admin`
-    // (ver ese app.config.ts): `provideTablerIcons` devuelve
-    // `EnvironmentProviders`, solo puede vivir a nivel de app/ruta. Los
-    // íconos que usan las páginas nuevas (botones de crear/editar/
-    // eliminar, etc.) NO necesitan registrarse acá — se pasan como objeto
-    // directo (`[icon]="iconPlus"`), no por nombre de string; esto solo
-    // hace falta para los del sidebar, que sí se pasan por nombre
-    // (`item.icon`, ver sidebar.component.html). `IconSettings2` (no
-    // `IconSettings`) sumado 2026-09-22 junto con `settingsItem` — misma
-    // variante que ya usa `admin` para el mismo ítem, ver el comentario
-    // de ese `app.config.ts`.
-    // `IconBell` sumado 2026-10-02 junto con el rastro de navegación
-    // global del topbar (`BreadcrumbTrailComponent`/`NavigationTrailService`)
-    // — hace falta para resolver el ícono de "Notificaciones" por nombre
-    // de string (`data.icon: 'bell'` en `notificaciones.routes.ts`), igual
-    // que el resto de los íconos de acá abajo. `IconFileText` sumado el
-    // mismo día junto con `/asistente/documentos` (`data.icon: 'file-text'`
-    // en `asistente.routes.ts`).
+    // Solo los íconos que se piden por nombre de string: los del sidebar
+    // (`item.icon`) y los `data.icon` de las rutas que pinta el rastro de
+    // navegación del topbar. Los que se pasan como objeto (`[icon]="iconPlus"`)
+    // no se registran. `provideTablerIcons` devuelve `EnvironmentProviders`,
+    // así que solo puede ir a nivel de app o de ruta.
     provideTablerIcons({
       IconBell,
       IconBuilding,

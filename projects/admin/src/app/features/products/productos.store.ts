@@ -2,6 +2,8 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, forkJoin, of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
+import { ValoresCampos, atributosDe, erroresCampos, firmaValores, textoValor, valoresDe } from '../../core/campos/campo-personalizado.model';
+import { CampoPersonalizadoService } from '../../core/campos/campo-personalizado.service';
 import { Categoria, CategoriaService } from '../../core/categoria/categoria.service';
 import { Inventario, InventarioService } from '../../core/inventario/inventario.service';
 import {
@@ -50,6 +52,8 @@ export interface Borrador {
   largoCm: string;
   slug: string;
   slugManual: boolean;
+  /** Campos propios de la Empresa, como texto (ver `ValoresCampos`). */
+  atributos: ValoresCampos;
 }
 
 const ETIQUETAS: Partial<Record<keyof Borrador, string>> = {
@@ -68,16 +72,19 @@ export const slugDe = (s: string) =>
   (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
 const sv = (v: unknown) => (v == null ? '' : String(v));
+/** Para saber si hay cambios: los campos propios vacíos no cuentan. */
+const firma = (b: Borrador) => JSON.stringify({ ...b, atributos: firmaValores(b.atributos) });
 const nn = (v: string) => (v.trim() === '' ? null : Number(v));
 const digitos = (v: string) => String(v).replace(/[^\d]/g, '');
 
 /**
- * Estado de la pantalla de Productos (handoff-productos §2). Se provee en
- * `ProductListPageComponent` (no es root): vive mientras la página está abierta.
+ * Estado de la pantalla de Productos. Se provee en `ProductListPageComponent`
+ * (no es root): vive mientras la página está abierta.
  *
- * Igual que el prototipo, el catálogo entero vive en el cliente y se filtra,
- * agrupa y cuenta acá. Toda escritura va al backend con la pila de alertas
- * (cargando → resultado en la misma alerta) y deshacer cuando aplica.
+ * @remarks
+ * El catálogo entero vive en el cliente y se filtra, agrupa y cuenta acá.
+ * Cada escritura va al backend con la pila de alertas (cargando → resultado
+ * en la misma alerta) y con Deshacer cuando aplica.
  */
 @Injectable()
 export class ProductosStore {
@@ -87,14 +94,22 @@ export class ProductosStore {
   private readonly auth = inject(AuthService);
   private readonly alertas = inject(AlertaService);
   private readonly pista = inject(PistaService);
+  private readonly camposApi = inject(CampoPersonalizadoService);
 
-  // ── datos ──
+  /** Campos propios activos de productos, en orden. */
+  readonly campos = computed(() => this.camposApi.activos('producto'));
+  /** Los que se pueden usar como filtro: listas y sí/no. */
+  readonly camposFiltrables = computed(() => this.campos().filter((c) => c.tipo === 'lista' || c.tipo === 'si_no'));
+  /** Valores elegidos por campo propio (`'true'`/`'false'` en los sí/no). */
+  readonly fAtributos = signal<Record<string, string[]>>({});
+
+  // datos
   readonly productos = signal<ProductoCatalogo[]>([]);
   readonly inventario = signal<Map<number, Inventario>>(new Map());
   readonly categorias = signal<Categoria[]>([]);
   readonly carga = signal<'cargando' | 'error' | 'listo'>('cargando');
 
-  // ── lista ──
+  // lista
   readonly qVivo = signal('');
   readonly q = signal('');
   readonly metrica = signal<Metrica | null>(null);
@@ -110,7 +125,7 @@ export class ProductosStore {
   readonly destello = signal<Set<number>>(new Set());
   readonly celda = signal<{ id: number; campo: 'precio' | 'stock'; valor: string } | null>(null);
 
-  // ── ficha ──
+  // ficha
   readonly abierto = signal<number | 'nuevo' | null>(null);
   readonly borrador = signal<Borrador | null>(null);
   readonly guardado = signal<Borrador | null>(null);
@@ -121,7 +136,7 @@ export class ProductosStore {
 
   private qTimer: ReturnType<typeof setTimeout> | undefined;
 
-  // ── permisos (mismos códigos que @RequirePermissions) ──
+  // permisos (mismos códigos que @RequirePermissions)
   puede(p: string): boolean {
     return !!this.auth.currentUser()?.permisos.includes(p);
   }
@@ -133,9 +148,10 @@ export class ProductosStore {
     return true;
   }
 
-  // ── carga ──
+  // carga
   cargar(compararAlTerminar = false): void {
     if (!compararAlTerminar) this.carga.set('cargando');
+    this.camposApi.asegurar('producto');
     const antes = this.productos();
     forkJoin({
       productos: this.api.catalogo(),
@@ -161,7 +177,7 @@ export class ProductosStore {
     });
   }
 
-  // ── helpers de dominio ──
+  // helpers de dominio
   stock(id: number): { disp: number; res: number; min: number } {
     const i = this.inventario().get(id);
     return { disp: i?.cantidadDisponible ?? 0, res: i?.cantidadReservada ?? 0, min: i?.stockMinimo ?? 0 };
@@ -214,20 +230,24 @@ export class ProductosStore {
     return ms.length ? ms.reduce((a, b) => a + b, 0) / ms.length : 0;
   });
 
-  // ── filtros ──
+  // filtros
   readonly hayFiltroPrecio = computed(() => this.pMin() > 0 || this.pMax() < PMAX);
-  readonly nFiltros = computed(() => this.fCats().length + this.fEstados().length + (this.hayFiltroPrecio() ? 1 : 0));
+  readonly nFiltros = computed(
+    () => this.fCats().length + this.fEstados().length + (this.hayFiltroPrecio() ? 1 : 0) + Object.values(this.fAtributos()).reduce((n, xs) => n + xs.length, 0),
+  );
 
   readonly filtrados = computed(() => {
     const q = this.q().trim().toLowerCase();
     const cats = this.fCats(), ests = this.fEstados(), min = this.pMin(), max = this.pMax();
     const m = this.metrica(), avg = this.margenPromedio();
+    const fa = Object.entries(this.fAtributos()).filter(([, xs]) => xs.length);
     this.inventario(); // dependencia: el stock cambia los filtros de métrica
     return this.productos()
       .filter((p) => {
         if (q && !(p.nombre.toLowerCase().includes(q) || (p.sku ?? '').toLowerCase().includes(q))) return false;
         if (cats.length && !cats.some((c) => (c === 0 ? p.categoriaId == null : p.categoriaId === c || this.categoria(p.categoriaId)?.categoriaPadreId === c))) return false;
         if (ests.length && !ests.includes(p.estado)) return false;
+        if (fa.some(([k, xs]) => !xs.includes(String(p.atributos?.[k] ?? '')))) return false;
         if (p.precio < min || (max < PMAX && p.precio > max)) return false;
         if (m === 'activos' && p.estado !== 'activo') return false;
         if (m === 'bajo' && this.estadoStock(p.id) !== 'bajo') return false;
@@ -293,6 +313,9 @@ export class ProductosStore {
     this.fCats().forEach((c) => out.push({ label: c === 0 ? 'Sin categoría' : this.nombreCategoria(c), quitar: () => this.alternarEn(this.fCats, c) }));
     this.fEstados().forEach((e) => out.push({ label: ESTADOS_PRODUCTO[e].t, quitar: () => this.alternarEn(this.fEstados, e) }));
     if (this.hayFiltroPrecio()) out.push({ label: cop(this.pMin()) + ' – ' + (this.pMax() < PMAX ? cop(this.pMax()) : 'más'), quitar: () => { this.pMin.set(0); this.pMax.set(PMAX); } });
+    for (const c of this.camposFiltrables()) {
+      for (const v of this.fAtributos()[c.clave] ?? []) out.push({ label: c.etiqueta + ': ' + textoValor(c, v), quitar: () => this.alternarAtributo(c.clave, v) });
+    }
     return out;
   });
 
@@ -301,7 +324,7 @@ export class ProductosStore {
     return n === t ? n + ' productos' : n + ' de ' + t + ' productos';
   });
 
-  // ── cabecera: lectura + métricas ──
+  // cabecera: lectura + métricas
   readonly resumen = computed(() => {
     const todos = this.productos(), act = todos.filter((p) => p.estado !== 'descontinuado');
     this.inventario();
@@ -325,7 +348,7 @@ export class ProductosStore {
     };
   });
 
-  // ── acciones de lista ──
+  // acciones de lista
   buscar(v: string, ya = false): void {
     this.qVivo.set(v);
     clearTimeout(this.qTimer);
@@ -335,7 +358,15 @@ export class ProductosStore {
   alternarEn<T>(s: { update: (fn: (xs: T[]) => T[]) => void }, v: T): void {
     s.update((xs) => (xs.includes(v) ? xs.filter((x) => x !== v) : [...xs, v]));
   }
+  /** Marca o desmarca un valor del filtro de un campo propio. */
+  alternarAtributo(clave: string, valor: string): void {
+    this.fAtributos.update((f) => {
+      const xs = f[clave] ?? [];
+      return { ...f, [clave]: xs.includes(valor) ? xs.filter((x) => x !== valor) : [...xs, valor] };
+    });
+  }
   limpiarFiltros(): void {
+    this.fAtributos.set({});
     this.buscar('', true);
     this.fCats.set([]);
     this.fEstados.set([]);
@@ -483,8 +514,12 @@ export class ProductosStore {
   exportarCSV(ids?: number[]): void {
     const filas = this.productos().filter((p) => !ids || ids.includes(p.id));
     const esc = (v: unknown) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-    const csv = ['sku,nombre,categoria,precio,precioComparacion,costo,disponible,stockMinimo,estado']
-      .concat(filas.map((p) => { const i = this.stock(p.id); return [p.sku, p.nombre, this.nombreCategoria(p.categoriaId), p.precio, p.precioComparacion, p.costo, i.disp, i.min, p.estado].map(esc).join(','); }))
+    const campos = this.campos();
+    const csv = [['sku', 'nombre', 'categoria', 'precio', 'precioComparacion', 'costo', 'disponible', 'stockMinimo', 'estado'].concat(campos.map((c) => esc(c.etiqueta))).join(',')]
+      .concat(filas.map((p) => {
+        const i = this.stock(p.id);
+        return [p.sku, p.nombre, this.nombreCategoria(p.categoriaId), p.precio, p.precioComparacion, p.costo, i.disp, i.min, p.estado, ...campos.map((c) => textoValor(c, p.atributos?.[c.clave]))].map(esc).join(',');
+      }))
       .join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }));
@@ -493,10 +528,10 @@ export class ProductosStore {
     this.pista.hecho(filas.length + ' productos exportados a CSV');
   }
 
-  // ── ficha ──
+  // ficha
   readonly sucio = computed(() => {
     const b = this.borrador(), g = this.guardado();
-    return !!b && JSON.stringify(b) !== JSON.stringify(g);
+    return !!b && !!g && firma(b) !== firma(g);
   });
 
   /** Texto de la alerta fija: qué cambió, en palabras. */
@@ -505,6 +540,7 @@ export class ProductosStore {
     if (!b || !g) return '';
     if (this.abierto() === 'nuevo') return 'Todavía no se ha creado. Guárdalo para que aparezca en la lista y en la tienda.';
     const campos = [...new Set((Object.keys(b) as (keyof Borrador)[]).filter((k) => ETIQUETAS[k] && b[k] !== g[k]).map((k) => ETIQUETAS[k]!))];
+    if (firmaValores(b.atributos) !== firmaValores(g.atributos)) campos.push('Campos propios');
     if (!campos.length) return 'Guarda para aplicar los cambios o descártalos. Atajo: Ctrl + S.';
     const lista = campos.length === 1 ? campos[0] : campos.slice(0, -1).join(', ') + ' y ' + campos.at(-1);
     return 'Cambiaste ' + lista + '. Guarda para aplicarlo o descarta para volver a como estaba. Atajo: Ctrl + S.';
@@ -523,6 +559,12 @@ export class ProductosStore {
     return e;
   });
 
+  /** Errores de los campos propios, por clave. */
+  readonly erroresAtributos = computed(() => {
+    const b = this.borrador();
+    return b ? erroresCampos(b.atributos, this.campos()) : {};
+  });
+
   aBorrador(p: ProductoCatalogo): Borrador {
     const i = this.stock(p.id);
     return {
@@ -530,7 +572,7 @@ export class ProductosStore {
       categoriaId: sv(p.categoriaId), estado: p.estado, destacado: p.destacado,
       precio: sv(p.precio), precioComparacion: sv(p.precioComparacion), costo: sv(p.costo), stockMinimo: sv(i.min),
       pesoGramos: sv(p.pesoGramos), altoCm: sv(p.altoCm), anchoCm: sv(p.anchoCm), largoCm: sv(p.largoCm),
-      slug: p.slug ?? '', slugManual: false,
+      slug: p.slug ?? '', slugManual: false, atributos: valoresDe(p.atributos, this.campos()),
     };
   }
 
@@ -556,7 +598,7 @@ export class ProductosStore {
 
   nuevo(): void {
     if (this.niega('productos.crear') || !this.libre()) return;
-    const b: Borrador = { nombre: '', sku: '', descripcion: '', marca: '', categoriaId: '', estado: 'activo', destacado: false, precio: '', precioComparacion: '', costo: '', stockMinimo: '0', pesoGramos: '', altoCm: '', anchoCm: '', largoCm: '', slug: '', slugManual: false };
+    const b: Borrador = { nombre: '', sku: '', descripcion: '', marca: '', categoriaId: '', estado: 'activo', destacado: false, precio: '', precioComparacion: '', costo: '', stockMinimo: '0', pesoGramos: '', altoCm: '', anchoCm: '', largoCm: '', slug: '', slugManual: false, atributos: valoresDe({}, this.campos()) };
     this.abierto.set('nuevo');
     this.borrador.set(b);
     this.guardado.set({ ...b });
@@ -598,6 +640,10 @@ export class ProductosStore {
     });
   }
 
+  editarAtributo(clave: string, valor: string): void {
+    this.borrador.update((b) => (b ? { ...b, atributos: { ...b.atributos, [clave]: valor } } : b));
+  }
+
   descartar(): void {
     if (this.abierto() === 'nuevo') return this.cerrarFicha(true);
     this.borrador.set({ ...this.guardado()! });
@@ -610,9 +656,9 @@ export class ProductosStore {
     const esNuevo = a === 'nuevo';
     if (this.niega(esNuevo ? 'productos.crear' : 'productos.editar')) return;
     const errs = Object.keys(this.errores()) as (keyof Borrador)[];
-    if (errs.length) {
+    if (errs.length || Object.keys(this.erroresAtributos()).length) {
       this.intento.set(true);
-      this.pestana.set(PESTANA_DE[errs[0]] ?? 'general');
+      this.pestana.set(errs.length ? (PESTANA_DE[errs[0]] ?? 'general') : 'general');
       this.alertas.mostrar({ estado: 'warning', titulo: 'Revisa los campos marcados' });
       return;
     }
@@ -621,9 +667,11 @@ export class ProductosStore {
       categoriaId: b.categoriaId === '' ? null : +b.categoriaId, estado: b.estado, destacado: b.destacado,
       precio: +b.precio, precioComparacion: nn(b.precioComparacion), costo: nn(b.costo),
       pesoGramos: nn(b.pesoGramos), altoCm: nn(b.altoCm), anchoCm: nn(b.anchoCm), largoCm: nn(b.largoCm), slug: b.slug || null,
+      // Sin campos activos no se mandan: así no se exigen obligatorios que no se ven.
+      ...(this.campos().length ? { atributos: atributosDe(b.atributos, this.campos()) } : {}),
     };
-    // TODO backend: CreateProductoDto usa @IsOptional, que deja pasar null. Si
-    // alguna validación rechaza null, mandar el campo omitido en vez de null.
+    // Los vacíos van como null: `@IsOptional` del DTO los deja pasar. Si alguna
+    // validación del backend empieza a rechazar null, hay que omitir el campo.
     const min = +b.stockMinimo || 0;
     this.guardando.set(true);
     const id = this.alertas.mostrar({ titulo: esNuevo ? 'Creando producto' : 'Guardando cambios', texto: b.nombre.trim() });

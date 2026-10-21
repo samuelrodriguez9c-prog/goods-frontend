@@ -11,7 +11,7 @@ import {
 import { ContactoAlta, RegistroPublicoService } from '../../services/registro-publico.service';
 
 /**
- * `/registro/mensaje` — destino del "escribinos" de los correos de alta
+ * `/registro/mensaje`: destino del enlace para escribirle a Goods desde los correos de alta
  * (registro recibido, llamada agendada, recordatorio de activación y
  * rechazo). Misma familia visual que `/reset-password`. Quien escribe
  * todavía no tiene cuenta: el token del correo identifica la Empresa.

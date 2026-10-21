@@ -1,7 +1,6 @@
 <div class="p-6">
-  <!-- Sin `mx-auto max-w-[...]`: todo el módulo ocupa el ancho completo
-       del layout, igual que Empresas — pedido explícito 2026-09-23. -->
-  <!-- Migrada a v2 (badge + lectura arriba) por LEEME.md §16, 2026-09-24. -->
+  <!-- Sin `mx-auto max-w-[...]`: el módulo ocupa todo el ancho del layout,
+       igual que Empresas. -->
   <app-cabecera-modulo
     titulo="Usuarios"
     [metricas]="metricasCabecera()"
@@ -21,7 +20,7 @@
     <ng-container lectura>{{ lectura() }}</ng-container>
   </app-cabecera-modulo>
 
-  <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
+  <!-- Aviso "Hay cambios nuevos" -->
   @if (cambiosEnVivo()) {
     <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
   }
@@ -72,7 +71,7 @@
       </div>
 
       <!-- Encabezado de la matriz. Las columnas del grid se repiten en cada
-           fila: si cambiás una, cambialas todas. -->
+           fila: si cambias una, cámbialas todas. -->
       <div
         class="mt-[18px] grid grid-cols-[minmax(186px,1.25fr)_122px_repeat(6,minmax(54px,1fr))_26px] items-end px-3.5 pb-2"
       >
@@ -194,9 +193,7 @@
   </app-pantalla-estado>
 </div>
 
-<!-- Detalle/alta: dos componentes aparte, mismo patrón que
-     `app-empresa-detalle-panel` / `app-activar-empresa-wizard` /
-     `app-gestionar-suscripcion-panel` / `app-accion-detalle-panel` -->
+<!-- Paneles de ficha y de alta -->
 @if (modo() === 'ficha' && seleccionado(); as usuario) {
   <app-ficha-usuario-panel
     [usuario]="usuario"

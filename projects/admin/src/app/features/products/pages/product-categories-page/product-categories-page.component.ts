@@ -96,7 +96,7 @@ interface Nodo {
 }
 
 /**
- * Categorías (Productos v5): cabecera con franja de métricas · lista en árbol
+ * Categorías: cabecera con franja de métricas · lista en árbol
  * (o por estado) con arrastrar y soltar para cambiar de principal · hoja con
  * pestañas General / Imagen / Productos / Tienda. Datos en `CatalogoStore`.
  */
@@ -146,7 +146,7 @@ export class ProductCategoriesPageComponent {
   protected readonly puntoEstado = puntoEstado;
   protected readonly agrupaciones = AGRUPACIONES;
 
-  // ── estado de la lista ─────────────────────────────────────────────────
+  // estado de la lista
   protected readonly busqueda = signal('');
   protected readonly metrica = signal<Metrica | null>(null);
   protected readonly agrupacion = signal<Agrupacion>('arbol');
@@ -162,7 +162,7 @@ export class ProductCategoriesPageComponent {
   private readonly destello = signal<number | null>(null);
   protected readonly borrando = signal<{ id: number; productos: number; subcategorias: number } | null>(null);
 
-  // ── estado de la hoja ──────────────────────────────────────────────────
+  // estado de la hoja
   protected readonly seleccionada = signal<number | 'nueva' | null>(null);
   protected readonly borrador = signal<Borrador | null>(null);
   private readonly guardado = signal<Borrador | null>(null);
@@ -176,12 +176,12 @@ export class ProductCategoriesPageComponent {
   private readonly creadas = signal<Map<number, number>>(new Map());
   private readonly general = viewChild(PestanaGeneralComponent);
 
-  // ── permisos ───────────────────────────────────────────────────────────
+  // permisos
   protected readonly puedeEditar = computed(() => this.s.puede('categorias.editar'));
   protected readonly puedeCrear = computed(() => this.s.puede('categorias.crear'));
   protected readonly puedeEliminar = computed(() => this.s.puede('categorias.eliminar'));
 
-  // ── conteos ────────────────────────────────────────────────────────────
+  // conteos
   private readonly conteos = computed(() => productosPorCategoria(this.s.productos()));
   private productosDe = (id: number) => this.conteos().get(id) ?? 0;
   /** Productos de la categoría más los de sus subcategorías. */
@@ -194,7 +194,7 @@ export class ProductCategoriesPageComponent {
   private readonly principales = computed(() => this.s.categorias().filter((c) => !c.categoriaPadreId).sort((a, b) => a.id - b.id));
   private readonly arbol = computed(() => ordenarArbol(this.s.categorias()));
 
-  // ── lista ──────────────────────────────────────────────────────────────
+  // lista
   private pasaFiltros(c: Categoria): boolean {
     const m = this.metrica();
     const q = this.busqueda().trim().toLowerCase();
@@ -308,7 +308,7 @@ export class ProductCategoriesPageComponent {
   /** Zona "Suelta aquí para dejarla como principal" (arrastrando una subcategoría en el árbol). */
   protected readonly zonaPrincipal = computed(() => this.arrastrada() != null && this.puedeSoltar(this.arrastrada(), 0) && this.agrupacion() === 'arbol');
 
-  // ── cabecera ───────────────────────────────────────────────────────────
+  // cabecera
   protected readonly lectura = computed(() => {
     const cs = this.s.categorias(), sinCat = this.s.productos().filter((p) => p.categoriaId == null).length;
     const mayor = this.arbol()
@@ -363,7 +363,7 @@ export class ProductCategoriesPageComponent {
     ];
   });
 
-  // ── hoja ───────────────────────────────────────────────────────────────
+  // hoja
   protected readonly abierta = computed(() => this.seleccionada() != null && !!this.borrador());
   protected readonly columnas = computed(() =>
     this.soloEstado() || (this.abierta() && this.completa()) ? COLUMNAS.una : this.abierta() ? COLUMNAS.conHoja : COLUMNAS.sinHoja,
@@ -471,7 +471,7 @@ export class ProductCategoriesPageComponent {
     });
   }
 
-  // ── acciones: lista ────────────────────────────────────────────────────
+  // acciones: lista
   @HostListener('document:click')
   protected cerrarMenus(): void {
     this.menu.cerrar();
@@ -505,7 +505,7 @@ export class ProductCategoriesPageComponent {
     if (this.encima() === id) this.encima.set(null);
   }
 
-  // ── arrastrar una categoría a otra principal ───────────────────────────
+  // arrastrar una categoría a otra principal
   private inicioArrastre: ReturnType<typeof setTimeout> | undefined;
   protected iniciarArrastre(ev: DragEvent, f: FilaCategoria): void {
     if (!f.arrastrable) return ev.preventDefault();
@@ -556,7 +556,7 @@ export class ProductCategoriesPageComponent {
   }
   protected readonly textoArrastre = computed(() => 'Moviendo «' + this.nombre(this.arrastrada()) + '» · suéltala sobre una principal');
 
-  // ── acciones: hoja ─────────────────────────────────────────────────────
+  // acciones: hoja
   protected abrir(id: number): void {
     if (this.seleccionada() === id) return;
     if (this.sucio()) return this.alertas.sacudir();
@@ -674,7 +674,7 @@ export class ProductCategoriesPageComponent {
     this.router.navigate(['/products'], { queryParams: producto != null ? { producto } : { categoria } });
   }
 
-  // ── eliminar ───────────────────────────────────────────────────────────
+  // eliminar
   protected pedirBorrar(): void {
     const id = this.seleccionada();
     this.menu.cerrar();
@@ -728,7 +728,7 @@ export class ProductCategoriesPageComponent {
     this.alertas.mostrar({ estado: 'success', titulo: this.s.categorias().length + ' categorías exportadas a CSV' });
   }
 
-  // ── teclado ────────────────────────────────────────────────────────────
+  // teclado
   @HostListener('document:keydown', ['$event'])
   protected teclas(e: KeyboardEvent): void {
     if (esGuardar(e)) {

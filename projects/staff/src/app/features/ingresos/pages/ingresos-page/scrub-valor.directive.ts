@@ -1,13 +1,14 @@
 import { Directive, ElementRef, HostListener, inject, input, output } from '@angular/core';
 
 /**
- * Número arrastrable de la frase del escenario (Ingresos v2).
+ * Número arrastrable de la frase del escenario de Ingresos.
  * Arrastrar a los lados suma/resta `paso` cada `px` píxeles; ←/→ (o ↑/↓)
- * mueven un paso. Emite el valor ya acotado a [min, max] y redondeado.
+ * mueven un paso. Emite el valor ya acotado a [min, max] y redondeado al paso.
  *
- * Ojo: en el prototipo, un `role="slider"` con `aria-valuenow` bindeado
- * dentro de la frase trababa el render. Acá se deja `aria-label` estático
- * en el template y `aria-valuetext` se actualiza a mano.
+ * @remarks
+ * Sin `role="slider"` ni `aria-valuenow` bindeado: dentro de la frase trababa
+ * el render. Se usa `aria-label` estático en la plantilla y `aria-valuetext`
+ * se escribe a mano al usar las flechas.
  */
 @Directive({
   selector: '[appScrubValor]',

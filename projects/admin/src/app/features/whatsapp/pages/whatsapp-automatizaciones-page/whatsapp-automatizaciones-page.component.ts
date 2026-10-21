@@ -46,7 +46,7 @@ const AL_ALTERNAR: Record<ClavePaso, [prendido: string, apagado: string]> = {
 const RESPUESTA_IA = '¡Hola Ana! Con gusto te ayudo. Cuéntame qué buscas y te digo precio y disponibilidad.';
 
 /**
- * Respuestas automáticas de WhatsApp (handoff-whatsapp §6): a la izquierda
+ * Respuestas automáticas de WhatsApp: a la izquierda
  * los pasos en orden de prioridad (palabras clave → IA → fuera de horario →
  * bienvenida) y el simulador; a la derecha se edita el paso elegido y, debajo,
  * las respuestas rápidas del equipo. Los textos y el horario se guardan con la

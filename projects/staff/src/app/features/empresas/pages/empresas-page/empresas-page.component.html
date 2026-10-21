@@ -21,7 +21,7 @@
   <ng-container lectura>{{ lectura() }}</ng-container>
 </app-cabecera-modulo>
 
-<app-pantalla-estado class="mt-4 flex min-h-0 flex-1 flex-col" [estado]="estadoPantalla()" modulo="Empresas" (reintentar)="cargar()" (volver)="volver()">
+<app-pantalla-estado class="mt-4 flex min-h-0 flex-1 flex-col" [estado]="estadoPantalla()" modulo="Empresas" [conVolver]="false" (reintentar)="cargar()">
   <div esqueleto class="grid flex-1 animate-pulse grid-cols-[minmax(250px,0.78fr)_minmax(0,1.42fr)] gap-4">
     <div class="flex flex-col gap-2">
       @for (s of [1, 2, 3, 4, 5, 6]; track s) {
@@ -65,7 +65,7 @@
           (recargar)="cargar()"
         />
       } @else {
-        <p class="m-auto text-[13px] text-gray-500">Elegí una Empresa de la lista.</p>
+        <p class="m-auto text-[13px] text-gray-500">Elige una Empresa de la lista.</p>
       }
     </div>
   </app-lista-hoja>

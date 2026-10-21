@@ -1,7 +1,7 @@
-// Espejo de `Pedido`, `PedidoItem` y `PedidoEvento` del backend
-// (`negocio/pedido`, PROPUESTA_PEDIDOS_Y_CLIENTES.md §3.2). Los montos
+// Espejo de `Pedido`, `PedidoItem` y `PedidoEvento` del backend. Los montos
 // llegan como string decimal ("45000.00"): convertir con Number() al mostrar.
 
+import type { Atributos } from '../../campos/campo-personalizado.model';
 import { Cliente, DireccionCliente, GuardarClientePayload } from '../../cliente/models/cliente.model';
 
 export type EstadoPedido = 'pendiente' | 'confirmado' | 'enviado' | 'entregado' | 'cancelado' | 'devuelto';
@@ -80,6 +80,8 @@ export interface Pedido {
   metodoPago: string | null;
   direccionEnvio: DireccionEnvio | null;
   notas: string | null;
+  /** Campos propios de la Empresa, por clave. */
+  atributos?: Atributos;
   canceladoEn: string | null;
   motivoCancelacion: string | null;
   creadoPorId: number | null;
@@ -138,6 +140,8 @@ export interface CrearPedidoPayload {
   notas?: string | null;
   canal?: 'panel' | 'whatsapp';
   whatsappConversacionId?: number;
+  /** Campos propios; `null` quita el valor. */
+  atributos?: Record<string, string | number | boolean | null>;
 }
 
 /** Solo mientras está pendiente. */
@@ -148,4 +152,6 @@ export interface ActualizarPedidoPayload {
   costoEnvio?: number;
   metodoPago?: string | null;
   notas?: string | null;
+  /** Campos propios; `null` quita el valor. */
+  atributos?: Record<string, string | number | boolean | null>;
 }

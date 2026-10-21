@@ -5,11 +5,8 @@ import { WhatsappPageComponent } from './pages/whatsapp-page/whatsapp-page.compo
 import { WhatsappPlantillasPageComponent } from './pages/whatsapp-plantillas-page/whatsapp-plantillas-page.component';
 import { WhatsappShellComponent } from './pages/whatsapp-shell/whatsapp-shell.component';
 
-/**
- * Rediseño 2026-10-13: las cuatro secciones cuelgan del marco
- * (`WhatsappShellComponent`), que pone la cabecera con el tambor y el store
- * compartido. Sin número conectado el marco muestra Conectar.
- */
+// Las cuatro secciones cuelgan del marco (`WhatsappShellComponent`), que pone la
+// cabecera con el tambor y el store compartido. Sin número conectado muestra Conectar.
 export const WHATSAPP_ROUTES: Routes = [
   {
     path: '',

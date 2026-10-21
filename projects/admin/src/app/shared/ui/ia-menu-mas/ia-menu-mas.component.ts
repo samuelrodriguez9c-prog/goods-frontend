@@ -16,7 +16,7 @@ import {
 type Clave = 'subir' | 'docs' | 'compra' | 'nuevoDoc';
 
 /**
- * Botón "+" del composer y su menú oscuro (v3).
+ * Botón «+» del composer y su menú oscuro.
  *
  *   Subir archivos
  *   Documentos  ›   ← submenú: "Preguntar sobre" + docs + Agregar documento

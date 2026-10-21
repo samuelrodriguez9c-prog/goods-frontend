@@ -1,13 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-/**
- * Placeholder — el backend (`DescuentoModule`) ya está completo:
- * `GET/POST/PATCH/DELETE /descuentos` (código opcional, tipo
- * porcentaje/monto fijo/envío gratis, alcance pedido/producto/categoría,
- * monto mínimo, vigencia, tope de usos total y por cliente — ver
- * MODULOS_PENDIENTES.md > "descuento" en el backend). Falta la página
- * real: listado + crear/editar código de descuento.
- */
+/** Placeholder de Descuentos. */
+// TODO(front): listado y crear/editar códigos sobre `/descuentos`, que el backend ya tiene completo.
 @Component({
   selector: 'app-discount-list-page',
   standalone: true,

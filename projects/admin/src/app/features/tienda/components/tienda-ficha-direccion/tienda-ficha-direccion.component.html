@@ -1,0 +1,41 @@
+@let fx = s.f();
+<section #sec (mouseenter)="s.hov.set('direccion')" (mouseleave)="s.hov.set(null)"
+  class="tienda-ficha flex flex-col gap-[18px] rounded-2xl border bg-white p-5 transition-[border-color,box-shadow] duration-[250ms]" [style.border-color]="s.borde('direccion')" [style.box-shadow]="s.sombra('direccion')">
+  <app-tienda-cabeza [icono]="i.link" titulo="Dirección" sub="El enlace que compartes en WhatsApp, Instagram o donde quieras." />
+  <label class="flex flex-col gap-2">
+    <app-tienda-etiqueta t="Dirección de tu tienda" sub="Letras sin tildes, números y guiones. Corta y fácil de dictar por teléfono." [req]="true" />
+    <span class="flex items-center overflow-hidden rounded-[10px] bg-[#fafafa] transition-shadow" [style.box-shadow]="s.sombraSlug()">
+      <span class="shrink-0 py-[9px] pl-3 text-[13px] text-[#8a8a8a]">{{ s.prefijo() }}</span>
+      <input [ngModel]="fx.slug" (ngModelChange)="s.alCambiarSlug($event)" maxlength="60" spellcheck="false" autocomplete="off" class="min-w-0 flex-1 border-0 bg-transparent py-[9px] pl-0 pr-1.5 text-[13px] font-medium text-[#111827] outline-none" />
+      <span class="flex pr-3">
+        @switch (s.slugEstado()) {
+          @case ('comprobando') { <span class="tienda-gira size-3.5 rounded-full border-2 border-[#e5e7eb] border-t-[#6b7280]"></span> }
+          @case ('libre') { <tabler-icon [icon]="i.checkLleno" [size]="16" class="tienda-pop text-[#0c7a43]" /> }
+          @case ('ocupado') { <tabler-icon [icon]="i.xLleno" [size]="16" class="tienda-pop text-[#b42318]" /> }
+          @case ('reservado') { <tabler-icon [icon]="i.xLleno" [size]="16" class="tienda-pop text-[#b42318]" /> }
+          @case ('invalido') { <tabler-icon [icon]="i.alerta" [size]="16" [stroke]="2" class="tienda-pop text-[#b42318]" /> }
+          @default { <tabler-icon [icon]="i.checkCirc" [size]="16" [stroke]="2" class="text-[#8a8a8a]" /> }
+        }
+      </span>
+    </span>
+    @switch (s.slugEstado()) {
+      @case ('comprobando') { <span class="tienda-sube text-xs text-[#6b7280]">Revisando si está libre…</span> }
+      @case ('libre') { <span class="tienda-sube flex items-center gap-[5px] text-xs text-[#0c7a43]"><tabler-icon [icon]="i.checkCirc" [size]="13" [stroke]="2" />Está libre. Queda tuya al guardar.</span> }
+      @case ('ocupado') { <span class="tienda-sube flex items-center gap-[5px] text-xs text-[#b42318]"><tabler-icon [icon]="i.alerta" [size]="13" [stroke]="2" />Ya la usa otro negocio. Prueba agregando tu ciudad.</span> }
+      @case ('reservado') { <span class="tienda-sube flex items-center gap-[5px] text-xs text-[#b42318]"><tabler-icon [icon]="i.alerta" [size]="13" [stroke]="2" />Esa dirección está reservada. Prueba con otra.</span> }
+      @case ('sin-verificar') { <span class="tienda-sube text-xs text-[#6b7280]">No pudimos revisar si está libre. Se confirma al guardar.</span> }
+      @case ('invalido') { <span class="tienda-sube flex items-center gap-[5px] text-xs text-[#b42318]"><tabler-icon [icon]="i.alerta" [size]="13" [stroke]="2" />Sin guion al inicio ni al final.</span> }
+    }
+  </label>
+  @if (s.slugEstado() === 'libre') {
+    <div class="tienda-sube flex flex-col gap-1.5 rounded-xl bg-[#f6f6f6] px-3 py-2.5">
+      <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[12.5px]">
+        <span class="tienda-tacha text-[#8a8a8a]">{{ s.prefijo() }}{{ s.tienda()?.slug }}</span>
+        <span class="tienda-desliza text-[#8a8a8a] [animation-delay:.4s]">→</span>
+        <span class="tienda-desliza font-semibold text-[#111827] [animation-delay:.55s]">{{ s.prefijo() }}{{ fx.slug }}</span>
+      </div>
+      <span class="text-xs leading-[17px] text-[#6b7280]">El enlace viejo deja de funcionar al guardar. Si ya lo compartiste, cámbialo allá también.</span>
+    </div>
+  }
+</section>
+

@@ -49,31 +49,20 @@ const CLAVE_PLEGADAS = 'goods.sidebar.plegadas';
 const MAX_CONVERSACIONES = 3;
 
 /**
- * Navegación lateral del admin — rediseño 2026-10-07: mismo sidebar que
- * `staff` (ancho 224 px, ítems compactos de 13 px, píldora que se desliza
- * entre ítems, punto turquesa de "hay cambios", Settings al fondo).
+ * Navegación lateral del admin: 224 px, ítems de 13 px, una píldora que se
+ * desliza entre ítems, punto turquesa de «hay cambios» y Settings al fondo.
  *
- * Products conserva el submenú "árbol" que ya tenía el admin (pedido
- * explícito, 2026-10-08):
- * - Se despliega con la técnica `grid-template-rows` 0fr → 1fr + fade
- *   (el contenido nunca se desmonta, solo se anima su fila).
- * - Conector a la izquierda: un único trazo que nace debajo de Products y
- *   cuya altura crece/encoge hasta el centro del hijo bajo el mouse (o el
- *   activo, sin hover), doblando en un codo redondeado. Trazo punteado
- *   (dashed) y cada hijo con su ícono (pedido 2026-10-08).
- * - Se abre solo cuando la ruta actual está adentro, y el chevron lo abre
- *   o cierra a mano.
- *
- * Secciones con título, con la estructura del sidebar de Shopify
- * (2026-10-13): debajo del menú principal van "Canales de venta" (Tienda
- * en línea, WhatsApp), "Administración" (Usuarios, Roles y permisos,
- * Solicitudes a Goods) y "Conversaciones con IA" (las últimas 3 del
- * asistente; el título lleva a `/asistente`). El título de las dos
- * primeras pliega/despliega la sección y se recuerda en localStorage. Una
- * sección sin ítems visibles no se muestra.
- *
- * Cada ítem se muestra si el plan de la Empresa incluye su módulo
- * (`modulosDisponibles`) y, si lo pide, el permiso del rol.
+ * @remarks
+ * - Products tiene un submenú en árbol: se anima con `grid-template-rows`
+ *   (nunca se desmonta) y un único trazo punteado crece hasta el hijo bajo
+ *   el mouse (o el activo). Se abre solo si la ruta está adentro; el chevron
+ *   lo abre o cierra a mano.
+ * - Debajo del menú principal van «Canales de venta», «Administración» y
+ *   «Conversaciones con IA» (las últimas 3; el título lleva a `/asistente`).
+ *   Las dos primeras se pliegan y lo recuerdan en localStorage; una sección
+ *   sin ítems visibles no se muestra.
+ * - Cada ítem aparece si el plan incluye su módulo y, si lo pide, el permiso
+ *   del rol.
  */
 @Component({
   selector: 'app-sidebar',
@@ -88,7 +77,7 @@ export class SidebarComponent {
   protected readonly cambios = inject(CambiosPendientesService);
   private readonly asistente = inject(AsistenteChatStore);
   private readonly whatsapp = inject(WhatsappService);
-  /** Chats de WhatsApp con mensajes sin leer (insignia del ítem, rediseño 2026-10-13). */
+  /** Chats de WhatsApp con mensajes sin leer (insignia del ítem). */
   protected readonly waNoLeidos = signal(0);
   private readonly conWhatsapp = computed(() => {
     const u = this.authService.currentUser();
@@ -97,7 +86,7 @@ export class SidebarComponent {
   protected readonly iconChevron = IconChevronDown;
   protected readonly iconSeccion = IconChevronRight;
   protected readonly iconAtajos = IconKeyboard;
-  /** Guía de atajos (handoff-productos §4). Hoy el diálogo vive en Products. */
+  /** Guía de atajos. El diálogo solo está montado en la lista de Products. */
   protected readonly atajos = inject(AtajosService);
 
   private readonly principal: NavItem[] = [
@@ -126,9 +115,7 @@ export class SidebarComponent {
       clave: 'canales',
       titulo: 'Canales de venta',
       items: [
-        // Tienda pública con "Pedir por WhatsApp" (2026-10-10).
         { label: 'Tienda en línea', path: '/tienda', icon: 'building-store', exact: false, codigo: 'tienda', permiso: 'tienda.configurar' },
-        // WhatsApp Fase 1 (2026-10-11): bandeja del número del negocio.
         { label: 'WhatsApp', path: '/whatsapp', icon: 'brand-whatsapp', exact: false, codigo: 'whatsapp', permiso: 'whatsapp.ver' },
       ],
     },
@@ -138,7 +125,10 @@ export class SidebarComponent {
       items: [
         { label: 'Usuarios', path: '/settings/usuarios', icon: 'users', exact: false, codigo: 'users', permiso: 'usuarios.ver' },
         { label: 'Roles y permisos', path: '/settings/roles', icon: 'shield-lock', exact: false, codigo: 'roles', permiso: 'roles.ver' },
-        // Pedirle mejoras a Goods (2026-10-04): no depende del plan.
+        // Como Solicitudes: no depende del plan, sí del permiso.
+        { label: 'Campos propios', path: '/settings/campos', icon: 'forms', exact: false, permiso: 'campos.gestionar' },
+        { label: 'Actividad del equipo', path: '/settings/actividad', icon: 'history', exact: false, codigo: 'actividad_equipo', permiso: 'actividad.ver' },
+        // Pedirle mejoras a Goods no depende del plan.
         { label: 'Solicitudes a Goods', path: '/settings/solicitudes', icon: 'bulb', exact: false, permiso: 'solicitudes.crear' },
       ],
     },
@@ -171,7 +161,7 @@ export class SidebarComponent {
   /** Lista plana, en el mismo orden que los `#link` del template. */
   protected readonly navItems = computed(() => this.bloques().flatMap((b) => b.items.map((x) => x.item)));
 
-  // ── Secciones plegables ───────────────────────────────────────────────
+  // Secciones plegables
 
   protected readonly plegadas = signal<ReadonlySet<string>>(leerPlegadas());
 
@@ -192,7 +182,7 @@ export class SidebarComponent {
     setTimeout(() => this.medir.update((n) => n + 1), MS_GRUPO + 20);
   }
 
-  // ── Conversaciones con IA (como "Sidekick conversations") ────────────
+  // Conversaciones con IA
 
   protected readonly conAsistente = computed(() =>
     (this.authService.currentUser()?.modulosDisponibles ?? []).includes('asistente_ia'),
@@ -237,7 +227,7 @@ export class SidebarComponent {
       .subscribe(() => this.conWhatsapp() && this.cargarNoLeidosWa());
   }
 
-  /** Settings: link simple al fondo, fuera de la píldora (igual que staff). */
+  /** Settings: link simple al fondo, fuera de la píldora. */
   protected readonly settingsItem = { label: 'Settings', path: '/settings', icon: 'settings-2' };
 
   protected readonly url = toSignal(
@@ -260,7 +250,7 @@ export class SidebarComponent {
     return this.coincide(path, false);
   }
 
-  // ── Grupo (Products) ───────────────────────────────────────────────────
+  // Grupo (Products)
 
   /** Grupos que el usuario abrió o cerró a mano (gana sobre "estoy adentro"). */
   private readonly manual = signal<ReadonlyMap<string, boolean>>(new Map());
@@ -281,7 +271,7 @@ export class SidebarComponent {
     setTimeout(() => this.medir.update((n) => n + 1), MS_GRUPO + 20);
   }
 
-  // ── Píldora (una sola para ítems de primer nivel y del submenú) ────────
+  // Píldora (una sola para los ítems y los hijos del submenú)
 
   /** Se incrementa para forzar a recalcular posiciones (offsetTop no es reactivo). */
   private readonly medir = signal(0);
@@ -365,7 +355,7 @@ export class SidebarComponent {
     this.hoveredChild.set(null);
   }
 
-  // ── Conector "árbol" de los hijos ──────────────────────────────────────
+  // Conector en árbol de los hijos
 
   protected readonly hoveredChild = signal<number | null>(null);
   private readonly childEls = viewChildren<ElementRef<HTMLElement>>('childLink');

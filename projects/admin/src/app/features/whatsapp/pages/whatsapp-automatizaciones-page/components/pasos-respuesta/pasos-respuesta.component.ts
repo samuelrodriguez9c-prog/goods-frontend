@@ -15,7 +15,7 @@ export interface PasoVista {
 }
 
 /**
- * "Así responde Goods" (handoff-whatsapp §6): los cuatro pasos en orden de
+ * «Así responde Goods»: los cuatro pasos en orden de
  * prioridad, cada uno con número, interruptor y resumen. El elegido se edita a
  * la derecha; el que respondería en el simulador se ilumina en turquesa.
  */

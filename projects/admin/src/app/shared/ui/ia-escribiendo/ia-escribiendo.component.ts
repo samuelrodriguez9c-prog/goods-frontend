@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
- * Indicador "la IA está escribiendo" (v3). Reemplaza al texto
- * "Pensando…" / "Consultando …": solo tres puntos en una píldora gris.
- * Cada punto sube, crece y pasa por turquesa (`ia-tecleo`, 1,25 s,
- * desfase de 160 ms).
+ * Indicador «la IA está escribiendo»: tres puntos en una píldora gris. Cada
+ * punto sube, crece y pasa por turquesa (`ia-tecleo`, 1,25 s, desfase de
+ * 160 ms).
  */
 @Component({
   selector: 'app-ia-escribiendo',

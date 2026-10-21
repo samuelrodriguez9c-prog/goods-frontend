@@ -5,13 +5,8 @@ import { filter } from 'rxjs';
 import { RealtimeService } from './realtime.service';
 
 /**
- * Punto del sidebar (LEEME §8, v2): marca las rutas con cambios en vivo que
- * el usuario NO está viendo. Se limpia al entrar a esa ruta.
- *
- * Mismo evento `datos:cambio` que `CambiosEnVivoService`, pero acá sí hace
- * falta la `entidad` para decidir qué items marcar. Las listas de entidades
- * son las mismas que cada página ya pasa a `huboCambio([...])`.
- * `'*'` = cualquier entidad (Auditoría registra toda escritura).
+ * Entidades que marcan cada ruta del sidebar; deben coincidir con las que
+ * cada página pasa a `huboCambio([...])`. `'*'` = cualquier entidad.
  */
 const ENTIDADES_POR_RUTA: Record<string, string[]> = {
   // 'facturacion': registrar/anular un pago también mueve el vencimiento.
@@ -27,6 +22,10 @@ const ENTIDADES_POR_RUTA: Record<string, string[]> = {
   '/roles': ['rol', 'permiso'],
 };
 
+/**
+ * Punto del sidebar: marca las rutas con cambios en vivo (`datos:cambio`)
+ * que el usuario no está viendo. Se limpia al entrar a esa ruta.
+ */
 @Injectable({ providedIn: 'root' })
 export class CambiosPendientesService {
   private readonly router = inject(Router);

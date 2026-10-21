@@ -29,9 +29,9 @@ const OSCURO: Record<EstadoAlerta | 'track', string> = {
  * El ícono de estado del panel: un anillo que gira mientras la operación
  * está en vuelo y se **cierra** en el glifo del resultado.
  *
- * No es decorativo — es el mismo componente a 16px en una fila de tabla, a
- * 20px en la alerta en línea, a 60px en el modal y a 76px sobre el velo, así
- * que el resultado se reconoce antes de leerlo. Todo el movimiento es CSS
+ * No es decorativo — es el mismo componente a 18px en la pila de alertas y en
+ * la carga de pantalla, a 60px en el modal y a 76px sobre el velo, así que el
+ * resultado se reconoce antes de leerlo. Todo el movimiento es CSS
  * (transición de `stroke-dasharray` + `stroke-dashoffset`), no Angular
  * Animations: el elemento nunca se agrega/saca del DOM, solo cambia de
  * estado, que es justo lo que hace que la transición se vea.

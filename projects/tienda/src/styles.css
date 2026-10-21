@@ -1,53 +1,114 @@
 @import "tailwindcss";
 
-/* Tienda pública: misma tipografía de Goods (Inter + Archivo, self-hosted),
- * paleta propia y clara pensada para fotos de producto. */
+/* Inter + Archivo variable: los títulos usan el eje wdth (72–80) para verse angostos. */
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
-@import "@fontsource/archivo/600.css";
-@import "@fontsource/archivo/700.css";
+@import "@fontsource-variable/archivo/wdth.css";
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, sans-serif;
 
-  --color-papel: #f5f6f3;
-  --color-tarjeta: #ffffff;
-  --color-tinta: #1d211e;
-  --color-gris: #646b66;
-  --color-linea: #dfe3dd;
-  --color-oferta: #b3401f;
-  /* El botón de WhatsApp y la vista previa del mensaje: los colores que la
-   * gente ya reconoce del chat (fondo del chat y burbuja enviada). */
-  --color-wa: #1d8a4b;
-  --color-wa-oscuro: #166d3b;
-  --color-chat: #efe7de;
+  /* Fondo y texto */
+  --color-papel: #f2f7f4;
+  --color-tinta: #0b1f1a;
+  --color-hoja: #eafff5;      /* texto sobre bosque */
+  --color-salvia: #b5d8cc;    /* texto secundario sobre bosque */
+  --color-salvia-2: #8fb8ab;  /* etiquetas sobre bosque */
+  --color-musgo: #3d6b5e;     /* texto secundario sobre claro */
+  --color-texto-2: #3d554d;   /* párrafos sobre claro */
+  --color-gris: #5b6f68;
+  --color-gris-2: #7d918a;
+
+  /* Verdes */
+  --color-bosque: #0b3d33;    /* hero, nav, botones primarios, isla */
+  --color-bosque-2: #0f5c4f;  /* burbuja grande, hover del primario */
+  --color-teal: #128c7e;      /* links, precio rebajado */
+  --color-wa: #25d366;        /* WhatsApp, acentos */
+  --color-wa-hover: #4ae07f;
+  --color-noche: #072a23;     /* texto sobre wa */
+  --color-lima: #7ef0a8;      /* «Recibiendo pedidos», subtotal en la isla */
+  --color-turquesa: #2be0d5;
+  --color-menta: #d9f5e4;
+  --color-menta-2: #c3ebd4;
+  --color-niebla: #e1efe8;
+  --color-niebla-2: #d0e8dc;
+  --color-coral: #ffb4a6;     /* pausada / no encontrada / errores sobre bosque */
+  --color-error: #b3261e;
+
+  /* Chat de WhatsApp */
+  --color-chat: #efeae2;
   --color-burbuja: #d9fdd3;
 }
 
-:root {
-  color-scheme: light;
-}
+:root { color-scheme: light; }
 
-html,
-body {
+html, body {
+  margin: 0;
   background: var(--color-papel);
   color: var(--color-tinta);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-wa);
-  outline-offset: 2px;
+/* En la capa base: sin capa, estas reglas les ganan a las clases de Tailwind
+ * (text-hoja, hover:text-hoja…) y los enlaces con forma de botón quedan con
+ * texto #0b3d33 sobre fondo oscuro. */
+@layer base {
+  a { color: var(--color-bosque); }
+  a:hover { color: var(--color-teal); }
 }
 
+/* Anillo de foco para teclado, en la capa base: así `outline-none` de los campos de
+ * texto le gana. Los campos no muestran borde al hacer clic; el textarea de la nota
+ * usa su propio inset #128c7e. */
+@layer base {
+  :focus-visible { outline: 2px solid var(--color-wa); outline-offset: 2px; }
+}
+
+/* Móvil: la página se desplaza igual, pero sin barra visible. */
+@media (max-width: 759px) {
+  html, body { scrollbar-width: none; }
+  html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+}
+.sin-barra { scrollbar-width: none; }
+.sin-barra::-webkit-scrollbar { display: none; }
+
+/* Formas orgánicas: el orden importa, `forma-N` se elige por el índice del producto (% 4). */
+.forma-0 { border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; }
+.forma-1 { border-radius: 61% 39% 45% 55% / 55% 62% 38% 45%; }
+.forma-2 { border-radius: 38% 62% 56% 44% / 63% 36% 64% 37%; }
+.forma-3 { border-radius: 52% 48% 40% 60% / 46% 58% 42% 54%; }
+.forma-tag { border-radius: 58% 42% 55% 45% / 48% 56% 44% 52%; }
+
+.titular {
+  font-family: var(--font-display);
+  font-variation-settings: 'wdth' 72;
+  text-transform: uppercase;
+  letter-spacing: -0.035em;
+  line-height: .84;
+}
+
+@keyframes morph {
+  0%, 100% { border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; }
+  33% { border-radius: 61% 39% 45% 55% / 55% 62% 38% 45%; }
+  66% { border-radius: 38% 62% 56% 44% / 63% 36% 64% 37%; }
+}
+@keyframes fundido { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal { from { opacity: 0; transform: translateY(24px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes anillo { 0% { transform: scale(.6); opacity: .6; } 100% { transform: scale(1.8); opacity: 0; } }
+
+.animate-morph { animation: morph 24s ease-in-out infinite; }
+.animate-morph-r { animation: morph 17s ease-in-out infinite reverse; }
+.animate-fundido { animation: fundido .25s ease-out; }
+.animate-modal { animation: modal .45s cubic-bezier(.2,.8,.2,1); }
+.animate-anillo { animation: anillo 2.4s ease-out infinite; }
+
+/* [revelar]: estado inicial antes de entrar en pantalla. */
+[revelar] { opacity: 0; transform: translateY(32px); }
+
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  [revelar] { opacity: 1; transform: none; }
 }

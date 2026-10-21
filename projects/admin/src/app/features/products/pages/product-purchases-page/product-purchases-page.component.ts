@@ -38,7 +38,7 @@ import {
 const VENTANA: Record<Periodo, number> = { hoy: 864e5, '7': 7 * 864e5, '30': 30 * 864e5 };
 
 /**
- * Compras (Productos v5): cabecera, franja de métricas, lista agrupada y la hoja
+ * Compras: cabecera, franja de métricas, lista agrupada y la hoja
  * de la compra (Líneas · Datos · Actividad). Una compra pendiente se edita como
  * borrador ("Cambios sin guardar") y el stock entra solo al marcarla recibida.
  */
@@ -78,7 +78,7 @@ export class ProductPurchasesPageComponent {
   private readonly franja = viewChild(FranjaMetricasComponent);
   private readonly buscador = viewChild<ElementRef<HTMLInputElement>>('buscador');
 
-  // ── Estado de la lista ──
+  // Estado de la lista
   protected readonly menu = signal<MenuCompras>(null);
   protected readonly periodo = signal<Periodo>('hoy');
   protected readonly busqueda = signal('');
@@ -91,7 +91,7 @@ export class ProductPurchasesPageComponent {
   /** Grupos plegados, por clave. */
   protected readonly plegados = signal<Record<string, boolean>>({});
 
-  // ── Estado de la hoja ──
+  // Estado de la hoja
   protected readonly seleccion = signal<number | 'nueva' | null>(null);
   protected readonly pestana = signal<PestanaCompra>('lineas');
   protected readonly borrador = signal<Borrador | null>(null);
@@ -109,7 +109,7 @@ export class ProductPurchasesPageComponent {
   /** Archivo elegido en "Adjuntar factura" (se sube al guardar). */
   private archivoNuevo: File | null = null;
 
-  // ── Datos ──
+  // Datos
   protected readonly puedeEditar = computed(() => this.catalogo.puede('compras.editar'));
   protected readonly puedeCrear = computed(() => this.catalogo.puede('compras.crear'));
   private readonly hoy = computed(() => this.catalogo.hoy());
@@ -126,7 +126,7 @@ export class ProductPurchasesPageComponent {
   /** Error o vacío: solo la tarjeta de estado, sin lista ni hoja. */
   protected readonly soloEstado = computed(() => this.carga() === 'error' || this.carga() === 'vacio');
 
-  // ── Cabecera y métricas ──
+  // Cabecera y métricas
   protected readonly lectura = computed(() => {
     if (!this.catalogo.cargado()) return '';
     const cs = this.catalogo.compras(), pendientes = cs.filter((c) => c.estado === 'pendiente');
@@ -169,7 +169,7 @@ export class ProductPurchasesPageComponent {
     ];
   });
 
-  // ── Lista ──
+  // Lista
   private coincide(c: CompraV5): boolean {
     const m = this.metrica(), q = norm(this.busqueda().trim()), edad = this.edad(c);
     if (q && ![codigoCompra(c.id), c.numeroFactura, this.proveedor(c.proveedorId)?.nombre, ...c.items.map((it) => this.nombreProducto(it.productoId))].some((v) => norm(v).includes(q))) return false;
@@ -265,7 +265,7 @@ export class ProductPurchasesPageComponent {
   ]);
   protected readonly tituloOrden = computed(() => 'Ordenar: ' + ORDENES.find((o) => o.k === this.orden())!.titulo);
 
-  // ── Hoja ──
+  // Hoja
   protected readonly esNueva = computed(() => this.seleccion() === 'nueva');
   protected readonly compra = computed(() => {
     const id = this.seleccion();
@@ -349,7 +349,7 @@ export class ProductPurchasesPageComponent {
   });
   protected readonly bloqueoRecibir = computed<BloqueoRecibir>(() => (this.sucio() ? 'sucio' : !this.puedeEditar() ? 'permiso' : null));
 
-  // ── Modales ──
+  // Modales
   /** Compra del modal Recibir / Cancelar. */
   protected readonly compraModal = computed(() => {
     const m = this.modal();
@@ -410,7 +410,7 @@ export class ProductPurchasesPageComponent {
     inject(DestroyRef).onDestroy(() => this.alertas.soltarCambios());
   }
 
-  // ── Borrador ──
+  // Borrador
   private vacio(proveedorId: number | null = null): Borrador {
     return {
       proveedorId, busquedaProveedor: this.proveedor(proveedorId)?.nombre ?? '', fecha: ymd(this.hoy()), numeroFactura: '', archivo: null, notas: '',
@@ -467,7 +467,7 @@ export class ProductPurchasesPageComponent {
     this.cambiarBorrador((d) => ({ ...d, archivo: null, ia: { ...d.ia, archivo: false } }));
   }
 
-  // ── Selección y navegación ──
+  // Selección y navegación
   protected abrir(id: number): void {
     if (this.seleccion() === id) return;
     if (this.sucio()) return this.alertas.sacudir();
@@ -532,7 +532,7 @@ export class ProductPurchasesPageComponent {
     this.router.navigate(['/products/inventario'], { queryParams: { producto: id } });
   }
 
-  // ── Guardar ──
+  // Guardar
   protected async guardar(): Promise<void> {
     const d = this.borrador(), esNueva = this.esNueva();
     if (!d || this.guardando()) return;
@@ -583,7 +583,7 @@ export class ProductPurchasesPageComponent {
     }
   }
 
-  // ── Recibir y cancelar ──
+  // Recibir y cancelar
   protected pedirRecibir(id: number): void {
     if (this.catalogo.niega('compras.editar')) return;
     if (this.sucio()) return this.alertas.sacudir();
@@ -622,14 +622,15 @@ export class ProductPurchasesPageComponent {
     this.modal.set({ tipo: 'factura', id: this.esNueva() ? null : (this.seleccion() as number) });
   }
 
-  // ── Leer factura con IA ──
+  // Leer factura con IA
   /** "Leer factura": abre una compra nueva y el modal del Asistente. */
   protected abrirIa(): void {
     if (this.catalogo.niega('compras.crear')) return;
     if (!(this.esNueva() && this.borrador()) && !this.nueva()) return;
     this.modal.set({ tipo: 'ia' });
   }
-  /** La lectura con IA todavía no está conectada: se avisa en vez de simular una lectura. */
+  // TODO(front): conectar con `AsistenteService.extraerFacturaProveedor` (el backend ya lee
+  // facturas); mientras tanto se avisa en vez de simular una lectura.
   protected leerFacturaIa(e: Event): void {
     e.preventDefault();
     const campo = e.target as HTMLInputElement;
@@ -644,7 +645,7 @@ export class ProductPurchasesPageComponent {
     });
   }
 
-  // ── Lista: filtros, grupos y exportar ──
+  // Lista: filtros, grupos y exportar
   protected alternarMenu(k: Exclude<MenuCompras, null>, e: Event): void {
     e.stopPropagation();
     this.menu.update((m) => (m === k ? null : k));
@@ -701,7 +702,7 @@ export class ProductPurchasesPageComponent {
     this.alertas.mostrar({ estado: 'success', titulo: pl(filas.length, 'compra exportada', 'compras exportadas') + ' a CSV' });
   }
 
-  // ── Atajos ──
+  // Atajos
   protected atajos(e: KeyboardEvent): void {
     if (esGuardar(e)) {
       if (this.sucio()) {

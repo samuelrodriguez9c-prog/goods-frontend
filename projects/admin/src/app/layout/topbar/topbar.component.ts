@@ -1,6 +1,5 @@
-// projects/admin/src/app/layout/topbar/topbar.component.ts
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, inject, output, signal } from '@angular/core';
-import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs';
 import {
@@ -15,7 +14,9 @@ import { Notificacion } from '../../core/notificaciones/models/notificacion.mode
 import { NotificacionService } from '../../core/notificaciones/notificacion.service';
 import { agruparPorDia, defTipo, filaNotificacion } from '../../core/notificaciones/notificacion-catalogo';
 import { RealtimeService } from '../../core/realtime/realtime.service';
+import { NavigationTrailService } from '../../core/navigation/navigation-trail.service';
 import { AtajosService } from '../../core/ui/atajos.service';
+import { WhatsappService } from '../../core/whatsapp/whatsapp.service';
 import { IaMarcaComponent } from '../../shared/ui/ia-marca/ia-marca.component';
 
 type Pestana = 'todas' | 'soporte' | 'tienda' | 'cuenta';
@@ -29,17 +30,21 @@ interface CuentaTopbar {
   plan: string; estadoPlan: EstadoPlan; diasParaVencer: number; montoPlan: string; venceTexto: string;
 }
 
-/** Íconos de ruta (`data.icon`) que no son un nombre registrado en `provideTablerIcons`. */
-/** `ia` no se traduce: se pinta con la marca del asistente (`app-ia-marca`). */
+/**
+ * Íconos de ruta (`data.icon`) que no son un nombre registrado en
+ * `provideTablerIcons`. `ia` no se traduce: se pinta con la marca del asistente.
+ */
 const ICONO_RUTA: Record<string, string> = {};
 const DIA_MS = 864e5;
 const cop = (n: number) => '$' + Math.round(n).toLocaleString('es-CO');
 const fechaCorta = (iso: string) => new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 
 /**
- * Topbar del admin (Productos Goods v5).
+ * Topbar del admin.
+ *
+ * @remarks
  * - Marca: logo Goods + al pasar el cursor se despliega "× [logo de la empresa]" (550 ms).
- * - Migas: Products › módulo actual (ícono turquesa), desde la URL.
+ * - Migas: rastro de las últimas páginas visitadas (ícono turquesa); Products y WhatsApp llevan el módulo delante.
  * - Buscador central ⌘K · Atajos (Ctrl + .) · Asistente de IA (aro con punto turquesa).
  * - Campanita: pestañas Todas/Soporte/Tienda/Cuenta, agrupada por día, acción directa, punto leída/no leída.
  * - Cuenta compacta: solo avatar; al abrir se despliega nombre + línea que alterna
@@ -60,6 +65,8 @@ export class TopbarComponent implements OnDestroy {
   private readonly realtime = inject(RealtimeService);
   private readonly asistente = inject(AsistenteService);
   private readonly atajos = inject(AtajosService);
+  private readonly whatsapp = inject(WhatsappService);
+  private readonly rastro = inject(NavigationTrailService);
 
   /** Se emiten además de la acción propia (atajos / panel del asistente), por si el host quiere reaccionar. */
   readonly abrirAtajos = output<void>();
@@ -72,7 +79,7 @@ export class TopbarComponent implements OnDestroy {
     volver: IconArrowLeft,
   };
 
-  // ── Cuenta ──────────────────────────────────────────────────────────────
+  // Cuenta
   protected readonly cuenta = computed<CuentaTopbar>(() => {
     const u = this.auth.currentUser();
     const e = u?.empresa ?? null;
@@ -148,45 +155,35 @@ export class TopbarComponent implements OnDestroy {
   private tVolteo?: ReturnType<typeof setTimeout>;
   private holdTimer?: ReturnType<typeof setTimeout>;
 
-  // ── Migas ───────────────────────────────────────────────────────────────
+  // Migas
   private readonly url = toSignal(this.router.events.pipe(filter((e) => e instanceof NavigationEnd), map(() => this.router.url)), { initialValue: this.router.url });
   /** Pantalla completa del asistente (fuera del Shell): "Volver al panel". */
   protected readonly enAsistente = computed(() => this.url().startsWith('/asistente'));
   /** Atajos: el diálogo vive en la lista de Products. */
   protected readonly conAtajos = computed(() => this.url().split(/[?#]/)[0] === '/products');
   /**
-   * Migas desde `data.breadcrumb`/`data.icon` de la ruta activa. En Products
-   * va "Products › módulo" (handoff v5); en el resto, solo la pantalla.
+   * Migas: rastro de las últimas páginas visitadas (`NavigationTrailService`),
+   * con chevron, ícono turquesa y la actual en blanco. Las anteriores llevan de
+   * vuelta con un clic y con los mismos filtros (guardan la URL completa).
+   * Las secciones de Products y WhatsApp llevan el módulo delante
+   * («Products · Inventario», «WhatsApp · Plantillas») para que se entiendan
+   * fuera de contexto. Sin número de WhatsApp (o mientras se sabe) la de
+   * WhatsApp dice solo «WhatsApp».
    */
   protected readonly migas = computed(() => {
-    this.url();
-    let r: ActivatedRouteSnapshot | null = this.router.routerState.snapshot.root;
-    let hoja: ActivatedRouteSnapshot | null = null;
-    while (r) {
-      if (r.data?.['breadcrumb']) hoja = r;
-      r = r.firstChild;
-    }
-    if (!hoja) return [];
-    const icono = (d: ActivatedRouteSnapshot['data']) => ICONO_RUTA[d['icon']] ?? d['icon'] ?? 'category';
     const ruta = '/' + this.url().split(/[?#]/)[0].split('/').filter(Boolean).join('/');
-    const seg = ruta.split('/').filter(Boolean);
-    // WhatsApp (rediseño 2026-10-13): "WhatsApp › sección", también en la Bandeja.
-    if (seg[0] === 'whatsapp') {
-      return [
-        { texto: 'WhatsApp', icono: 'brand-whatsapp', ruta: '/whatsapp', actual: false },
-        { texto: hoja.data['breadcrumb'] as string, icono: icono(hoja.data), ruta, actual: true },
-      ];
-    }
-    if (seg[0] === 'products' && seg.length > 1) {
-      return [
-        { texto: 'Products', icono: 'tag', ruta: '/products', actual: false },
-        { texto: hoja.data['breadcrumb'] as string, icono: icono(hoja.data), ruta, actual: true },
-      ];
-    }
-    return [{ texto: hoja.data['breadcrumb'] as string, icono: icono(hoja.data), ruta, actual: true }];
+    const items = this.rastro.trail();
+    return items.map((it, k) => {
+      const seg = it.id.split('/').filter(Boolean);
+      const actual = k === items.length - 1 && it.id === ruta;
+      let texto = it.etiqueta;
+      if (seg[0] === 'whatsapp') texto = actual && this.whatsapp.sinNumero() ? 'WhatsApp' : `WhatsApp · ${it.etiqueta}`;
+      else if (seg[0] === 'products' && seg.length > 1) texto = `Products · ${it.etiqueta}`;
+      return { texto, icono: ICONO_RUTA[it.icono] ?? it.icono, ruta: it.href, actual };
+    });
   });
 
-  // ── Notificaciones ──────────────────────────────────────────────────────
+  // Notificaciones
   protected readonly notificaciones = signal<Notificacion[]>([]);
   private readonly ocultas = signal<Set<number>>(new Set());
   protected readonly visibles = computed(() => this.notificaciones().filter((n) => !this.ocultas().has(n.id)));
@@ -194,11 +191,8 @@ export class TopbarComponent implements OnDestroy {
   protected readonly panelAbierto = signal(false);
   protected readonly pestana = signal<Pestana>('todas');
   protected readonly timbre = signal(0);
-  /** TODO: ajustar a las categorías reales del catálogo de admin. */
-  private cat = (n: Notificacion): Pestana => {
-    const c = defTipo(n.tipo).cat as string;
-    return c === 'soporte' ? 'soporte' : ['inventario', 'compras', 'pedidos', 'tienda'].includes(c) ? 'tienda' : 'cuenta';
-  };
+  /** Pestaña de cada aviso; los de categoría «otras» solo salen en «Todas». */
+  private cat = (n: Notificacion) => defTipo(n.tipo).cat;
   protected readonly pestanas = computed(() => {
     const nl = this.visibles().filter((n) => !n.leidaEn);
     return ([['todas', 'Todas'], ['soporte', 'Soporte'], ['tienda', 'Tienda'], ['cuenta', 'Cuenta']] as [Pestana, string][]).map(([id, texto]) => ({
@@ -257,7 +251,7 @@ export class TopbarComponent implements OnDestroy {
     }
   }
 
-  // ── Campanita ───────────────────────────────────────────────────────────
+  // Campanita
   protected togglePanel(): void {
     this.panelAbierto.update((v) => !v);
     this.cerrarMenu();
@@ -301,7 +295,7 @@ export class TopbarComponent implements OnDestroy {
     return d === 1 ? 'ayer' : `${d} d`;
   }
 
-  // ── Menú de cuenta ──────────────────────────────────────────────────────
+  // Menú de cuenta
   protected toggleMenu(): void {
     const abrir = !this.menuAbierto();
     this.menuAbierto.set(abrir);

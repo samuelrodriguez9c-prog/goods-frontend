@@ -1,5 +1,6 @@
-// Espejo de `Cliente` y de lo que calculan `GET /clientes` y `GET /clientes/:id`
-// (backend `negocio/cliente`, PROPUESTA_PEDIDOS_Y_CLIENTES.md §3.1).
+// Espejo de `Cliente` y de lo que calculan `GET /clientes` y `GET /clientes/:id`.
+
+import type { Atributos } from '../../campos/campo-personalizado.model';
 
 export interface DireccionCliente {
   direccion: string;
@@ -27,6 +28,8 @@ export interface Cliente {
   ultimoPedidoEn: string | null;
   /** Viene del contacto de WhatsApp vinculado (solo lectura). */
   aceptaPromociones: boolean;
+  /** Campos propios de la Empresa, por clave. */
+  atributos?: Atributos;
 }
 
 export interface PedidoDeCliente {
@@ -56,6 +59,8 @@ export interface FiltroClientes {
 
 export interface GuardarClientePayload {
   nombre: string;
+  /** Campos propios; `null` quita el valor. */
+  atributos?: Record<string, string | number | boolean | null>;
   telefono?: string | null;
   correo?: string | null;
   documento?: string | null;

@@ -29,10 +29,11 @@ const MAX_TITULO = 200; // mismo límite que DocumentosInternosPageComponent
 const EXTENSIONES = '.md,.txt,.pdf,.docx';
 
 /**
- * "Agregar documento" como tarjeta DENTRO del hilo del asistente
- * (mismo patrón que la tarjeta de pago). Pasos: Archivo → Revisión.
+ * «Agregar documento» como tarjeta dentro del hilo del asistente, en dos
+ * pasos: Archivo → Revisión.
  *
- * Misma lógica que `DocumentosInternosPageComponent` (repo, 2026-10-02):
+ * @remarks
+ * Misma lógica que `DocumentosInternosPageComponent`:
  *  - .md / .txt se leen en el navegador con `FileReader`.
  *  - .pdf / .docx van a `AsistenteDocumentoService.extraerTexto` (sin IA).
  *  - Nada se guarda hasta "Guardar documento" → `crear({ titulo, contenido })`.

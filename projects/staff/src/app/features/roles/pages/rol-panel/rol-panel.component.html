@@ -1,14 +1,7 @@
-<!-- projects/staff/src/app/features/roles/pages/rol-panel/rol-panel.component.html -->
-
 <!--
-  Overlay `fixed` sobre toda la pantalla, nunca corre la página (mismo
-  criterio corregido en Usuarios el mismo día que se integró este
-  módulo — ver ADMIN_DISENO.md). El backdrop queda transparente en vez de
-  oscurecer, a diferencia de Empresas/Usuarios: acá tiene que convivir
-  visible con la barra flotante de "cambios sin guardar en otros roles"
-  de `roles-page` (`tocadosFuera`), que un velo oscuro taparía. El clic
-  afuera del panel lo cierra igual (`onBackdropClick`) — mismo
-  comportamiento, sin el oscurecido.
+  Overlay `fixed`: no corre la página. Fondo transparente (sin velo) para que
+  siga visible la barra de cambios sin guardar en otros roles (`tocadosFuera`);
+  el clic afuera cierra igual.
 -->
 <div class="fixed inset-0 z-50 flex justify-end" (click)="onBackdropClick($event)">
   <aside
@@ -175,7 +168,7 @@
           />
           @if (creando()) {
             <p class="mt-1 text-[11px] leading-4 text-gray-400">
-              Mínimo 3 caracteres. Se guarda tal cual lo escribís — es lo que ve el cliente en su panel.
+              Mínimo 3 caracteres. Se guarda tal cual lo escribes — es lo que ve el cliente en su panel.
             </p>
           } @else if (rol()?.esRolSistema) {
             <p class="mt-1 text-[11px] leading-4 text-gray-400">
@@ -202,7 +195,7 @@
           <div class="mt-5">
             <span class="mb-1.5 block text-xs font-medium text-gray-600">Partir de</span>
             <p class="mb-2 text-[11px] leading-4 text-gray-400">
-              Copia los permisos de una plantilla como punto de partida — después los ajustás en la
+              Copia los permisos de una plantilla como punto de partida — después los ajustas en la
               pestaña Permisos.
             </p>
             <div class="flex flex-wrap gap-1.5">

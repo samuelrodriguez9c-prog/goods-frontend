@@ -1,0 +1,17 @@
+@let t = st.tienda()!;
+<div [inert]="pd.paso() !== 5" class="flex h-full w-1/6 flex-col">
+  <div class="sin-barra flex flex-1 flex-col items-center overflow-y-auto px-4 pb-12 pt-1 text-center">
+    <div class="flex flex-[1_0_auto] flex-col items-center justify-center self-stretch pb-4 pt-3">
+      <app-sello [icono]="i.check" />
+      <p class="m-0 mt-2.5 font-display text-[clamp(36px,7vh,64px)] font-bold leading-[.92] tracking-[-0.025em] [font-variation-settings:'wdth'_78]">Pedido enviado</p>
+    </div>
+    <div class="relative -mx-4 -mb-12 flex-none self-stretch px-4 pb-10 text-bosque">
+      <app-ola />
+      <div class="relative flex justify-center pt-20"><span class="max-w-[340px] text-pretty rounded-[22px_22px_22px_6px] bg-hoja px-4 py-2.5 text-left text-[12.5px] font-medium leading-[1.4] text-bosque">{{ t.nombre }} te responderá por WhatsApp para confirmar disponibilidad, pago y entrega.</span></div>
+    </div>
+  </div>
+  <div class="relative z-[2] -mt-px flex shrink-0 bg-white p-3 pt-2.5 text-bosque">
+    <app-nubes bg="#ffffff" />
+    <button type="button" (click)="pd.seguirComprando()" class="relative flex h-[54px] flex-1 items-center justify-center gap-2 rounded-full bg-bosque text-[15px] font-semibold text-hoja transition-transform hover:bg-bosque-2 active:scale-[.97]">Seguir viendo productos<tabler-icon [icon]="i.der" [size]="17" [stroke]="2" /></button>
+  </div>
+</div>

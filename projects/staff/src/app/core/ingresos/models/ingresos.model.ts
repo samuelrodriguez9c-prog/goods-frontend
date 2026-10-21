@@ -1,4 +1,4 @@
-/** Formas de `GET /ingresos/*` (backend `IngresosService`, 2026-10-04). Montos en COP. */
+/** Formas de `GET /ingresos/*`. Montos en COP salvo donde se separa por moneda. */
 
 export type TipoMovimiento =
   | 'nueva'
@@ -8,10 +8,10 @@ export type TipoMovimiento =
   | 'cambio'
   | 'baja'
   | 'vencida'
-  // Extras que se cobran con el plan (cargos recurrentes, 2026-10-04).
+  // Extras que se cobran con el plan (cargos recurrentes).
   | 'extra_alta'
   | 'extra_baja'
-  // Descuentos sobre el plan (2026-10-10): dar uno contrae el MRR, quitarlo lo expande.
+  // Descuentos sobre el plan: dar uno contrae el MRR, quitarlo lo expande.
   | 'descuento_alta'
   | 'descuento_baja';
 
@@ -84,7 +84,7 @@ export interface ResumenIngresos {
     enRiesgo: { empresas: number; mrr: number };
     /** Extras vigentes (ya incluidos en `mrr`). */
     extras: { cargos: number; empresas: number; mrr: number };
-    /** Períodos de prueba (2026-10-10): no suman al MRR hasta que pagan. */
+    /** Períodos de prueba: no suman al MRR hasta que pagan. */
     pruebas: { enCurso: number; terminanEn7Dias: number; convertidasMes: number; perdidasMes: number; conversion: number | null };
   };
   serie: MesIngresos[];

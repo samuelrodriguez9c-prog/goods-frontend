@@ -1,4 +1,4 @@
-/** Espejos de `negocio/whatsapp` del backend (Fase 1 de PROPUESTA_WHATSAPP.md). */
+// Espejos de `negocio/whatsapp` del backend.
 export interface EstadoConexion {
   disponible: boolean;
   registroIntegrado: { appId: string; configId: string; graphVersion: string } | null;
@@ -65,7 +65,7 @@ export interface Mensaje {
   enviadoEn: string;
 }
 
-// ── Fase 3: plantillas, respuestas automáticas y rápidas ──
+// Plantillas, respuestas automáticas y rápidas
 
 export type EstadoPlantilla = 'pendiente' | 'aprobada' | 'rechazada' | 'pausada' | 'deshabilitada';
 
@@ -133,7 +133,7 @@ export interface Automatizaciones {
   enlaceTienda: string | null;
 }
 
-// ── Campañas ──
+// Campañas
 
 export type EstadoCampana = 'programada' | 'enviando' | 'enviada' | 'cancelada' | 'fallida';
 
@@ -202,7 +202,7 @@ export interface Mostrador {
   interes: number[];
 }
 
-// ── Cabecera: números de cada sección (`GET /whatsapp/resumen`) ──
+// Cabecera: números de cada sección (`GET /whatsapp/resumen`)
 
 /** Valor de hoy y serie de 8 días (hace 7 días → hoy) para la gráfica chica. */
 export interface MetricaWa {
@@ -264,13 +264,13 @@ export function armarPlantilla(cuerpo: string, valores: string[]): string {
   return cuerpo.replace(/\{\{(\d+)\}\}/g, (todo, n: string) => valores[Number(n) - 1]?.trim() || todo);
 }
 
-/** "+57 311 555 0000" a partir de los dígitos de WhatsApp. */
 /** Cómo mostrar quién es el cliente debajo de su nombre: número, o @usuario si no compartió el número. */
 export function identificacion(c: { waId: string | null; usuario: string | null }): string {
   if (c.waId) return formatearNumero(c.waId);
   return c.usuario ? `@${c.usuario}` : 'Número oculto';
 }
 
+/** "+57 311 555 0000" a partir de los dígitos de WhatsApp. */
 export function formatearNumero(waId: string): string {
   if (/^57\d{10}$/.test(waId)) return `+57 ${waId.slice(2, 5)} ${waId.slice(5, 8)} ${waId.slice(8)}`;
   if (/^1\d{10}$/.test(waId)) return `+1 ${waId.slice(1, 4)} ${waId.slice(4, 7)} ${waId.slice(7)}`;

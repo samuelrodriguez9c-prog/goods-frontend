@@ -7,8 +7,6 @@ import { AlertaService } from '../../../core/ui/alerta.service';
  *
  *   vigilarCambios({ borrador: this.borrador, guardado: this.guardado, etiquetas: ETIQUETAS,
  *     nuevo: () => this.esNuevo(), guardar: () => this.guardar(), descartar: () => this.descartar() });
- *
- * Copy exacto del prototipo (productos-pila.js → pilaVM).
  */
 export function vigilarCambios<T extends object>(cfg: {
   borrador: Signal<T | null>;

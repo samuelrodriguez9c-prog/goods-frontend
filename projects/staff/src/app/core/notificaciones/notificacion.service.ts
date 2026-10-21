@@ -6,26 +6,19 @@ import { RespuestaPaginada } from '../catalog/models/empresa.model';
 import { Notificacion } from './models/notificacion.model';
 
 /**
- * Cliente de `GET /notificaciones/staff` (backend, `modules/notificacion/`)
- * — separada a propósito de `/notificaciones` (esa es de `admin`, ver el
- * comentario de `NotificacionController`): mismo servicio del lado del
- * backend, pero ruta propia para que quede claro cuál le corresponde a
- * cada panel.
+ * Notificaciones de staff. El listado usa `/notificaciones/staff` (la de
+ * `admin` es `/notificaciones`); las acciones sobre cada una son comunes.
  */
 @Injectable({ providedIn: 'root' })
 export class NotificacionService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/notificaciones/staff`;
 
-  /** `pageSize` bajo por default — la campanita solo necesita mostrar las
-   * últimas, no un historial completo. `page` se suma acá (2026-09-23,
-   * segunda vuelta) para la página "Todas las notificaciones"
-   * (`NotificacionesPageComponent`) — el dropdown de la campanita sigue
-   * usándolo sin pasar `page` (se queda en la página 1 por default).
-   * `incluirOcultas` (tercera vuelta, mismo día): por default el
-   * dropdown NO trae lo que el usuario ya "borró" con `ocultarTodas()` —
-   * la plantilla "Ver todas las notificaciones" lo pasa en `true` para
-   * seguir mostrándolas ahí. */
+  /**
+   * @param pageSize - Bajo por defecto: la campanita solo muestra las últimas.
+   * @param incluirOcultas - Por defecto no trae las que se ocultaron con
+   *   `ocultarTodas()`; la página "Ver todas" lo pasa en `true`.
+   */
   listar(
     soloNoLeidas = false,
     pageSize = 20,
@@ -49,10 +42,6 @@ export class NotificacionService {
     );
   }
 
-  /** Inverso de `marcarLeida` — LEEME §17 (2026-09-24): el punto de la
-   * campanita y el toggle de "Ver todas" alternan leída ↔ no leída.
-   * `PATCH /notificaciones/:id/no-leida`, mismo chequeo de dueño que
-   * `/leida` (ver `NotificacionService.marcarNoLeida` del backend). */
   marcarNoLeida(id: number): Observable<Notificacion> {
     return this.http.patch<Notificacion>(
       `${environment.apiUrl}/notificaciones/${id}/no-leida`,
@@ -64,11 +53,8 @@ export class NotificacionService {
     return this.http.patch<void>(`${environment.apiUrl}/notificaciones/leidas`, {});
   }
 
-  /** Tercera vuelta (2026-09-23): "Borrar todas" del dropdown de la
-   * campanita ahora persiste en el backend (antes era solo en memoria,
-   * ver `TopbarComponent.idsOcultos`) — así no reaparecen al recargar.
-   * Nunca borra filas ni las marca leídas (ver
-   * `NotificacionService.ocultarTodas` del backend). */
+  /** "Borrar todas" de la campanita: las oculta en el backend para que no
+   * reaparezcan al recargar. No las borra ni las marca leídas. */
   ocultarTodas(): Observable<void> {
     return this.http.patch<void>(
       `${environment.apiUrl}/notificaciones/ocultar-todas`,

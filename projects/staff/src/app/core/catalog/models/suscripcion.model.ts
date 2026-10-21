@@ -1,10 +1,5 @@
-/** Espejo de la entidad `Suscripcion` del backend
- * (`suscripcion.entity.ts`) — el `findAndCount` que usa
- * `SuscripcionService.findAll` no eager-carga la relación `plan` (no
- * tiene `eager: true`, ver la entidad), así que acá solo llega
- * `planId` — resolver el nombre del plan es responsabilidad de quien
- * consuma esto (ver `EmpresasPageComponent`, que cruza esto con
- * `PlanService.listarTodos()`). */
+/** Espejo de la entidad `Suscripcion`. El listado no trae la relación
+ * `plan`, solo `planId`: para el nombre, ver `construirMapaPlanPorEmpresa`. */
 export interface Suscripcion {
   id: number;
   empresaId: number;
@@ -14,7 +9,7 @@ export interface Suscripcion {
   fechaInicio: string | null;
   fechaFin: string | null;
   fechaProximoVencimiento?: string | null;
-  /** Período de prueba (2026-10-10): en prueba mientras `pruebaConvertidaEn` sea null. */
+  /** Fin del período de prueba; sigue en prueba mientras `pruebaConvertidaEn` sea null. */
   pruebaHasta?: string | null;
   pruebaConvertidaEn?: string | null;
   creadoEn: string;
@@ -22,22 +17,13 @@ export interface Suscripcion {
 
 /** En prueba: tuvo prueba y ningún pago la convirtió todavía. */
 export const enPrueba = (s: Pick<Suscripcion, 'pruebaHasta' | 'pruebaConvertidaEn'> | null | undefined) => !!s?.pruebaHasta && !s.pruebaConvertidaEn;
-/** Tope de días de prueba (decisión de gerencia 2026-10-10). */
+/** Tope de días de prueba (decisión de negocio; el backend aplica el mismo). */
 export const DIAS_PRUEBA_MAX = 90;
 
 /**
- * Espejo de `SuscripcionPago` del backend
- * (`modules/suscripcion/entities/suscripcion-pago.entity.ts`) — §5.5 de
- * `PROPUESTA_ASISTENTE_IA_RAG.md` ("extracción de documentos", lado
- * staff: "comprobante de pago → registrar Pago de una Empresa"). A
- * diferencia de `Suscripcion` de arriba (una Empresa puede tener varias
- * a lo largo del tiempo, una por plan), esto es el HISTORIAL de pagos
- * manuales — no hay pasarela conectada todavía, así que cada fila acá es
- * un pago que un miembro de staff cargó a mano tras revisar un
- * comprobante. Registrar un pago además RENUEVA la suscripción activa/
- * vencida de esa Empresa (ver `FacturacionService.registrar`,
- * backend) — esta fila es solo el comprobante en sí, no hace falta
- * volver a pedir la Suscripción actualizada para reflejar eso en la UI.
+ * Espejo de `SuscripcionPago`: un pago que staff cargó a mano tras revisar
+ * un comprobante (no hay pasarela de pago). Registrarlo también renueva la
+ * suscripción activa o vencida de la Empresa.
  */
 export interface SuscripcionPago {
   id: number;

@@ -1,4 +1,6 @@
-// Espejo mínimo (sin cambios): lo usa el modo documento del Asistente de IA.
+import type { Atributos } from '../../campos/campo-personalizado.model';
+
+/** Lo mínimo de un producto: lo usa el modo documento del asistente. */
 export interface Producto {
   id: number;
   nombre: string;
@@ -17,10 +19,8 @@ export interface ProductoImagen {
 }
 
 /**
- * Espejo completo de `Producto` del backend
- * (`modules/negocio/producto/entities/producto.entity.ts`) para la pantalla de
- * catálogo. Los `decimal` de Postgres llegan como string: `ProductoService`
- * los pasa a number antes de entregarlos (ver `normalizar`).
+ * `Producto` completo del backend, para el catálogo. Los `decimal` llegan
+ * como string; `ProductoService` los pasa a number antes de entregarlos.
  */
 export interface ProductoCatalogo extends Producto {
   descripcion: string | null;
@@ -36,16 +36,18 @@ export interface ProductoCatalogo extends Producto {
   destacado: boolean;
   estado: EstadoProducto;
   imagenes: ProductoImagen[];
+  /** Campos propios de la Empresa, por clave. */
+  atributos: Atributos;
   creadoEn: string;
   actualizadoEn: string;
 }
 
-/** Body de `POST /productos` y `PATCH /productos/:id` (CreateProductoDto). */
+/** Body de `POST /productos` y `PATCH /productos/:id` (CreateProductoDto). `null` en atributos quita el valor. */
 export type ProductoPayload = Partial<
-  Omit<ProductoCatalogo, 'id' | 'imagenes' | 'creadoEn' | 'actualizadoEn'>
->;
+  Omit<ProductoCatalogo, 'id' | 'imagenes' | 'creadoEn' | 'actualizadoEn' | 'atributos'>
+> & { atributos?: Record<string, string | number | boolean | null> };
 
-/** Etiqueta + colores por estado (los mismos del prototipo, LEEME §3). */
+/** Etiqueta y colores de cada estado. */
 export const ESTADOS_PRODUCTO: Record<EstadoProducto, { t: string; dot: string; bg: string; fg: string }> = {
   activo: { t: 'Activo', dot: '#087b5d', bg: '#a4ffb6', fg: '#0b5c3f' },
   agotado: { t: 'Agotado', dot: '#d82c0d', bg: '#ffe6e5', fg: '#b42318' },

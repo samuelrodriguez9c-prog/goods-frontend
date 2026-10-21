@@ -16,13 +16,15 @@ const RESERVADAS = ['g', '?', '.'];
 const CLAVE = 'goods.atajos';
 
 /**
- * Atajos del panel (handoff-productos §4). Solo se guardan los que el usuario
- * cambió, en localStorage (`goods.atajos`) — no hay endpoint todavía.
+ * Atajos de teclado personalizables. Solo se guardan los que el usuario
+ * cambió, en localStorage (`goods.atajos`).
  *
- * Los "G luego …" y los de una tecla son dos espacios separados: la P de
- * "G luego P" no choca con una P de la lista. Si la tecla elegida ya la usa
+ * @remarks
+ * Los «G luego …» y los de una tecla son dos espacios separados: la P de
+ * «G luego P» no choca con una P de la lista. Si la tecla elegida ya la usa
  * otro atajo del mismo espacio, se intercambian.
  */
+// TODO(backend): guardar los atajos en la cuenta; hoy viven solo en el navegador.
 @Injectable({ providedIn: 'root' })
 export class AtajosService {
   private readonly propios = signal<Partial<Record<AtajoId, string>>>(this.leer());
@@ -41,8 +43,10 @@ export class AtajosService {
   }
 
   /**
-   * Valida la tecla capturada. Devuelve un mensaje para la Pista si no sirve,
-   * o `null` si se aplicó. `intercambiado` = tecla con la que quedó el otro atajo.
+   * Valida la tecla capturada y, si sirve, la asigna.
+   *
+   * @returns `error` con el mensaje para la Pista si no sirve; si se aplicó,
+   * un objeto vacío o `intercambiado` con la tecla que le quedó al otro atajo.
    */
   aplicar(id: AtajoId, e: KeyboardEvent): { error?: string; intercambiado?: string } {
     const tecla = (e.key || '').toLowerCase();
