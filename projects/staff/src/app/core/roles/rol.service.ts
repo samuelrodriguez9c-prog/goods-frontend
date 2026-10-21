@@ -11,18 +11,8 @@ export interface GuardarRolPayload {
 }
 
 /**
- * Roles y permisos del sistema (`GET /roles`, `GET /permisos`) — exige
- * `roles.ver`/`permisos.ver` (`admin`/`staff_goods`, ver la migración
- * `SeedPermisosUsuariosRolesStaffGoods`). A diferencia de `usuarios`, acá
- * NO hay aislamiento por Empresa: los roles/permisos son el mismo
- * catálogo para todo el sistema (los define quien tiene el permiso, sea
- * `admin` de un negocio armando sus propios roles internos o
- * `staff_goods` gestionando el sistema completo) — ver
- * `RolController`/`PermisoController` del backend, ninguno de los dos
- * pasa por `TenantContextService`.
- *
- * Es la pantalla "Roles y permisos" del sidebar de staff
- * (PIVOTE_SAAS_MULTITENANT.md §8).
+ * Roles y permisos (`roles.ver`, `permisos.ver`). A diferencia de usuarios,
+ * no se aíslan por Empresa: es un solo catálogo para todo el sistema.
  */
 @Injectable({ providedIn: 'root' })
 export class RolService {
@@ -44,8 +34,7 @@ export class RolService {
     return this.http.delete<void>(`${environment.apiUrl}/roles/${id}`);
   }
 
-  /** Reemplaza el set completo de permisos del rol (`PUT`, no incremental
-   * — ver `AsignarPermisosDto` del backend). */
+  /** Reemplaza todos los permisos del rol por `permisoIds` (no suma a los que tenía). */
   asignarPermisos(id: number, permisoIds: number[]): Observable<Rol> {
     return this.http.put<Rol>(`${environment.apiUrl}/roles/${id}/permisos`, { permisoIds });
   }

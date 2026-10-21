@@ -17,7 +17,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   IconAdjustmentsHorizontal, IconAlertOctagon, IconAlertTriangle, IconArchive, IconArrowUp, IconCheck,
   IconChevronDown, IconChevronUp, IconCircleCheck, IconCircleDot, IconCircleX, IconCloudOff, IconCurrencyDollar,
-  IconFileSpreadsheet, IconFolder, IconFolderOff, IconFolderQuestion, IconFolders, IconLayoutGrid, IconList,
+  IconFileSpreadsheet, IconFolder, IconForms, IconFolderOff, IconFolderQuestion, IconFolders, IconLayoutGrid, IconList,
   IconPencil, IconPlus, IconSearch, IconStack2, IconStar, IconStarFilled, IconStarHalfFilled, IconTag, IconTrash, IconX,
   TablerIconComponent,
   type TablerIcon,
@@ -29,27 +29,30 @@ import { AtajosService, verTecla } from '../../../../core/ui/atajos.service';
 import { PistaService } from '../../../../core/ui/pista.service';
 import { AutofocoDirective } from '../../../../shared/ui/autofoco.directive';
 import { EstadoIconoComponent } from '../../../../shared/ui/estado-icono/estado-icono.component';
+import { FranjaMetricasComponent, MetricaFranja } from '../../../../shared/ui/franja-metricas/franja-metricas.component';
+import { pl } from '../../shared/formato';
+import { ModuloCabeceraComponent } from '../../shared/ui/modulo-cabecera/modulo-cabecera.component';
 import { AtajosDialogoComponent } from '../../components/atajos-dialogo/atajos-dialogo.component';
 import { ProductoFichaComponent } from '../../components/producto-ficha/producto-ficha.component';
-import { Agrupar, PMAX, ProductosStore, cop, num } from '../../productos.store';
+import { Agrupar, Metrica, PMAX, ProductosStore, cop, num } from '../../productos.store';
+import { CampoPersonalizado } from '../../../../core/campos/campo-personalizado.model';
 
-type SeccionFiltro = 'agrupar' | 'estado' | 'categorias' | 'precio';
+type SeccionFiltro = 'agrupar' | 'estado' | 'categorias' | 'precio' | 'campos';
 
-/**
- * Productos v4 (handoff-productos §2). Lista + ficha lado a lado, filtros en
- * popover, selección masiva con barra oscura, edición en línea de precio y
- * stock, atajos de teclado y "Cambios sin guardar" en la pila de alertas.
- *
- * Toda la lógica de datos vive en `ProductosStore`; acá solo hay UI.
- */
 /** Ventana en la que un `datos:cambio` se toma como eco de una escritura propia. */
 const ECO_PROPIO_MS = 2500;
 
+/**
+ * Productos: lista y ficha lado a lado, filtros en popover, selección masiva
+ * con barra oscura, edición en línea de precio y stock, atajos de teclado y
+ * «Cambios sin guardar» en la pila de alertas. La lógica de datos vive en
+ * `ProductosStore`; acá solo hay UI.
+ */
 @Component({
   selector: 'app-product-list-page',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TablerIconComponent, EstadoIconoComponent, AutofocoDirective, ProductoFichaComponent, AtajosDialogoComponent],
+  imports: [TablerIconComponent, EstadoIconoComponent, AutofocoDirective, ProductoFichaComponent, AtajosDialogoComponent, ModuloCabeceraComponent, FranjaMetricasComponent],
   providers: [ProductosStore],
   templateUrl: './product-list-page.component.html',
 })
@@ -78,8 +81,18 @@ export class ProductListPageComponent {
   protected readonly PMAX = PMAX;
   protected readonly cop = cop;
   protected readonly num = num;
+  protected readonly pl = pl;
+  /** Período del selector de la franja (las cifras de Productos son del momento). */
+  protected readonly periodo = signal('hoy');
+  /** Las métricas del resumen en el formato de la franja; la activa filtra la lista. */
+  protected readonly metricas = computed<MetricaFranja[]>(() =>
+    this.s.resumen().metricas.map((m) => ({ k: m.key, label: m.label, value: m.valor, delta: m.sub, tinta: m.tinta, activa: this.s.metrica() === m.key })),
+  );
 
-  // ── UI local ──
+  // UI local
+  protected alternarMetrica(k: string): void {
+    this.s.metrica.update((m) => (m === k ? null : (k as Metrica)));
+  }
   protected readonly filtrosAbierto = signal(false);
   protected readonly seccion = signal<SeccionFiltro>('estado');
   protected readonly qFoco = signal(false);
@@ -102,9 +115,25 @@ export class ProductListPageComponent {
       { k: 'estado' as const, t: 'Estado', sub: st.fEstados().length ? st.fEstados().map((e) => ESTADOS_PRODUCTO[e].t).join(', ') : 'Todos', icon: IconCircleDot, act: st.fEstados().length > 0 },
       { k: 'categorias' as const, t: 'Categorías', sub: st.fCats().length ? st.fCats().length + ' elegidas' : 'Todas', icon: IconFolders, act: st.fCats().length > 0 },
       { k: 'precio' as const, t: 'Precio', sub: st.hayFiltroPrecio() ? cop(st.pMin()) + ' – ' + (st.pMax() < PMAX ? cop(st.pMax()) : 'más') : 'Cualquiera', icon: IconCurrencyDollar, act: st.hayFiltroPrecio() },
+      ...(st.camposFiltrables().length ? [{ k: 'campos' as const, t: 'Campos propios', sub: this.resumenCampos(), icon: IconForms, act: this.resumenCampos() !== 'Todos' }] : []),
     ];
   });
   protected readonly indiceSeccion = computed(() => this.secciones().findIndex((x) => x.k === this.seccion()));
+
+  private resumenCampos(): string {
+    const n = Object.values(this.s.fAtributos()).reduce((a, xs) => a + xs.length, 0);
+    return n ? n + (n === 1 ? ' elegido' : ' elegidos') : 'Todos';
+  }
+  /** Opciones de un campo propio para el filtro: las de la lista, o Sí / No. */
+  protected opcionesFiltro(c: CampoPersonalizado): { v: string; t: string }[] {
+    return c.tipo === 'si_no' ? [{ v: 'true', t: 'Sí' }, { v: 'false', t: 'No' }] : (c.opciones ?? []).map((o) => ({ v: o, t: o }));
+  }
+  protected elegido(clave: string, v: string): boolean {
+    return (this.s.fAtributos() as Partial<Record<string, string[]>>)[clave]?.includes(v) ?? false;
+  }
+  protected cuentaAtributo(clave: string, v: string): number {
+    return this.s.productos().filter((p) => String(p.atributos?.[clave] ?? '') === v).length;
+  }
 
   /** Cuántos hay de cada estado / categoría (para los conteos del popover). */
   protected cuentaEstado(e: EstadoProducto): number {
@@ -192,7 +221,7 @@ export class ProductListPageComponent {
     });
   }
 
-  /** Para el guard de la ruta (ver LEEME §2.4). */
+  /** Para el guard de la ruta: con cambios sin guardar no se sale. */
   puedeSalir(): boolean {
     return this.s.libre();
   }
@@ -233,7 +262,7 @@ export class ProductListPageComponent {
     this.menuMasivo.update((x) => (x === m ? null : m));
   }
 
-  // ── fila ──
+  // fila
   protected unida(id: number): boolean {
     return this.s.abierto() === id || this.hover() === id;
   }
@@ -267,7 +296,7 @@ export class ProductListPageComponent {
     this.menuMasivo.set(null);
   }
 
-  // ── atajos (handoff-productos §4) ──
+  // atajos
   @HostListener('window:keydown', ['$event'])
   protected tecla(e: KeyboardEvent): void {
     if (this.atajos.capturando()) return; // lo maneja el diálogo

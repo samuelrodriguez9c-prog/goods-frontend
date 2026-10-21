@@ -1,0 +1,49 @@
+@let t = st.tienda()!;
+<div [inert]="pd.paso() !== 2" data-screen-label="Tus datos" class="flex h-full w-1/6 flex-col">
+  <div class="sin-barra flex flex-1 flex-col gap-[22px] overflow-y-auto px-4 pb-12 pt-2">
+    <label class="-mb-2.5 flex flex-col gap-1.5">
+      <span class="flex items-baseline gap-2.5 px-1 pb-1"><span class="text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Tu nombre</span><span class="text-[12.5px] text-salvia">Así sabrá {{ t.nombre }} quién pide</span></span>
+      <span class="flex h-14 items-center gap-3 rounded-full bg-white/[.07] px-2 transition-shadow" [style.box-shadow]="pd.faltaNombre() ? 'inset 0 0 0 1.5px #ffb4a6' : 'none'">
+        <span class="forma-0 grid size-10 shrink-0 place-items-center bg-wa font-display text-xl font-extrabold text-noche">{{ pd.inicialNombre() }}</span>
+        <input #inputNombre maxlength="80" [ngModel]="pd.nombre()" (ngModelChange)="pd.nombre.set($event); pd.faltaNombre.set(false)" (keydown.enter)="pd.continuar()" placeholder="Escribe tu nombre" autocomplete="name"
+          class="h-full min-w-0 flex-1 border-0 bg-transparent pr-2 font-display text-[22px] font-semibold tracking-[-0.01em] text-hoja outline-none placeholder:text-salvia-2" />
+      </span>
+      @if (pd.faltaNombre()) { <span class="animate-fundido flex items-center gap-[5px] px-2 text-[12.5px] text-coral"><tabler-icon [icon]="i.alerta" [size]="14" [stroke]="2" />Escribe tu nombre para continuar</span> }
+    </label>
+    <label class="-mb-2.5 flex flex-col gap-1.5">
+      <span class="flex items-baseline gap-2.5 px-1 pb-1"><span class="text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Tu celular</span><span class="text-[12.5px] text-salvia">Para ubicar tu pedido</span></span>
+      <span class="flex h-14 items-center gap-3 rounded-full bg-white/[.07] px-2 transition-shadow" [style.box-shadow]="pd.faltaTelefono() ? 'inset 0 0 0 1.5px #ffb4a6' : 'none'">
+        <span class="forma-1 grid size-10 shrink-0 place-items-center bg-white/10 text-wa"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" /></span>
+        <input type="tel" inputmode="tel" maxlength="20" [ngModel]="pd.telefono()" (ngModelChange)="pd.telefono.set($event); pd.faltaTelefono.set(false)" (keydown.enter)="pd.continuar()" placeholder="300 123 4567" autocomplete="tel"
+          class="h-full min-w-0 flex-1 border-0 bg-transparent pr-2 font-display text-[22px] font-semibold tabular-nums tracking-[-0.01em] text-hoja outline-none placeholder:text-salvia-2" />
+      </span>
+      @if (pd.faltaTelefono()) { <span class="animate-fundido flex items-center gap-[5px] px-2 text-[12.5px] text-coral"><tabler-icon [icon]="i.alerta" [size]="14" [stroke]="2" />Escribe un celular válido</span> }
+    </label>
+    <div class="relative -mx-4 -mb-12 flex-[1_0_auto] px-4 pb-12 text-bosque">
+      <app-ola />
+      <label class="relative flex flex-col gap-2.5 px-1 pt-14">
+        <span class="flex items-end justify-between gap-3">
+          <span class="flex flex-col gap-[3px]">
+            <span class="font-display text-[28px] font-bold leading-[1.05] tracking-[-0.015em] [font-variation-settings:'wdth'_80]">Nota para el negocio</span>
+            <span class="text-[12.5px] text-musgo">Hora de entrega o lo que necesites</span>
+          </span>
+          <span class="flex h-6 shrink-0 items-center rounded-full bg-menta px-2.5 text-[11.5px] font-semibold text-musgo">Opcional</span>
+        </span>
+        <textarea rows="3" maxlength="300" [ngModel]="pd.nota()" (ngModelChange)="pd.nota.set($event)" placeholder="Escribe aquí tu nota…"
+          class="resize-none rounded-3xl border-0 bg-menta px-[18px] py-3.5 text-[15.5px] leading-normal text-bosque outline-none transition-shadow focus:shadow-[inset_0_0_0_1.5px_#128c7e]"></textarea>
+      </label>
+      <div class="relative flex flex-wrap gap-1.5 px-1 pt-3">
+        @for (nr of notasRapidas; track nr) {
+          <button type="button" (click)="pd.agregarNota(nr)" class="flex h-9 items-center gap-[7px] rounded-full bg-hoja py-0 pl-[5px] pr-3.5 text-[13px] font-medium text-bosque transition-transform hover:bg-menta active:scale-[.96]">
+            <span class="grid size-[26px] place-items-center rounded-full bg-bosque text-hoja"><tabler-icon [icon]="i.mas" [size]="13" [stroke]="2" /></span>{{ nr }}
+          </button>
+        }
+      </div>
+      <label class="relative mt-4 flex cursor-pointer items-start gap-2.5 px-1 text-[13px] leading-[1.4] text-musgo">
+        <input type="checkbox" [ngModel]="pd.aceptaPromociones()" (ngModelChange)="pd.aceptaPromociones.set($event)" class="mt-0.5 size-4 accent-[#0b3d33]" />
+        Quiero recibir novedades y promociones de {{ t.nombre }} por WhatsApp
+      </label>
+    </div>
+  </div>
+  <app-pie-paso bg="#ffffff" etiqueta="Total" [valor]="st.monto(st.total())" boton="Ver mensaje" />
+</div>

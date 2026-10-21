@@ -9,33 +9,23 @@ import {
   SuscripcionPago,
 } from './models/suscripcion.model';
 
-/** 'activa' | 'cancelada' | 'vencida' — 'pendiente' no es asignable a
- * mano (ver `CambiarEstadoSuscripcionDto` del backend: solo lo asigna el
- * propio flujo de alta). */
+/** 'pendiente' no se asigna a mano: solo lo pone el flujo de alta. */
 export type EstadoAsignableSuscripcion = 'activa' | 'cancelada' | 'vencida';
 
-/**
- * `GET /suscripciones` — exige `suscripciones.ver` (solo `staff_goods`).
- *
- * `listar` sin `empresaId` (solo `estado`) es la que ya usan Empresas/
- * Altas pendientes: la pantalla de Empresas necesita el plan de TODAS
- * las filas visibles a la vez, y pedirlo una por una (N llamadas por
- * cada Empresa en pantalla) sería mucho más lento que traer de una vez
- * las suscripciones de un estado dado (`pageSize=100`, mismo límite/
- * criterio que `EmpresaService.listar`) y cruzarlas en memoria por
- * `empresaId` — ver `EmpresasPageComponent.mapaPlanPorEmpresa`. Con
- * pocos cientos de Empresas esto alcanza sin problema; si el volumen
- * crece, este es el primer lugar a optimizar (ej. un endpoint que ya
- * devuelva la Empresa con su Suscripción activa incluida).
- *
- * `cambiarPlan`/`cambiarEstado` son la pantalla nueva de Suscripciones
- * del sidebar de staff (PIVOTE_SAAS_MULTITENANT.md §8, §7.2 upgrade/
- * downgrade manual).
- */
+/** Suscripciones de las Empresas: listado, cambio de plan y de estado, pruebas y pagos. */
 @Injectable({ providedIn: 'root' })
 export class SuscripcionService {
   private readonly http = inject(HttpClient);
 
+  /**
+   * Una página de 100 suscripciones.
+   *
+   * @remarks
+   * Las pantallas traen todas las de un estado (con `traerTodo`) y las cruzan
+   * en memoria por `empresaId`, en vez de pedir una por Empresa.
+   * TODO(backend): si crecen mucho las Empresas, un endpoint que devuelva la
+   * Empresa con su suscripción activa incluida.
+   */
   listar(estado?: string, empresaId?: number, page = 1): Observable<RespuestaPaginada<Suscripcion>> {
     let params = new HttpParams().set('pageSize', 100).set('page', page);
     if (estado) {
@@ -49,9 +39,8 @@ export class SuscripcionService {
     });
   }
 
-  /** `POST /suscripciones/cambiar-plan` — cierra la suscripción vigente
-   * de esa Empresa (si la hay) y abre una nueva al plan indicado, sin
-   * perder el historial (ver `Suscripcion.entity.ts` del backend). */
+  /** Cierra la suscripción vigente de la Empresa (si hay) y abre una nueva
+   * con el plan indicado; la anterior queda en el historial. */
   cambiarPlan(empresaId: number, planId: number): Observable<Suscripcion> {
     return this.http.post<Suscripcion>(`${environment.apiUrl}/suscripciones/cambiar-plan`, {
       empresaId,
@@ -59,29 +48,24 @@ export class SuscripcionService {
     });
   }
 
-  /** `POST /suscripciones/:id/reactivar` — vencida o cancelada vuelve a estar activa, con el mismo plan u otro, en un paso. */
+  /** Vuelve a activar una suscripción vencida o cancelada, con el mismo plan u otro. */
   reactivar(id: number, planId: number): Observable<Suscripcion> {
     return this.http.post<Suscripcion>(`${environment.apiUrl}/suscripciones/${id}/reactivar`, { planId });
   }
 
-  /** `POST /suscripciones/:id/extender-prueba` (2026-10-10): suma días a una prueba en curso (hasta 90 en total). */
+  /** Suma días a una prueba en curso (hasta `DIAS_PRUEBA_MAX` en total). */
   extenderPrueba(id: number, dias: number, motivo: string): Observable<Suscripcion> {
     return this.http.post<Suscripcion>(`${environment.apiUrl}/suscripciones/${id}/extender-prueba`, { dias, motivo });
   }
 
-  /** `PATCH /suscripciones/:id/estado`. */
   cambiarEstado(id: number, estado: EstadoAsignableSuscripcion): Observable<Suscripcion> {
     return this.http.patch<Suscripcion>(`${environment.apiUrl}/suscripciones/${id}/estado`, {
       estado,
     });
   }
 
-  /** `POST /facturacion/pagos` (antes `/suscripciones/pagos`, movido al
-   * módulo de Facturación el 2026-10-02) — paso "Confirmar y guardar" del
-   * modo documento del Asistente de IA de staff. Registra el pago Y
-   * renueva la suscripción activa/vencida de esa Empresa en el mismo paso
-   * (ver `FacturacionService.registrar`, backend) — acá no hace falta un
-   * segundo llamado para eso. */
+  /** Registra un pago (`POST /facturacion/pagos`) y, en la misma llamada,
+   * renueva la suscripción activa o vencida de la Empresa. */
   registrarPago(payload: RegistrarPagoSuscripcionPayload): Observable<SuscripcionPago> {
     return this.http.post<SuscripcionPago>(`${environment.apiUrl}/facturacion/pagos`, payload);
   }

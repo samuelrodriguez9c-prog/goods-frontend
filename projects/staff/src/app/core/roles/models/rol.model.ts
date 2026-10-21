@@ -6,9 +6,7 @@ export interface Permiso {
   modulo: string | null;
 }
 
-/** Espejo de la entidad `Rol` del backend (`rol.entity.ts`) — `permisos`
- * viene siempre poblado (`GET /roles` hace `relations: ['permisos']` en
- * el backend, ver `RolService.findAll`). */
+/** Espejo de la entidad `Rol`; `GET /roles` siempre trae `permisos` poblado. */
 export interface Rol {
   id: number;
   nombre: string;

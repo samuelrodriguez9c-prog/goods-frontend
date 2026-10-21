@@ -1,0 +1,65 @@
+@if (pd.abierto()) {
+  <div (click)="pd.cerrarPedido()" class="animate-fundido fixed inset-0 z-[70] bg-[rgba(7,42,35,.4)] backdrop-blur-[3px] [animation-duration:.3s]"></div>
+}
+<div #islaEl data-screen-label="Pedido" role="dialog" [attr.aria-modal]="pd.abierto()" aria-label="Tu pedido" [focoDialogo]="pd.abierto()"
+  class="fixed left-1/2 z-[80] overflow-hidden bg-bosque text-hoja shadow-[0_24px_60px_-24px_rgba(7,42,35,.7),0_0_0_1px_rgba(234,255,245,.14)] transition-[width,height,border-radius,bottom,transform,opacity] duration-[600ms] ease-[cubic-bezier(.2,.9,.2,1)]"
+  [style.width]="pd.isla().w" [style.height]="pd.isla().h" [style.border-radius]="pd.isla().r" [style.bottom]="pd.isla().b" [style.transform]="pd.isla().t" [style.opacity]="pd.isla().o">
+
+  <!-- Cerrada -->
+  <button type="button" (click)="pd.abrirPedido()" [inert]="pd.abierto()" [attr.aria-label]="'Tu pedido: ' + pd.cuentaTxt() + ', ' + st.monto(st.total())" class="absolute inset-0 flex items-center gap-3.5 whitespace-nowrap border-0 bg-transparent px-2 text-inherit transition-opacity duration-[250ms]"
+    [style.opacity]="pd.abierto() ? 0 : 1" [style.pointer-events]="pd.abierto() ? 'none' : 'auto'">
+    <span class="grid h-[46px] min-w-[46px] place-items-center rounded-full bg-wa px-2.5 text-[15px] font-bold tabular-nums text-noche">{{ st.unidades() }}</span>
+    <span class="flex flex-col items-start gap-px"><span class="text-xs text-salvia-2">Tu pedido</span><span class="text-base font-semibold tabular-nums">{{ st.monto(st.total()) }}</span></span>
+    <span class="ml-auto grid size-[46px] place-items-center rounded-full bg-white/10"><tabler-icon [icon]="i.diagonal" [size]="19" [stroke]="2" /></span>
+  </button>
+
+  <!-- Abierta -->
+  <div [inert]="!pd.abierto()" class="absolute inset-0 flex flex-col transition-opacity duration-[350ms]" [style.opacity]="pd.abierto() ? 1 : 0" [style.pointer-events]="pd.abierto() ? 'auto' : 'none'" [style.transition-delay]="pd.abierto() ? '.2s' : '0s'">
+    <div aria-hidden="true" burbuja="0.04,30,0.08" class="pointer-events-none absolute right-[-50px] top-[-80px] size-[230px] bg-bosque-2 [animation:morph_16s_ease-in-out_infinite]"></div>
+    <div class="relative flex shrink-0 flex-col pb-1 pl-6 pr-4 pt-[26px]">
+      <div class="absolute right-3.5 top-3.5 z-[2] flex items-center gap-1.5">
+        @if (pd.paso() >= 1 && pd.paso() <= 3) {
+          <button type="button" (click)="pd.volver()" aria-label="Volver" class="grid size-10 place-items-center rounded-full bg-white/[.08] text-inherit hover:bg-white/[.16]"><tabler-icon [icon]="i.izq" [size]="18" [stroke]="2" /></button>
+        }
+        <button type="button" (click)="pd.cerrarPedido()" aria-label="Cerrar" class="grid size-10 place-items-center rounded-full bg-white/10 text-inherit hover:bg-white/[.18]"><tabler-icon [icon]="i.cerrar" [size]="19" [stroke]="2" /></button>
+      </div>
+      <div class="relative flex items-end justify-between gap-4">
+        <div class="flex min-w-0 flex-col gap-2.5 pr-10">
+          <span class="text-balance font-display text-[clamp(34px,6vw,46px)] font-bold leading-[.92] tracking-[-0.03em] [font-variation-settings:'wdth'_74]">{{ pd.tituloPaso() }}</span>
+          <span class="text-sm tabular-nums text-salvia">{{ pd.subPaso() }}</span>
+        </div>
+        @if (pd.paso() < 4) {
+          <span class="flex shrink-0 items-baseline gap-0.5 pb-0.5 font-display tabular-nums"><span class="text-[30px] font-bold leading-none text-wa">{{ pd.pasoNum() }}</span><span class="text-sm font-semibold text-[#5f8a7d]">/04</span></span>
+        }
+      </div>
+    </div>
+    @if (pd.paso() < 4) {
+      <div class="sin-barra relative flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-3.5 pt-3">
+        @for (r of pd.riel(); track r.k) {
+          <button type="button" (click)="pd.irPaso(r.k)" class="flex h-9 flex-none items-center gap-[7px] whitespace-nowrap rounded-full border-0 py-0 pl-2 pr-3.5 text-[13px] font-medium transition-colors duration-[350ms]"
+            [style.cursor]="r.hecho ? 'pointer' : 'default'"
+            [style.background]="r.actual ? '#25d366' : r.hecho ? 'rgba(255,255,255,.1)' : 'transparent'"
+            [style.color]="r.actual ? '#072a23' : r.hecho ? '#eafff5' : '#8fb8ab'">
+            <span class="grid size-[22px] place-items-center rounded-full transition-colors duration-[350ms]"
+              [style.background]="r.actual ? '#072a23' : r.hecho ? '#25d366' : 'rgba(255,255,255,.08)'"
+              [style.color]="r.actual ? '#25d366' : r.hecho ? '#072a23' : '#8fb8ab'"><tabler-icon [icon]="r.hecho ? i.check : r.icono" [size]="13" [stroke]="2.25" /></span>{{ r.texto }}
+          </button>
+        }
+      </div>
+    }
+    @if (st.errorPedido()) {
+      <p role="alert" class="relative mx-4 mb-2 flex items-center gap-2 rounded-2xl bg-[rgba(255,180,166,.12)] px-3.5 py-2.5 text-[13px] text-coral"><tabler-icon [icon]="i.alerta" [size]="15" [stroke]="2" />{{ st.errorPedido() }}</p>
+    }
+
+    <div class="relative min-h-0 flex-1 overflow-hidden">
+      <div class="flex h-full w-[600%] transition-transform duration-[600ms] ease-[cubic-bezier(.3,1,.3,1)]" [style.transform]="'translateX(-' + (pd.paso() * 100 / 6) + '%)'">
+        <app-paso-productos />
+        <app-paso-entrega />
+        <app-paso-datos />
+        <app-paso-mensaje />
+        <app-paso-confirmar />
+        <app-paso-enviado />
+      </div>
+    </div>
+  </div>
+</div>

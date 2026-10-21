@@ -4,26 +4,17 @@ import { ShellComponent } from './layout/shell/shell.component';
 
 export const routes: Routes = [
   {
-    // Igual que en `admin`: pantalla sin sidebar/topbar, sin guard — es
-    // justo a donde `authGuard` redirige cuando falta sesión.
+    // Sin shell ni guard: es a donde `authGuard` redirige cuando falta sesión.
     path: 'login',
     loadComponent: () =>
       import('./core/auth/pages/login/login.component').then((m) => m.LoginComponent),
   },
   {
-    // Rediseño del Asistente de IA (2026-09-30, ver
-    // handoff-asistente-ia/LEEME.md) — fuera del Shell a propósito: esta
-    // pantalla (y su hermana `documentos`, sumada 2026-10-02, ver
-    // `asistente.routes.ts`) trae su propia topbar con "Volver al panel",
-    // no la de `ShellComponent`/`SidebarComponent`. El gating real es el
-    // permiso `asistente_staff.usar` que ya exige el backend; acá no hay
-    // todavía un guard de permiso para rutas (ningún otro módulo lo usa,
-    // ver `AsistenteDockComponent`, que sí oculta el botón sin ese
-    // permiso) — mismo criterio para `documentos`.
-    //
-    // `icon: 'ia'` del hijo por defecto es un sentinel para
-    // `BreadcrumbTrailComponent` — no es un ícono Tabler, le dice que
-    // pinte `app-ia-marca` en su lugar (ver `NavigationTrailService`).
+    // Fuera del shell a propósito: el Asistente de IA trae su propia topbar
+    // con "Volver al panel". No hay guard de permiso: el backend ya exige
+    // `asistente_staff.usar` y `AsistenteDockComponent` oculta el acceso.
+    // `icon: 'ia'` del hijo por defecto no es un ícono Tabler: le dice a
+    // `BreadcrumbTrailComponent` que pinte `app-ia-marca`.
     path: 'asistente',
     loadChildren: () => import('./features/asistente/asistente.routes').then((m) => m.ASISTENTE_ROUTES),
   },
@@ -33,8 +24,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
-        // Sin "Dashboard" propio todavía (§8 paso 5 no lo pidió) — la
-        // entrada por defecto es Empresas, primera pantalla real del panel.
+        // Sin dashboard: la entrada por defecto es Empresas.
         path: '',
         pathMatch: 'full',
         redirectTo: 'empresas',
@@ -86,10 +76,8 @@ export const routes: Routes = [
           import('./features/auditoria/auditoria.routes').then((m) => m.AUDITORIA_ROUTES),
       },
       {
-        // Destino del botón "Ver todas" de la campanita (`TopbarComponent`)
-        // — pedido explícito 2026-09-23, segunda vuelta. Sin ítem propio en
-        // el sidebar a propósito: se llega acá solo desde el dropdown de
-        // notificaciones, no es un módulo de primer nivel.
+        // Destino de "Ver todas" en la campanita (`TopbarComponent`). Sin ítem
+        // en el sidebar a propósito: no es un módulo de primer nivel.
         path: 'notificaciones',
         loadChildren: () =>
           import('./features/notificaciones/notificaciones.routes').then(
@@ -106,10 +94,8 @@ export const routes: Routes = [
         loadChildren: () => import('./features/roles/roles.routes').then((m) => m.ROLES_ROUTES),
       },
       {
-        // Perfil de la propia cuenta — pedido 2026-09-22 (ver
-        // `SettingsPageComponent` y `SidebarComponent.settingsItem`). Sin
-        // `permiso` acá tampoco: cualquier cuenta de staff entra a su
-        // propio Settings.
+        // Perfil de la propia cuenta: sin permiso, cualquier cuenta de staff
+        // entra a su propio Settings.
         path: 'settings',
         loadChildren: () =>
           import('./features/settings/settings.routes').then((m) => m.SETTINGS_ROUTES),

@@ -1,4 +1,4 @@
-/** Espejo de la entidad `Permiso` del backend (`permiso.entity.ts`). */
+/** Espejo de `Permiso` del backend. */
 export interface Permiso {
   id: number;
   codigo: string;
@@ -7,16 +7,12 @@ export interface Permiso {
 }
 
 /**
- * Espejo de la entidad `Rol` del backend (`rol.entity.ts`) — ahora que
- * `Rol.empresaId` existe (Fase 6 de `PROPUESTA_ROLES_Y_ACCESOS.md`,
- * §5.4), `GET /roles` para un `dueno_empresa` devuelve una mezcla de
- * roles de plantilla (`empresaId: null` — `admin`/`cliente`/
- * `dueno_empresa`/`empleado_empresa`, de solo lectura acá) y los roles
- * propios de SU Empresa (`empresaId` = la mía, con CRUD completo). El
- * frontend distingue cuál es cuál con `empresaId !== null`, nunca con el
- * nombre — el backend ya hizo el filtro de visibilidad
- * (`RolService.filtroVisibilidadRol`), así que cualquier fila que llega
- * acá con `empresaId` no nulo es, por construcción, mía.
+ * Espejo de `Rol` del backend. `GET /roles` mezcla roles de plantilla
+ * (`empresaId: null`, de solo lectura acá) y los propios de la Empresa.
+ *
+ * @remarks
+ * Se distinguen por `empresaId !== null`, nunca por el nombre: el backend ya
+ * filtró la visibilidad, así que todo rol con `empresaId` es de esta Empresa.
  */
 export interface Rol {
   id: number;
@@ -30,13 +26,9 @@ export interface Rol {
 }
 
 /**
- * Espejo de lo que devuelve `GET /roles/asignables`
- * (`PROPUESTA_ROLES_Y_ACCESOS.md` §6 paso 5) — los roles que un dueño
- * puede asignarle a alguien de su equipo (los dos templates de negocio
- * más, desde la Fase 6, sus propios roles custom). Se mantiene como un
- * tipo aparte de `Rol` porque lo consume `SettingsUsersPageComponent`
- * para el selector de "cambiar rol", donde no hace falta nada más que
- * nombre/descripcion/permisos.
+ * Respuesta de `GET /roles/asignables`: los roles que un dueño puede darle a
+ * alguien de su equipo (las dos plantillas de negocio y sus roles propios).
+ * Alimenta el selector «Cambiar rol» de Usuarios.
  */
 export interface RolAsignable {
   id: number;

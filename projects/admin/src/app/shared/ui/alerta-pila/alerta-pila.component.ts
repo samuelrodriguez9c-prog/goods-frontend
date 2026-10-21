@@ -16,10 +16,10 @@ const PASO = 9;
 const ALTO_FILA = 44;
 
 /**
- * Pila de alertas en línea — v2 "Pila oscura" + extras de Productos v5:
- * alerta fija de cambios sin guardar (Guardar / Descartar), acción en la fila
- * cuando está plegada, sacudida y desplazamiento sobre la barra masiva.
- * Va una sola vez en el shell.
+ * Pila oscura de alertas en línea: incluye la fija de cambios sin guardar
+ * (Guardar / Descartar), la acción en la fila cuando está plegada, la
+ * sacudida y el desplazamiento sobre la barra de selección masiva. Va una
+ * sola vez en el shell.
  */
 @Component({
   selector: 'app-alerta-pila',
@@ -68,7 +68,7 @@ export class AlertaPilaComponent {
     return a.saliendo ? -1 : (this.posiciones().get(a.id) ?? -1);
   }
 
-  /** Igual que el prototipo: se expande si hay texto y (acción, error o texto > 38 caracteres). */
+  /** Se puede expandir si hay texto y además acción, error o más de 38 caracteres. */
   protected expandible(a: AlertaEnLinea): boolean {
     return !!a.texto && (!!a.accion || a.estado === 'error' || a.texto.length > 38);
   }

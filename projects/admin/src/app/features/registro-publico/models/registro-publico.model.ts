@@ -1,6 +1,4 @@
-/** Body de `POST /empresas/registro-publico` — espejo exacto de
- * `RegistroPublicoEmpresaDto` del backend (paso 1 del flujo de alta
- * asistida, PIVOTE_SAAS_MULTITENANT.md §5). */
+/** Body de `POST /empresas/registro-publico` (`RegistroPublicoEmpresaDto`): primer paso del alta asistida. */
 export interface RegistroPublicoEmpresaPayload {
   nombre: string;
   rubro?: string;
@@ -10,17 +8,14 @@ export interface RegistroPublicoEmpresaPayload {
   duenoApellidos: string;
   duenoCorreo: string;
   planId: number;
-  /** Códigos de módulo marcados como "extra" (§11.6 de
-   * PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md) — los que el plan elegido NO
-   * trae de por sí. Sugerencia, no confirmación: staff la corrobora en el
-   * asistente de activación antes de que se vuelva un acceso real. */
+  /**
+   * Módulos pedidos como extra (los que el plan elegido no trae). Es una
+   * sugerencia: Goods la confirma en la llamada de activación.
+   */
   modulosSolicitados?: string[];
 }
 
-/** Respuesta de `POST /empresas/registro-publico` — la `Empresa` recién
- * creada, ya en estado `'pendiente'` (ver `EmpresaService.registrarPublico`).
- * Solo se listan los campos que esta pantalla necesita para la pantalla de
- * confirmación, no toda la fila. */
+/** La `Empresa` recién creada por el registro; solo los campos que usa la confirmación. */
 export interface EmpresaRegistrada {
   id: number;
   nombre: string;

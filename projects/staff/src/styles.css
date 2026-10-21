@@ -1,14 +1,10 @@
 @import "tailwindcss";
 
 /*
- * Mismos tokens de tipografía/color que `projects/admin/src/styles.css`
- * — la identidad visual de Goods es una sola (calcada de Shopify, ver
- * ADMIN_DISENO.md), y `shared-ui` depende de estas clases (ej.
- * `bg-badge-success-bg` en StatusBadgeComponent) para verse igual acá
- * que en `admin`. Duplicado a propósito por ahora — extraer esto a un
- * preset de Tailwind compartido por los dos proyectos queda como mejora
- * futura, no bloqueante para este scaffold inicial (ver
- * PIVOTE_SAAS_MULTITENANT.md §8 punto 3).
+ * Mismos tokens de tipografía y color que `projects/admin/src/styles.css`:
+ * la identidad visual es una sola y `shared-ui` depende de estas clases
+ * (p. ej. `bg-badge-success-bg` en StatusBadgeComponent).
+ * TODO(front): extraer los tokens a un preset de Tailwind compartido con `admin`.
  */
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/400-italic.css";
@@ -18,13 +14,9 @@
 @import "@fontsource/inter/700-italic.css";
 
 /*
- * Archivo — tipografía "display" solo para títulos y números grandes
- * (ver ADMIN_DISENO.md > "Barra de búsqueda y filtros" > el rediseño de
- * `empresas-page` del 2026-09-17, embudo de alta). Self-hosted vía
- * @fontsource, mismo criterio que Inter arriba — el handoff de diseño
- * pedía un `<link>` de Google Fonts, pero el proyecto ya evita esa
- * dependencia externa para el resto de la tipografía. Solo 500/600/700:
- * los tres pesos que usa el handoff (subtítulos semibold, números bold).
+ * Archivo: tipografía "display" solo para títulos y números grandes.
+ * Self-hosted como Inter, para no depender de Google Fonts. Solo los
+ * pesos que se usan (500/600/700).
  */
 @import "@fontsource/archivo/500.css";
 @import "@fontsource/archivo/600.css";
@@ -50,12 +42,8 @@
   --color-badge-success-bg: #a4ffb6;
   --color-success-solid: #087b5d;
 
-  /* "Información corroborada" (Empresas) necesitaba un tono propio que
-   * no fuera ni ámbar (todavía queda algo por hacer) ni verde (todavía
-   * no es cliente activo) — bg tomado tal cual del handoff de diseño
-   * (2026-09-17); el -solid es criterio propio, mismo patrón -bg/-solid
-   * que warning/success de arriba, para la barra del embudo y el ícono
-   * de la tarjeta. */
+  /* Tono propio para "Información corroborada" (Empresas): ni ámbar
+   * (queda algo por hacer) ni verde (todavía no es cliente activo). */
   --color-badge-info-bg: #c8ecff;
   --color-badge-info-solid: #0284c7;
 
@@ -69,27 +57,17 @@
 
   --color-badge-error-solid: #d82c0d;
 
-  /* Login del panel de staff — mismos tokens que `admin/src/styles.css`
-   * (ver ADMIN_DISENO.md > "Login"), reutilizados acá porque es la misma
-   * identidad visual. Sin las variantes de captura de Shopify (passkeys,
-   * redes sociales, 2FA): esa pantalla era para el login del cliente
-   * final de un emprendimiento — acá es un login interno simple, ver
-   * `core/auth/pages/login/`. */
+  /* Login: mismos tokens que en `admin`. */
   --color-login-bg: #0a0a0a;
   --color-field-error-bg: #ffe6e5;
 }
 
 /*
- * `fade-in-up` — usada por `ModalComponent` y varios mensajes de error
- * por fila (ej. `AltasPendientesPageComponent`) vía la utilidad
- * arbitraria de Tailwind `animate-[fade-in-up_...]`, pero la keyframe en
- * sí solo existía en `projects/admin/src/styles.css` (copiada acá recién
- * ahora, al notar el hueco mientras se sumaba `slide-in-right` para
- * `SidePanelComponent`) — sin ella, esos `animate-[...]` no hacían nada
- * (el elemento aparecía de golpe, sin el golpe suave pedido). Mismo
- * criterio que la keyframe original: animación CSS en vez de Angular
- * Animations, porque son elementos que Angular agrega/saca del DOM con
- * @if y no hace falta el módulo solo para esto.
+ * `fade-in-up`: entrada de `ModalComponent` y de mensajes de error por fila,
+ * vía `animate-[fade-in-up_...]`. Las animaciones de entrada son CSS y no
+ * Angular Animations: los elementos entran con @if y no hace falta el módulo.
+ * Las de `shared-ui` deben existir acá: si falta la keyframe, el
+ * `animate-[...]` no hace nada.
  */
 @keyframes fade-in-up {
   from {
@@ -103,10 +81,7 @@
   }
 }
 
-/* `slide-in-right` — entrada de `SidePanelComponent` (§11 Paso 2,
- * PROPUESTA_FLUJO_ALTA_ASISTIDA.md): mismo criterio que `fade-in-up`
- * arriba, pero deslizando desde la derecha en vez de un fade, acorde al
- * panel que se ancla al borde derecho de la pantalla. */
+/* `slide-in-right`: entrada de `SidePanelComponent`, que se ancla al borde derecho. */
 @keyframes slide-in-right {
   from {
     opacity: 0;
@@ -119,12 +94,9 @@
   }
 }
 
-/* Cuatro keyframes del rediseño de "Altas pendientes"/asistente de
- * activación (2026-09-17, tercer handoff integrado 2026-09-21) — solo acá
- * en `staff`, no en `admin`: mismo criterio que `slide-in-right`, son de
- * piezas (`ActivarEmpresaWizardComponent`) que no existen del otro lado. */
+/* Altas pendientes y asistente de activación (solo existen en `staff`). */
 
-/* `latido` — el punto que parpadea junto a "Llamada en curso" y el hito
+/* `latido`: el punto que parpadea junto a "Llamada en curso" y el hito
  * "ahora" de la línea de progreso del paso 2. */
 @keyframes latido {
 
@@ -140,9 +112,8 @@
   }
 }
 
-/* `aparecer` — entrada del paso 2 completo y de los dos modales inline
- * (confirmar llamada / rechazar), más suave que `fade-in-up` porque no
- * lleva desplazamiento vertical. */
+/* `aparecer`: entrada del paso 2 y de los modales inline (confirmar
+ * llamada, rechazar); más suave que `fade-in-up`, sin desplazamiento vertical. */
 @keyframes aparecer {
   from {
     opacity: 0;
@@ -155,9 +126,9 @@
   }
 }
 
-/* `pop` — el círculo verde de tilde en la pantalla "Activada", con
- * rebote (cubic-bezier con overshoot) para que se sienta como un logro,
- * no como una notificación más. */
+/* `pop`: rebote de entrada con fundido. */
+/* TODO(front): esta `pop` no tiene efecto: la pisa la `pop` de la campanita
+ * (más abajo, mismo nombre, sin fundido). Renombrar una de las dos o borrar esta. */
 @keyframes pop {
   0% {
     transform: scale(0.2);
@@ -175,7 +146,7 @@
   }
 }
 
-/* `onda` — el anillo que se expande y se desvanece detrás del círculo de
+/* `onda`: el anillo que se expande y se desvanece detrás del círculo de
  * "Activada", en loop, para que la pantalla final no se sienta estática. */
 @keyframes onda {
   0% {
@@ -190,10 +161,8 @@
   }
 }
 
-/* `slide-up` — rediseño de `planes-page` integrado 2026-09-21 (LEEME.md
- * §6): entrada de la barra de publicación de `PlanesPageComponent`,
- * anclada al borde inferior de la pantalla (`fixed inset-x-0 bottom-0`),
- * análoga a `slide-in-right` pero deslizando desde abajo. */
+/* `slide-up`: entrada de la barra de publicación de `PlanesPageComponent`,
+ * anclada al borde inferior. */
 @keyframes slide-up {
   from {
     opacity: 0;
@@ -206,12 +175,9 @@
   }
 }
 
-/* `desplegar` — rediseño de `suscripciones-page` integrado 2026-09-21
- * (LEEME.md §7): apertura del historial de planes de una Empresa dentro
- * de su fila, un fade con leve desplazamiento vertical hacia arriba —
- * mismo criterio que `fade-in-up`, pero con menos recorrido porque es
- * contenido que se despliega dentro de la fila, no un elemento nuevo que
- * entra a la pantalla. */
+/* `desplegar`: apertura del historial de planes dentro de la fila en
+ * Suscripciones; como `fade-in-up` pero con menos recorrido, porque se
+ * despliega dentro de la fila. */
 @keyframes desplegar {
   from {
     opacity: 0;
@@ -224,13 +190,10 @@
   }
 }
 
-/* `rise` — rediseño de `roles-page` integrado 2026-09-22 (LEEME.md §10):
- * entrada de la barra flotante de "cambios sin guardar" y del aviso de
- * confirmación, ambos anclados y centrados en el borde inferior
- * (`fixed bottom-6 left-1/2 -translate-x-1/2`). El `-50%` en X va DENTRO
- * de la keyframe (no alcanza con la clase `-translate-x-1/2` sola): si
- * la keyframe solo anima Y, el paso final pisa el translateX de la clase
- * y el elemento salta a la izquierda apenas termina la animación. */
+/* `rise`: entrada de la barra flotante de "cambios sin guardar" de Roles,
+ * centrada abajo (`left-1/2 -translate-x-1/2`). El `-50%` en X va dentro
+ * de la keyframe: si solo animara Y, pisaría el translateX de la clase y
+ * el elemento saltaría a la izquierda al terminar. */
 @keyframes rise {
   from {
     opacity: 0;
@@ -243,27 +206,18 @@
   }
 }
 
-/* Sistema transversal de alertas y estados de carga (LEEME.md §12,
- * integrado 2026-09-22): `AlertaService` + `AlertaPilaComponent` +
- * `AlertaOverlayComponent` + `EstadoIconoComponent` + `PantallaEstadoComponent`
- * en `shared/ui/` y `core/ui/`. No hacen falta tokens de color nuevos —
- * los sólidos salen de `--color-success-solid`, `--color-badge-error-solid`
- * y `--color-badge-info-solid` ya definidos arriba, más `#b07400` para
- * warning (el mismo `--color-badge-warning-solid` bajado a 4.5:1 sobre
- * blanco, sin tokenizar porque por ahora solo lo usa este sistema). */
+/* Alertas y estados de carga (`AlertaService` y sus componentes). Para
+ * warning usan `#b07400`: el `--color-badge-warning-solid` oscurecido para
+ * llegar a 4.5:1 sobre blanco. */
 
-/* `girar` — el arco de `EstadoIconoComponent` mientras `estado==='cargando'`. */
+/* `girar`: el arco de `EstadoIconoComponent` mientras `estado==='cargando'`. */
 @keyframes girar {
   to {
     transform: rotate(360deg);
   }
 }
 
-/* ── Alertas en línea v2 · Pila oscura (handoff-alertas-pila, 2026-10-02) ─
- * Reemplaza a `aparecer-alerta` (v1). `girar` (arriba) lo sigue usando
- * EstadoIconoComponent. */
-
-/* entrada de cada alerta en AlertaPilaComponent */
+/* Entrada de cada alerta en AlertaPilaComponent. */
 @keyframes alerta-entrar {
   from {
     opacity: 0;
@@ -278,7 +232,7 @@
   }
 }
 
-/* barra de tiempo de la alerta del frente */
+/* Barra de tiempo de la alerta del frente. */
 @keyframes alerta-barra {
   from {
     transform: scaleX(1);
@@ -289,7 +243,7 @@
   }
 }
 
-/* píldora "N cambios nuevos · Actualizar" (AvisoDatosNuevosComponent) */
+/* Píldora "N cambios nuevos · Actualizar" (AvisoDatosNuevosComponent). */
 @keyframes vivo-entrar {
   from {
     opacity: 0;
@@ -302,8 +256,8 @@
   }
 }
 
-/* punto del sidebar: crece apenas y vuelve. Renombrado a `latido-cambio`
- * porque `latido` ya existe (asistente de activación / Usuarios) con otra forma. */
+/* Punto de cambios del sidebar: crece apenas y vuelve. No confundir con
+ * `latido`, que tiene otra forma. */
 @keyframes latido-cambio {
 
   0%,
@@ -318,7 +272,7 @@
   }
 }
 
-/* fila nueva o modificada después de tocar Actualizar */
+/* Fila nueva o modificada después de tocar Actualizar. */
 @keyframes fila-resaltada {
 
   0%,
@@ -343,11 +297,9 @@
   }
 }
 
-/* `aparecer-modal` — entrada de `AlertaOverlayComponent` y de los modales
- * nuevos de Settings (código de verificación, confirmar cambio de
- * contraseña). Deliberadamente distinta de `aparecer` (arriba, sin
- * translateY): esta lleva un leve desplazamiento vertical además del
- * scale, pensada para un modal centrado en pantalla completa. */
+/* `aparecer-modal`: entrada de `AlertaOverlayComponent` y de los modales de
+ * Settings. A diferencia de `aparecer`, sube un poco además del scale,
+ * pensada para un modal centrado en pantalla completa. */
 @keyframes aparecer-modal {
   from {
     opacity: 0;
@@ -360,7 +312,7 @@
   }
 }
 
-/* `barra-indeterminada` — la franja que recorre la barra de progreso de
+/* `barra-indeterminada`: la franja que recorre la barra de progreso de
  * `AlertaOverlayComponent` y de `PantallaEstadoComponent` mientras
  * `estado==='cargando'`, sin duración conocida (no hay % real que mostrar). */
 @keyframes barra-indeterminada {
@@ -373,7 +325,7 @@
   }
 }
 
-/* `brillo` — destello de los esqueletos de página (bloque gris) que cada
+/* `brillo`: destello de los esqueletos de página (bloque gris) que cada
  * pantalla proyecta dentro de `<ng-content select="[esqueleto]">` de
  * `PantallaEstadoComponent` mientras `estado==='cargando'`. */
 @keyframes brillo {
@@ -386,21 +338,19 @@
   }
 }
 
-/* Settings (LEEME.md §13, integrado 2026-09-22): modal de código de
- * verificación de correo. */
+/* Settings: modal de código de verificación de correo. */
 
-/* `parpadeo` — el cursor del input invisible de 6 dígitos, en la caja activa. */
+/* `parpadeo`: el cursor del input invisible de 6 dígitos, en la caja activa. */
 @keyframes parpadeo {
   50% {
     opacity: 0;
   }
 }
 
-/* `sacudir-a`/`sacudir-b` — error del código: las cajas tiemblan. Son
- * IDÉNTICAS a propósito (`otpSacudon()` alterna entre las dos en cada
- * error) — reasignar el mismo nombre de animación no la vuelve a
- * disparar, así que hacen falta dos nombres para que el sacudón se repita
- * en errores consecutivos. */
+/* `sacudir-a`/`sacudir-b`: las cajas tiemblan con un código incorrecto.
+ * Son idénticas a propósito: reasignar el mismo nombre no vuelve a
+ * disparar la animación, así que se alternan para que el sacudón se
+ * repita en errores seguidos. */
 @keyframes sacudir-a {
 
   20%,
@@ -427,12 +377,10 @@
   }
 }
 
-/* Pista (LEEME.md §18, integrado 2026-09-23): aviso liviano abajo al
- * centro, montado una sola vez en el shell. Dos pares de keyframes
- * IDÉNTICAS a propósito (`pista-in`/`pista-in-b`, `barra`/`barra-b`):
- * `PistaComponent` alterna entre ellas según la paridad del `id` de cada
- * pista, para que el navegador reinicie la animación sin recrear el nodo
- * del DOM (mismo truco que `sacudir-a`/`sacudir-b` arriba). */
+/* Pista: aviso liviano abajo al centro. Los pares `pista-in`/`pista-in-b` y
+ * `barra`/`barra-b` son idénticos a propósito: `PistaComponent` los alterna
+ * según la paridad del `id` para reiniciar la animación sin recrear el
+ * nodo (mismo truco que `sacudir-a`/`sacudir-b`). */
 @keyframes pista-in {
   from {
     opacity: 0;
@@ -461,10 +409,9 @@
   }
 }
 
-/* `barra`/`barra-b` — la franja celeste de la pista con botón de acción
- * (Deshacer/Quitar), que se va achicando durante los 5 s antes del
- * auto-cierre. La duración real la fija el componente por `id` con
- * `[style.animation-duration.ms]`. */
+/* `barra`/`barra-b`: la franja de la pista con botón de acción
+ * (Deshacer/Quitar) que se achica hasta el auto-cierre. La duración la fija
+ * el componente con `[style.animation-duration.ms]`. */
 @keyframes barra {
   from {
     transform: scaleX(1);
@@ -509,9 +456,8 @@
   }
 }
 
-/* Topbar (LEEME.md §17, integrado 2026-09-24): campanita de
- * notificaciones — sacudida al llegar una nueva (`campana`), el contador
- * hace `pop`, y cada fila nueva del panel entra con `entra`. */
+/* Campanita del topbar: se sacude al llegar una notificación (`campana`),
+ * el contador hace `pop` y cada fila nueva del panel entra con `entra`. */
 @keyframes campana {
 
   0%,
@@ -587,13 +533,11 @@
   }
 }
 
-/* Soporte (LEEME.md §15, integrado 2026-09-24): bandeja rediseñada —
- * mensajes/líneas de sistema entrando en el hilo (`msg-in`/`linea-in`),
- * el hilo entero al cambiar de conversación (`hilo-in`), y filas nuevas
- * que llegan en vivo en la lista agrupada (`fila-in`). Plegar grupos, la
- * cita sobre el input, el menú de asignar y el aviso inferior usan
- * transiciones (grid-rows 0fr↔1fr, opacidad, escala), no keyframes: por
- * eso esos elementos quedan siempre en el DOM (ver el HTML). */
+/* Soporte: mensajes y líneas de sistema que entran al hilo (`msg-in`,
+ * `linea-in`), el hilo al cambiar de conversación (`hilo-in`) y filas que
+ * llegan en vivo (`fila-in`). Plegar grupos, la cita, el menú de asignar y
+ * el aviso inferior usan transiciones, no keyframes: por eso esos
+ * elementos quedan siempre en el DOM. */
 @keyframes msg-in {
   from {
     opacity: 0;
@@ -668,10 +612,8 @@
   }
 }
 
-/* ─── Asistente de IA (rediseño 2026-09-30 · v3 2026-10-02) ─────────────────────────────
-   Pegar al final de projects/staff/src/styles.css.
-   Todo lleva prefijo `ia-` porque styles.css ya tiene `latido`, `pop`,
-   `brillo` y `msg-in` con otras curvas. */
+/* Asistente de IA. Todo lleva prefijo `ia-` porque ya existen `latido`,
+   `pop`, `brillo` y `msg-in` con otras curvas. */
 
 @keyframes ia-girar {
   to {
@@ -1026,7 +968,7 @@
   animation: ia-pop 360ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
-/* v3: el caret es un punto turquesa que late al final del texto que se va escribiendo. */
+/* Caret: punto turquesa que late al final del texto que se va escribiendo. */
 .ia-caret {
   display: inline-block;
   width: 7px;
@@ -1038,17 +980,15 @@
   animation: ia-latido 900ms ease-in-out infinite;
 }
 
-/* v3: puntos de "escribiendo" (app-ia-escribiendo). */
+/* Puntos de "escribiendo" (app-ia-escribiendo). */
 .ia-tecleo {
   animation: ia-tecleo 1.25s cubic-bezier(.45, 0, .55, 1) infinite;
 }
 
-/* Markdown del Asistente de IA (`MarkdownLigeroPipe`) — reglas mínimas a
-   mano en vez de un plugin de "prose" (Tailwind v4 acá no tiene
-   @tailwindcss/typography instalado): solo lo que el modelo realmente usa
-   (negrita, listas, código inline, enlaces, párrafos), con los mismos
-   tonos/espaciados que ya usa el resto del chat. Sin estilos para
-   bloques de código con lenguaje/resaltado — no hacía falta todavía. */
+/* Markdown del Asistente de IA (`MarkdownLigeroPipe`). Reglas mínimas a mano
+   porque no está instalado @tailwindcss/typography: solo lo que usa el
+   modelo (negrita, listas, código inline, enlaces, párrafos). No hay
+   resaltado de bloques de código. */
 .ia-markdown {
   display: flex;
   flex-direction: column;
@@ -1171,7 +1111,7 @@
   font-weight: 600;
 }
 
-/* Texto con barrido (v3: ya no se usa para "Pensando…"; queda para otros estados). */
+/* Texto con barrido para estados de espera. */
 .ia-shimmer-texto {
   background: linear-gradient(90deg, #a3a3a3 0%, #a3a3a3 35%, #111827 50%, #a3a3a3 65%, #a3a3a3 100%);
   background-size: 200% 100%;
@@ -1197,7 +1137,7 @@
   }
 }
 
-/* Pegar al final de styles.css: "aplastón" del botón al pegarse a la pared */
+/* "Aplastón" del botón del asistente al pegarse a un borde de la pantalla. */
 @keyframes ia-pegar-x {
   0% {
     transform: scale(1, 1)
@@ -1241,9 +1181,6 @@
     transform: scale(1, 1)
   }
 }
-
-/* Pegar en projects/staff/src/styles.css (handoff módulos v2, 2026-10-05).
-   `fade-in-up`, `vivo-entrar` y `.fila-resaltada` ya están de handoffs anteriores. */
 
 /* Entrada de la hoja al cambiar de selección. La página recrea el nodo con
    `@for (k of [clave]; track k)` para que la animación vuelva a correr. */
@@ -1309,8 +1246,8 @@
   }
 }
 
-/* Cerrar sesión "puerta" del menú de cuenta (topbar, 2026-10-05): la
- * puerta se cierra de un portazo y la despedida entra letra por letra. */
+/* "Cerrar sesión" del menú de cuenta: la puerta se cierra de un portazo y
+ * la despedida entra letra por letra. */
 @keyframes salir-portazo {
   0% {
     transform: scaleX(0.25);
@@ -1362,10 +1299,10 @@
   }
 }
 
-/* Escala de la interfaz (2026-10-05): el topbar y el contenido de los
- * módulos se ven un poco más chicos, como un zoom del navegador al 90 %; el
- * sidebar queda a su tamaño. `zoom` (no `transform: scale`) para que el
- * layout, el scroll y los paneles fijos se acomoden solos. */
+/* Escala de la interfaz: el topbar y el contenido de los módulos se ven al
+ * 90 %, como un zoom del navegador; el sidebar queda a su tamaño. `zoom`
+ * (no `transform: scale`) para que el layout, el scroll y los paneles fijos
+ * se acomoden solos. */
 :root {
   --escala-contenido: 0.9;
 }
@@ -1377,4 +1314,17 @@ app-topbar {
 
 .escala-contenido {
   zoom: var(--escala-contenido);
+}
+/* Con el shell montado la ventana no se desplaza: solo `main`, que se mueve
+ * con rueda, trackpad o teclado pero sin mostrar la barra. Las pantallas
+ * sin shell (login, asistente) conservan el scroll normal de la ventana. */
+html:has(.shell-raiz),
+html:has(.shell-raiz) body {
+  overflow: hidden;
+}
+.sin-barra {
+  scrollbar-width: none;
+}
+.sin-barra::-webkit-scrollbar {
+  display: none;
 }

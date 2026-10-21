@@ -2,23 +2,13 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
 import { IconX, TablerIconComponent } from '@tabler/icons-angular';
 
 /**
- * Modal genérico (backdrop + tarjeta blanca centrada) para los
- * formularios de crear/editar y las confirmaciones de eliminar que suma
- * el sidebar de staff (Planes, Usuarios, Roles — ver
- * PIVOTE_SAAS_MULTITENANT.md §8, sidebar de staff). No existía ningún
- * patrón de modal en el proyecto todavía (ni en `admin` ni en `staff`,
- * confirmado por grep) — se construye acá, local a `staff`, en vez de
- * promoverlo directo a `shared-ui`: mismo criterio que se usó con los
- * composites de `admin` antes de la librería (ver ADMIN_DISENO.md > "Qué
- * construir como librería propia") — recién se promueve cuando un
- * segundo proyecto también lo necesita.
+ * Modal genérico (fondo + tarjeta blanca centrada) para formularios y
+ * confirmaciones.
  *
- * Deliberadamente NO usa `p-dialog` de PrimeNG: ninguna pantalla del
- * proyecto lo usaba todavía, y un `<div>` con Tailwind alcanza para lo
- * que hace falta acá (overlay + tarjeta + cerrar), sin sumar el `pt`
- * (passthrough) que requeriría estilizarlo al lenguaje visual propio —
- * mismo criterio anti-Angular-Forms del resto del código: no traer más
- * librería de la que la tarea realmente necesita.
+ * @remarks
+ * No usa `p-dialog` de PrimeNG: un `<div>` con Tailwind alcanza y evita
+ * estilizarlo con `pt`. Está duplicado en `staff`: se pasaría a `shared-ui`
+ * si se quiere uno solo.
  */
 @Component({
   selector: 'app-modal',
@@ -34,9 +24,8 @@ export class ModalComponent {
   protected readonly iconClose = IconX;
 
   protected onBackdropClick(event: MouseEvent): void {
-    // Solo cierra si el click fue directo sobre el backdrop, no si
-    // empezó dentro de la tarjeta y arrastró hasta afuera (selección de
-    // texto que termina fuera del modal no debería cerrarlo por error).
+    // Solo cierra si el clic fue directo sobre el fondo: una selección de
+    // texto que empieza en la tarjeta y termina afuera no debe cerrarlo.
     if (event.target === event.currentTarget) {
       this.cerrar.emit();
     }

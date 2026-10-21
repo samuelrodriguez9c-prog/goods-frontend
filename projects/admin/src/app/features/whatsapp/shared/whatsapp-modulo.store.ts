@@ -12,7 +12,7 @@ export type FiltroBandeja = 'todos' | 'sin' | 'vence' | 'ia';
 export type FiltroPlantillas = 'todas' | 'aprobada' | 'pendiente' | 'rechazada';
 
 /**
- * Estado compartido del módulo WhatsApp (rediseño del 2026-10-13), dado por
+ * Estado compartido del módulo WhatsApp, dado por
  * `WhatsappShellComponent` a sus páginas: la conexión, los números de la
  * cabecera (`GET /whatsapp/resumen`), la sección actual y lo que la cabecera
  * le pide a la página (filtrar desde una métrica, "Nueva…").

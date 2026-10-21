@@ -24,6 +24,8 @@ export function descargarBlob(blob: Blob, nombre: string): void {
  * CSV armado en el navegador (para listados que ya están en memoria, como
  * Empresas). Mismo formato que el backend (`common/csv.util.ts`): `;`, BOM
  * UTF-8 y decimales con coma, para que Excel en español lo abra bien.
+ *
+ * @param nombreBase - Nombre sin extensión; se le agrega la fecha de hoy (`-AAAA-MM-DD.csv`).
  */
 export function descargarCsv(nombreBase: string, encabezados: string[], filas: (string | number | null | undefined)[][]): void {
   const celda = (v: string | number | null | undefined): string => {

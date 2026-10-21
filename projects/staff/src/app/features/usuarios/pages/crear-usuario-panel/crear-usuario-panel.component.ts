@@ -27,13 +27,10 @@ interface ModuloDef {
   codigos?: string[];
 }
 
-/** Copia local de la definición de columnas de la matriz (ver el
- * docstring de la clase: este panel no depende de `usuarios-page` para
- * nada de tiempo de ejecución, solo importa tipos). Debe mantenerse
- * igual a `MODULOS` en `usuarios-page.component.ts` — incluye el mismo
- * ajuste de `codigos` para "Altas pendientes" (el `modulo` real de esos
- * permisos es `empresas`, no `altas`; verificado contra la tabla
- * `permiso`). */
+/** Copia local de las columnas de la matriz: este panel no importa nada de
+ * `usuarios-page`. Debe mantenerse igual a `MODULOS` de
+ * `usuarios-page.component.ts`, incluido el ajuste de `codigos` de "Altas
+ * pendientes" (esos permisos están bajo `modulo: 'empresas'`). */
 const MODULOS: ModuloDef[] = [
   { id: 'empresas', completo: 'Empresas', icono: IconBuildingStore },
   {
@@ -62,11 +59,9 @@ const ETIQUETA_ROL: Record<string, string> = {
   empleado_empresa: 'Empleado de la Empresa',
 };
 
-/** Copia local del mismo fallback que `etiquetaRolTexto()` en
- * `usuarios-page.component.ts` (ver el docstring de la clase: este panel
- * no importa nada en tiempo de ejecución de la página). Un rol nuevo o
- * ad-hoc, fuera de la lista de arriba, se muestra con cada palabra
- * capitalizada en vez del slug crudo de la base. */
+/** Copia local de `etiquetaRolTexto()` de `usuarios-page.component.ts`: un
+ * rol fuera de la lista se muestra con cada palabra capitalizada en vez del
+ * slug. */
 function etiquetaRolTexto(nombre: string): string {
   return (
     ETIQUETA_ROL[nombre] ??
@@ -99,35 +94,14 @@ const FORMULARIO_VACIO: FormularioAlta = {
 };
 
 /**
- * Alta de una persona nueva — componente aparte, sibling de
- * `usuarios-page` en `pages/`, mismo patrón que el resto de los paneles.
+ * Panel para dar de alta a una persona, con la vista previa de lo que concede
+ * el rol elegido. Es autónomo (la persona aún no está en la matriz), por eso
+ * duplica `MODULOS`/`nivelDe()` en vez de recibir la vista previa armada.
  *
- * A diferencia de `FichaUsuarioPanelComponent`, este SÍ es completamente
- * autónomo: no hay ninguna fila existente en la matriz con la que cruzar
- * un diff (la persona todavía no existe), así que no necesita nada
- * lifteado a la página. Solo recibe `[roles]` (para el selector de rol) y
- * opcionalmente `[rolPreseleccionado]` (cuando se abre desde "Agregar a
- * alguien como X" en un grupo). Por eso sí duplica localmente `MODULOS`/
- * `nivelDe()` — igual que `fechaCorta`/`horaCorta` en
- * `AccionDetallePanelComponent` — en vez de recibir la previsualización ya
- * calculada: acá no hay razón para evitar el recálculo, es liviano y este
- * panel no comparte ese estado con nadie más.
- *
- * `crearUsuario()` hace la misma secuencia que la pantalla anterior:
- * `POST /usuarios` (que siempre nace con el rol por defecto del backend,
- * ver `resolverRolIdInicial`) + `PATCH /usuarios/:id/rol` si el rol
- * elegido es otro.
- *
- * La validación de contraseña (`requisitos`/`fuerza`) es solo del
- * frontend — `CreateUsuarioDto` del backend únicamente exige
- * `MinLength(8)`, sin mayúscula/número/símbolo. Es una capa de UX
- * intencional (no hace falta debilitarla para "coincidir" con el
- * backend); queda documentado en ADMIN_DISENO.md como mejora pendiente
- * del backend, no como algo a corregir acá.
- *
- * El aviso de éxito/error lo muestra este panel mismo con
- * `AlertaService.seguir()` (LEEME.md §12) — ya no sube por
- * `avisoTexto`/`errorTexto` a un banner de la página.
+ * Las reglas de contraseña (`requisitos`) son más estrictas que las del
+ * backend (`CreateUsuarioDto` solo exige 8 caracteres) a propósito: no las
+ * relajes para igualarlas. Los avisos de éxito o error los muestra el propio
+ * panel con `AlertaService.seguir()`.
  */
 @Component({
   selector: 'app-crear-usuario-panel',
@@ -153,14 +127,9 @@ export class CrearUsuarioPanelComponent {
   readonly creado = output<UsuarioGoods>();
 
   protected readonly guardando = signal(false);
-  // Ajuste propio: los signal inputs todavía no tienen valor durante los
-  // inicializadores de campo ni el cuerpo del constructor (Angular los
-  // asigna recién después) — `formulario` no puede arrancar con
-  // `rolId: this.rolPreseleccionado()?.id` (NG0950: "Input is required
-  // but no value is available yet"). En vez de eso, `rolId` arranca en
-  // `null` y `rolIdEfectivo` (más abajo) resuelve el valor por defecto —
-  // preseleccionado, o `staff_goods` — sin necesitar leer los inputs
-  // antes de que Angular los tenga listos.
+  // `rolId` arranca en `null` porque los signal inputs aún no tienen valor
+  // al inicializar los campos (NG0950); el valor por defecto lo resuelve
+  // `rolIdEfectivo`.
   protected readonly formulario = signal<FormularioAlta>({ ...FORMULARIO_VACIO });
 
   /** `formulario().rolId` es la elección explícita del usuario (si la
@@ -226,7 +195,7 @@ export class CrearUsuarioPanelComponent {
     const cumplidos = this.requisitos().filter((r) => r.ok).length;
     const nivel = f.password.length === 0 ? 0 : cumplidos;
     const escala = [
-      { texto: 'Escribí una contraseña', tinta: 'text-gray-400', color: '#ececec' },
+      { texto: 'Escribe una contraseña', tinta: 'text-gray-400', color: '#ececec' },
       { texto: 'Muy débil', tinta: 'text-badge-error-solid', color: '#d82c0d' },
       { texto: 'Débil', tinta: 'text-[#b45309]', color: '#ffb904' },
       { texto: 'Casi', tinta: 'text-[#b45309]', color: '#ffb904' },
@@ -279,9 +248,10 @@ export class CrearUsuarioPanelComponent {
     });
   });
 
-  /** `POST /usuarios` siempre nace con el rol por defecto del backend, así
-   * que hay que encadenar `PATCH /usuarios/:id/rol` — ver
-   * `resolverRolIdInicial` del backend. */
+  /** `POST /usuarios` siempre crea con el rol por defecto del backend
+   * (`resolverRolIdInicial`), así que si el rol elegido es otro se encadena
+   * `PATCH /usuarios/:id/rol`. Si ese segundo paso falla, la cuenta queda
+   * creada igual con el rol por defecto. */
   protected crearUsuario(): void {
     const f = this.formulario();
     const rolId = this.rolIdEfectivo();
@@ -307,7 +277,7 @@ export class CrearUsuarioPanelComponent {
           exito: {
             titulo: `${f.nombres} ya puede entrar como ${rolElegido ? this.etiquetaRol(rolElegido) : 'usuario'}`,
           },
-          error: { titulo: 'No se pudo crear el usuario', texto: 'Revisá que el correo no esté en uso.' },
+          error: { titulo: 'No se pudo crear el usuario', texto: 'Revisa que el correo no esté en uso.' },
         },
       )
       .subscribe({
@@ -320,7 +290,7 @@ export class CrearUsuarioPanelComponent {
                 exito: { titulo: 'Rol asignado' },
                 error: {
                   titulo: 'No se pudo asignar el rol elegido',
-                  texto: 'Cambialo desde su ficha.',
+                  texto: 'Cámbialo desde su ficha.',
                 },
               })
               .subscribe({

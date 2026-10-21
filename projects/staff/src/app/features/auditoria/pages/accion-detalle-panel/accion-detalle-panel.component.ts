@@ -26,44 +26,16 @@ const RESULTADO: Record<number, { texto: string; icono: typeof IconCircleCheck; 
   500: { texto: 'Falló del lado del servidor.', icono: IconServerOff, caja: 'bg-badge-error-solid/10 text-badge-error-solid' },
 };
 
-/** Ventana de "misma sesión". */
+/** Ventana de "misma sesión": ±30 min alrededor de la acción. */
 const VENTANA_SESION_MS = 30 * 60 * 1000;
 
 /**
- * Panel de detalle de una acción de auditoría — extraído de
- * `AuditoriaPageComponent` a pedido explícito del cliente (2026-09-21,
- * después de la integración inicial) para mantener la misma estructura de
- * `pages/<panel>/` que ya tenían `EmpresaDetallePanelComponent`
- * (`features/empresas/pages/`), `ActivarEmpresaWizardComponent`
- * (`features/altas-pendientes/pages/`) y
- * `GestionarSuscripcionPanelComponent` (`features/suscripciones/pages/`):
- * un componente por panel, sibling de la página en `pages/`, no un bloque
- * más del template de la página.
+ * Panel de detalle de una acción de auditoría (Resumen / Datos / Técnico).
  *
- * A diferencia de esos tres, **este panel NO carga sus propios datos por
- * `id` contra el backend** — recibe la lista COMPLETA ya cargada por
- * `AuditoriaPageComponent` vía `[acciones]` (su `leibles()`), además del
- * `[accionId]` a mostrar. Es una excepción deliberada, mismo criterio que
- * `[mrrTotal]` en `GestionarSuscripcionPanelComponent`: "En la misma
- * sesión" y "Historia de X" necesitan recorrer TODAS las acciones (buscar
- * otras de la misma persona/IP en la misma media hora, o de la misma
- * entidad) — cargar eso por su cuenta significaría reimplementar acá
- * adentro las 11 reglas de traducción de ruta de `REGLAS`/`describir()`/
- * `agente()` de la página (no es un mapa chico tipo `ESTADO_UI`) y pegarle
- * una segunda vez a `AuditoriaService.listar()` + `UsuarioService.listar()`
- * — la página ya tiene ese trabajo hecho. `AccionLeible.nombreResuelto`
- * (el nombre de usuario ya resuelto contra el mapa de la página) es lo que
- * permite que este panel no necesite ese mapa ni un servicio de usuarios
- * propio.
- *
- * La navegación DENTRO del panel (botones de "En la misma sesión" /
- * "Historia de X", que cambian qué acción se muestra sin cerrar el panel)
- * no la resuelve el panel solo: emite `(verAccion)` con el nuevo id, y es
- * la página —dueña del id que se está viendo— la que decide, reutilizando
- * el mismo `abrirPanel()` que abre desde la lista. Lo mismo con "Ver todo
- * el rastro": emite `(verRastro)` con la entidad, y la página arma el
- * filtro transversal y cierra el panel — ninguno de los dos es estado de
- * este componente.
+ * @remarks
+ * No carga nada: recibe de `AuditoriaPageComponent` la lista completa ya
+ * traducida, porque "En la misma sesión" e "Historia de X" recorren todas las
+ * acciones. Cambiar de acción o ver el rastro se le pide a la página por outputs.
  */
 @Component({
   selector: 'app-accion-detalle-panel',
@@ -81,12 +53,9 @@ export class AccionDetallePanelComponent {
   readonly acciones = input.required<AccionLeible[]>();
 
   readonly cerrar = output<void>();
-  /** Pedido de mostrar otra acción sin cerrar el panel (hito de "En la
-   * misma sesión" o de "Historia de X") — la página decide, ver el
-   * docstring de la clase. */
+  /** Pide mostrar otra acción sin cerrar el panel. */
   readonly verAccion = output<number>();
-  /** Pedido de "Ver todo el rastro" — la página arma el filtro y cierra
-   * el panel, ver el docstring de la clase. */
+  /** Pide "Ver todo el rastro" de la entidad; la página filtra y cierra el panel. */
   readonly verRastro = output<{ entidad: string; entidadId: string }>();
 
   protected readonly tab = signal<TabPanel>('resumen');
@@ -247,10 +216,7 @@ export class AccionDetallePanelComponent {
   });
 
   constructor() {
-    // Al cambiar de acción (navegación interna vía "En la misma sesión" /
-    // "Historia de X" — misma instancia del componente, `[accionId]`
-    // nuevo) siempre se vuelve a la pestaña Resumen, mismo comportamiento
-    // que tenía `abrirPanel()` en la página antes de la extracción.
+    // Al cambiar de acción con el panel abierto se vuelve siempre a Resumen.
     effect(() => {
       this.accionId();
       this.tab.set('resumen');

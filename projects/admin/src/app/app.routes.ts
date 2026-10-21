@@ -5,20 +5,15 @@ import { ShellComponent } from './layout/shell/shell.component';
 
 export const routes: Routes = [
   {
-    // Pantalla sin sidebar/topbar — vive en su propia rama de rutas, tal
-    // como anticipaba el comentario en shell.component.ts. Sin guard: es
-    // justo la ruta a la que `authGuard` redirige cuando falta sesión.
+    // Sin sidebar ni topbar y sin guard: es a donde `authGuard` manda cuando falta sesión.
     path: 'login',
     loadComponent: () =>
       import('./core/auth/pages/login/login.component').then((m) => m.LoginComponent),
   },
   {
-    // Página pública de registro/checkout (PIVOTE_SAAS_MULTITENANT.md
-    // §5) — mismo criterio que /login: sin sidebar/topbar, sin guard (un
-    // visitante anónimo todavía no tiene cuenta). Vive acá adentro de
-    // `admin` en vez de un proyecto Angular aparte porque no hay ningún
-    // motivo de seguridad para separarla (a diferencia de `staff`, ver
-    // §4) — es solo una ruta pública más.
+    // Registro público (checkout): sin sidebar, topbar ni guard. Vive en
+    // `admin` y no en un proyecto aparte porque, a diferencia de `staff`, no
+    // hay motivo de seguridad para separarla.
     path: 'registro',
     loadComponent: () =>
       import(
@@ -26,12 +21,8 @@ export const routes: Routes = [
       ).then((m) => m.RegistroPublicoPageComponent),
   },
   {
-    // Pantalla a la que apunta el enlace del correo de "restablecer
-    // contraseña" / confirmación de alta asistida (§8 punto 6 de
-    // PROPUESTA_FLUJO_ALTA_ASISTIDA.md — antes no existía esta ruta, el
-    // link del correo no tenía dónde caer). Mismo criterio que /login y
-    // /registro: sin sidebar/topbar, sin guard (todavía no hay sesión —
-    // el token viene en la query string, no en el Authorization header).
+    // Destino del enlace para definir o restablecer la contraseña (también
+    // confirma el alta). Sin guard: no hay sesión, el token viene en la URL.
     path: 'reset-password',
     loadComponent: () =>
       import('./core/auth/pages/reset-password/reset-password.component').then(
@@ -39,9 +30,9 @@ export const routes: Routes = [
       ),
   },
   {
-    // Enlace "escribinos" de los correos de alta: quien se registró
-    // todavía no tiene cuenta ni chat. El token del correo dice qué
-    // Empresa es (ver ContactoAltaService del backend).
+    // Enlace para escribirle a Goods desde los correos de alta: quien se
+    // registró todavía no tiene cuenta ni chat. El token del correo dice qué
+    // Empresa es.
     path: 'registro/mensaje',
     loadComponent: () =>
       import(
@@ -57,8 +48,7 @@ export const routes: Routes = [
       import('./core/auth/pages/no-fui-yo/no-fui-yo.component').then((m) => m.NoFuiYoComponent),
   },
   {
-    // Asistente de IA a pantalla completa (2026-10-07, igual que staff):
-    // fuera del Shell, monta su propio topbar con "Volver al panel".
+    // Asistente a pantalla completa: fuera del Shell, con su propio topbar y «Volver al panel».
     path: 'asistente',
     loadChildren: () => import('./features/asistente/asistente.routes').then((m) => m.ASISTENTE_ROUTES),
   },
@@ -97,13 +87,12 @@ export const routes: Routes = [
           import('./features/messages/messages.routes').then((m) => m.MESSAGES_ROUTES),
       },
       {
-        // Bandeja de WhatsApp (Fase 1 de PROPUESTA_WHATSAPP.md).
         path: 'whatsapp',
         canActivate: [moduloGuard('whatsapp')],
         loadChildren: () => import('./features/whatsapp/whatsapp.routes').then((m) => m.WHATSAPP_ROUTES),
       },
       {
-        // Tienda pública con "Pedir por WhatsApp" (Fase 0 de PROPUESTA_WHATSAPP.md).
+        // Configuración de la tienda en línea (la tienda pública es el proyecto `tienda`).
         path: 'tienda',
         canActivate: [moduloGuard('tienda')],
         loadChildren: () => import('./features/tienda/tienda.routes').then((m) => m.TIENDA_ROUTES),
@@ -119,8 +108,7 @@ export const routes: Routes = [
           import('./features/settings/settings.routes').then((m) => m.SETTINGS_ROUTES),
       },
       {
-        // Página de validación visual de shared/ui/ — no es una pantalla de
-        // negocio, ver features/dev-showcase.
+        // Vitrina de los componentes de `shared/ui`; no es una pantalla de negocio.
         path: 'dev',
         loadChildren: () =>
           import('./features/dev-showcase/dev-showcase.routes').then(

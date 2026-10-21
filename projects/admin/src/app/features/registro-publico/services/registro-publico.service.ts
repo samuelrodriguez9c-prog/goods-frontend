@@ -9,24 +9,14 @@ import {
 } from '../models/registro-publico.model';
 
 /**
- * Llamadas al backend de la página pública de registro/checkout (§5) —
- * los tres endpoints son públicos, sin `Authorization` (no pasan por
- * `authInterceptor`, no hace falta sesión): `GET /planes` (solo activos),
- * `GET /modulos/publico` (§11.6, corrección 2026-09-26) y
- * `POST /empresas/registro-publico`.
- *
- * Primer feature de `admin` que llama al backend real (login aparte, en
- * `core/auth`) — el resto de `features/` (products, customers, orders...)
- * todavía trabaja con datos mock, ver MODULOS_PENDIENTES.md.
+ * Llamadas del registro público y de la página para escribirle a Goods. Todos
+ * los endpoints son públicos: no hace falta sesión.
  */
 @Injectable({ providedIn: 'root' })
 export class RegistroPublicoService {
   private readonly http = inject(HttpClient);
 
-  /** `GET /modulos/publico` — catálogo REAL de módulos activos
-   * (`codigo`/`nombre` nomás), no derivado de los planes (ver el
-   * comentario de `RegistroPublicoPageComponent.modulosExtraDisponibles`
-   * sobre por qué la unión de planes no alcanzaba). */
+  /** Catálogo de módulos activos, no derivado de los planes (ver `ModuloPublico`). */
   listarCatalogoModulos(): Observable<ModuloPublico[]> {
     return this.http.get<ModuloPublico[]>(`${environment.apiUrl}/modulos/publico`);
   }
@@ -38,12 +28,8 @@ export class RegistroPublicoService {
       .pipe(
         map((respuesta) => ({
           ...respuesta,
-          // `precio_mensual` es `decimal` en Postgres — TypeORM/pg lo manda
-          // como STRING sobre JSON para no perder precisión (ej.
-          // "100000.00"), no como number. Se coerce acá, una sola vez en
-          // el borde del sistema, para que el resto del componente
-          // (formateo, comparar cuál plan es más barato) trabaje con un
-          // number de verdad en vez de tener que acordarse en cada lugar.
+          // `precio_mensual` es `decimal`: llega como string ("100000.00").
+          // Se convierte una sola vez acá para que el resto trabaje con number.
           data: respuesta.data.map((plan) => ({
             ...plan,
             precioMensual: plan.precioMensual === null ? null : Number(plan.precioMensual),
@@ -59,7 +45,7 @@ export class RegistroPublicoService {
     );
   }
 
-  /** Página "escribinos" de los correos de alta (`/registro/mensaje`). */
+  /** Datos de la página para escribirle a Goods desde los correos de alta (`/registro/mensaje`). */
   verContacto(token: string): Observable<ContactoAlta> {
     return this.http.get<ContactoAlta>(`${environment.apiUrl}/empresas/registro-publico/contacto`, {
       params: { token },

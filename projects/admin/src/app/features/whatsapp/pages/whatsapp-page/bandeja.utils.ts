@@ -1,7 +1,7 @@
 import { Conversacion, Mensaje, identificacion } from '../../../../core/whatsapp/whatsapp.model';
 import { FiltroBandeja } from '../../shared/whatsapp-modulo.store';
 
-/** Formatos y reglas de la Bandeja (rediseño 2026-10-13), compartidos por sus componentes. */
+// Formatos y reglas de la Bandeja, compartidos por sus componentes.
 
 export const HORA_MS = 3_600_000;
 const DIA_MS = 24 * HORA_MS;

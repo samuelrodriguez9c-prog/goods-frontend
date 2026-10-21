@@ -2,13 +2,13 @@ import { ChangeDetectionStrategy, Component, input, model, output } from '@angul
 import { TablerIconComponent } from '@tabler/icons-angular';
 import { icono } from '../../../../shared/ui/iconos';
 import { DOCUMENTOS, FiltroDocumento, RANGOS, RangoFecha } from '../../compras.modelo';
-import { ControlSegmentadoComponent } from '../control-segmentado/control-segmentado.component';
+import { SegmentadoComponent } from '../../../../../../shared/ui/segmentado/segmentado.component';
 
 /** Contenido del popover "Filtros": fecha, documento y proveedor. */
 @Component({
   selector: 'app-filtros-compras',
   standalone: true,
-  imports: [TablerIconComponent, ControlSegmentadoComponent],
+  imports: [TablerIconComponent, SegmentadoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
@@ -20,11 +20,11 @@ import { ControlSegmentadoComponent } from '../control-segmentado/control-segmen
     <div class="flex flex-col gap-3">
       <div class="flex flex-col gap-1.5">
         <span class="text-[11.5px] font-semibold text-[#6b7280]">Fecha</span>
-        <app-control-segmentado [opciones]="rangos" [valor]="rango()" (elegir)="rango.set($any($event))" />
+        <app-segmentado variante="rejilla" [opciones]="rangos" [valor]="rango()" (cambiar)="rango.set($any($event))" />
       </div>
       <div class="flex flex-col gap-1.5">
         <span class="text-[11.5px] font-semibold text-[#6b7280]">Documento</span>
-        <app-control-segmentado [opciones]="documentos" [valor]="documento()" (elegir)="documento.set($any($event))" />
+        <app-segmentado variante="rejilla" [opciones]="documentos" [valor]="documento()" (cambiar)="documento.set($any($event))" />
       </div>
       <div class="flex flex-col gap-1.5">
         <span class="text-[11.5px] font-semibold text-[#6b7280]">Proveedor</span>

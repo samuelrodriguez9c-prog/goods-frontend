@@ -23,7 +23,7 @@ import { VistaPreviaWhatsappComponent } from '../vista-previa-whatsapp/vista-pre
 type Icono = typeof IconSend;
 
 /**
- * Panel de la plantilla elegida (LEEME §5): cabecera con estado, motivo de
+ * Panel de la plantilla elegida: cabecera con estado, motivo de
  * rechazo, franja de datos (envíos, lectura, costo), vista previa, de dónde
  * sale cada dato, dónde se usa y la acción principal según el estado.
  * El host lleva `.animar-panel`: cada bloque entra en cascada.

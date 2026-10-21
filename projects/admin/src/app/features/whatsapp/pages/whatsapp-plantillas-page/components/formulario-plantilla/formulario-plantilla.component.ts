@@ -18,7 +18,7 @@ const TIPOS: { k: NuevaPlantilla['categoria']; l: string; s: string }[] = [
 ];
 
 /**
- * "Nueva plantilla" (LEEME §5): nombre interno, tipo, mensaje con variables,
+ * «Nueva plantilla»: nombre interno, tipo, mensaje con variables,
  * ejemplos para Meta, vista previa en vivo y costo. La manda a revisión de
  * Meta y avisa con `creada`. También sirve para "Corregir y reenviar" y
  * "Duplicar" (llega con `inicial`).

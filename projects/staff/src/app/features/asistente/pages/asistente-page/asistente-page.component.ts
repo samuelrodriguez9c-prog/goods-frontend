@@ -91,7 +91,7 @@ const DOC_RE = /(agreg|carg|sub|guard)\w*\s+(un\s+|el\s+)?(documento|manual|proc
 const EXT_DOC = /\.(md|txt|docx)$/i;
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-/** Badge de estado de Empresa (tokens `--color-badge-*` de styles.css). */
+/** Badge de estado de Empresa; mismos colores que los tokens `--color-badge-*` de styles.css. */
 const TONO_ESTADO: Record<string, { bg: string; fg: string; texto: string }> = {
   activa: { bg: '#a4ffb6', fg: '#0b5d3f', texto: 'Activa' },
   suspendida: { bg: '#e3e3e3', fg: '#404040', texto: 'Suspendida' },
@@ -109,7 +109,6 @@ const SUGERENCIAS = [
 
 /**
  * Asistente de IA a pantalla completa (ruta `/asistente`, fuera del Shell).
- * Referencia de diseño: `Asistente IA v2.dc.html`.
  *
  * - Rail izquierdo (272 px, colapsable): Nueva conversación, búsqueda,
  *   Registrar pago, Fijadas/Recientes con menú ⋮, tarjeta "Conectado a Goods".
@@ -224,9 +223,9 @@ export class AsistentePageComponent implements OnInit {
     () =>
       ({
         empresa: '¿De qué Empresa es el pago?',
-        comprobante: 'Adjuntá el comprobante; la IA completa el resto',
+        comprobante: 'Adjunta el comprobante; la IA completa el resto',
         leyendo: 'Leyendo el comprobante',
-        revisar: 'Revisá los datos antes de guardar',
+        revisar: 'Revisa los datos antes de guardar',
         guardando: 'Guardando el pago',
       })[this.pago() as string] ?? '',
   );
@@ -313,13 +312,6 @@ export class AsistentePageComponent implements OnInit {
     setTimeout(() => this.composerRef?.nativeElement.focus(), 60);
   }
 
-  /** Entrada a la pantalla de gestión de documentos internos (Fase 6,
-   * §5.6.4 de PROPUESTA_ASISTENTE_IA_RAG.md) — hasta el 2026-10-02 esto
-   * se cargaba a mano por Postman porque no existía ninguna pantalla. */
-  protected irADocumentos(): void {
-    this.router.navigateByUrl('/asistente/documentos');
-  }
-
   protected abrir(c: AsistenteStaffConversacion): void {
     this.pago.set(null);
     this.doc.set(null);
@@ -382,7 +374,6 @@ export class AsistentePageComponent implements OnInit {
     const adj = t === undefined ? this.adjunto() : null;
     if (!cuerpo && !adj) return;
     if (adj) {
-      // Por ahora el backend solo lee comprobantes de pago → flujo de pago.
       this.adjunto.set(null);
       this.texto.set('');
       // .md/.txt/.docx → documento interno · PDF/imagen → comprobante de pago.
@@ -606,17 +597,17 @@ export class AsistentePageComponent implements OnInit {
   }
 
   protected moneda(v: string): string {
-    return '$' + Number(String(v || 0).replace(/[^\d]/g, '') || 0).toLocaleString('es-CO');
+    return '$' + leerMonto(v).toLocaleString('es-CO', { maximumFractionDigits: 2 });
   }
 
   protected confirmarPago(): void {
     if (this.pago() !== 'revisar') return;
     const emp = this.empresa();
     const v = this.valores();
-    const monto = Number(String(v.monto).replace(/[^\d]/g, ''));
-    if (!emp) return this.errorPago.set('Elegí una Empresa primero.');
-    if (!monto) return this.errorPago.set('Ingresá el monto del pago.');
-    if (!v.fecha) return this.errorPago.set('Ingresá la fecha del pago.');
+    const monto = leerMonto(v.monto);
+    if (!emp) return this.errorPago.set('Elige una Empresa primero.');
+    if (!monto) return this.errorPago.set('Ingresa el monto del pago.');
+    if (!v.fecha) return this.errorPago.set('Ingresa la fecha del pago.');
     this.pago.set('guardando');
     this.errorPago.set(null);
 
@@ -666,4 +657,33 @@ export class AsistentePageComponent implements OnInit {
   private norm(s: string): string {
     return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   }
+}
+
+/**
+ * Monto escrito a mano o leído del comprobante, en formato colombiano o con
+ * punto decimal: «$1.500.000», «1.500.000,50», «150000.5», «150,000».
+ *
+ * @remarks
+ * Con punto y coma a la vez, el último es el decimal. Con uno solo, es de
+ * miles si le siguen grupos exactos de 3 dígitos; si no, es el decimal.
+ *
+ * @returns El monto redondeado a centavos; 0 si no hay número.
+ */
+export function leerMonto(texto: string | number | null | undefined): number {
+  let s = String(texto ?? '').replace(/[^\d.,]/g, '');
+  if (!s) return 0;
+  const punto = s.lastIndexOf('.'), coma = s.lastIndexOf(',');
+  if (punto >= 0 && coma >= 0) {
+    const decimal = punto > coma ? '.' : ',';
+    const miles = decimal === '.' ? ',' : '.';
+    s = s.split(miles).join('').replace(decimal, '.');
+  } else {
+    const sep = punto >= 0 ? '.' : coma >= 0 ? ',' : '';
+    if (sep) {
+      const deMiles = new RegExp(`^\\d{1,3}(\\${sep}\\d{3})+$`).test(s);
+      s = deMiles ? s.split(sep).join('') : s.split(sep).join('.').replace(/\.(?=.*\.)/g, '');
+    }
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
 }

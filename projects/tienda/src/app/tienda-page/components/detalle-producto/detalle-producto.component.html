@@ -1,0 +1,42 @@
+@if (st.detalle(); as d) {
+  @let tag = st.etiqueta(d);
+  <div (click)="st.detalle.set(null)" data-screen-label="Detalle de producto" class="animate-fundido fixed inset-0 z-[90] grid [place-items:end_center] bg-[rgba(7,42,35,.45)] p-0 backdrop-blur-[4px] md:place-items-center md:p-6">
+    <div (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="d.nombre" focoDialogo
+      class="animate-modal sin-barra relative grid max-h-[92vh] w-full max-w-[1040px] grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-2 overflow-y-auto overflow-x-hidden overscroll-contain rounded-[28px_28px_0_0] bg-papel p-2 pb-[max(16px,env(safe-area-inset-bottom))] md:max-h-[calc(100vh-48px)] md:rounded-[36px] md:p-3">
+      <div class="relative aspect-[4/3] overflow-hidden rounded-[22px] md:aspect-[4/5] md:rounded-[28px]" [style.background]="st.tono(d)">
+        @if (d.imagenes[0]) { <img [src]="d.imagenes[0]" [alt]="d.nombre" class="size-full object-cover" /> }
+        @else { <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-display text-[200px] font-extrabold leading-none text-[rgba(11,61,51,.08)] [font-variation-settings:'wdth'_72] md:text-[320px]">{{ st.inicial(d.nombre) }}</span> }
+        @if (tag) {
+          <span class="absolute left-[18px] top-[18px] grid size-[88px] -rotate-10 place-items-center"><span class="forma-tag absolute inset-0" [style.background]="tag.bg"></span><span class="relative whitespace-pre-line text-center text-[13.5px] font-bold leading-[1.05] tabular-nums" [style.color]="tag.fg">{{ tag.texto }}</span></span>
+        }
+      </div>
+      <div class="flex flex-col gap-3.5 px-2.5 pb-1 pt-3.5 md:gap-[18px] md:p-[clamp(20px,3vw,36px)]">
+        <div class="flex items-center justify-between gap-3">
+          <span class="flex h-[30px] items-center rounded-full bg-niebla px-3 text-[12.5px] font-medium text-teal">{{ st.categoriaDe(d) }}</span>
+          <button type="button" (click)="st.detalle.set(null)" aria-label="Cerrar" class="grid size-11 place-items-center rounded-full bg-niebla text-bosque hover:bg-niebla-2"><tabler-icon [icon]="i.cerrar" [size]="20" [stroke]="2" /></button>
+        </div>
+        <h2 class="m-0 text-balance font-display text-[clamp(34px,3.6vw,52px)] font-bold leading-[.95] tracking-[-0.025em] text-bosque [font-variation-settings:'wdth'_80]">{{ d.nombre }}</h2>
+        <p class="m-0 flex items-baseline gap-3 tabular-nums"><span class="text-2xl font-semibold text-bosque">{{ st.monto(d.precio) }}</span>@if (d.precioAntes) { <s class="text-[15px] text-gris-2">{{ st.monto(d.precioAntes) }}</s> }</p>
+        @if (d.descripcion) { <p class="m-0 text-pretty text-base leading-relaxed text-[#3d554d]">{{ d.descripcion }}</p> }
+        <div class="mt-auto flex flex-col gap-2.5 pt-3">
+          @if (!d.agotado) {
+            <div class="flex gap-2">
+              <span class="flex h-[60px] items-center rounded-full bg-niebla px-1.5 text-bosque">
+                <button type="button" (click)="st.detQty.set(Math.max(1, st.detQty() - 1))" aria-label="Menos" class="grid size-12 place-items-center rounded-full hover:bg-niebla-2"><tabler-icon [icon]="i.menos" [size]="18" [stroke]="2" /></button>
+                <span class="min-w-7 text-center text-base font-semibold tabular-nums">{{ st.detQty() }}</span>
+                <button type="button" (click)="st.detQty.set(Math.min(99, st.detQty() + 1))" aria-label="Más" class="grid size-12 place-items-center rounded-full hover:bg-niebla-2"><tabler-icon [icon]="i.mas" [size]="18" [stroke]="2" /></button>
+              </span>
+              <button type="button" (click)="st.agregarDetalle()" class="flex h-[60px] min-w-0 flex-1 items-center justify-between gap-3 rounded-full bg-bosque px-[18px] text-[15px] font-medium text-hoja transition-transform hover:bg-bosque-2 active:scale-[.98] md:px-[26px]">
+                <span>{{ st.cantidad(d.id) ? 'Agregar más' : 'Agregar al pedido' }}</span><span class="font-semibold tabular-nums">{{ st.monto(d.precio * st.detQty()) }}</span>
+              </button>
+            </div>
+            @if (st.cantidad(d.id)) { <span class="px-2 text-[13px] text-gris">Ya tienes {{ st.cantidad(d.id) }} en tu pedido</span> }
+          } @else {
+            <div class="flex h-[60px] items-center justify-center rounded-full bg-niebla text-[15px] font-medium text-gris">Agotado por ahora</div>
+          }
+          <a [href]="st.waProducto(d)" target="_blank" rel="noopener" class="flex h-[52px] items-center justify-center gap-2 rounded-full text-[14.5px] font-medium text-teal no-underline hover:bg-niebla hover:text-bosque"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" />{{ d.agotado ? 'Avisarme por WhatsApp cuando llegue' : 'Preguntar por este producto' }}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+}

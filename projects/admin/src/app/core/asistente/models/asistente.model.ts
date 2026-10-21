@@ -1,10 +1,6 @@
-// projects/admin/src/app/core/asistente/models/asistente.model.ts
-//
-// Espejo de las entidades `AsistenteConversacion`/`AsistenteMensaje` del
-// backend (`modules/asistente/entities/`) — ver PROPUESTA_ASISTENTE_IA_RAG.md
-// §4.3. A diferencia de `chat/models/conversacion.model.ts` (ChatModule de
-// soporte humano), acá no hay `estado`/`agenteAsignado`/`respondeA`: el
-// asistente de IA no tiene ninguno de esos conceptos.
+// Espejo de las entidades del asistente de IA en el backend. A diferencia del
+// chat de soporte (`chat/models/conversacion.model.ts`), no hay estado,
+// agente asignado ni respuestas citadas.
 
 export interface AsistenteConversacion {
   id: number;
@@ -15,10 +11,11 @@ export interface AsistenteConversacion {
   actualizadoEn: string;
 }
 
-/** Qué tool usó el asistente para armar una respuesta puntual — se
- * muestra en la UI como "Consulté tu inventario..." (§4.7/§5.1 paso 13:
- * citar siempre la fuente). `null` en los mensajes de rol 'usuario' y en
- * cualquier respuesta que no haya necesitado ninguna tool. */
+/**
+ * Tool que usó el asistente para una respuesta; se muestra como «Consulté tu
+ * inventario…» para citar la fuente. En `AsistenteMensaje.herramientasUsadas`
+ * es `null` en los mensajes del usuario y en las respuestas sin tools.
+ */
 export interface HerramientaUsada {
   nombre: string;
   argumentos: Record<string, unknown>;
@@ -33,17 +30,7 @@ export interface AsistenteMensaje {
   creadoEn: string;
 }
 
-/**
- * Espejo de `FacturaProveedorExtraida`/`ItemFacturaExtraido` del backend
- * (`modules/asistente/documentos/extraccion-factura-proveedor.service.ts`)
- * — §5.5 de `PROPUESTA_ASISTENTE_IA_RAG.md` ("extracción de
- * documentos"). Es la respuesta cruda del modelo + el cruce contra
- * catálogo (`proveedorIdSugerido`/`productoIdSugerido`, `null` si no
- * hubo match) — el usuario SIEMPRE la revisa/edita en el modo documento
- * del panel antes de confirmar, nunca se guarda tal cual.
- */
-/** Documento propio de la Empresa (políticas, manuales) que el asistente
- * busca por similitud — `POST/GET/PATCH/DELETE /asistente/documentos`. */
+/** Documento propio de la Empresa (políticas, manuales) que el asistente busca por similitud. */
 export interface AsistenteDocumento {
   id: number;
   empresaId: number;
@@ -61,6 +48,11 @@ export interface ItemFacturaExtraido {
   productoIdSugerido: number | null;
 }
 
+/**
+ * Lo que el modelo leyó de una factura de proveedor, cruzado con el catálogo
+ * (`proveedorIdSugerido` y `productoIdSugerido` son `null` si no hubo
+ * coincidencia). El usuario siempre lo revisa antes de confirmar.
+ */
 export interface FacturaProveedorExtraida {
   proveedorNombreDetectado: string | null;
   proveedorIdSugerido: number | null;

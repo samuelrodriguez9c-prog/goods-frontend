@@ -52,7 +52,7 @@ import { PanelClienteComponent } from './components/panel-cliente/panel-cliente.
 import { IaMarcaComponent } from '../../../../shared/ui/ia-marca/ia-marca.component';
 
 /**
- * Bandeja de WhatsApp (rediseño 2026-10-13, handoff §4): lista de chats,
+ * Bandeja de WhatsApp: lista de chats,
  * conversación y panel del cliente. La cabecera (título, métricas, número) y
  * la conexión las pone el marco (`WhatsappShellComponent`); las métricas
  * filtran la lista vía `store.filtroBandeja`. Se actualiza en vivo
@@ -93,7 +93,7 @@ export class WhatsappPageComponent {
   /** Reloj de la ventana de 24 h (anillos, "Cierra en…"). */
   protected readonly ahora = signal(Date.now());
 
-  // ── Lista ──
+  // Lista
   protected readonly chats = signal<Conversacion[]>([]);
   protected readonly total = signal(0);
   private readonly pagina = signal(1);
@@ -102,7 +102,7 @@ export class WhatsappPageComponent {
   protected readonly busca = signal('');
   private readonly busqueda$ = new Subject<void>();
 
-  // ── Conversación ──
+  // Conversación
   protected readonly abiertoId = signal<number | null>(null);
   /** El usuario eligió el chat (no el que se abre solo al entrar): se marca leído. */
   private readonly elegidoPorUsuario = signal(false);
@@ -116,7 +116,7 @@ export class WhatsappPageComponent {
   /** Avisos locales ("Pedido #… creado", "La IA te pasó el chat") por conversación. */
   private readonly marcas = signal<Record<number, MarcaLocal[]>>({});
 
-  // ── Automático, plantillas, mostrador, cliente ──
+  // Automático, plantillas, mostrador, cliente
   protected readonly rapidas = signal<RespuestaRapida[]>([]);
   protected readonly asistenteActivo = signal(false);
 
@@ -149,7 +149,7 @@ export class WhatsappPageComponent {
   private readonly borradores = signal<Record<number, BorradorPedido>>({});
   protected readonly creandoPedido = signal(false);
 
-  // ── Disposición (igual que el prototipo: depende del ancho del área) ──
+  // Disposición: depende del ancho del área
   private readonly ancho = signal(1216);
   /** El área de mensajes: los popovers del compositor no la pasan. */
   protected readonly altoMensajes = signal(400);
@@ -245,7 +245,7 @@ export class WhatsappPageComponent {
 
     // Ancho del área (lista angosta, panel fijo o flotante) y alto de los mensajes.
     const medir = new ResizeObserver(() => {
-      // El prototipo mide el área de contenido con su padding (24 px a cada lado).
+      // Los cortes de ancho cuentan el padding del área (24 px a cada lado).
       this.ancho.set(this.host.nativeElement.clientWidth + 48);
       const el = this.scroll()?.nativeElement;
       if (el) this.altoMensajes.set(el.clientHeight);
@@ -276,7 +276,7 @@ export class WhatsappPageComponent {
       if (untracked(() => this.sugerencias()[c.id]?.clave) === clave) return;
       untracked(() => this.pedirSugerencia(c.id, clave));
     });
-    // Al entrar se abre el primer chat (como el prototipo), salvo en pantallas angostas.
+    // Al entrar se abre el primer chat, salvo en pantallas angostas.
     effect(() => {
       const primero = this.chats()[0];
       if (primero && this.abiertoId() === null && !this.angosto()) untracked(() => this.abrir(primero, false));
@@ -307,7 +307,7 @@ export class WhatsappPageComponent {
       });
   }
 
-  // ── Lista ───────────────────────────────────────────────────────────
+  // Lista
 
   protected cambiarBusca(v: string): void {
     this.busca.set(v);
@@ -354,7 +354,7 @@ export class WhatsappPageComponent {
 
   protected readonly hayMasChats = computed(() => this.pagina() < this.totalPaginas());
 
-  // ── Conversación ────────────────────────────────────────────────────
+  // Conversación
 
   protected abrir(c: Conversacion, porUsuario = true): void {
     if (c.id === this.abiertoId()) {
@@ -476,7 +476,7 @@ export class WhatsappPageComponent {
     return (m.autor === 'equipo' || m.autor === 'bot') && this.puedeResponder();
   }
 
-  // ── Enviar ──────────────────────────────────────────────────────────
+  // Enviar
 
   /** `resumen`: el resumen de un pedido; no toca lo que se esté escribiendo y, si falla, queda en el cuadro para reintentar. */
   protected enviar(texto: string, resumen = false): void {
@@ -568,7 +568,7 @@ export class WhatsappPageComponent {
     this.bajar();
   }
 
-  // ── IA y promociones ────────────────────────────────────────────────
+  // IA y promociones
 
   protected cambiarModo(modo: 'ia' | 'tu'): void {
     const c = this.abierto();
@@ -603,7 +603,7 @@ export class WhatsappPageComponent {
     this.chats.update((l) => l.map((x) => (x.id === id ? { ...x, ...cambio } : x)));
   }
 
-  // ── Mostrador y pedido en curso ─────────────────────────────────────
+  // Mostrador y pedido en curso
 
   protected cargarMostrador(id: number, enVivo = false): void {
     if (!enVivo && this.mostradores()[id]) return;
@@ -687,7 +687,7 @@ export class WhatsappPageComponent {
       });
   }
 
-  // ── Automático y plantillas ─────────────────────────────────────────
+  // Automático y plantillas
 
   private pedirSugerencia(id: number, clave: string): void {
     this.sugerencias.update((x) => ({ ...x, [id]: { clave, texto: null } }));
@@ -718,14 +718,14 @@ export class WhatsappPageComponent {
     });
   }
 
-  // ── Panel ───────────────────────────────────────────────────────────
+  // Panel
 
   protected alternarPanel(): void {
     if (this.panelFijo()) this.panelCerrado.update((v) => !v);
     else this.panelFlotante.update((v) => !v);
   }
 
-  // ── Scroll ──────────────────────────────────────────────────────────
+  // Scroll
 
   private estaAbajo(): boolean {
     const el = this.scroll()?.nativeElement;

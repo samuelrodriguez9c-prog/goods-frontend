@@ -29,10 +29,10 @@ const MAX_TITULO = 200; // mismo límite que DocumentosInternosPageComponent
 const EXTENSIONES = '.md,.txt,.pdf,.docx';
 
 /**
- * "Agregar documento interno" como tarjeta DENTRO del hilo del asistente
+ * "Agregar documento interno" como tarjeta dentro del hilo del asistente
  * (mismo patrón que la tarjeta de pago). Pasos: Archivo → Revisión.
  *
- * Misma lógica que `DocumentosInternosPageComponent` (repo, 2026-10-02):
+ * Misma lógica que `DocumentosInternosPageComponent`:
  *  - .md / .txt se leen en el navegador con `FileReader`.
  *  - .pdf / .docx van a `AsistenteStaffDocumentoService.extraerTexto` (sin IA).
  *  - Nada se guarda hasta "Guardar documento" → `crear({ titulo, contenido })`.
@@ -85,7 +85,7 @@ export class DocumentoInternoCardComponent implements OnInit {
       ({
         archivo: 'Un manual o procedimiento que el asistente pueda consultar',
         leyendo: 'Extrayendo el texto del archivo',
-        revisar: 'Revisá el título y el contenido antes de guardar',
+        revisar: 'Revisa el título y el contenido antes de guardar',
         guardando: 'Guardando el documento',
       })[this.paso() as string] ?? '',
   );
@@ -145,7 +145,7 @@ export class DocumentoInternoCardComponent implements OnInit {
     const plano = nombre.endsWith('.md') || nombre.endsWith('.txt');
     const binario = nombre.endsWith('.pdf') || nombre.endsWith('.docx');
     if (!plano && !binario) {
-      this.error.set('Formato no soportado — subí un .md, .txt, .pdf o .docx.');
+      this.error.set('Formato no soportado — sube un .md, .txt, .pdf o .docx.');
       return;
     }
     this.error.set(null);
@@ -165,7 +165,7 @@ export class DocumentoInternoCardComponent implements OnInit {
     if (plano) {
       const lector = new FileReader();
       lector.onload = () => aplicar(String(lector.result ?? ''));
-      lector.onerror = () => this.error.set('No se pudo leer el archivo. Probá de nuevo o pegá el contenido a mano.');
+      lector.onerror = () => this.error.set('No se pudo leer el archivo. Prueba de nuevo o pega el contenido a mano.');
       lector.readAsText(f);
       return;
     }
@@ -175,7 +175,7 @@ export class DocumentoInternoCardComponent implements OnInit {
       error: (err: unknown) => {
         this.archivo.set(null);
         this.paso.set('archivo');
-        this.error.set(this.mensajeError(err, 'No se pudo extraer el texto. Probá con otro archivo o pegá el contenido a mano.'));
+        this.error.set(this.mensajeError(err, 'No se pudo extraer el texto. Prueba con otro archivo o pega el contenido a mano.'));
       },
     });
   }
@@ -184,7 +184,7 @@ export class DocumentoInternoCardComponent implements OnInit {
     if (this.paso() !== 'revisar') return;
     const titulo = this.titulo().trim();
     const contenido = this.contenido().trim();
-    if (!titulo || !contenido) return this.error.set('Completá el título y el contenido antes de guardar.');
+    if (!titulo || !contenido) return this.error.set('Completa el título y el contenido antes de guardar.');
     if (titulo.length > MAX_TITULO) return this.error.set(`El título no puede superar los ${MAX_TITULO} caracteres.`);
     this.paso.set('guardando');
     this.error.set(null);
@@ -199,7 +199,7 @@ export class DocumentoInternoCardComponent implements OnInit {
         this.paso.set('revisar');
         this.error.set(
           err instanceof HttpErrorResponse && err.status === 403
-            ? 'No tenés permiso para guardar documentos del asistente.'
+            ? 'No tienes permiso para guardar documentos del asistente.'
             : this.mensajeError(err, 'No se pudo guardar el documento.'),
         );
       },

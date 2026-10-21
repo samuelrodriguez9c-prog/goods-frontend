@@ -1,10 +1,6 @@
 /**
- * Espejo parcial de la entidad `Usuario` del backend — solo los campos
- * que `SettingsUsersPageComponent` necesita mostrar/editar. `GET
- * /usuarios` ya viene filtrado por Empresa por el propio backend
- * (`TenantContextService`/`filtroTenantUsuarios`, ver
- * `UsuarioService.findAll`) — acá siempre son los usuarios de MI propia
- * Empresa, nunca hace falta filtrar de nuevo en el frontend.
+ * Lo que muestra la pantalla de Usuarios de cada persona del equipo. El
+ * backend ya filtra por Empresa: no hace falta filtrar de nuevo acá.
  */
 export interface Usuario {
   id: number;
@@ -22,8 +18,7 @@ export interface Usuario {
   invitacion?: { venceEn: string | null; vencida: boolean };
 }
 
-/** Mismo shape que `armarRespuestaPaginada` del backend
- * (`common/pagination.util.ts`) — `data`, no `items`. */
+/** Respuesta paginada del backend: los registros vienen en `data`, no en `items`. */
 export interface RespuestaPaginada<T> {
   data: T[];
   total: number;

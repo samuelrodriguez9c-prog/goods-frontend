@@ -1,32 +1,3 @@
-// projects/staff/src/app/features/asistente/pages/documentos-internos-page/documentos-internos-page.component.ts
-//
-// Pantalla de gestión de "Documentos internos" (Fase 6, §5.6.4 de
-// PROPUESTA_ASISTENTE_IA_RAG.md) — listar/crear/editar/eliminar los
-// manuales/procedimientos que el asistente busca por similitud
-// (`buscarEnDocumentosInternos`, backend). Hasta el 2026-10-02 esto se
-// cargaba a mano por Postman/Thunder Client porque no existía ninguna
-// pantalla (ver AsistenteStaffDocumentoService).
-//
-// Primer consumidor real de `SidePanelComponent` (editor) y
-// `ModalComponent` (confirmación de eliminar) — ninguno de los dos tenía
-// uso real en el proyecto todavía (confirmado por grep antes de escribir
-// esto), así que esta pantalla sigue el criterio documentado en sus
-// propios docblocks (formularios de crear/editar en el panel,
-// confirmaciones en el modal) en vez de copiar un ejemplo ya armado.
-//
-// Fuera del Shell, igual que `AsistentePageComponent` (ver
-// `asistente.routes.ts`): trae su propia `<app-topbar />`.
-//
-// "Subir archivo" (§5.6.5, 2026-10-02): a diferencia del comprobante de
-// pago / factura de proveedor (Fase 5, admin/staff), acá NO se manda
-// nada a una IA — .md/.txt se leen directo en el navegador
-// (`FileReader`) y .pdf/.docx se mandan al nuevo
-// `POST /asistente-staff/documentos/extraer-texto`, que extrae el texto
-// con una librería (sin IA, ver `extraccion-texto-documento.util.ts`,
-// backend). En los dos casos el resultado solo PRELLENA el formulario —
-// se sigue guardando con el mismo `guardar()` de siempre, así que el
-// staff revisa/edita antes de confirmar, igual que el resto de
-// extracciones del proyecto.
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -55,10 +26,19 @@ const MAX_TITULO = 200;
 /** Tamaño del recorte que se muestra en la fila — el contenido completo
  * solo se ve al editar. */
 const LARGO_PREVIEW = 160;
-/** Mismo texto que el `accept` del `<input type="file">` — centralizado
- * acá para no repetirlo entre el template y la validación. */
+/** `accept` del input de archivo. La validación de `manejarArchivoSeleccionado`
+ * repite estas extensiones a mano: si cambias una, cambia la otra. */
 const EXTENSIONES_ACEPTADAS = '.md,.txt,.pdf,.docx';
 
+/**
+ * Gestión de los documentos internos (manuales, procedimientos) en los que el
+ * asistente busca por similitud. Va fuera del Shell, como
+ * `AsistentePageComponent`, y trae su propia `<app-topbar />`.
+ *
+ * Subir un archivo solo prellena el formulario, sin IA: .md/.txt se leen en
+ * el navegador y .pdf/.docx pasan por `extraerTexto`. Nada se guarda hasta
+ * "Guardar".
+ */
 @Component({
   selector: 'app-documentos-internos-page',
   standalone: true,
@@ -165,8 +145,8 @@ export class DocumentosInternosPageComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.error.set(
           err.status === 403
-            ? 'No tenés permiso para ver los documentos internos del asistente.'
-            : this.mensajeDeError(err, 'No se pudo cargar la lista de documentos. Intentá de nuevo.'),
+            ? 'No tienes permiso para ver los documentos internos del asistente.'
+            : this.mensajeDeError(err, 'No se pudo cargar la lista de documentos. Intenta de nuevo.'),
         );
         this.cargando.set(false);
       },
@@ -227,12 +207,8 @@ export class DocumentosInternosPageComponent implements OnInit {
   }
 
   // ── Subir archivo ──────────────────────────────────────────────
-  /** `(change)` del `<input type="file">` del panel. `.md`/`.txt` se leen
-   * directo en el navegador — no hace falta IA ni backend para texto que
-   * ya está en texto plano. `.pdf`/`.docx` se mandan a
-   * `extraer-texto` (sin IA tampoco, ver el docblock de este archivo). En
-   * los dos casos solo se PRELLENA el formulario: nada se guarda hasta
-   * que el staff revise y toque "Guardar". */
+  /** `(change)` del input de archivo: prellena el formulario (ver el
+   * comentario de la clase); no guarda nada. */
   protected manejarArchivoSeleccionado(event: Event): void {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0] ?? null;
@@ -249,7 +225,7 @@ export class DocumentosInternosPageComponent implements OnInit {
       const lector = new FileReader();
       lector.onload = () => this.aplicarTextoSubido(archivo.name, String(lector.result ?? ''));
       lector.onerror = () =>
-        this.errorArchivo.set('No se pudo leer el archivo. Probá de nuevo o pegá el contenido a mano.');
+        this.errorArchivo.set('No se pudo leer el archivo. Prueba de nuevo o pega el contenido a mano.');
       lector.readAsText(archivo);
       return;
     }
@@ -263,7 +239,7 @@ export class DocumentosInternosPageComponent implements OnInit {
         },
         error: (err: HttpErrorResponse) => {
           this.errorArchivo.set(
-            this.mensajeDeError(err, 'No se pudo leer el archivo. Probá de nuevo o pegá el contenido a mano.'),
+            this.mensajeDeError(err, 'No se pudo leer el archivo. Prueba de nuevo o pega el contenido a mano.'),
           );
           this.subiendoArchivo.set(false);
         },
@@ -271,11 +247,11 @@ export class DocumentosInternosPageComponent implements OnInit {
       return;
     }
 
-    this.errorArchivo.set('Formato no soportado — subí un .md, .txt, .pdf o .docx.');
+    this.errorArchivo.set('Formato no soportado — sube un .md, .txt, .pdf o .docx.');
   }
 
-  /** Solo pisa el título si todavía está vacío — si ya estabas editando
-   * un título propio (por ejemplo al reemplazar el contenido de un
+  /** Solo pisa el título si todavía está vacío: si ya escribiste un título
+   * propio (por ejemplo al reemplazar el contenido de un
    * documento existente), no se lo lleva por delante. */
   private aplicarTextoSubido(nombreArchivo: string, contenido: string): void {
     if (!this.tituloForm().trim()) {
@@ -294,7 +270,7 @@ export class DocumentosInternosPageComponent implements OnInit {
     const titulo = this.tituloForm().trim();
     const contenido = this.contenidoForm().trim();
     if (!titulo || !contenido) {
-      this.errorGuardar.set('Completá el título y el contenido antes de guardar.');
+      this.errorGuardar.set('Completa el título y el contenido antes de guardar.');
       return;
     }
     if (titulo.length > MAX_TITULO) {
@@ -315,8 +291,8 @@ export class DocumentosInternosPageComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.errorGuardar.set(
           err.status === 403
-            ? 'No tenés permiso para guardar documentos del asistente.'
-            : this.mensajeDeError(err, 'No se pudo guardar el documento. Intentá de nuevo.'),
+            ? 'No tienes permiso para guardar documentos del asistente.'
+            : this.mensajeDeError(err, 'No se pudo guardar el documento. Intenta de nuevo.'),
         );
         this.guardando.set(false);
       },
@@ -359,8 +335,8 @@ export class DocumentosInternosPageComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.errorEliminar.set(
           err.status === 403
-            ? 'No tenés permiso para eliminar documentos del asistente.'
-            : this.mensajeDeError(err, 'No se pudo eliminar el documento. Intentá de nuevo.'),
+            ? 'No tienes permiso para eliminar documentos del asistente.'
+            : this.mensajeDeError(err, 'No se pudo eliminar el documento. Intenta de nuevo.'),
         );
         this.eliminando.set(false);
       },

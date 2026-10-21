@@ -10,10 +10,10 @@ interface Pagina<T> {
 export const TAMANO_PAGINA = 100;
 
 /**
- * Trae TODAS las páginas de un listado (2026-10-07): pide la primera y,
- * con el total, el resto en paralelo de a `TAMANO_PAGINA`. Para listados
- * que crecen con la cantidad de clientes (Empresas, Suscripciones, altas,
- * solicitudes abiertas), que antes se cortaban en las primeras 100 filas.
+ * Trae TODAS las páginas de un listado: pide la primera y, con el total,
+ * el resto en paralelo de a `TAMANO_PAGINA`. Para listados que crecen con
+ * la cantidad de clientes (Empresas, Suscripciones, altas, solicitudes
+ * abiertas), que no deben cortarse en la primera página.
  * Lo que crece sin tope con el tiempo (pagos, solicitudes cerradas) NO usa
  * esto: se carga lo reciente y el resto con "Cargar más".
  *

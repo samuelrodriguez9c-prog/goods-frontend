@@ -10,7 +10,7 @@ import {
   SolicitudDetalle,
 } from './models/solicitud.model';
 
-/** Cliente de `/solicitudes` (backend `SolicitudController`, 2026-10-04). */
+/** Cliente de `/solicitudes`: pedidos de personalización de las Empresas. */
 @Injectable({ providedIn: 'root' })
 export class SolicitudesService {
   private readonly http = inject(HttpClient);
@@ -36,6 +36,7 @@ export class SolicitudesService {
     return this.http.patch<SolicitudDetalle>(`${this.base}/${id}/estado`, payload);
   }
 
+  /** @param usuarioId - `null` la deja sin asignar. */
   asignar(id: number, usuarioId: number | null): Observable<SolicitudDetalle> {
     return this.http.patch<SolicitudDetalle>(`${this.base}/${id}/asignar`, { usuarioId });
   }
@@ -49,6 +50,7 @@ export class SolicitudesService {
     return this.http.patch<SolicitudDetalle>(`${this.base}/${id}/desagrupar`, {});
   }
 
+  /** @param visibleCliente - Si `false`, es una nota interna que la Empresa no ve. */
   comentar(id: number, texto: string, visibleCliente: boolean): Observable<SolicitudDetalle> {
     return this.http.post<SolicitudDetalle>(`${this.base}/${id}/comentarios`, { texto, visibleCliente });
   }

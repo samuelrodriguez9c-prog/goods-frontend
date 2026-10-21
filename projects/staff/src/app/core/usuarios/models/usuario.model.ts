@@ -1,42 +1,26 @@
-/** Espejo (parcial) de la entidad `Usuario` del backend — solo los
- * campos que el panel de staff necesita para gestionar a su propio
- * personal (ver `UsuarioService.filtroTenantUsuarios` del backend: acá
- * siempre `empresaId === null`). No repite columnas de e-commerce que no
- * aplican al personal de Goods (dirección, puntos de fidelidad,
- * referidos, etc.).
- *
- * `imagenPerfil`/`correoVerificado` se sumaron para `features/settings/`
- * (pedido 2026-09-22, "el módulo de settings completo" con foto de
- * perfil y aviso de correo sin verificar) — siguen sin ser columnas de
- * e-commerce, son identidad de la propia cuenta, por eso entran acá y no
- * ameritan un modelo aparte solo para Settings. */
+/** Espejo parcial de `Usuario` con lo que hace falta para gestionar al
+ * personal de Goods (sin las columnas de e-commerce: dirección, puntos,
+ * referidos). Acá `empresaId` siempre es `null`. */
 export interface UsuarioGoods {
   id: number;
   nombres: string;
   apellidos: string;
   correo: string;
-  /** Ver `AuthController.sendVerification`/`verifyEmail` — el backend
-   *  nunca revela si un correo distinto está o no verificado, pero el
-   *  propio (acá) sí lo trae de una en `GET /usuarios/:id`. */
   correoVerificado: boolean;
   telefono: string | null;
   imagenPerfil: string | null;
   rolId: number;
-  /** Cargada `eager: true` en el backend (`Usuario.rol`), siempre viene. */
+  /** Siempre viene (el backend carga la relación). */
   rol: { id: number; nombre: string };
   activo: boolean;
   creadoEn: string;
-  /** `null` hasta el primer login real desde el fix de
-   * `AuthService.registrarAccesoExitoso` (ver ADMIN_DISENO.md) — antes de
-   * eso la columna existía en el backend pero nadie la escribía. Se
-   * combina con la reconstrucción vía auditoría en vez de reemplazarla
-   * (ver `ultimoMsEfectivo` en `usuarios-page.component.ts`), para no
-   * perder el historial de accesos que ya estaba auditado antes del fix. */
+  /** Puede ser `null` en cuentas que no han vuelto a entrar aunque tengan
+   * accesos auditados: por eso `usuarios-page` lo combina con la auditoría
+   * (`ultimoMsEfectivo`). */
   ultimoAcceso: string | null;
 }
 
-/** Espejo de `RespuestaPaginada<T>` — repetido a propósito, ver el mismo
- * comentario en `core/catalog/models/empresa.model.ts`. */
+/** Igual que el de `core/catalog/models/empresa.model.ts`; se repite a propósito. */
 export interface RespuestaPaginada<T> {
   data: T[];
   total: number;

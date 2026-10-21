@@ -7,8 +7,7 @@ import { stockTexto } from '../../bandeja.utils';
 type Pestana = 'para' | 'todos' | 'disp';
 
 /**
- * Mostrador — selector de productos que sale del compositor de la bandeja
- * (handoff WhatsApp 2026-10-13, §4.3).
+ * Mostrador: selector de productos que sale del compositor de la bandeja.
  *
  * Lista maestra a la izquierda (nombre + precio, punto turquesa si el cliente
  * preguntó, ×n si ya está en el pedido) y detalle a la derecha (total, stock,

@@ -2,11 +2,7 @@
   class="relative flex h-full w-56 shrink-0 flex-col gap-0.5 rounded-tl-xl bg-sidebar-bg p-2.5"
   (mouseleave)="hoveredIndex.set(null)"
 >
-  <!-- Indicador deslizante — ver comentario del componente y
-       ADMIN_DISENO.md > "Sidebar > Animación" (mismo mecanismo que
-       `admin`, sin la parte de submenús que acá no aplica). `inset-x-2.5`
-       calza con el `p-2.5` del `<nav>` (ajuste 2026-09-23: sidebar más
-       compacto, pedido explícito — ver ADMIN_DISENO.md). -->
+  <!-- Indicador deslizante; `inset-x-2.5` calza con el `p-2.5` del `<nav>` -->
   <div
     class="pointer-events-none absolute inset-x-2.5 z-0 rounded-lg bg-nav-active transition-all duration-200 ease-out"
     [style.top.px]="indicatorTop()"
@@ -27,8 +23,7 @@
     >
       <tabler-icon [icon]="item.icon" [size]="18" [stroke]="1.75" svgClass="shrink-0" />
       <span class="truncate">{{ item.label }}</span>
-      <!-- Punto de "hay cambios" en un módulo que no estás viendo
-           (handoff-alertas-pila §3) — se limpia al entrar. -->
+      <!-- Punto de "hay cambios" en un módulo que no estás viendo; se limpia al entrar -->
       @if (cambios.tiene(item.path)) {
         <span
           aria-label="Hay cambios"
@@ -38,10 +33,7 @@
     </a>
   }
 
-  <!-- Settings: link simple, sin submenú propio, empujado al fondo —
-       calcado de `admin/layout/sidebar/` (ver comentario de
-       `settingsItem` en el componente). Sin sección "Administración"
-       arriba de él (acá no aplica, ver comentario de la clase). -->
+  <!-- Settings: link simple empujado al fondo, fuera del indicador -->
   <div class="mt-auto">
     <a
       [routerLink]="settingsItem.path"

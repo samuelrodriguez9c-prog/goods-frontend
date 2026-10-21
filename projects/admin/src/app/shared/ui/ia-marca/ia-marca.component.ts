@@ -2,19 +2,18 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 /**
- * Marca del Asistente de IA (v3, 2026-10-02). Reemplaza a `IconRobot`.
+ * Marca del asistente de IA: un arco blanco de 280° (una «G» abierta) con un
+ * punto turquesa que se escapa por la abertura, arriba a la derecha. Va sobre
+ * fondo negro (#0a0a0a), que pone el contenedor.
  *
- * Un arco blanco de 280° (una "G" abierta) con un punto turquesa que se
- * escapa por la abertura, arriba a la derecha. Va siempre sobre un fondo
- * negro (#0a0a0a), que pone el contenedor.
- *
+ * @remarks
  * `ritmo`:
  *  - `quieto`: sin giro (cabeceras).
  *  - `reposo`: 8 s por vuelta (botón del borde en reposo).
  *  - `atento`: 1,4 s (hover / arrastre del botón).
  *  - `activo`: 1,1 s con ease (la IA está respondiendo; avatares).
  * `brillo`: halo y latido en el punto (solo el botón del borde).
- * `fondo` (2026-10-13): para fondos claros (WhatsApp, chips, etiquetas): la
+ * `fondo`: para fondos claros (WhatsApp, chips, etiquetas): la
  * marca va dentro de su círculo negro de `size` px, como en los avatares del
  * asistente. Así es el mismo ícono de IA en toda la app.
  */

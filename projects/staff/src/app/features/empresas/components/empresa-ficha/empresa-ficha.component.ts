@@ -20,6 +20,7 @@ import {
   IconBulb,
   IconPencil,
   IconPuzzle,
+  IconAdjustmentsHorizontal,
   IconReceipt2,
   IconRefresh,
   IconSend,
@@ -39,6 +40,7 @@ import { DesgloseModuloEmpresa } from '../../../../core/catalog/models/modulo.mo
 import { Plan } from '../../../../core/catalog/models/plan.model';
 import { EstadoCuenta, METODOS_PAGO, MetodoPago } from '../../../../core/facturacion/models/facturacion.model';
 import { HojaPestanasComponent } from '../../../../shared/ui/lista-hoja/hoja-pestanas.component';
+import { AjustesModuloComponent } from '../ajustes-modulo/ajustes-modulo.component';
 import { PestanaHoja } from '../../../../shared/ui/lista-hoja/lista-hoja.model';
 import { MES_LARGO, dias, fmt, fmtY, hace, plata, pl } from '../../../../shared/ui/lista-hoja/formato';
 import { EN_ALTA, ESTADO_EMPRESA, FilaEmpresa } from '../../pages/empresas-page/empresas-page.component';
@@ -57,18 +59,17 @@ const ACCION_CUENTA: Record<AccionCuenta, { texto: string; sub: string; titulo: 
 const MOTIVOS_MODULO = { conceder: ['Lo pidió en la llamada', 'Prueba por 30 días', 'Compensación'], revocar: ['No lo usa', 'Falta de pago del extra', 'Lo pidió el cliente'] };
 
 /**
- * Ficha de la Empresa (hoja derecha de `Empresas - Lista y ficha v2`).
- * Reemplaza a `EmpresaDetallePanelComponent` dentro de la página; ese
- * componente puede quedar para otros lugares que lo abran como side panel.
+ * Ficha de la Empresa (hoja derecha de la lista de Empresas).
  *
- * Carga al cambiar de Empresa: `obtenerUno` (dueño real), `estadoCuenta`
- * (ciclo + pagos; falla en silencio si no tiene suscripción) y
- * `listarDesglose` (módulos).
+ * @remarks
+ * Al cambiar de Empresa carga el detalle con el dueño real, el estado de
+ * cuenta, los módulos, la actividad y WhatsApp; todo menos el detalle falla
+ * en silencio (por ejemplo, el estado de cuenta si no tiene suscripción).
  */
 @Component({
   selector: 'app-empresa-ficha',
   standalone: true,
-  imports: [TablerIconComponent, HojaPestanasComponent],
+  imports: [TablerIconComponent, HojaPestanasComponent, AjustesModuloComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './empresa-ficha.component.html',
   host: { class: 'flex min-h-0 flex-1 flex-col' },
@@ -93,7 +94,7 @@ export class EmpresaFichaComponent {
   protected readonly i = {
     arriba: IconChevronUp, abajo: IconChevronDown, derecha: IconChevronRight, copiar: IconCopy, check: IconCheck, x: IconX,
     flecha: IconArrowRight, enviar: IconSend, plan: IconStack2, reloj: IconClock, recibo: IconReceipt2, candado: IconLock,
-    guardar: IconDeviceFloppy, alerta: IconAlertCircle, ok: IconCircleCheck, modulo: IconPuzzle, telefono: IconPhone,
+    guardar: IconDeviceFloppy, alerta: IconAlertCircle, ok: IconCircleCheck, modulo: IconPuzzle, ajustes: IconAdjustmentsHorizontal, telefono: IconPhone,
     pausa: IconPlayerPause, play: IconPlayerPlay, ban: IconBan, refrescar: IconRefresh, enlace: IconLink, usuario: IconUserCheck,
   };
   protected readonly plata = plata;
@@ -118,6 +119,8 @@ export class EmpresaFichaComponent {
   protected readonly formPago = signal<{ monto: string; ref: string; metodo: MetodoPago } | null>(null);
   protected readonly borrador = signal<{ correoContacto: string; telefonoContacto: string; rubro: string } | null>(null);
   protected readonly modEditando = signal<{ id: number; motivo: string } | null>(null);
+  /** Módulo con el panel de ajustes abierto. */
+  protected readonly ajustesDe = signal<number | null>(null);
   protected readonly filtroActividad = signal<TipoActividad | null>(null);
 
   constructor() {
@@ -134,6 +137,7 @@ export class EmpresaFichaComponent {
     this.formPago.set(null);
     this.borrador.set(null);
     this.modEditando.set(null);
+    this.ajustesDe.set(null);
     this.detalle.set(null);
     this.cuenta.set(null);
     this.modulos.set([]);
@@ -159,7 +163,7 @@ export class EmpresaFichaComponent {
 
   protected readonly estado = computed(() => ESTADO_EMPRESA[this.empresa().estado]);
 
-  /** Próximo paso (mismo criterio que la lista anterior). */
+  /** Próximo paso del alta según el estado; `null` si ya no hay. */
   protected readonly paso = computed<{ texto: string; ejecutar: () => void } | null>(() => {
     const e = this.empresa();
     if (e.estado === 'solicitud_recibida') return { texto: 'Mandar a Altas pendientes', ejecutar: () => this.mandarAAltas() };
@@ -222,7 +226,7 @@ export class EmpresaFichaComponent {
       .seguir(this.empresaService.enviarAAltasPendientes(e.id), {
         titulo: 'Mandando a Altas pendientes', texto: e.nombre,
         exito: { titulo: 'Enviada a Altas pendientes', texto: e.nombre },
-        error: { titulo: 'No se pudo mandar la Empresa', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo mandar la Empresa', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: (x) => { this.ocupado.set(false); this.actualizada.emit(x); }, error: () => this.ocupado.set(false) });
   }
@@ -233,7 +237,7 @@ export class EmpresaFichaComponent {
       .seguir(this.empresaService.reenviarEnlace(e.id), {
         titulo: 'Reenviando el enlace', texto: e.correoContacto,
         exito: { titulo: 'Enlace reenviado', texto: `Le llegó a ${e.duenoCorreo ?? e.correoContacto}.` },
-        error: { titulo: 'No se pudo reenviar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo reenviar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ error: () => undefined });
   }
@@ -250,7 +254,7 @@ export class EmpresaFichaComponent {
       : this.empresaService.reactivar(e.id, { motivo: motivo || undefined });
     const T = { suspender: ['Suspendiendo', 'Empresa suspendida'], baja: ['Dando de baja', 'Empresa dada de baja'], reactivar: ['Reactivando', 'Empresa reactivada'] }[a];
     this.alertas
-      .seguir(op, { titulo: T[0], texto: e.nombre, exito: { titulo: T[1], texto: e.nombre }, error: { titulo: 'No se pudo cambiar el estado', texto: 'Intentá de nuevo.' } })
+      .seguir(op, { titulo: T[0], texto: e.nombre, exito: { titulo: T[1], texto: e.nombre }, error: { titulo: 'No se pudo cambiar el estado', texto: 'Intenta de nuevo.' } })
       .subscribe({ next: (x) => { this.actualizada.emit(x); this.recargar.emit(); }, error: () => undefined });
   }
 
@@ -263,7 +267,7 @@ export class EmpresaFichaComponent {
       .seguir(this.suscripcionService.cambiarPlan(e.id, plan.id), {
         titulo: 'Cambiando el plan', texto: `${e.nombre} → ${plan.nombre}`,
         exito: { titulo: 'Plan cambiado', texto: `${e.nombre} pasa a ${plan.nombre} desde hoy.` },
-        error: { titulo: 'No se pudo cambiar el plan', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo cambiar el plan', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: () => { this.actualizada.emit({ id: e.id, planNombre: plan.nombre } as Partial<FilaEmpresa> & { id: number }); this.cargar(e.id); }, error: () => undefined });
   }
@@ -307,7 +311,7 @@ export class EmpresaFichaComponent {
   protected readonly ahora = computed(() => {
     const e = this.empresa();
     const c = this.cuenta();
-    if (e.estado === 'solicitud_recibida') return { icono: this.i.reloj, tinta: '#b45309', titulo: 'Llegó la solicitud', texto: `Se registró ${hace(e.creadoEn)}. Mandala a la cola para llamar al dueño.` };
+    if (e.estado === 'solicitud_recibida') return { icono: this.i.reloj, tinta: '#b45309', titulo: 'Llegó la solicitud', texto: `Se registró ${hace(e.creadoEn)}. Mándala a la cola para llamar al dueño.` };
     if (e.estado === 'pendiente') return { icono: this.i.telefono, tinta: '#b45309', titulo: 'Falta la llamada', texto: e.llamadaProgramadaPara ? `Agendada para el ${fmt(e.llamadaProgramadaPara)}.` : 'Está en la cola de Altas pendientes, sin agenda.' };
     if (e.estado === 'informacion_corroborada') return { icono: this.i.enlace, tinta: '#0094d5', titulo: 'Esperando al cliente', texto: 'Ya se llamó. Falta que abra el enlace y defina su contraseña.' };
     if (e.estado === 'activa' && e.acceso?.estado === 'en_mora') return { icono: this.i.alerta, tinta: '#d82c0d', titulo: 'En mora', texto: `Debe ${plata(c?.saldoPendiente ?? 0)}. Sigue operando dentro de la gracia.` };
@@ -365,7 +369,7 @@ export class EmpresaFichaComponent {
       .seguir(this.facturacion.registrar({ empresaId: e.id, monto, fechaPago: new Date().toISOString(), metodo: f.metodo, referencia: f.ref.trim() || undefined }), {
         titulo: 'Registrando el pago', texto: `${e.nombre} · ${plata(monto)}`,
         exito: { titulo: 'Pago registrado', texto: `${e.nombre} · ${plata(monto)}` },
-        error: { titulo: 'No se pudo registrar el pago', texto: 'Revisá los datos e intentá de nuevo.' },
+        error: { titulo: 'No se pudo registrar el pago', texto: 'Revisa los datos e intenta de nuevo.' },
       })
       .subscribe({ next: () => { this.cargar(e.id); this.recargar.emit(); }, error: () => this.formPago.set(f) });
   }
@@ -418,7 +422,7 @@ export class EmpresaFichaComponent {
       .seguir(this.empresaService.actualizar(e.id, { correoContacto: b.correoContacto.trim(), telefonoContacto: b.telefonoContacto.trim(), rubro: b.rubro.trim() }), {
         titulo: 'Guardando cambios', texto: e.nombre,
         exito: { titulo: 'Cambios guardados', texto: pl(this.nCambios(), 'dato actualizado', 'datos actualizados') },
-        error: { titulo: 'No se pudo guardar', texto: 'Revisá el correo y el teléfono.' },
+        error: { titulo: 'No se pudo guardar', texto: 'Revisa el correo y el teléfono.' },
       })
       .subscribe({ next: (x) => { this.borrador.set(null); this.actualizada.emit(x); }, error: () => undefined });
   }
@@ -440,6 +444,7 @@ export class EmpresaFichaComponent {
   protected alternarModulo(m: DesgloseModuloEmpresa): void {
     const nuevo = !m.efectivo;
     if (nuevo === m.desdePlan && m.override) return this.quitarExcepcion(m);
+    this.ajustesDe.set(null);
     this.modEditando.set({ id: m.id, motivo: '' });
   }
 
@@ -453,7 +458,7 @@ export class EmpresaFichaComponent {
       .seguir(this.moduloService.gestionar(e.id, { moduloId: m.id, tipo, motivo: ed.motivo.trim() || undefined }), {
         titulo: tipo === 'concedido' ? 'Dando acceso' : 'Quitando acceso', texto: `${m.nombre} · ${e.nombre}`,
         exito: { titulo: tipo === 'concedido' ? 'Acceso concedido' : 'Acceso quitado', texto: m.nombre },
-        error: { titulo: 'No se pudo cambiar el módulo', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo cambiar el módulo', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: () => this.recargarModulos(), error: () => undefined });
   }
@@ -472,7 +477,12 @@ export class EmpresaFichaComponent {
     });
   }
 
-  private recargarModulos(): void {
+  protected alternarAjustes(m: DesgloseModuloEmpresa): void {
+    this.modEditando.set(null);
+    this.ajustesDe.update((id) => (id === m.id ? null : m.id));
+  }
+
+  protected recargarModulos(): void {
     this.moduloService.listarDesglose(this.empresa().id).subscribe((xs) => this.modulos.set(xs));
   }
 
@@ -483,10 +493,8 @@ export class EmpresaFichaComponent {
   // ── Actividad ─────────────────────────────────────────────────────────
 
   /**
-   * Historial completo desde el backend (2026-10-07, `GET /empresas/:id/actividad`):
-   * todos los cambios de estado con quién y por qué, planes, pagos y
-   * anulaciones, extras, módulos, solicitudes y datos editados. Antes se
-   * armaba acá con lo cargado y solo se veía el último cambio de estado.
+   * Historial de `GET /empresas/:id/actividad`: cambios de estado con quién y
+   * por qué, planes, pagos y anulaciones, extras, módulos, solicitudes y datos editados.
    */
   protected readonly actividad = signal<ActividadEmpresa[]>([]);
 

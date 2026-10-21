@@ -1,10 +1,4 @@
-// projects/admin/src/app/core/chat/models/conversacion.model.ts
-//
-// Espejo de `staff/core/chat/models/conversacion.model.ts` — mismo shape
-// de `Conversacion`/`Mensaje` del backend (`modules/chat/entities/`),
-// reusado tal cual del lado del cliente (tenant) porque la respuesta de
-// la API es la misma para ambos roles; lo único que cambia es qué
-// endpoints puede pegar cada uno (ver `chat.service.ts`).
+// Espejo de `Conversacion` y `Mensaje` del backend; la respuesta es la misma que recibe `staff`.
 
 export type EstadoConversacion = 'abierta' | 'cerrada';
 
@@ -28,7 +22,7 @@ export interface Conversacion {
   actualizadoEn: string;
 }
 
-/** Ver el mismo comentario en la versión de `staff`. */
+/** Mensaje citado por un «responder a». El backend resuelve un solo nivel de cita. */
 export interface MensajeCitado {
   id: number;
   autorId: number | null;
@@ -40,21 +34,19 @@ export interface MensajeCitado {
 export interface Mensaje {
   id: number;
   conversacionId: number;
-  /** `null` para un mensaje de sistema (`esSistema`) — ver el mismo
-   * comentario en la versión de `staff`. */
+  /** `null` en los mensajes de sistema: no tienen autor humano. */
   autorId: number | null;
   autor: ChatUsuario | null;
   cuerpo: string;
   leidoEn: string | null;
   respondeAId: number | null;
   respondeA: MensajeCitado | null;
-  /** Ver el mismo comentario en la versión de `staff`. */
+  /** Aviso automático del backend (espera, cierre…), no de una persona. */
   esSistema: boolean;
   creadoEn: string;
 }
 
-/** Payload de los eventos de socket `mensaje:nuevo`/`conversacion:asignada`
- * — ver el mismo comentario en la versión de `staff`. */
+/** Payload del evento de socket `mensaje:nuevo`: más angosto que `Mensaje`. */
 export interface EventoMensajeNuevo {
   conversacionId: number;
   autorId: number | null;
@@ -64,6 +56,7 @@ export interface EventoMensajeNuevo {
   esSistema: boolean;
 }
 
+/** Payload del evento de socket `conversacion:asignada`. */
 export interface EventoConversacionAsignada {
   conversacionId: number;
   agenteAsignadoId: number;

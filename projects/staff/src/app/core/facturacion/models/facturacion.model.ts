@@ -1,6 +1,5 @@
 /**
- * Espejo de las respuestas de `FacturacionController` del backend
- * (`modules/facturacion/`, 2026-10-02). Las fechas llegan como ISO string.
+ * Espejo de las respuestas de `/facturacion`. Las fechas llegan como ISO string.
  */
 
 export type MetodoPago = 'transferencia' | 'deposito' | 'efectivo' | 'paypal' | 'otro';
@@ -110,7 +109,7 @@ export interface LineaCobro {
   descuentoId?: number;
 }
 
-/** Cómo lo lee el cliente: "Descuento" (`general`) o "Descuento por fidelidad"… (2026-10-10). */
+/** Define cómo lo lee el cliente: "Descuento" (`general`), "Descuento por fidelidad"… */
 export type MotivoDescuento = 'general' | 'fidelidad' | 'buen_pago' | 'promocion';
 
 export const MOTIVOS_DESCUENTO: { valor: MotivoDescuento; texto: string; ayuda: string }[] = [
@@ -120,7 +119,7 @@ export const MOTIVOS_DESCUENTO: { valor: MotivoDescuento; texto: string; ayuda: 
   { valor: 'promocion', texto: 'Promoción', ayuda: 'El cliente lee "Descuento promocional"' },
 ];
 
-/** Descuento sobre el plan de una Empresa (2026-10-10): uno activo a la vez, hasta 100 %. */
+/** Descuento sobre el plan de una Empresa: uno activo a la vez, hasta 100 %. */
 export interface DescuentoEmpresa {
   id: number;
   porcentaje: number;
@@ -147,7 +146,7 @@ export interface CrearDescuentoPayload {
   hasta?: string;
 }
 
-/** Un extra que se cobra cada mes junto con el plan (2026-10-04). */
+/** Un extra que se cobra cada mes junto con el plan. */
 export interface CargoRecurrente {
   id: number;
   concepto: string;
@@ -170,7 +169,7 @@ export interface EstadoCuenta {
     fechaProximoVencimiento: string | null;
     diasMora: number;
     diasParaVencer: number | null;
-    /** Período de prueba (2026-10-10). `enPrueba`: todavía sin pagar. */
+    /** Período de prueba. `enPrueba`: todavía sin pagar. */
     prueba: { hasta: string; enPrueba: boolean; diasRestantes: number; convertidaEn: string | null } | null;
   } | null;
   totales: { pagosValidos: number; pagado: TotalesPorMoneda };

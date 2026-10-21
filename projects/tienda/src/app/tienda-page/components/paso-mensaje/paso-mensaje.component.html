@@ -1,0 +1,29 @@
+@let t = st.tienda()!;
+<div [inert]="pd.paso() !== 3" data-screen-label="Envío a WhatsApp" class="flex h-full w-1/6 flex-col">
+  <div class="sin-barra flex flex-1 flex-col gap-3 overflow-y-auto px-4 pb-12 pt-2">
+    <div class="relative -mx-4 -mb-12 flex-[1_0_auto] px-4 pb-12 text-bosque">
+      <app-ola />
+      <div class="relative flex flex-col gap-3 px-1 pt-16">
+        <div class="flex items-center gap-2.5">
+          <span class="forma-1 grid size-10 shrink-0 place-items-center bg-bosque text-wa"><tabler-icon [icon]="i.tienda" [size]="18" [stroke]="2" /></span>
+          <span class="flex flex-col gap-px"><span class="font-display text-[28px] font-bold leading-[1.05] tracking-[-0.015em] [font-variation-settings:'wdth'_80]">{{ t.nombre }}</span><span class="flex items-center gap-1 text-xs text-musgo"><tabler-icon [icon]="i.wa" [size]="13" [stroke]="2" class="text-teal" />Por WhatsApp</span></span>
+        </div>
+        <div class="overflow-hidden rounded-3xl bg-chat">
+          <div class="flex flex-col px-3.5 py-4">
+            <div class="max-w-[92%] self-end rounded-[14px_4px_14px_14px] bg-burbuja px-3 pb-1.5 pt-2.5 text-sm leading-normal text-[#111b21] shadow-[0_1px_.5px_rgba(0,0,0,.1)]">
+              @for (m of pd.mensaje(); track $index) { <span class="block whitespace-pre-wrap" [class.font-semibold]="m.negrita">{{ m.texto || '\u00a0' }}</span> }
+              <span class="mt-0.5 flex justify-end gap-[3px] text-[11px] text-[#667781]">ahora<tabler-icon [icon]="i.checks" [size]="14" [stroke]="2" class="text-[#53bdeb]" /></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="relative z-[2] -mt-px flex shrink-0 items-center gap-4 bg-white py-2.5 pl-5 pr-3 text-bosque">
+    <app-nubes bg="#ffffff" />
+    <span class="relative flex flex-col"><span class="text-xs text-musgo">Total</span><span class="font-display text-2xl font-bold tracking-[-0.01em] tabular-nums">{{ st.monto(st.total()) }}</span></span>
+    <button type="button" (click)="pd.enviar()" [disabled]="pd.enviando()" class="relative ml-auto flex h-[52px] items-center gap-2 rounded-full bg-bosque pl-[18px] pr-[22px] text-[15px] font-semibold text-hoja transition-transform hover:bg-bosque-2 active:scale-[.97] disabled:opacity-70">
+      <tabler-icon [icon]="i.wa" [size]="20" [stroke]="2" class="text-wa" />{{ pd.enviando() ? 'Preparando…' : 'Enviar por WhatsApp' }}
+    </button>
+  </div>
+</div>

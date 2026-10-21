@@ -5,8 +5,7 @@ export const USUARIOS_ROUTES: Routes = [
   {
     path: '',
     component: UsuariosPageComponent,
-    // Rastro de navegación global del topbar (§5.4.4, 2026-10-02) —
-    // ver `NavigationTrailService`.
+    // Rastro de navegación del topbar: ver `NavigationTrailService`.
     data: { breadcrumb: 'Usuarios', icon: 'users' },
   },
 ];

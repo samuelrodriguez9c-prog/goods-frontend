@@ -1,7 +1,5 @@
 <div class="p-6">
-  <!-- Sin `mx-auto max-w-[...]`: todo el módulo ocupa el ancho completo
-       del layout, igual que Empresas — pedido explícito 2026-09-23. -->
-  <!-- Migrada a v2 (badge + lectura arriba) por LEEME.md §16, 2026-09-24. -->
+  <!-- Sin `mx-auto max-w-[...]`: el módulo ocupa el ancho completo del layout. -->
   <app-cabecera-modulo
     titulo="Settings"
     periodo="Mi cuenta"
@@ -133,7 +131,7 @@
 
         <main class="flex min-w-0 flex-[1_1_480px] flex-col gap-4">
           @switch (seccion()) {
-            <!-- ── Perfil ─────────────────────────────────────────── -->
+            <!-- Perfil -->
             @case ('perfil') {
               <section class="animate-[fade-in-up_0.18s_ease-out] rounded-[14px] border border-gray-200 bg-card-bg">
                 <header class="border-b border-gray-100 px-6 py-[18px]">
@@ -217,7 +215,7 @@
               </section>
             }
 
-            <!-- ── Correo y contacto ──────────────────────────────── -->
+            <!-- Correo y contacto -->
             @case ('contacto') {
               <section class="animate-[fade-in-up_0.18s_ease-out] rounded-[14px] border border-gray-200 bg-card-bg">
                 <header class="flex items-start justify-between gap-3 border-b border-gray-100 px-6 py-[18px]">
@@ -312,7 +310,7 @@
               </section>
             }
 
-            <!-- ── Seguridad ──────────────────────────────────────── -->
+            <!-- Seguridad -->
             @case ('seguridad') {
               <section class="animate-[fade-in-up_0.18s_ease-out] rounded-[14px] border border-gray-200 bg-card-bg">
                 <header class="border-b border-gray-100 px-6 py-[18px]">
@@ -359,7 +357,7 @@
               </section>
             }
 
-            <!-- ── Correos ────────────────────────────────────────── -->
+            <!-- Correos -->
             @case ('correos') {
               <section class="animate-[fade-in-up_0.18s_ease-out] rounded-2xl border border-gray-200 bg-card-bg px-6 py-5">
                 <h2 class="text-sm font-semibold text-gray-900">Avisos por correo</h2>
@@ -402,7 +400,7 @@
               </section>
             }
 
-            <!-- ── Cuenta ─────────────────────────────────────────── -->
+            <!-- Cuenta -->
             @case ('cuenta') {
               <section class="relative animate-[fade-in-up_0.18s_ease-out] overflow-hidden rounded-2xl bg-[#0a0a0a] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_30px_rgba(0,0,0,0.12)]">
                 <div class="pointer-events-none absolute -right-[60px] -top-20 size-[260px] rounded-full border border-[#1f1f1f]"></div>

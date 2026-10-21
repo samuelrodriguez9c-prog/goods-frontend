@@ -1,0 +1,25 @@
+@let fx = s.f();
+<section #sec (mouseenter)="s.hov.set('redes')" (mouseleave)="s.hov.set(null)"
+  class="tienda-ficha flex flex-col gap-[18px] rounded-2xl border bg-white p-5 transition-[border-color,box-shadow] duration-[250ms] [animation-delay:.14s]" [style.border-color]="s.borde('redes')" [style.box-shadow]="s.sombra('redes')">
+  <app-tienda-cabeza [icono]="i.arroba" titulo="Redes" sub="Tus perfiles salen como íconos en el pie de la tienda. Pega el enlace o escribe el usuario." />
+  <div class="flex flex-col gap-2.5">
+    @for (r of redes; track r.k) {
+      @let ok = valida(r.k, fx[r.k]);
+      <div class="flex flex-col gap-1.5">
+        <label class="flex items-center overflow-hidden rounded-[10px] bg-[#fafafa] transition-shadow focus-within:bg-white"
+          [style.box-shadow]="ok ? '0 0 0 1px #e5e5e5' : '0 0 0 1px #e0605a,0 0 0 4px rgba(224,96,90,.1)'">
+          <span class="flex shrink-0 items-center gap-2 py-[9px] pl-3 text-[13px] text-[#8a8a8a]"><tabler-icon [icon]="icono[r.k]" [size]="16" [stroke]="1.75" class="text-[#303030]" /><span class="max-sm:hidden">{{ r.prefijo }}</span></span>
+          <input [ngModel]="fx[r.k]" (ngModelChange)="s.set(r.k, $event)" (blur)="limpiar(r.k)" maxlength="120" spellcheck="false" autocomplete="off" [placeholder]="r.ejemplo" [attr.aria-label]="'Usuario de ' + r.nombre"
+            class="min-w-0 flex-1 border-0 bg-transparent py-[9px] pl-1 pr-1.5 text-[13px] font-medium text-[#111827] outline-none placeholder:font-normal placeholder:text-[#b5b5b5] max-sm:pl-2" />
+          @if (fx[r.k].trim() && ok) {
+            <a [href]="enlace(r.k)" target="_blank" rel="noopener" [attr.aria-label]="'Abrir ' + r.nombre" title="Abrir el perfil"
+              class="mr-[3px] flex size-[30px] shrink-0 items-center justify-center rounded-lg text-[#4b5563] hover:bg-[#ececec] hover:text-[#111827]"><tabler-icon [icon]="i.abrir" [size]="15" [stroke]="2" /></a>
+          }
+        </label>
+        @if (!ok) {
+          <span class="tienda-sube text-xs text-[#b42318]">Ese usuario de {{ r.nombre }} no es válido. Usa letras, números, puntos{{ r.k === 'facebook' ? ' y guiones' : ' y guiones bajos' }}.</span>
+        }
+      </div>
+    }
+  </div>
+</section>

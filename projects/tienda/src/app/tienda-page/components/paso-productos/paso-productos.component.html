@@ -1,0 +1,82 @@
+<div [inert]="pd.paso() !== 0" class="flex h-full w-1/6 flex-col">
+  @if (!st.lineas().length) {
+    <div class="flex flex-1 flex-col items-center justify-center gap-3.5 p-6 text-center">
+      <div aria-hidden="true" class="relative grid size-24 place-items-center"><div class="absolute inset-0 bg-bosque-2 [animation:morph_10s_ease-in-out_infinite]"></div><tabler-icon [icon]="i.bolsa" [size]="32" [stroke]="1.75" class="relative text-wa" /></div>
+      <p class="m-0 font-display text-[26px] font-bold">Tu pedido está vacío</p>
+      <p class="m-0 max-w-[30ch] text-[14.5px] leading-normal text-salvia-2">Agrega productos con el botón + y aquí verás el resumen.</p>
+      <button type="button" (click)="pd.cerrarPedido()" class="h-[46px] rounded-full bg-wa px-5 text-sm font-semibold text-noche">Ver productos</button>
+    </div>
+  } @else {
+    <div data-scroll class="sin-barra flex flex-1 flex-col gap-[26px] overflow-y-auto px-4 pb-5 pt-2">
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between px-1 pb-1">
+          <span class="flex items-baseline gap-2.5"><span class="text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Productos</span><span class="text-[12.5px] tabular-nums text-salvia">{{ pd.resumenLineas() }}</span></span>
+          @if (st.lineas().length > 1) { <span class="flex items-center gap-1 text-xs text-salvia-2">Desliza<tabler-icon [icon]="i.der" [size]="13" [stroke]="2" /></span> }
+        </div>
+        <div class="sin-barra -mx-4 flex snap-x snap-proximity gap-3.5 overflow-x-auto px-4 pb-1 pt-2">
+          @for (l of st.lineas(); track l.producto.id) {
+            <div class="animate-fundido flex flex-[0_0_150px] snap-start flex-col items-center gap-2.5 text-center">
+              <div class="relative h-40 w-[132px]">
+                <div class="absolute inset-0 overflow-hidden rounded-[999px_999px_26px_26px]" [style.background]="st.tono(l.producto)">
+                  @if (l.producto.imagenes[0]) { <img [src]="l.producto.imagenes[0]" alt="" class="size-full object-cover" /> }
+                  @else {
+                    <div class="absolute inset-x-[14%] top-[22%] aspect-square" [class]="st.forma(l.producto)" [style.background]="st.tonoFuerte(l.producto)"></div>
+                    <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-display text-[80px] font-extrabold leading-none text-[rgba(11,61,51,.16)] [font-variation-settings:'wdth'_72]">{{ st.inicial(l.producto.nombre) }}</span>
+                  }
+                </div>
+                <span class="absolute right-[-8px] top-1 grid size-10 place-items-center"><span class="forma-tag absolute inset-0 bg-wa"></span><span class="relative text-sm font-bold tabular-nums text-noche">×{{ l.cantidad }}</span></span>
+                <span class="absolute bottom-[-18px] left-1/2 flex h-[38px] -translate-x-1/2 items-center rounded-full bg-bosque px-[3px] shadow-[0_0_0_4px_#0b3d33]">
+                  <button type="button" (click)="st.cambiar(l.producto, -1)" aria-label="Quitar uno" class="grid size-8 place-items-center rounded-full bg-white/10 text-hoja hover:bg-white/[.18]"><tabler-icon [icon]="l.cantidad === 1 ? i.quitar : i.menos" [size]="15" [stroke]="2" /></button>
+                  <span class="min-w-[26px] text-center text-[13px] font-semibold tabular-nums">{{ l.cantidad }}</span>
+                  <button type="button" (click)="st.cambiar(l.producto, 1)" aria-label="Agregar uno" class="grid size-8 place-items-center rounded-full bg-wa text-noche transition-transform active:scale-90"><tabler-icon [icon]="i.mas" [size]="15" [stroke]="2" /></button>
+                </span>
+              </div>
+              <span class="mt-5 flex max-w-full flex-col gap-[3px]">
+                <span class="text-balance text-[13.5px] font-medium leading-[1.3]">{{ l.producto.nombre }}</span>
+                <span class="text-sm font-bold tabular-nums text-lima">{{ st.monto(l.producto.precio * l.cantidad) }}</span>
+                <span class="text-[11.5px] tabular-nums text-salvia-2">{{ st.monto(l.producto.precio) }} c/u</span>
+              </span>
+            </div>
+          }
+          <button type="button" (click)="pd.cerrarPedido()" class="flex h-40 flex-[0_0_132px] snap-start flex-col items-center justify-center gap-2.5 rounded-[999px_999px_26px_26px] border-0 bg-white/5 text-salvia-2 transition-colors hover:bg-white/10 hover:text-hoja">
+            <span class="grid size-11 place-items-center rounded-full bg-white/[.08]"><tabler-icon [icon]="i.mas" [size]="20" [stroke]="2" /></span>
+            <span class="text-[13px] font-medium leading-[1.3]">Seguir<br />comprando</span>
+          </button>
+        </div>
+      </div>
+
+      @if (st.sugeridos().length) {
+        <div class="relative -mx-4 -mb-5 mt-[34px] flex-[1_0_auto] px-4 pb-[22px] text-bosque">
+          <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-[-2px] top-0 overflow-hidden">
+            <div class="forma-0 absolute left-[-8%] top-0 aspect-square w-[46%] bg-menta"></div>
+            <div class="forma-1 absolute left-[28%] top-[22px] aspect-square w-[34%] bg-menta"></div>
+            <div class="forma-2 absolute left-[54%] top-1.5 aspect-square w-[42%] bg-menta"></div>
+            <div class="forma-3 absolute right-[-10%] top-[30px] aspect-square w-[30%] bg-menta"></div>
+            <div class="absolute inset-x-0 bottom-0 top-14 bg-menta"></div>
+            <div class="forma-1 absolute left-[62%] top-[58px] aspect-square w-[22%] bg-menta-2"></div>
+            <div class="forma-0 absolute left-[8%] top-[150px] aspect-square w-[18%] bg-menta-2 opacity-70"></div>
+          </div>
+          <div class="relative flex flex-col gap-[3px] px-1 pt-[42px]">
+            <span class="font-display text-[22px] font-bold leading-[1.05] tracking-[-0.015em] [font-variation-settings:'wdth'_80]">Agrega también</span>
+            <span class="text-[12.5px] text-musgo">Toca una burbuja para sumarla a tu pedido</span>
+          </div>
+          <div class="sin-barra relative -mx-4 flex items-start gap-1 overflow-x-auto px-4 pb-1 pt-3.5">
+            @for (g of st.sugeridos(); track g.p.id) {
+              <button type="button" (click)="st.agregarSugerido(g.p, burbujaSug)" [title]="'Agregar ' + g.p.nombre" class="flex flex-[0_0_104px] flex-col items-center gap-2 border-0 bg-transparent p-0 text-center text-inherit" [style.margin-top.px]="g.desfase">
+                <span #burbujaSug class="relative grid place-items-center transition-transform duration-[350ms] ease-[cubic-bezier(.3,1.5,.5,1)]" [class]="'forma-' + g.forma" [style.width.px]="g.tam" [style.height.px]="g.tam" [style.background]="g.tono">
+                  <span class="font-display text-[34px] font-extrabold text-[rgba(11,61,51,.2)] [font-variation-settings:'wdth'_72]">{{ st.inicial(g.p.nombre) }}</span>
+                  <span class="absolute bottom-0.5 right-[-2px] grid size-7 place-items-center rounded-full bg-bosque text-hoja shadow-[0_0_0_3px_#d9f5e4]"><tabler-icon [icon]="i.mas" [size]="15" [stroke]="2" /></span>
+                </span>
+                <span class="flex max-w-full flex-col gap-px">
+                  <span class="text-balance text-[12.5px] font-medium leading-tight text-bosque">{{ g.p.nombre }}</span>
+                  <span class="text-xs font-bold tabular-nums text-teal">{{ st.monto(g.p.precio) }}</span>
+                </span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+    <app-pie-paso [bg]="st.sugeridos().length ? '#d9f5e4' : '#eafff5'" etiqueta="Subtotal" [valor]="st.monto(st.total())" boton="Elegir entrega" />
+  }
+</div>

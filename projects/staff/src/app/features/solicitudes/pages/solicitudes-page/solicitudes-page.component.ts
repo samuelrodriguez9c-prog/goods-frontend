@@ -71,11 +71,11 @@ const ICONO_TIPO: Record<TipoSolicitud, typeof IconPuzzle> = { modulo_nuevo: Ico
 
 /** Texto de cada transición. `motivo`: 'si' = el mensaje al cliente es obligatorio. */
 const ACCION: Partial<Record<EstadoSolicitud, { texto: string; ayuda: string; motivo: 'si' | 'opcional'; icono: typeof IconPuzzle; peligro: boolean }>> = {
-  en_evaluacion: { texto: 'Tomar y evaluar', ayuda: 'Quedás como responsable. El cliente ve que ya la están revisando.', motivo: 'opcional', icono: IconHandGrab, peligro: false },
-  aprobada: { texto: 'Aprobar…', ayuda: 'Decidí si entra para todos o queda exclusiva (con costo) y contale al cliente qué se va a hacer.', motivo: 'si', icono: IconCircleCheck, peligro: false },
+  en_evaluacion: { texto: 'Tomar y evaluar', ayuda: 'Quedas como responsable. El cliente ve que ya la están revisando.', motivo: 'opcional', icono: IconHandGrab, peligro: false },
+  aprobada: { texto: 'Aprobar…', ayuda: 'Decide si entra para todos o queda exclusiva (con costo) y cuéntale al cliente qué se va a hacer.', motivo: 'si', icono: IconCircleCheck, peligro: false },
   rechazada: { texto: 'No aprobar…', ayuda: 'El cliente lee el motivo tal cual lo escribas.', motivo: 'si', icono: IconCircleX, peligro: true },
   en_desarrollo: { texto: 'Empezar desarrollo', ayuda: 'Desde acá el cliente ya no la puede retirar.', motivo: 'opcional', icono: IconCode, peligro: false },
-  entregada: { texto: 'Marcar entregada…', ayuda: 'Si es un módulo, podés activárselo a la Empresa en el mismo paso.', motivo: 'opcional', icono: IconPackage, peligro: false },
+  entregada: { texto: 'Marcar entregada…', ayuda: 'Si es un módulo, puedes activárselo a la Empresa en el mismo paso.', motivo: 'opcional', icono: IconPackage, peligro: false },
   cancelada: { texto: 'Cancelar…', ayuda: 'Se cierra sin hacerse. El cliente lee el motivo.', motivo: 'si', icono: IconBan, peligro: true },
 };
 
@@ -83,12 +83,12 @@ type Grupo = 'sin' | 'curso' | 'cerr';
 type Filtro = 'abiertas' | 'sinasig' | 'mias' | 'espera';
 
 /**
- * Solicitudes — cola + decisión (diseño `Solicitudes - Cola y decisión`).
+ * Solicitudes de las Empresas: cola agrupada (Sin tomar / En curso / Cerradas)
+ * y hoja para decidir, asignar, agrupar y conversar con el cliente.
  *
- * Lista: `listar({ pageSize: 100 })` + `resumen()`. Las agrupadas
- * (`agrupadaEn`) no aparecen: viven dentro de su principal.
- * Hoja: `obtener(id)` con `siguientes`, `agrupadas` y `eventos`.
- * Acciones: `cambiarEstado`, `asignar`, `agrupar`/`desagrupar`, `comentar`.
+ * @remarks
+ * Las agrupadas (`agrupadaEn`) no aparecen en la lista: viven dentro de su
+ * principal. Las transiciones posibles salen de `siguientes` del detalle.
  */
 @Component({
   selector: 'app-solicitudes-page',
@@ -268,8 +268,8 @@ export class SolicitudesPageComponent {
   protected cargar(): void {
     this.cargando.set(this.todas().length === 0);
     this.error.set(null);
-    // Más de 100 (2026-10-07): las abiertas completas (dependen de cuántos
-    // clientes hay); las cerradas crecen sin tope: de a 100, las más recientes primero.
+    // Las abiertas se traen completas (dependen de cuántos clientes hay); las
+    // cerradas crecen sin tope: de a `TAMANO_PAGINA`, las más recientes primero.
     forkJoin({
       abiertas: traerTodo((page, pageSize) => this.servicio.listar({ grupo: 'abiertas', page, pageSize })),
       cerradas: this.servicio.listar({ grupo: 'cerradas', page: 1, pageSize: TAMANO_PAGINA }),
@@ -389,7 +389,7 @@ export class SolicitudesPageComponent {
       },
       error: () => {
         this.cargandoCerradas.set(false);
-        this.alertas.mostrar({ estado: 'error', titulo: 'No se pudieron cargar más solicitudes', texto: 'Intentá de nuevo.' });
+        this.alertas.mostrar({ estado: 'error', titulo: 'No se pudieron cargar más solicitudes', texto: 'Intenta de nuevo.' });
       },
     });
   }
@@ -603,7 +603,7 @@ export class SolicitudesPageComponent {
       .seguir(this.servicio.agrupar(otra.id, s.id), {
         titulo: 'Sumando solicitud', texto: `${otra.empresaNombre} → #${s.id}`,
         exito: { titulo: 'Solicitudes sumadas', texto: `${s.titulo} ahora la piden más empresas.` },
-        error: { titulo: 'No se pudo sumar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo sumar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: () => { this.cargar(); this.cargarDetalle(s.id); }, error: () => undefined });
   }
@@ -614,14 +614,15 @@ export class SolicitudesPageComponent {
       .seguir(this.servicio.desagrupar(id), {
         titulo: 'Separando solicitud', texto: empresa,
         exito: { titulo: 'Solicitud separada', texto: `${empresa} vuelve a la cola por su cuenta.` },
-        error: { titulo: 'No se pudo separar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo separar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: () => { this.cargar(); this.cargarDetalle(s.id); }, error: () => undefined });
   }
 
   protected readonly hace = hace;
 
+  /** «Volver al inicio» de la pantalla de error: va a la portada de staff. */
   protected volver(): void {
-    this.router.navigateByUrl('/solicitudes');
+    this.router.navigateByUrl('/');
   }
 }

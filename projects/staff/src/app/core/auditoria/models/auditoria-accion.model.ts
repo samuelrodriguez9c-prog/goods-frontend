@@ -1,14 +1,9 @@
-/** Espejo de la entidad `AuditoriaAccion` del backend
- * (`auditoria-accion.entity.ts`) — historial de acciones de escritura
- * (POST/PATCH/PUT/DELETE) de todo el sistema, filtrado por Empresa salvo
- * para `staff_goods` (ver `AuditoriaAccionService.findAll` +
- * `TenantContextService.filtroEmpresa()`). */
+/** Una acción de escritura (POST/PATCH/PUT/DELETE) registrada por el backend.
+ * Staff ve las de todo el sistema; el resto, solo las de su Empresa. */
 export interface AuditoriaAccion {
   id: number;
-  /** `null` en acciones anónimas (ej. el registro público de una
-   * Empresa). `AuditoriaAccionService.findAll` no hace `relations:
-   * ['usuario']` (no lo necesita para nada más), así que acá solo llega
-   * el id — no el nombre/correo de quien hizo la acción. */
+  /** `null` en acciones anónimas (p. ej. el registro público). Solo llega
+   * el id, no el nombre de quien hizo la acción. */
   usuarioId: number | null;
   empresaId: number | null;
   metodo: string;

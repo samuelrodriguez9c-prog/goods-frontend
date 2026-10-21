@@ -1,0 +1,53 @@
+@let t = st.tienda()!;
+@let n = st.nav();
+<div class="pointer-events-none fixed inset-x-0 top-0 z-[60] flex justify-center px-3">
+  <header
+    class="pointer-events-auto mt-3 flex w-full items-center gap-4 transition-[max-width,height,padding,border-radius,background-color,box-shadow,color] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]"
+    [style.max-width]="n.max" [style.height]="n.h" [style.padding]="n.px" [style.border-radius]="n.r" [style.background]="n.bg"
+    [style.color]="n.fg" [style.box-shadow]="n.sh" [style.backdrop-filter]="n.blur">
+    <a href="#" (click)="$event.preventDefault(); st.subir()" class="flex shrink-0 items-center gap-2.5 text-inherit no-underline">
+      <!-- Logo del negocio; en escritorio, con el nombre al lado. -->
+      @if (t.logoUrl) {
+        <span class="overflow-hidden transition-[width,height,opacity] duration-[450ms]" [style.width]="n.logoW" [style.height]="n.logoH" [style.opacity]="n.logoO">
+          <img [src]="t.logoUrl" [alt]="t.nombre" class="size-full rounded-lg object-contain" />
+        </span>
+      } @else {
+        <!-- Sin logo: monograma en burbuja verde. -->
+        <span aria-hidden="true" class="grid shrink-0 place-items-center overflow-hidden transition-[width,height,opacity] duration-[450ms]" [style.width]="n.monoW" [style.height]="n.monoS" [style.opacity]="n.logoO">
+          <span class="forma-1 grid shrink-0 place-items-center bg-wa font-display font-extrabold leading-none tracking-[-0.02em] text-noche transition-[width,height] duration-500 [font-variation-settings:'wdth'_72]" [style.width]="n.monoS" [style.height]="n.monoS" [style.font-size]="n.monoF">{{ st.iniciales(t.nombre) }}</span>
+        </span>
+      }
+      @if (!st.movil()) { <span class="whitespace-nowrap font-display text-base font-bold tracking-[-0.01em]">{{ t.nombre }}</span> }
+    </a>
+
+    <div class="flex min-w-0 flex-1 justify-center">
+      @if (!st.hayQ() && !st.movil()) {
+        <div class="sin-barra relative flex items-center gap-0.5 overflow-x-auto rounded-full p-1 transition-colors duration-[450ms]" [style.background]="n.track">
+          <span class="absolute inset-y-1 left-0 rounded-full transition-[transform,width,opacity,background-color] duration-500 ease-[cubic-bezier(.3,1.3,.5,1)]"
+            [style.width.px]="indicador().w" [style.transform]="'translateX(' + indicador().x + 'px)'" [style.opacity]="indicador().o" [style.background]="n.ind"></span>
+          @for (s of st.secciones(); track s.id; let k = $index) {
+            <button #navBtn type="button" (click)="st.irSeccion(k)" class="relative z-[1] h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors duration-300 hover:opacity-75"
+              [style.color]="st.seccionActiva() === s.id ? '#eafff5' : 'inherit'">{{ s.nombre }}</button>
+          }
+        </div>
+      }
+      @if (st.hayQ() && !st.movil()) {
+        <span class="flex h-9 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium" [style.background]="n.track">{{ st.filtrados().length }} {{ st.filtrados().length === 1 ? 'producto' : 'productos' }} para «{{ st.busqueda().trim() }}»</span>
+      }
+    </div>
+
+    <label class="flex h-11 shrink-0 items-center rounded-full transition-colors duration-[450ms]" [style.background]="n.track">
+      <button type="button" (click)="st.abrirBusqueda()" aria-label="Buscar" class="grid size-11 place-items-center text-inherit"><tabler-icon [icon]="i.buscar" [size]="18" [stroke]="2" /></button>
+      <input #inputBusqueda [ngModel]="st.busqueda()" (ngModelChange)="st.alBuscar($event)" (blur)="st.cerrarBusqueda()" placeholder="Buscar productos"
+        class="min-w-0 border-0 bg-transparent p-0 text-sm text-inherit outline-none transition-[width] duration-[450ms] ease-[cubic-bezier(.2,.8,.2,1)] placeholder:text-gris-2" [style.width]="st.anchoBusqueda()" />
+      @if (st.hayQ()) {
+        <button type="button" (mousedown)="st.limpiarBusqueda($event)" aria-label="Borrar búsqueda" class="mr-1 grid size-9 place-items-center rounded-full text-inherit"><tabler-icon [icon]="i.cerrar" [size]="15" [stroke]="2" /></button>
+      }
+    </label>
+    <button type="button" (click)="pd.abrirPedido()" class="flex h-11 shrink-0 items-center gap-2.5 rounded-full text-sm font-semibold transition-[background-color,color,transform] duration-[450ms] active:scale-[.96]"
+      [style.padding]="n.cartPad" [style.background]="n.cartBg" [style.color]="n.cartFg">
+      @if (st.movil()) { <tabler-icon [icon]="i.bolsa" [size]="19" [stroke]="2" /> } @else { Pedido }
+      <span class="grid h-8 min-w-8 place-items-center rounded-full px-2 text-[13px] tabular-nums transition-colors duration-[450ms]" [style.background]="n.cartPill" [style.color]="n.cartPillFg">{{ st.unidades() }}</span>
+    </button>
+  </header>
+</div>

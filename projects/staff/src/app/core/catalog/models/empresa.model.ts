@@ -1,13 +1,8 @@
-/** Los 7 valores reales de `Empresa.estado` — ver `ESTADOS_EMPRESA` en
- * `ListarEmpresasQueryDto` del backend, es la fuente de verdad (es
- * `varchar`, no un enum de Postgres, así que ampliarla no pide
- * migración). Los tres primeros son el flujo de alta asistida nuevo
- * (PROPUESTA_FLUJO_ALTA_ASISTIDA.md §1/§5.1/§10): `solicitud_recibida`
- * (recién llegó el registro público) → `pendiente` (el staff la mandó a
- * la cola) → `informacion_corroborada` (llamada hecha, esperando que el
- * cliente confirme desde el enlace) → `activa`. `rechazada` es aparte
- * (§5.3). `suspendida`/`cancelada` son del ciclo de vida posterior a
- * `activa`, sin relación con el alta. */
+/** Valores de `Empresa.estado` (la fuente de verdad es `ESTADOS_EMPRESA` del backend).
+ * Alta asistida: `solicitud_recibida` (llegó el registro público) →
+ * `pendiente` (staff la mandó a la cola) → `informacion_corroborada`
+ * (llamada hecha, falta que el cliente confirme desde el enlace) → `activa`.
+ * `rechazada` corta el alta; `suspendida` y `cancelada` son posteriores a `activa`. */
 export type EstadoEmpresa =
   | 'solicitud_recibida'
   | 'pendiente'
@@ -17,9 +12,7 @@ export type EstadoEmpresa =
   | 'suspendida'
   | 'cancelada';
 
-/** Espejo de la entidad `Empresa` del backend (`empresa.entity.ts`) — solo
- * los campos que el panel de staff necesita mostrar, no re-declara toda la
- * fila si algún día suma columnas que acá no hacen falta. */
+/** Empresa como la devuelve el backend, con los campos que usa el panel de staff. */
 export interface Empresa {
   id: number;
   nombre: string;
@@ -27,55 +20,32 @@ export interface Empresa {
   correoContacto: string;
   telefonoContacto: string | null;
   estado: EstadoEmpresa;
-  /** Motivo de texto libre cargado por el staff al rechazar (`PATCH
-   * /empresas/:id/rechazar`, `estado === 'rechazada'`) — `null` en
-   * cualquier otro estado. */
+  /** Motivo que escribió staff al rechazar; `null` si no está `rechazada`. */
   motivoRechazo: string | null;
-  /** Acceso real (2026-10-04): lo que `estado` (la cuenta) no dice — una
-   * Empresa `activa` con la suscripción vencida no puede operar. Mismo
-   * cálculo que el backend usa para cortar el acceso. */
+  /** Si la Empresa puede operar de verdad, cosa que `estado` no dice: una
+   * `activa` con la suscripción vencida no opera. Mismo cálculo que usa el backend. */
   acceso: AccesoResumen;
-  /** Por qué se suspendió, se dio de baja o se reactivó (2026-10-04). */
+  /** Por qué se suspendió, se dio de baja o se reactivó. */
   motivoEstado: string | null;
   estadoCambiadoEn: string | null;
-  /** Texto que el propio visitante tipeó en el registro público
-   * (`POST /empresas/registro-publico`) — NO es la cuenta real todavía,
-   * es solo lo que declaró en el formulario. La cuenta real (`Usuario`
-   * con login) recién existe cuando el staff termina la llamada
-   * (`PATCH /empresas/:id/llamada-finalizada`) — ver `duenoUsuario` en
-   * `EmpresaConDueno`, que es ese Usuario ya creado, no este texto. */
+  /** Lo que el visitante escribió en el registro público, no la cuenta real:
+   * esa se crea al finalizar la llamada (ver `EmpresaConDueno.duenoUsuario`). */
   duenoNombres: string | null;
   duenoApellidos: string | null;
   duenoCorreo: string | null;
-  /** Cuándo el staff programó "Programar llamada" en el asistente de
-   * activación (`PATCH /empresas/:id/programar-llamada`) — vive en
-   * `GestionAlta.llamadaProgramadaPara` del backend, no en la fila de
-   * Empresa, pero tanto `findAll` como `findOne` ya la traen acá (ver el
-   * comentario en `EmpresaService.findAll` del backend). `null` si no hay
-   * ninguna programada. Antes de que el backend la trajera,
-   * `AltasPendientesPageComponent`/`ActivarEmpresaWizardComponent` la
-   * llevaban solo en memoria del propio componente — se perdía al
-   * recargar la página o al cerrar el asistente (bug real reportado por
-   * el cliente, 2026-09-22). */
+  /** Llamada de alta programada; `null` si no hay. Viene del backend para
+   * que no se pierda al recargar o cerrar el asistente. */
   llamadaProgramadaPara: string | null;
-  /** Códigos de `Modulo` que el visitante marcó como "extra" en el
-   * checkout público (Fase 2 de PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md,
-   * §11.6) — vive en `GestionAlta.modulosSolicitados` del backend, no en
-   * la fila de Empresa, pero `findOne` ya lo trae acá (mismo criterio que
-   * `motivoRechazo`/`llamadaProgramadaPara` de arriba). Una SUGERENCIA,
-   * todavía no un acceso real: `null` si el checkout no pidió nada extra.
-   * `ActivarEmpresaWizardComponent` lo usa para pre-cargar la sección de
-   * módulos del paso 1, antes de "Llamada finalizada" (§11.7). */
+  /** Códigos de módulo que el visitante marcó como extra en el checkout.
+   * Es solo una sugerencia (no da acceso); el asistente de activación la
+   * usa para precargar los módulos. `null` si no marcó ninguno. */
   modulosSolicitados: string[] | null;
   creadoEn: string;
   actualizadoEn: string;
 }
 
-/** Resumen del `Usuario` dueño real (rol `admin`) de una Empresa — lo que
- * devuelve `UsuarioService.buscarResumenDuenoDeEmpresa` del backend, sin
- * el hash de contraseña. `tieneContrasena` es justo el dato que hace
- * falta para saber si el cliente ya confirmó y definió su contraseña
- * (`/reset-password`) o todavía está esperando el enlace. */
+/** Resumen del usuario dueño (rol `admin`) de una Empresa. `tieneContrasena`
+ * dice si el cliente ya confirmó y definió su contraseña o sigue esperando el enlace. */
 export interface ResumenDuenoEmpresa {
   id: number;
   nombres: string;
@@ -85,19 +55,14 @@ export interface ResumenDuenoEmpresa {
   tieneContrasena: boolean;
 }
 
-/** Lo que devuelve `GET /empresas/:id` — la Empresa más el resumen de su
- * dueño real (`null` si todavía no se creó, ver `ResumenDuenoEmpresa`).
- * `GET /empresas` (el listado) NO trae este campo — solo `findOne` del
- * backend lo resuelve, ver el comentario ahí. */
+/** `GET /empresas/:id`: la Empresa más su dueño (`null` si todavía no se
+ * creó). El listado no trae `duenoUsuario`. */
 export interface EmpresaConDueno extends Empresa {
   duenoUsuario: ResumenDuenoEmpresa | null;
 }
 
-/** Misma forma que `RespuestaPaginada<T>` del backend
- * (`common/pagination.util.ts`) — se repite acá en vez de compartirse
- * porque no hay un paquete de tipos compartido entre backend y frontend
- * todavía (ninguno de los dos proyectos Angular lo tiene, ver
- * `admin/core/auth/models/current-user.model.ts`, que hace lo mismo). */
+/** Misma forma que `RespuestaPaginada<T>` del backend; se repite porque no
+ * hay un paquete de tipos compartido entre backend y frontend. */
 export interface RespuestaPaginada<T> {
   data: T[];
   total: number;
@@ -106,16 +71,16 @@ export interface RespuestaPaginada<T> {
   totalPaginas: number;
 }
 
+/** Si la Empresa puede operar y, si no, por qué. */
 export interface AccesoResumen {
   /** `en_mora`: venció el pago, sigue operando dentro de la gracia.
-   *  `en_prueba` (2026-10-10): período de prueba, opera hasta `pruebaHasta`. */
+   *  `en_prueba`: período de prueba, opera hasta `pruebaHasta`. */
   estado: 'ok' | 'en_mora' | 'en_prueba' | 'bloqueada';
   motivo: 'alta_en_curso' | 'rechazada' | 'suspendida' | 'cancelada' | 'sin_plan' | 'suscripcion_vencida' | 'prueba_terminada' | null;
   suscripcionEstado: string | null;
   fechaProximoVencimiento: string | null;
-  /** En prueba: hasta cuándo (2026-10-10). */
   pruebaHasta?: string | null;
-  /** Descuento activo sobre el plan, en % (2026-10-10). */
+  /** Descuento activo sobre el plan, en %. */
   descuentoPorcentaje?: number | null;
 }
 

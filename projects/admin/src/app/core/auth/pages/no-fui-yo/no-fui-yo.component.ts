@@ -10,12 +10,14 @@ import {
 import { AuthService } from '../../auth.service';
 
 /**
- * `/cuenta/no-fui-yo` — destino del botón "No fui yo" del correo
- * `password-changed`. Misma familia visual que `/reset-password` (fondo
- * oscuro + tarjeta). Explica qué va a pasar y espera un clic: recién ahí
- * llama `POST /auth/reportar-cambio-password`, que cierra las sesiones,
- * deja la cuenta sin contraseña, manda un enlace para definir una nueva y
- * abre una conversación con soporte.
+ * `/cuenta/no-fui-yo`: destino del botón «No fui yo» del correo de contraseña
+ * cambiada. Explica qué va a pasar y espera un clic antes de llamar
+ * `POST /auth/reportar-cambio-password`, para que los escáneres de correo no
+ * lo disparen solos.
+ *
+ * @remarks
+ * El backend cierra las sesiones, deja la cuenta sin contraseña, manda un
+ * enlace para definir una nueva y abre una conversación con soporte.
  */
 @Component({
   selector: 'app-no-fui-yo',

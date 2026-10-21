@@ -136,8 +136,7 @@ function aPayload(d: DatosPerfil): ActualizarPerfilPayload {
   };
 }
 
-/** `superadmin_goods` → `Superadmin goods`. Local a propósito: el rediseño de
- *  `usuarios-page` ya no exporta `etiquetaRolTexto`. */
+/** Nombre de rol legible: `dueno_empresa` → «Dueño»; el resto, `superadmin_goods` → «Superadmin goods». */
 function etiquetaRol(nombre: string): string {
   const conocidos: Record<string, string> = { dueno_empresa: 'Dueño', empleado_empresa: 'Empleado' };
   if (conocidos[nombre]) return conocidos[nombre];
@@ -157,25 +156,20 @@ const fechaHora = (iso: string) =>
   });
 
 /**
- * Settings del admin — el mismo de staff (2026-10-07), con una sección
- * más: **Correos** (los avisos informativos que cada persona puede apagar,
- * `GET/PATCH /usuarios/me/preferencias-correo`; el pie "Preferencias de
- * correo" de los correos trae acá con `?seccion=correos`).
+ * Settings: la propia cuenta, en cinco secciones con subnavegación (Perfil,
+ * Correo y contacto, Seguridad, Correos y Cuenta).
  *
- * (De staff) Perfil de la PROPIA cuenta, mismos endpoints:
- *
- * - `GET/PATCH /usuarios/:id` para leer y guardar.
- * - `POST /upload` + PATCH `imagenPerfil` para la foto.
- * - `reenviarVerificacionCorreo` / `verificarCorreoConCodigo` para el correo.
- * - `solicitarRecuperacionPassword` para la contraseña (mismo flujo del login).
- *
- * Lo que cambió respecto a la versión anterior:
- * - Cuatro secciones con subnavegación en vez de una columna larga.
- * - El guardado es por **barra de cambios** (aparece solo si hay diff contra
- *   el perfil del servidor) en vez de un botón fijo al final del formulario.
- * - El código de verificación vive en un **modal** con 6 cajas y
- *   verificación automática al completarse.
- * - Las confirmaciones salen por `AlertaService` (no más toast local).
+ * @remarks
+ * - Perfil con `GET/PATCH /usuarios/:id`; la foto, `POST /upload` + PATCH de
+ *   `imagenPerfil`.
+ * - Correo: código de verificación en un modal de 6 cajas que verifica solo
+ *   al completarse.
+ * - Contraseña: manda el enlace al correo (mismo flujo que el login).
+ * - Correos: avisos informativos que cada persona puede apagar
+ *   (`/usuarios/me/preferencias-correo`); el pie de los correos trae acá con
+ *   `?seccion=correos`.
+ * - Se guarda con una barra de cambios que aparece solo si hay diferencias
+ *   con el servidor. Las confirmaciones salen por `AlertaService`.
  */
 @Component({
   selector: 'app-settings-page',
@@ -190,10 +184,11 @@ export class SettingsPageComponent {
   private readonly upload = inject(UploadService);
   private readonly alertas = inject(AlertaService);
   private readonly route = inject(ActivatedRoute);
-  /** `?seccion=` — el menú de cuenta del topbar navega acá con la sección
-   *  pedida (LEEME §17, 2026-09-24). Reactivo (no `snapshot`): si ya
-   *  estás en Settings y clicás "Configuración" en el menú, Angular
-   *  reutiliza este componente en vez de recrearlo. */
+  /**
+   * `?seccion=`: el menú de cuenta del topbar navega acá con la sección
+   * pedida. Reactivo (no `snapshot`): si ya estás en Settings y eliges otra
+   * opción del menú, Angular reutiliza este componente en vez de recrearlo.
+   */
   private readonly seccionUrl = toSignal(this.route.queryParamMap, { initialValue: null });
 
   protected readonly i = {
@@ -228,14 +223,14 @@ export class SettingsPageComponent {
   protected readonly generos = GENEROS;
   protected readonly cajas = Array.from({ length: LARGO_CODIGO }, (_, n) => n);
 
-  // ── Carga ─────────────────────────────────────────────────────────────
+  // Carga
   protected readonly perfil = signal<MiPerfil | null>(null);
   protected readonly cargando = signal(true);
   protected readonly errorCarga = signal<string | null>(null);
 
   protected readonly seccion = signal<Seccion>('perfil');
 
-  // ── Edición ───────────────────────────────────────────────────────────
+  // Edición
   protected readonly datos = signal<DatosPerfil>({ ...VACIO });
   private readonly base = computed(() => {
     const p = this.perfil();
@@ -256,12 +251,12 @@ export class SettingsPageComponent {
     () => this.nCambios() > 0 && !this.errNombres() && !this.errApellidos() && !this.guardando(),
   );
 
-  // ── Foto / marketing / referido ───────────────────────────────────────
+  // Foto / marketing / referido
   protected readonly subiendoFoto = signal(false);
   protected readonly guardandoMarketing = signal(false);
   protected readonly copiado = signal(false);
 
-  // ── Verificación de correo (modal) ────────────────────────────────────
+  // Verificación de correo (modal)
   protected readonly otpAbierto = signal(false);
   protected readonly otp = signal('');
   protected readonly otpEstado = signal<'idle' | EstadoAlerta>('idle');
@@ -269,7 +264,7 @@ export class SettingsPageComponent {
   protected readonly otpReenvio = signal(0);
   private readonly otpInput = viewChild<ElementRef<HTMLInputElement>>('otpInput');
 
-  // ── Contraseña ────────────────────────────────────────────────────────
+  // Contraseña
   protected readonly pwAbierto = signal(false);
   protected readonly pwEnviando = signal(false);
   protected readonly pwEspera = signal(0);
@@ -278,7 +273,7 @@ export class SettingsPageComponent {
   private timerPw?: ReturnType<typeof setInterval>;
   private cargaIniciada = false;
 
-  // ── Derivados de presentación ─────────────────────────────────────────
+  // Derivados de presentación
   protected readonly iniciales = computed(() => {
     const p = this.perfil();
     return p ? `${p.nombres.trim()[0] ?? ''}${p.apellidos.trim()[0] ?? ''}`.toUpperCase() || '?' : '…';
@@ -314,12 +309,7 @@ export class SettingsPageComponent {
     return [txtA, txtM].filter(Boolean).join(' y ');
   });
 
-  /** Subtítulo de la cabecera (slot `[lectura]`) — antes era un texto fijo
-   *  de una sola oración; se amplía (2026-10-02, pedido explícito: todos
-   *  los módulos deben mostrar algo largo e informativo acá) usando datos
-   *  que esta misma pantalla ya calculaba para otra cosa (`rolTexto`,
-   *  `miembroDesdeCompleto`, `antiguedad`) en vez de inventar texto nuevo
-   *  sin respaldo en datos reales. */
+  /** Subtítulo de la cabecera (slot `[lectura]`), armado con datos que la pantalla ya tiene. */
   protected readonly lectura = computed(() => {
     const p = this.perfil();
     if (!p) {
@@ -342,26 +332,11 @@ export class SettingsPageComponent {
     const hora = d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
     return d.toDateString() === new Date().toDateString() ? `Hoy, ${hora}` : fecha(iso);
   });
-  /** Cabecera compartida (LEEME.md §14) — reemplaza el `<h1>` + raya +
-   *  subtítulo del inicio de la página. Sin backend nuevo: todo sale de
-   *  `perfil()`. Sin acciones: guardar sigue siendo la barra de cambios
-   *  sin guardar, no un botón acá. La LEEME original traía una cuarta
-   *  métrica "Puntos" (`p.puntos`) — no existe ese campo en `MiPerfil`
-   *  real, así que se cae (nota de la propia LEEME: "ajustá `p.puntos`…
-   *  a los nombres reales de tu componente"). Sin `serie`: no hay
-   *  historial de accesos ni de antigüedad día a día.
-   *
-   *  Migrada a v2 (badge) por LEEME.md §16, 2026-09-24 — el badge lo pone
-   *  el HTML (`rolTexto() + ' · ID ' + idCredencial()`, mismo texto que ya
-   *  traía el `[total]` de v1). §16 sugiere un `serieConteo` para "Último
-   *  acceso" armado con `GET /auditoria?usuarioId=yo` — pero esta pantalla
-   *  no carga auditoría propia (el comentario de arriba ya lo dice: "todo
-   *  sale de `perfil()`"), y su propio texto lo deja condicionado a "si
-   *  esa pantalla ya lo carga". Agregar ese fetch nuevo se sale de esta
-   *  migración de cabeceras; además `valor` acá es un texto ("Hoy, 14:32"),
-   *  no una cifra, así que una serie tampoco tendría con qué compararse.
-   *  "Correo" y "Miembro desde" siguen sin serie por lo que ya decía §16:
-   *  "solo la base punteada, como en el diseño". */
+  /**
+   * Métricas de la cabecera. Todo sale de `perfil()`, sin llamadas extra. No
+   * llevan serie: no hay historial de accesos ni de antigüedad día a día, y
+   * «Último acceso» es un texto, no una cifra.
+   */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const p = this.perfil();
     if (!p) {
@@ -455,8 +430,7 @@ export class SettingsPageComponent {
   );
 
   constructor() {
-    // `currentUser` puede llegar después que esta página tras un F5 — ver
-    // el mismo comentario en la versión anterior.
+    // Tras un F5, `currentUser` puede llegar después que esta página: se espera a tener el id.
     effect(() => {
       const id = this.auth.currentUser()?.id;
       if (id === undefined || this.cargaIniciada) {
@@ -495,7 +469,7 @@ export class SettingsPageComponent {
     });
   }
 
-  // ── Correos (avisos informativos que se pueden apagar) ─────────────────
+  // Correos (avisos informativos que se pueden apagar)
 
   protected readonly opcionesCorreo: OpcionCorreo[] = [
     { clave: 'recordatorioCobro', titulo: 'Recordatorio de renovación', detalle: 'Unos días antes de que se renueve tu plan.' },
@@ -551,7 +525,7 @@ export class SettingsPageComponent {
     this.seccion.set(s);
   }
 
-  // ── Datos ─────────────────────────────────────────────────────────────
+  // Datos
 
   protected actualizar<K extends keyof DatosPerfil>(campo: K, valor: DatosPerfil[K]): void {
     this.datos.update((d) => ({ ...d, [campo]: valor }));
@@ -597,7 +571,7 @@ export class SettingsPageComponent {
     }
   }
 
-  // ── Foto ──────────────────────────────────────────────────────────────
+  // Foto
 
   protected onFoto(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -637,7 +611,7 @@ export class SettingsPageComponent {
     });
   }
 
-  // ── Comunicaciones (se guarda al instante) ────────────────────────────
+  // Comunicaciones (se guarda al instante)
 
   protected alternarMarketing(): void {
     const p = this.perfil();
@@ -661,7 +635,7 @@ export class SettingsPageComponent {
     });
   }
 
-  // ── Referido ──────────────────────────────────────────────────────────
+  // Referido
 
   protected copiarReferido(): void {
     const codigo = this.perfil()?.codigoReferido;
@@ -673,7 +647,7 @@ export class SettingsPageComponent {
     setTimeout(() => this.copiado.set(false), 1600);
   }
 
-  // ── Verificación de correo ────────────────────────────────────────────
+  // Verificación de correo
 
   protected abrirOtp(): void {
     const p = this.perfil();
@@ -765,7 +739,7 @@ export class SettingsPageComponent {
     this.otpInput()?.nativeElement.focus();
   }
 
-  // ── Contraseña ────────────────────────────────────────────────────────
+  // Contraseña
 
   protected abrirPassword(): void {
     if (this.pwEspera() === 0) {
@@ -808,7 +782,7 @@ export class SettingsPageComponent {
     }
   }
 
-  // ── Interno ───────────────────────────────────────────────────────────
+  // Interno
 
   protected cuenta(seg: number): string {
     return `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`;

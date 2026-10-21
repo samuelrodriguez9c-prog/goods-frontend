@@ -3,15 +3,13 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 
-// Mismo criterio que `admin/core/http/auth.interceptor.ts`.
+// Coincide por `includes`, así que '/auth/login' también cubre '/auth/login-staff'.
 const RUTAS_SIN_INTERCEPTAR = ['/auth/login', '/auth/refresh'];
 
 /**
- * Adjunta `Authorization: Bearer <accessToken>` a cada request saliente
- * y, ante un 401, refresca una sola vez y reintenta — copia exacta de
- * `admin/core/http/auth.interceptor.ts` (duplicado a propósito, ver
- * comentario de `AuthService` sobre por qué `staff` no comparte código de
- * auth con `admin`).
+ * Adjunta `Authorization: Bearer <accessToken>` a cada request y, ante un
+ * 401, refresca una sola vez y reintenta; si el refresh falla, limpia la sesión.
+ * Copia de la de `admin` (ver `AuthService` sobre por qué no se comparte).
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);

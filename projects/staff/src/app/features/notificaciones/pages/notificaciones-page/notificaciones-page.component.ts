@@ -1,4 +1,3 @@
-// projects/staff/src/app/features/notificaciones/pages/notificaciones-page/notificaciones-page.component.ts
 import { Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -31,11 +30,10 @@ type Cat = Exclude<CategoriaNotificacion, 'otras'>;
 const PAGE_SIZE = 30;
 
 /**
- * "Ver todas" — rediseño (LEEME §17, 2026-09-24). Carga por páginas y va
- * ACUMULANDO ("Cargar anteriores") en vez de paginar con anterior/
- * siguiente. Filtros: métrica de la cabecera (Sin leer / categoría),
- * selector Todas · Sin leer y búsqueda, todo en el cliente sobre lo
- * cargado (ver el punto 3 de "A revisar al integrar" del LEEME).
+ * Bandeja completa de notificaciones. Carga por páginas y las va acumulando
+ * ("Cargar anteriores") en vez de paginar con anterior/siguiente. Los filtros
+ * (métrica de la cabecera, Todas · Sin leer y búsqueda) se aplican en el
+ * cliente sobre lo ya cargado.
  */
 @Component({
   selector: 'app-notificaciones-page',
@@ -143,7 +141,7 @@ export class NotificacionesPageComponent {
 
   private pedir(page: number, acumular: boolean): void {
     // Filtros en el cliente sobre lo cargado: así cambiar de pestaña o de
-    // métrica no vuelve a pedir nada (ver LEEME §17, punto 3).
+    // métrica no vuelve a pedir nada.
     this.notificacionService.listar(false, PAGE_SIZE, page, true).subscribe({
       next: (r) => {
         this.notificaciones.update((a) => (acumular ? [...a, ...r.data] : r.data));
@@ -154,7 +152,7 @@ export class NotificacionesPageComponent {
         this.cargandoMas.set(false);
       },
       error: () => {
-        if (!acumular) this.error.set('No se pudieron cargar las notificaciones. Intentá de nuevo.');
+        if (!acumular) this.error.set('No se pudieron cargar las notificaciones. Intenta de nuevo.');
         this.cargando.set(false);
         this.cargandoMas.set(false);
       },

@@ -22,10 +22,9 @@ const fecha = (iso: string) => {
 };
 
 /**
- * "Solicitudes a Goods" (2026-10-04): donde la Empresa pide una mejora
- * (ajuste de un módulo, datos propios, una sección nueva u otra cosa) y
- * sigue en qué va. Ver PROPUESTA_PERSONALIZACION_POR_EMPRESA.md. Se
- * actualiza en vivo cuando Goods responde (`solicitud:cambio`).
+ * «Solicitudes a Goods»: donde la Empresa pide una mejora (ajuste de un
+ * módulo, datos propios, una sección nueva u otra cosa) y sigue en qué va.
+ * Se actualiza en vivo cuando Goods responde (`solicitud:cambio`).
  */
 @Component({
   selector: 'app-settings-solicitudes-page',

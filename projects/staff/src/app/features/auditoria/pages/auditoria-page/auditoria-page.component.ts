@@ -26,6 +26,7 @@ import {
   TablerIconComponent,
 } from '@tabler/icons-angular';
 import { forkJoin } from 'rxjs';
+import { traerTodo } from '../../../../shared/ui/lista-hoja/traer-todo';
 import { AuditoriaService } from '../../../../core/auditoria/auditoria.service';
 import { AuditoriaAccion } from '../../../../core/auditoria/models/auditoria-accion.model';
 import { CambiosEnVivoService } from '../../../../core/realtime/cambios-en-vivo.service';
@@ -43,53 +44,30 @@ import { filasCambiadas } from '../../../../shared/ui/filas-cambiadas';
 type LenteAuditoria = 'todo' | 'fallidas' | 'sensibles' | 'agente' | 'anonimas';
 export type FamiliaAccion = 'sesion' | 'alta' | 'edicion' | 'plata' | 'permisos' | 'baja';
 
-/** Exportada: la usa también `AccionDetallePanelComponent` (ver ese
- * componente) — recibe la lista completa ya calculada acá vía `[acciones]`
- * en vez de recalcularla por su cuenta. */
+/** Acción de auditoría con los campos derivados para mostrarla. También la
+ * usa `AccionDetallePanelComponent`, que recibe la lista ya calculada. */
 export interface AccionLeible extends AuditoriaAccion {
-  /** La ruta HTTP traducida a lo que pasó — el corazón del rediseño. */
+  /** La ruta HTTP traducida a lo que pasó (ver `REGLAS`). */
   frase: string;
   icono: typeof IconPencil;
   familia: FamiliaAccion;
   /** Etiqueta legible del `userAgent` + si es un navegador de verdad. */
   agenteEtiqueta: string;
   agenteEsNavegador: boolean;
-  /** Fuera del horario laboral configurado. */
+  /** Fuera de la franja `HORA_DESDE`–`HORA_HASTA`. */
   fueraDeHora: boolean;
   horaNum: number;
   fechaMs: number;
-  /** Fecha y hora completa, para el encabezado del panel de detalle
-   * (ej. "21 sept 2026, 14:32"). Ajuste propio: el handoff original
-   * referenciaba `accion.cuando` en el template sin que existiera en
-   * ningún lado — con `strictTemplates` eso no compila (TS2339). Se
-   * agrega acá, calculado una sola vez en `leibles()` en vez de en el
-   * propio template, mismo criterio que el resto de los campos
-   * derivados de esta interfaz. */
+  /** Fecha y hora completa para el encabezado del detalle (ej. "21 sept 2026, 14:32"). */
   cuando: string;
-  /** Clases de caja (fondo + tinta) del ícono, para el encabezado del
-   * panel de detalle. Ajuste propio, mismo caso que `cuando`: el
-   * template usaba `accion.caja` (el `AccionLeible` de `accionAbierta()`
-   * directo, no la fila armada por `aFila()`), y esa propiedad tampoco
-   * existía en la interfaz — ver la nota de `cuando` arriba. Misma
-   * fórmula que ya usa `aFila()` para la fila de la lista. */
+  /** Clases de caja (fondo + tinta) del ícono; misma fórmula que `aFila()`. */
   caja: string;
-  /** Nombre ya resuelto de `usuarioId` (o `null` si la acción es
-   * anónima) — se calcula acá, una sola vez por acción, con el mapa
-   * `nombrePorUsuario` que arma `cargar()`. Se agrega para que
-   * `AccionDetallePanelComponent` no necesite ese mapa ni el método
-   * `nombreUsuario()`: le alcanza con la lista de `AccionLeible` que ya
-   * recibe por `[acciones]`. Cada lugar que lo usa pone su propio texto
-   * de reemplazo cuando es `null` ("Sin usuario", "anónimo", "Esa IP",
-   * etc. — son distintos a propósito, ver cada `computed`). */
+  /** Nombre de `usuarioId`, o `null` si la acción es anónima; cada lugar
+   * que lo usa pone su propio texto de reemplazo. */
   nombreResuelto: string | null;
 }
 
-/** Fila ya armada para una fila de la bitácora — se separa como interfaz
- * propia (en vez de `ReturnType<typeof this.aFila>` inline, como traía el
- * handoff) porque ese type query dentro del arrow function de `dias`
- * disparaba TS2683 ("'this' implicitly has type 'any'"): con
- * `strictTemplates`/modo estricto, TS no logra resolver el tipo de
- * `this.aFila` dentro de una posición de tipo anidada así. */
+/** Fila ya armada de la bitácora. */
 interface FilaAuditoria {
   id: number;
   hora: string;
@@ -101,11 +79,10 @@ interface FilaAuditoria {
   marca: { texto: string; icono: typeof IconX; caja: string } | null;
 }
 
-/** Reglas ruta → frase. Agregá una entrada por endpoint de escritura nuevo;
- * el fallback muestra `METODO /ruta` como antes. Los prefijos asumen
- * `/api/...` — coincide con `environment.apiUrl` y con `ruta:
- * request.originalUrl` del interceptor, que sí incluye el
- * `setGlobalPrefix('api')` de `main.ts` (verificado antes de integrar). */
+/** Reglas ruta → frase. Agrega una entrada por cada endpoint de escritura
+ * nuevo; si ninguna coincide se muestra `METODO /ruta`. Las regex van
+ * ancladas a `/api/...` porque el interceptor del backend guarda
+ * `request.originalUrl`, que incluye el prefijo global. */
 const REGLAS: {
   re: RegExp;
   frase: (a: AuditoriaAccion, m: RegExpMatchArray) => string;
@@ -113,13 +90,7 @@ const REGLAS: {
   familia: (a: AuditoriaAccion) => FamiliaAccion;
 }[] = [
   {
-    // Ajuste propio: el handoff solo cubría `/auth/login` (el del panel
-    // `admin`) — `staff` pega contra `/auth/login-staff` (ver
-    // `AuthController`, `@Post('login-staff')`), un endpoint aparte con
-    // el mismo significado. Sin este agregado, el login — la acción más
-    // frecuente de esta pantalla, literalmente todas las sesiones que se
-    // abren en el panel de staff — caía siempre al fallback genérico
-    // `POST /api/auth/login-staff` en vez de "Inició sesión".
+    // `staff` inicia sesión por `/auth/login-staff` y `admin` por `/auth/login`.
     re: /^\/api\/auth\/login(-staff)?$/,
     frase: (a) => (a.exitoso ? 'Inició sesión' : 'Intento de inicio de sesión fallido'),
     icono: (a) => (a.exitoso ? IconLogin : IconLockOff),
@@ -182,8 +153,7 @@ const REGLAS: {
   },
 ];
 
-/** Clases de caja (fondo + tinta del ícono) por familia. Sin hues nuevos:
- * el azul de `permisos` es el mismo `sky` que usan los otros rediseños. */
+/** Clases de caja (fondo + tinta del ícono) por familia. */
 const CAJA_FAMILIA: Record<FamiliaAccion, string> = {
   sesion: 'bg-canvas-bg text-gray-600',
   alta: 'bg-emerald-50 text-success-solid',
@@ -193,111 +163,30 @@ const CAJA_FAMILIA: Record<FamiliaAccion, string> = {
   baja: 'bg-badge-error-solid/10 text-badge-error-solid',
 };
 
-/** Fuera de esta franja una acción se marca "De madrugada". */
+/** Fuera de esta franja una acción cuenta como fuera de hora ("De madrugada"). */
 const HORA_DESDE = 7;
+/** La pantalla mira las últimas 48 h (cabecera, alertas y bitácora). */
+const VENTANA_MS = 48 * 60 * 60 * 1000;
+/** Tope de acciones a traer de esa ventana, por si hay un pico (p. ej. un ataque de inicios de sesión). */
+const TOPE_ACCIONES = 5000;
+/** Intentos fallidos más juntos que esto cuentan como «en pocos minutos». */
+const RAFAGA_MS = 15 * 60 * 1000;
 const HORA_HASTA = 21;
 
+// TODO(backend): incluir el nombre del usuario en `GET /auditoria`; mientras
+// tanto se cruza con `UsuarioService.listar()` en memoria.
+// TODO(backend): filtrar por `exitoso` en el servidor; hoy los lentes y la
+// búsqueda son en memoria sobre las acciones de las últimas 48 h.
 /**
- * Auditoría — rediseño del 2026-09-19 ("bitácora"), cuarto componente del
- * mismo handoff integrado 2026-09-21 (LEEME.md §8): sigue el de
- * `suscripciones-page` en la lista "componente por componente".
+ * Auditoría como bitácora: cada escritura del sistema traducida a una frase
+ * (`REGLAS`), agrupada por día, con anomalías detectadas en el cliente
+ * (`alertas()`), volumen por hora (`pulso()`) y lentes de filtro.
  *
- * La tabla anterior era el log HTTP crudo: `PATCH /empresas/14` es una ruta,
- * no una acción; el usuario era un número; y tres intentos de login fallidos
- * seguidos se veían igual que un PATCH exitoso. Una auditoría se lee de dos
- * maneras — **barriendo** ("¿pasó algo raro?") y **investigando** ("¿quién
- * tocó Empresa 14?") — y la tabla no servía para ninguna.
- *
- * Cinco cosas nuevas, todas sacadas de lo que el endpoint YA devuelve:
- *
- * 1. **`REGLAS`: la ruta se traduce a una frase.** `POST
- *    /api/suscripciones/cambiar-plan` con `cuerpo.empresaId: 14` →
- *    "Cambió el plan de Empresa #14".
- * 2. **`alertas()`: anomalías detectadas en cliente** — intentos de sesión
- *    fallidos repetidos desde una IP, acciones hechas desde fuera de un
- *    navegador (el `userAgent` real trae `PostmanRuntime/2.6.0`), y cambios
- *    sensibles (permisos y bajas).
- * 3. **`pulso()`: volumen por hora del día**, con los errores apilados en
- *    rojo — se ve el pico sin leer una fila.
- * 4. **El `cuerpo` por fin se usa** (pestaña Datos), con `[oculto]`
- *    renderizado como "No se guarda", y el status traducido.
- * 5. **`rastroPanel()` / "Ver todo el rastro"**: el modo investigación —
- *    todo lo que pasó con una misma entidad.
- *
- * Además: agrupado por día, orden estricto descendente por `creadoEn`, y el
- * panel partido en tres pestañas (Resumen / Datos / Técnico) con el contexto
- * de sesión que convierte un registro suelto en una historia.
- *
- * **El panel de detalle está separado en `AccionDetallePanelComponent`**
- * (`features/auditoria/pages/accion-detalle-panel/`), a pedido explícito
- * del cliente para mantener la misma estructura de `pages/` que ya tenían
- * `EmpresaDetallePanelComponent` / `ActivarEmpresaWizardComponent` /
- * `GestionarSuscripcionPanelComponent` — un componente por panel, sibling
- * de la página, no un bloque más del template.
- *
- * A diferencia de esos tres paneles, **este no carga sus propios datos por
- * `id` contra el backend** — recibe la lista COMPLETA ya cargada acá vía
- * `[acciones]="leibles()"`, además del `[accionId]` a mostrar. Es una
- * excepción deliberada, mismo criterio que `[mrrTotal]` en
- * `GestionarSuscripcionPanelComponent`: dentro del panel, "En la misma
- * sesión" y "Historia de X" necesitan recorrer TODAS las acciones (buscar
- * otras de la misma persona/IP en la misma media hora, o de la misma
- * entidad) — cargar eso por su cuenta significaría reimplementar ahí
- * adentro las 11 reglas de `REGLAS`/`describir()`/`agente()` de esta
- * página y pegarle una segunda vez a `AuditoriaService.listar()` +
- * `UsuarioService.listar()`, cuando esta página ya hizo ese trabajo.
- * `AccionLeible` (con el nombre de usuario ya resuelto en
- * `nombreResuelto`, ver esa interfaz) es lo que hace posible pasarla tal
- * cual sin que el panel necesite el mapa `nombrePorUsuario`.
- *
- * La navegación DENTRO del panel (los botones de "En la misma sesión" /
- * "Historia de X", que cambian qué acción se muestra sin cerrarlo) no la
- * resuelve el panel solo: emite `(verAccion)`, y es esta página —dueña de
- * `panelId`— la que decide, reutilizando `abrirPanel()`. Lo mismo con "Ver
- * todo el rastro": el panel emite `(verRastro)` con la entidad, y
- * `onVerRastro()` arma el filtro y cierra el panel.
- *
- * **Cuatro ajustes propios al integrar** (bugs del handoff, no decisiones
- * de diseño — los primeros dos hacían que `ng build` no compilara con
- * `strictTemplates`):
- * 1. `accion.cuando` y `accion.caja`, usados en el encabezado del panel de
- *    detalle, no existían en `AccionLeible` — se agregan acá, calculadas en
- *    `leibles()`.
- * 2. `dias()` tipaba `filas` como `ReturnType<typeof this.aFila>[]` inline,
- *    lo que disparaba TS2683 ("'this' implicitly has type 'any'") dentro
- *    del `computed()` — se extrajo `FilaAuditoria` como interfaz propia.
- * 3. La regla de `REGLAS` para el login solo cubría `/api/auth/login`
- *    (panel `admin`) — se amplió a `/api/auth/login-staff` también (ver
- *    esa entrada), el que de verdad usa este panel.
- * 4. Ninguna keyframe nueva hacía falta: `fade-in-up` y `slide-in-right`
- *    (las que usa el panel) ya estaban en `staff/src/styles.css`.
- *
- * SOBRE EL BACKEND — dos cosas que convendría cambiar (ver LEEME.md §8):
- * a) **`usuarioId` sin nombre.** `AuditoriaAccionService.findAll` no hace
- *    `relations: ['usuario']`, así que acá se resuelve con una segunda
- *    llamada a `UsuarioService.listar()` y un mapa en memoria (mismo
- *    criterio que `EmpresasPageComponent` con los planes). Si el volumen
- *    crece, es el primer lugar a optimizar: un `leftJoin` en el backend
- *    ahorra la llamada entera.
- * b) **Los filtros de `FiltroAuditoria` (entidad/desde/hasta) ya no se
- *    usan.** Los lentes y la búsqueda son en memoria sobre las últimas 50
- *    acciones, porque son transversales (fallidas, fuera del navegador,
- *    anónimas) y el backend no sabe filtrar por eso. Para más de unos
- *    cientos de registros hace falta mover esos filtros al servidor —
- *    especialmente `exitoso` y un rango de fechas.
- *
- * `SearchToolbarComponent`, `p-table`, `dataTablePt()`, `DataTableComponent`,
- * `p-popover` y `p-date-picker` ya no se usan en esta pantalla: la barra de
- * búsqueda es parte de la tarjeta de la bitácora y los lentes reemplazan al
- * popover de fechas. Los componentes siguen en uso en el resto del panel.
- *
- * Verificado antes de integrar: `environment.apiUrl` (`http://localhost:3000/api`)
- * y `AuditoriaAccionInterceptor` guarda `ruta: request.originalUrl`, que sí
- * incluye el prefijo — `main.ts` llama `app.setGlobalPrefix('api')` — así
- * que las regex de `REGLAS` (todas ancladas a `/api/...`) matchean contra
- * los valores reales guardados. `UsuarioService.listar()` no toma
- * argumentos y devuelve `RespuestaPaginada<UsuarioGoods>` con `nombres`/
- * `apellidos`/`correo` — coincide tal cual con lo que espera `cargar()`.
+ * @remarks
+ * `AccionDetallePanelComponent` recibe la lista completa (`[acciones]`) en
+ * vez de cargar por id: "En la misma sesión" e "Historia de X" recorren todas
+ * las acciones y así no repite las llamadas ni las reglas. La navegación
+ * dentro del panel la decide esta página (`verAccion`, `verRastro`).
  */
 @Component({
   selector: 'app-auditoria-page',
@@ -328,11 +217,8 @@ export class AuditoriaPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. Sin
-   *  filtro de entidad: CUALQUIER escritura exitosa en cualquier parte de
-   *  la app ya generó una fila nueva acá. */
-  /** Cambios en vivo acumulados desde la última carga — alimenta la
-   *  píldora "N cambios nuevos · Actualizar" (handoff-alertas-pila §2). */
+  /** Cambios en vivo desde la última carga, para la píldora "N cambios nuevos ·
+   *  Actualizar". Sin filtro de entidad: cualquier escritura genera una fila aquí. */
   protected readonly cambiosEnVivo = signal(0);
   /** Filas resaltadas 2 s después de tocar "Actualizar". */
   protected readonly resaltadas = signal<ReadonlySet<number>>(new Set());
@@ -352,9 +238,7 @@ export class AuditoriaPageComponent {
   private readonly nombrePorUsuario = signal<Map<number, string>>(new Map());
 
   /** Lo más reciente primero, siempre: una bitácora que salta hacia atrás y
-   * hacia adelante dentro del mismo día no se puede leer. `protected` (no
-   * `private`, como el resto de los `computed` de esta clase): el
-   * template se lo pasa a `AccionDetallePanelComponent` vía `[acciones]`. */
+   * hacia adelante dentro del mismo día no se puede leer. */
   protected readonly leibles = computed<AccionLeible[]>(() =>
     [...this.acciones()]
       .sort((a, b) => new Date(b.creadoEn).getTime() - new Date(a.creadoEn).getTime())
@@ -403,16 +287,9 @@ export class AuditoriaPageComponent {
     );
   });
 
-  /** Cabecera compartida (LEEME.md §14). Período "Últimas 48 h" — la
-   *  ventana real de esta pantalla. Serie por hora (8 cubos de 6 h,
-   *  `serieAcumulada(fechas, 8, 0.25)`) solo donde hay una fecha por
-   *  evento que agrupar: "Personas"/"IPs distintas" son conteos de
-   *  valores únicos, no tienen una. Clic en "Con error" → `lente`.
-   *
-   *  Migrada a v2 (badge) por LEEME.md §16, 2026-09-24 — el badge lo pone
-   *  el HTML (`total() + ' acciones registradas'`, mismo texto que ya
-   *  traía el `[total]` de v1). Las series ya estaban implementadas de
-   *  antes: no hizo falta tocarlas para esta migración. */
+  /** Series de 8 cubos de 6 h (48 h) solo donde hay una fecha por evento;
+   *  "Personas" e "IPs distintas" son conteos de valores únicos. Clic en
+   *  "Con error" → lente `fallidas`. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const hoyFechas = this.deHoy().map((a) => a.creadoEn);
     const errorFechas = this.leibles()
@@ -466,8 +343,7 @@ export class AuditoriaPageComponent {
       lista.push({
         clave: 'sesiones',
         titulo: `${peor[1]} ${peor[1] === 1 ? 'intento de sesión fallido' : 'intentos de sesión fallidos'} desde ${peor[0]}`,
-        detalle:
-          'Probaron con más de una cuenta en pocos minutos, de madrugada y desde una herramienta, no desde un navegador.',
+        detalle: detalleIntentos(this.fallidasSesion().filter((a) => (a.ip ?? '—') === peor[0])),
         icono: IconLockOff,
         caja: 'bg-badge-error-solid/10 text-badge-error-solid',
         conteo: peor[1],
@@ -606,9 +482,8 @@ export class AuditoriaPageComponent {
     this.cargar();
   }
 
-  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar"
-   *  (handoff-alertas-pila §2). `clave` = id de la fila en pantalla, por si
-   *  no coincide con el id del dato comparado. */
+  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar". `clave` =
+   *  id de la fila en pantalla, por si no coincide con el id del dato comparado. */
   private resaltarCambios<T>(
     antes: readonly T[],
     despues: readonly T[],
@@ -627,13 +502,18 @@ export class AuditoriaPageComponent {
     this.error.set(null);
 
     forkJoin({
-      auditoria: this.auditoriaService.listar({ pageSize: 50 }),
+      auditoria: traerTodo(
+        (page, pageSize) => this.auditoriaService.listar({ page, pageSize, desde: new Date(Date.now() - VENTANA_MS).toISOString() }),
+        TOPE_ACCIONES,
+      ),
+      // Solo para el total del badge («N acciones registradas»): todas, no solo las de 48 h.
+      conteo: this.auditoriaService.listar({ pageSize: 1 }),
       usuarios: this.usuarioService.listar(),
     }).subscribe({
-      next: ({ auditoria, usuarios }) => {
+      next: ({ auditoria, conteo, usuarios }) => {
         this.resaltarCambios(this.acciones(), auditoria.data, (a) => a.id);
         this.acciones.set(auditoria.data);
-        this.total.set(auditoria.total);
+        this.total.set(conteo.total);
         this.nombrePorUsuario.set(
           new Map(
             usuarios.data.map((u) => [u.id, [u.nombres, u.apellidos].filter(Boolean).join(' ').trim() || u.correo]),
@@ -662,16 +542,13 @@ export class AuditoriaPageComponent {
     this.panelId.set(null);
   }
 
-  /** `(volver)` de `app-pantalla-estado` — mismo criterio que
-   * `EmpresasPageComponent.volver()`. */
+  /** «Volver al inicio» de la pantalla de error: va a la portada de staff. */
   protected volver(): void {
-    this.router.navigateByUrl('/auditoria');
+    this.router.navigateByUrl('/');
   }
 
-  /** El panel emite la entidad al pedir "Ver todo el rastro" (ver
-   * `AccionDetallePanelComponent.verRastro`) — acá se arma el filtro
-   * transversal y se cierra el panel, mismo comportamiento que tenía
-   * `verRastroCompleto()` antes de la extracción. */
+  /** "Ver todo el rastro" del panel: filtra por esa entidad, limpia lente y
+   * búsqueda y cierra el panel. */
   protected onVerRastro(evt: { entidad: string; entidadId: string }): void {
     this.rastro.set(evt);
     this.panelId.set(null);
@@ -758,4 +635,22 @@ export class AuditoriaPageComponent {
     const d = new Date(iso);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
+}
+
+/**
+ * Describe solo lo que de verdad pasó en una tanda de inicios de sesión fallidos
+ * desde una misma IP: cuántas cuentas probaron, si fue seguido, fuera de hora o
+ * fuera del navegador.
+ */
+function detalleIntentos(intentos: AccionLeible[]): string {
+  const cuentas = new Set(intentos.map((a) => String(a.cuerpo?.['correo'] ?? '').trim().toLowerCase()).filter(Boolean)).size;
+  const tiempos = intentos.map((a) => a.fechaMs);
+  const seguidos = Math.max(...tiempos) - Math.min(...tiempos) <= RAFAGA_MS;
+  const partes = [
+    cuentas > 1 ? `Probaron con ${cuentas} cuentas distintas` : cuentas === 1 ? 'Probaron varias veces la misma cuenta' : 'Fallaron varias veces',
+    seguidos ? 'en pocos minutos' : 'en distintos momentos',
+  ];
+  if (intentos.every((a) => a.fueraDeHora)) partes.push('fuera del horario de trabajo');
+  const herramienta = intentos.every((a) => !a.agenteEsNavegador);
+  return `${partes.join(', ')}${herramienta ? ', y desde una herramienta, no desde un navegador' : ''}.`;
 }

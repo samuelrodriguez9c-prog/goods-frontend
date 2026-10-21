@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Empresa, EmpresaConDueno, EstadoEmpresa, RespuestaPaginada } from './models/empresa.model';
 
-/** Estado de la conexión de WhatsApp de una Empresa (PROPUESTA_WHATSAPP.md §8). */
+/** Estado de la conexión de WhatsApp de una Empresa. */
 export interface ConexionWhatsapp {
   cuenta: {
     numero: string;
@@ -26,30 +26,22 @@ export interface ConexionWhatsapp {
   };
 }
 
-/** Una decisión de staff sobre un módulo puntual, del cuerpo de `PATCH
- * /empresas/:id/llamada-finalizada` (§11.7 de
- * PROPUESTA_MODULOS_EXTRA_POR_EMPRESA.md) — espejo de `ModuloFinalDto`
- * del backend, sin `motivo` (acá no hace falta justificar cada línea). */
+/** Decisión de staff sobre un módulo al finalizar la llamada de alta (sin
+ * `motivo`: no hace falta justificar cada línea). */
 export interface ModuloFinalPayload {
   moduloId: number;
   tipo: 'concedido' | 'revocado';
 }
 
-/** Campos editables desde el panel de detalle en cualquier estado (§3.2 /
- * `UpdateEmpresaDto` del backend) — a propósito sin `nombre`, ver
- * `corregirNombre`. */
+/** Campos editables en cualquier estado; sin `nombre` a propósito (ver `corregirNombre`). */
 export interface DatosEditablesEmpresa {
   rubro?: string;
   correoContacto?: string;
   telefonoContacto?: string;
 }
 
-/** Filtros de `GET /empresas` que soporta `ListarEmpresasQueryDto` del
- * backend (§3.1/§11 Paso 2) — mismo patrón que `FiltroAuditoria` de
- * `AuditoriaService`. El filtro de plan de §3.1 NO está acá a propósito:
- * el backend todavía no lo resuelve en servidor (ver el comentario en
- * `ListarEmpresasQueryDto`), así que `EmpresasPageComponent` lo aplica en
- * memoria sobre `filas()` en vez de mandarlo como query param. */
+/** Filtros de servidor de `GET /empresas`. El de plan no está porque el
+ * backend no lo resuelve: `EmpresasPageComponent` lo aplica en memoria. */
 export interface FiltroEmpresa {
   estado?: EstadoEmpresa;
   buscar?: string;
@@ -59,16 +51,7 @@ export interface FiltroEmpresa {
   page?: number;
 }
 
-/**
- * `GET /empresas` y el resto de los endpoints del asistente de alta
- * asistida (PROPUESTA_FLUJO_ALTA_ASISTIDA.md §5/§10/§11) — todos exigen
- * permisos (`empresas.ver`/`empresas.gestionar_alta`/`empresas.rechazar`,
- * `empresas.editar`) que solo tiene el rol `staff_goods` (ver
- * PIVOTE_SAAS_MULTITENANT.md §8 paso 4, "Hallazgo de seguridad corregido
- * en el camino"), así que este servicio solo tiene sentido acá, en
- * `staff` — `admin` ni siquiera podría llamarlo (403).
- */
-/** Un renglón del historial de la Empresa (ver `EmpresaActividadService` del backend). */
+/** Un renglón del historial de la Empresa. */
 export interface ActividadEmpresa {
   fecha: string;
   tipo: 'alta' | 'estado' | 'cobro' | 'modulo' | 'solicitud' | 'datos';
@@ -76,20 +59,19 @@ export interface ActividadEmpresa {
   quien: string | null;
 }
 
+/**
+ * Empresas y el flujo de alta asistida. Todos los endpoints exigen permisos
+ * `empresas.*` de staff: desde `admin` responderían 403.
+ */
 @Injectable({ providedIn: 'root' })
 export class EmpresaService {
   private readonly http = inject(HttpClient);
 
-  /** `pageSize=100` (el máximo que acepta `PaginationQueryDto`, ver el
-   * backend) en vez de paginar de verdad — primera pasada de esta
-   * pantalla (PIVOTE_SAAS_MULTITENANT.md §8 paso 5): agregar controles de
-   * paginación reales queda para cuando la cantidad de Empresas lo
-   * justifique.
+  /**
+   * Una página de 100 Empresas (el máximo del backend); para todas, usa `traerTodo`.
    *
-   * `filtro` cubre los filtros de servidor de §3.1/§11 Paso 2 (ver
-   * `FiltroEmpresa`) — sigue aceptando pasar solo el estado como antes
-   * (`listar('pendiente')`), porque `estado` es el único campo de
-   * `FiltroEmpresa`. */
+   * @param filtro - Filtros de servidor, o solo el estado como atajo (`listar('pendiente')`).
+   */
   listar(filtro: EstadoEmpresa | FiltroEmpresa = {}): Observable<RespuestaPaginada<Empresa>> {
     const f: FiltroEmpresa = typeof filtro === 'string' ? { estado: filtro } : filtro;
     let params = new HttpParams().set('pageSize', 100).set('page', f.page ?? 1);
@@ -110,35 +92,29 @@ export class EmpresaService {
     });
   }
 
-  /** `GET /empresas/:id` — a diferencia de `listar()`, esta sí trae
-   * `duenoUsuario` (ver `EmpresaConDueno`), para el panel de detalle
-   * (§3.2) y el asistente de activación (§4). */
+  /** A diferencia de `listar()`, trae `duenoUsuario`. */
   obtenerUno(id: number): Observable<EmpresaConDueno> {
     return this.http.get<EmpresaConDueno>(`${environment.apiUrl}/empresas/${id}`);
   }
 
-  /** `GET /empresas/:id/actividad` — historial completo (alta, estado, cobros, módulos, solicitudes, datos). */
   actividad(id: number): Observable<ActividadEmpresa[]> {
     return this.http.get<ActividadEmpresa[]>(`${environment.apiUrl}/empresas/${id}/actividad`);
   }
 
-  /** `GET /whatsapp/empresas/:id/conexion` — si el número de WhatsApp está conectado (nunca los chats). */
+  /** Si el número de WhatsApp está conectado y cuánto se usa; nunca trae los chats. */
   whatsapp(id: number): Observable<ConexionWhatsapp> {
     return this.http.get<ConexionWhatsapp>(`${environment.apiUrl}/whatsapp/empresas/${id}/conexion`);
   }
 
-  /** Legado — activa la Empresa de un tirón (crea el Usuario dueño y
-   * dispara el correo, todo en un solo paso). El backend lo mantiene
-   * intacto a propósito como código de vuelta (ver §10 Paso 3 punto 8 de
-   * la propuesta), pero el asistente nuevo de §4/§11 no lo llama más: usa
-   * `llamadaFinalizada` en su lugar, que es el mismo efecto repartido en
-   * los pasos del asistente. */
+  /**
+   * Activa la Empresa en un solo paso: crea el usuario dueño y le manda el correo.
+   * @deprecated Usa `llamadaFinalizada`; el asistente de activación ya no llama a este.
+   */
   activar(id: number): Observable<Empresa> {
     return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/activar`, {});
   }
 
-  /** `solicitud_recibida` → `pendiente` (botón "Mandar a Altas
-   * pendientes" del panel de detalle, §11 Paso 3). */
+  /** `solicitud_recibida` → `pendiente`. */
   enviarAAltasPendientes(id: number): Observable<Empresa> {
     return this.http.post<Empresa>(
       `${environment.apiUrl}/empresas/${id}/enviar-a-altas-pendientes`,
@@ -146,45 +122,37 @@ export class EmpresaService {
     );
   }
 
-  /** Rubro/correo/teléfono — editable en cualquier estado desde el panel
-   * de detalle (§3.2), a propósito sin `nombre` (ver `corregirNombre`). */
   actualizar(id: number, datos: DatosEditablesEmpresa): Observable<Empresa> {
     return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}`, datos);
   }
 
-  /** Solo desde el paso 1 del asistente de activación, y solo mientras la
-   * Empresa no está `activa` (el backend devuelve 409 si ya lo está, ver
-   * `CorregirNombreEmpresaDto`). */
+  /** Corrige el nombre durante el alta. Responde 409 si la Empresa ya está `activa`. */
   corregirNombre(id: number, nombre: string): Observable<Empresa> {
     return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/nombre`, { nombre });
   }
 
-  /** Botón "Programar llamada" — `fechaHora` en formato ISO, tal como lo
-   * da `<input type="datetime-local">` + `new Date(...).toISOString()`. */
+  /** @param fechaHora - ISO completo (`new Date(valorDelInput).toISOString()`), no el valor crudo de `datetime-local`. */
   programarLlamada(id: number, fechaHora: string): Observable<Empresa> {
     return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/programar-llamada`, {
       fechaHora,
     });
   }
 
-  /** El paso central del asistente (§4 paso 1 → paso 2): crea el Usuario
-   * dueño sin contraseña, pasa a `informacion_corroborada` y manda el
-   * enlace de confirmación — todo en esta única llamada.
+  /**
+   * Cierra la llamada de alta: crea el usuario dueño sin contraseña, pasa la
+   * Empresa a `informacion_corroborada` y le manda el enlace de confirmación.
    *
-   * `modulosFinales` (§11.7, Fase 2 paso 5): la lista final de excepciones
-   * de módulo que arma `ActivarEmpresaWizardComponent`, pre-cargada con
-   * `GestionAlta.modulosSolicitados` pero editable por staff — se crean
-   * como `EmpresaModulo` reales en esta misma llamada. */
+   * @param modulosFinales - Excepciones de módulo que se crean en la misma llamada.
+   * @param diasPrueba - Días de prueba acordados; sin él, se usan los del plan.
+   */
   llamadaFinalizada(id: number, modulosFinales?: ModuloFinalPayload[], diasPrueba?: number): Observable<Empresa> {
     return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/llamada-finalizada`, {
       modulosFinales,
-      // Días de prueba acordados en la llamada (2026-10-10). Sin el campo, los del plan.
       ...(diasPrueba !== undefined ? { diasPrueba } : {}),
     });
   }
 
-  /** Botón "Reenviar enlace" del paso 2 del asistente — mismo mecanismo,
-   * token nuevo, no duplica el Usuario ya creado. */
+  /** Reenvía el enlace de confirmación con un token nuevo, sin duplicar el usuario. */
   reenviarEnlace(id: number): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(
       `${environment.apiUrl}/empresas/${id}/reenviar-enlace`,
@@ -192,13 +160,12 @@ export class EmpresaService {
     );
   }
 
-  /** `motivo` es obligatorio del lado del backend (`RechazarEmpresaDto`). */
+  /** @param motivo - Obligatorio para el backend. */
   rechazar(id: number, motivo: string): Observable<Empresa> {
     return this.http.patch<Empresa>(`${environment.apiUrl}/empresas/${id}/rechazar`, { motivo });
   }
 
-  // ── Ciclo de vida de una Empresa activa (2026-10-04) ─────────────────
-  // Permiso `empresas.cambiar_estado`. Ver `CicloEmpresaComponent`.
+  // Ciclo de vida de una Empresa activa (permiso `empresas.cambiar_estado`).
 
   /** `activa` → `suspendida` (la suscripción no se toca). */
   suspender(id: number, motivo: string): Observable<Empresa> {

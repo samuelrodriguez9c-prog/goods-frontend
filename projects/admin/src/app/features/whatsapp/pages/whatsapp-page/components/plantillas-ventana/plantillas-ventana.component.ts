@@ -7,8 +7,9 @@ import { DatosPlantilla, VARIABLES, llenarVariables, tipoVariable } from '../../
 
 /**
  * Ventana de 24 h cerrada: en lugar del compositor, las plantillas aprobadas
- * (tipo y costo de cada una). Al elegir una se llenan sus variables (la
- * primera con el nombre del cliente), se ve cómo le llega y se envía. Una de
+ * (tipo y costo de cada una). Al elegir una se llenan sus variables según de
+ * dónde sale cada una (nombre, pedido, producto…), se ve cómo le llega y se
+ * envía. Una de
  * promoción queda bloqueada si el cliente no acepta promociones.
  */
 @Component({

@@ -1,0 +1,49 @@
+@let p = producto();
+@let k = indice();
+@let tag = st.etiqueta(p);
+@let qty = st.cantidad(p.id);
+<article revelar [revelarDelay]="(k % 4) * 90" class="flex flex-col items-center text-center">
+  <div class="relative aspect-[4/5] w-full">
+    <button type="button" (click)="st.abrirDetalle(p)" [attr.aria-label]="'Ver ' + p.nombre"
+      class="absolute inset-0 cursor-pointer overflow-hidden rounded-[999px_999px_36px_36px] border-0 p-0 transition-transform duration-[600ms] ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1.5" [style.background]="st.tono(p)">
+      @if (p.imagenes[0]) {
+        <img [src]="p.imagenes[0]" [alt]="p.nombre" loading="lazy" class="size-full object-cover" [style.opacity]="p.agotado ? 0.4 : 1" />
+      } @else {
+        <div class="absolute inset-x-[14%] top-[20%] aspect-square" [class]="st.forma(p)" [style.background]="st.tonoFuerte(p)" [style.opacity]="p.agotado ? 0.4 : 1"></div>
+        <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-display text-[120px] font-extrabold leading-none text-[rgba(11,61,51,.13)] [font-variation-settings:'wdth'_72] md:text-[180px]" [style.opacity]="p.agotado ? 0.4 : 1">{{ st.inicial(p.nombre) }}</span>
+      }
+      @if (p.agotado) {
+        <span class="absolute bottom-11 left-1/2 flex h-8 -translate-x-1/2 items-center whitespace-nowrap rounded-full bg-[rgba(242,247,244,.85)] px-3.5 text-[12.5px] font-semibold text-texto-2 backdrop-blur-[6px]">Agotado por ahora</span>
+      }
+    </button>
+    @if (tag) {
+      <span class="pointer-events-none absolute right-[-6px] top-[14%] grid size-[62px] -rotate-10 place-items-center md:size-[76px]">
+        <span class="forma-tag absolute inset-0" [style.background]="tag.bg"></span>
+        <span class="relative whitespace-pre-line text-[12.5px] font-bold leading-[1.05] tabular-nums" [style.color]="tag.fg">{{ tag.texto }}</span>
+      </span>
+    }
+    @if (!p.agotado && !qty) {
+      <button type="button" (click)="st.agregar(p, $event)" aria-label="Agregar al pedido"
+        class="absolute bottom-[-26px] left-1/2 -ml-7 grid size-14 place-items-center rounded-full bg-bosque text-hoja shadow-[0_0_0_6px_#f2f7f4] transition-[transform,background-color,color] duration-300 ease-[cubic-bezier(.3,1.5,.5,1)] hover:rotate-90 hover:scale-110 hover:bg-wa hover:text-noche active:scale-90">
+        <tabler-icon [icon]="i.mas" [size]="24" [stroke]="2" />
+      </button>
+    }
+    @if (!p.agotado && qty) {
+      <span class="animate-fundido absolute bottom-[-26px] left-1/2 flex h-14 -translate-x-1/2 items-center rounded-full bg-bosque px-[5px] text-hoja shadow-[0_0_0_6px_#f2f7f4]">
+        <button type="button" (click)="st.cambiar(p, -1)" aria-label="Quitar uno" class="grid size-[46px] place-items-center rounded-full text-inherit hover:bg-white/10"><tabler-icon [icon]="i.menos" [size]="18" [stroke]="2" /></button>
+        <span class="min-w-6 text-center text-base font-bold tabular-nums">{{ qty }}</span>
+        <button type="button" (click)="st.agregar(p, $event)" aria-label="Agregar uno" class="grid size-[46px] place-items-center rounded-full bg-wa text-noche"><tabler-icon [icon]="i.mas" [size]="18" [stroke]="2" /></button>
+      </span>
+    }
+  </div>
+  <div class="mt-11 flex max-w-full flex-col items-center gap-1.5 px-2">
+    <h3 (click)="st.abrirDetalle(p)" class="m-0 cursor-pointer text-balance text-[15px] font-semibold leading-tight tracking-[-0.01em] text-bosque md:text-[17px]">{{ p.nombre }}</h3>
+    @if (!st.movil() && p.descripcion) { <p class="m-0 line-clamp-2 max-w-[34ch] text-balance text-[13.5px] leading-[1.45] text-gris">{{ p.descripcion }}</p> }
+    <div class="mt-1.5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 tabular-nums">
+      <span class="text-[17px] font-bold" [class.text-teal]="!!p.precioAntes" [class.text-bosque]="!p.precioAntes">{{ st.monto(p.precio) }}</span>
+      @if (p.precioAntes) { <s class="text-[13px] text-gris-2">{{ st.monto(p.precioAntes) }}</s> }
+      <span class="size-1 rounded-full bg-[#b8d4c8]"></span>
+      <a [href]="st.waProducto(p)" target="_blank" rel="noopener" class="flex items-center gap-[5px] text-[13px] font-medium text-teal no-underline hover:text-bosque"><tabler-icon [icon]="i.wa" [size]="16" [stroke]="2" />{{ p.agotado ? 'Avísame cuando llegue' : 'Preguntar' }}</a>
+    </div>
+  </div>
+</article>

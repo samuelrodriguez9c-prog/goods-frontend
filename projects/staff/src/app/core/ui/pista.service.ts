@@ -1,4 +1,3 @@
-// projects/staff/src/app/core/ui/pista.service.ts
 import { Injectable, signal } from '@angular/core';
 
 export type TipoPista = 'navegar' | 'hecho' | 'atajo' | 'filtro';
@@ -19,16 +18,15 @@ const CORTA = 2_200;
 const LARGA = 5_000;
 
 /**
- * Aviso liviano abajo al centro (LEEME §18). Confirma algo que YA pasó.
- * Una sola a la vez: la nueva reemplaza a la anterior. Nunca para errores
- * ni para operaciones que llaman al backend y pueden fallar — eso es
- * `AlertaService` (§12).
+ * Aviso liviano abajo al centro que confirma algo que ya pasó. Una sola a la
+ * vez: la nueva reemplaza a la anterior. No es para errores ni para
+ * operaciones con el backend que pueden fallar: eso va en `AlertaService`.
  *
- *   pista.navegar('Settings · Perfil');
- *   pista.hecho('Código de referido copiado');
- *   pista.hecho('5 marcadas como leídas', () => deshacer());
- *   pista.atajo('A', 'Asignada a vos');
- *   pista.filtro('Solicitudes', () => filtro.set(null));
+ * @example
+ * pista.navegar('Settings · Perfil');
+ * pista.hecho('5 marcadas como leídas', () => deshacer());
+ * pista.atajo('A', 'Asignada a ti');
+ * pista.filtro('Solicitudes', () => filtro.set(null));
  */
 @Injectable({ providedIn: 'root' })
 export class PistaService {
@@ -43,6 +41,7 @@ export class PistaService {
     this.mostrar({ tipo: 'navegar', prefijo: 'Ir a ', texto: destino });
   }
 
+  /** @param deshacer - Si se pasa, muestra "Deshacer" y la pista dura más. */
   hecho(texto: string, deshacer?: () => void): void {
     this.mostrar({ tipo: 'hecho', prefijo: '', texto, accion: deshacer ? 'Deshacer' : undefined, fn: deshacer });
   }
@@ -55,7 +54,7 @@ export class PistaService {
     this.mostrar({ tipo: 'filtro', prefijo: 'Mostrando solo ', texto: nombre, accion: 'Quitar', fn: quitar });
   }
 
-  /** Botón de acción (Deshacer / Quitar). */
+  /** Botón de acción (Deshacer / Quitar): oculta la pista y corre la acción 120 ms después. */
   ejecutarAccion(): void {
     const fn = this.actual()?.fn;
     this.ocultar();
@@ -67,6 +66,7 @@ export class PistaService {
     this.pausada.set(true);
   }
 
+  /** Al salir el mouse, se cierra 1,2 s después (no reinicia la duración completa). */
   reanudar(): void {
     this.pausada.set(false);
     this.programarCierre(1_200);

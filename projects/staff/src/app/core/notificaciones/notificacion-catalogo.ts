@@ -1,8 +1,5 @@
-// projects/staff/src/app/core/notificaciones/notificacion-catalogo.ts
-//
-// Categoría, ícono, etiqueta, acción y destino por tipo — lo comparten la
-// campanita (`TopbarComponent`) y la página (`NotificacionesPageComponent`)
-// — LEEME §17, 2026-09-24.
+// Categoría, ícono, etiqueta, acción y destino por tipo de notificación;
+// lo comparten la campanita (`TopbarComponent`) y `NotificacionesPageComponent`.
 import {
   IconBuildingPlus,
   IconBuildingStore,
@@ -102,8 +99,8 @@ export const TIPOS: Record<TipoNotificacion, DefTipo> = {
     ruta: () => ({ url: '/suscripciones', destino: 'Suscripciones' }),
     accionable: true,
   },
-  // Solicitudes de personalización (2026-10-04): van con Empresas (es un
-  // pedido de una Empresa) y abren la solicitud directo.
+  // Solicitudes de personalización: van con Empresas (las pide una Empresa)
+  // y abren la solicitud directo.
   solicitud_nueva: {
     cat: 'empresas',
     etiqueta: 'Solicitud nueva',
@@ -149,6 +146,7 @@ export const TIPOS: Record<TipoNotificacion, DefTipo> = {
   mensaje_chat: { cat: 'otras', etiqueta: 'Mensaje de chat', icono: IconMessage, accion: 'Ver', ruta: () => ({ url: '/notificaciones', destino: 'Notificaciones' }) },
 };
 
+/** Definición del tipo; si el backend manda uno desconocido, usa la de `mensaje_chat`. */
 export function defTipo(tipo: TipoNotificacion): DefTipo {
   return TIPOS[tipo] ?? TIPOS.mensaje_chat;
 }
@@ -182,6 +180,7 @@ export function tituloDia(iso: string): string {
   return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
 }
 
+/** Agrupa por `tituloDia`, respetando el orden en que vienen las filas. */
 export function agruparPorDia<T extends { n: Notificacion }>(filas: T[]): { titulo: string; items: T[] }[] {
   const grupos: { titulo: string; items: T[] }[] = [];
   for (const f of filas) {

@@ -1,0 +1,36 @@
+import {
+  IconAlertCircle,
+  IconArrowDown,
+  IconArrowLeft,
+  IconArrowRight,
+  IconArrowUp,
+  IconArrowUpRight,
+  IconBrandFacebook,
+  IconBrandInstagram,
+  IconBrandTiktok,
+  IconBrandWhatsapp,
+  IconBuildingStore,
+  IconCheck,
+  IconChecks,
+  IconCircleCheckFilled,
+  IconMapPin,
+  IconMinus,
+  IconPlus,
+  IconSearch,
+  IconSearchOff,
+  IconShoppingBag,
+  IconStarFilled,
+  IconTrash,
+  IconTruckDelivery,
+  IconUser,
+  IconX,
+} from '@tabler/icons-angular';
+
+/** Íconos de la tienda pública, con nombres cortos para las plantillas (`i.wa`, `i.mas`…). */
+export const ICONOS = {
+  wa: IconBrandWhatsapp, ig: IconBrandInstagram, fb: IconBrandFacebook, tt: IconBrandTiktok,
+  mas: IconPlus, menos: IconMinus, quitar: IconTrash, cerrar: IconX, buscar: IconSearch, sinResultados: IconSearchOff,
+  bolsa: IconShoppingBag, tienda: IconBuildingStore, camion: IconTruckDelivery, usuario: IconUser, check: IconCheck, checks: IconChecks,
+  checkLleno: IconCircleCheckFilled, alerta: IconAlertCircle, pin: IconMapPin, estrella: IconStarFilled,
+  abajo: IconArrowDown, arriba: IconArrowUp, izq: IconArrowLeft, der: IconArrowRight, diagonal: IconArrowUpRight,
+};

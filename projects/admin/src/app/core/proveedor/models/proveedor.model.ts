@@ -1,7 +1,7 @@
-// Espejo de la entidad `Proveedor` del backend
-// (`modules/negocio/proveedor/entities/proveedor.entity.ts`). El modo
-// documento del Asistente de IA solo usa id/nombre/activo; la pantalla de
-// Proveedores (Productos v5) usa el resto.
+import { Atributos } from '../../campos/campo-personalizado.model';
+
+// Espejo de `Proveedor` del backend. El modo documento del asistente solo usa
+// id, nombre y activo; la pantalla de Proveedores usa el resto.
 export interface Proveedor {
   id: number;
   nombre: string;
@@ -14,6 +14,8 @@ export interface Proveedor {
   notas?: string | null;
   /** Días de entrega: 1 = lunes … 6 = sábado. */
   diasEntrega?: number[];
+  /** Valores de los campos propios de la Empresa, por clave. */
+  atributos: Atributos;
   creadoEn?: string;
   actualizadoEn?: string;
 }
@@ -29,4 +31,6 @@ export interface ProveedorPayload {
   notas?: string | null;
   activo?: boolean;
   diasEntrega?: number[];
+  /** `null` o `''` quita la clave; si se manda, el backend exige los obligatorios. */
+  atributos?: Record<string, string | number | boolean | null>;
 }

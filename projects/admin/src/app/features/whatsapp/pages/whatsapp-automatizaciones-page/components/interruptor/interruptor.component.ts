@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-/** Interruptor chico (32×19) del rediseño de Automático: oscuro prendido, gris apagado. */
+/** Interruptor chico (32×19) de Automático: oscuro prendido, gris apagado. */
 @Component({
   selector: 'app-interruptor',
   changeDetection: ChangeDetectionStrategy.OnPush,

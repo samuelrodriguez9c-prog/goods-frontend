@@ -2,7 +2,7 @@ import { CatalogoStore } from './catalogo.store';
 import { codigoCompra, dias } from './formato';
 import { CompraV5, ProductoV5, ProveedorV5, nivelStock } from './modelos';
 
-/** Derivados de Proveedores y Compras (prototipo: proveedores-vista.js / compras-vista.js). */
+// Derivados de Proveedores y Compras.
 
 export const TONOS: [string, string][] = [
   ['#e0f7f5', '#00605b'], ['#fff1d6', '#8a5a00'], ['#eef2ff', '#3730a3'], ['#fce7f3', '#9d174d'], ['#e6f6ec', '#087b5d'], ['#f1f1f1', '#303030'],

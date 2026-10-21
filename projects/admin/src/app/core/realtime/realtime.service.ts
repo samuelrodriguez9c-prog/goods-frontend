@@ -5,17 +5,12 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from '../auth/auth.service';
 
 /**
- * Cliente de `RealtimeGateway` (backend, `modules/realtime/`) para `admin`
- * — espejo exacto de `staff/core/realtime/realtime.service.ts` (mismo
- * patrón: un socket único por sesión, `providedIn: 'root'`, conexión
- * perezosa recién al primer `escuchar()`, autenticación vía
- * `auth: { token }` con el `accessToken` de `AuthService`). Primera vez
- * que `admin` necesita esto — lo usa `MessageListPageComponent` para
- * recibir mensajes nuevos en tiempo real (sala `usuario:<id>`, ver
- * `RealtimeGateway.handleConnection` del backend).
+ * Socket único de la sesión contra `RealtimeGateway`. Se conecta en el
+ * primer `escuchar()` y se autentica con el `accessToken` de `AuthService`.
  *
- * No maneja reconexión con un token renovado (misma limitación aceptada
- * del lado de `staff`, ver ese archivo).
+ * @remarks
+ * No se reconecta con el token renovado: el socket sigue con el token con el
+ * que se abrió.
  */
 @Injectable({ providedIn: 'root' })
 export class RealtimeService {
@@ -32,9 +27,11 @@ export class RealtimeService {
     return this.socket;
   }
 
-  /** Observable "frío": no conecta ni registra nada hasta que alguien se
-   * suscribe. Al desuscribirse se saca el listener, pero el socket queda
-   * conectado (compartido por toda la app). */
+  /**
+   * Abre el socket si hace falta y devuelve el evento como Observable. El
+   * listener se registra al suscribirse y se saca al desuscribirse; el
+   * socket queda abierto para el resto de la app.
+   */
   escuchar<T>(evento: string): Observable<T> {
     const socket = this.conectar();
     return new Observable<T>((subscriber) => {
@@ -42,13 +39,5 @@ export class RealtimeService {
       socket.on(evento, handler);
       return () => socket.off(evento, handler);
     });
-  }
-
-  /** Abre el socket sin necesitar escuchar ningún evento puntual. No se
-   * llama desde `ShellComponent` (a diferencia de `staff`) — acá el socket
-   * se conecta recién cuando el usuario entra a Messages, que es la única
-   * pantalla de `admin` que lo necesita por ahora. */
-  mantenerConectado(): void {
-    this.conectar();
   }
 }

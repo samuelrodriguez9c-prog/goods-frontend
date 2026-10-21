@@ -5,12 +5,12 @@ import { EstadoIconoComponent } from '../estado-icono/estado-icono.component';
 /**
  * La alerta que se pone **encima de la pantalla**. Dos variantes, misma pieza:
  *
- * - `tarjeta` — modal blanco centrado sobre la pantalla atenuada. Es la que
- *   lleva acciones (Reintentar, Ver la Empresa): el botón necesita un plano
- *   sólido donde apoyarse.
+ * - `tarjeta` — modal blanco centrado sobre la pantalla atenuada. Pensada
+ *   para las que llevan acciones (Reintentar, Ver la Empresa): el botón
+ *   necesita un plano sólido donde apoyarse.
  * - `velo` — sin tarjeta: el ícono y dos líneas flotan directo sobre el velo
- *   oscuro con blur. Para operaciones sin decisión, donde el que manda es el
- *   estado y no el contenedor.
+ *   oscuro con blur. Pensada para operaciones sin decisión, donde manda el
+ *   estado; si trae `primario`/`secundario`, también los muestra.
  *
  * Va una sola vez en el shell, junto a `app-alerta-pila`.
  */

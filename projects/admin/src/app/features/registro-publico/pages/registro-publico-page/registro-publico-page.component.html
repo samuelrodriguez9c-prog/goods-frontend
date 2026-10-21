@@ -1,5 +1,5 @@
 <div class="flex min-h-screen flex-col bg-login-bg text-white">
-  <!-- ══ Topbar: logo izq · stepper centro · login der ══ -->
+  <!-- Topbar: logo izq · stepper centro · login der -->
   <header class="sticky top-0 z-10 border-b border-white/[0.08] bg-login-bg/90 backdrop-blur">
     <div class="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-4 px-8">
       <a routerLink="/" class="flex h-16 items-center" aria-label="Goods">
@@ -64,7 +64,7 @@
     </div>
   </header>
 
-  <!-- ══ Contenido ══ -->
+  <!-- Contenido -->
   <main class="mx-auto grid w-full max-w-[1120px] flex-1 items-start gap-8 px-6 pb-6 pt-10 lg:grid-cols-[minmax(0,1fr)_340px]">
     <section class="flex min-h-[560px] flex-col pt-2">
       <!-- Encabezado del paso -->
@@ -105,7 +105,7 @@
         </p>
       </div>
 
-      <!-- ── 1 · Plan ── -->
+      <!-- 1 · Plan -->
       @if (paso() === 1) {
         <div class="animate-[fade-in-up_0.3s_ease-out] mt-8 flex flex-col gap-7">
           @if (cargandoPlanes()) {
@@ -163,7 +163,7 @@
                     }
                   </span>
                   @if (p.diasPrueba) {
-                    <!-- Período de prueba (2026-10-10): arranca cuando el cliente activa su cuenta. -->
+                    <!-- Período de prueba: arranca cuando el cliente activa su cuenta. -->
                     <span
                       class="mt-2 inline-flex items-center gap-1.5 self-start rounded-full px-2.5 py-1 text-[11.5px] font-semibold"
                       [class]="on ? 'bg-badge-success-bg text-success-solid' : 'bg-white/[0.08] text-badge-success-bg'"
@@ -267,7 +267,7 @@
         </div>
       }
 
-      <!-- ── 2 y 3 · Campos ── -->
+      <!-- 2 y 3 · Campos -->
       @if (paso() === 2 || paso() === 3) {
         <div class="animate-[fade-in-up_0.3s_ease-out] mt-8 flex flex-col gap-[18px]">
           @if (paso() === 2) {
@@ -343,7 +343,7 @@
         </div>
       }
 
-      <!-- ── 4 · Módulos extra ── -->
+      <!-- 4 · Módulos extra -->
       @if (paso() === 4) {
         <div class="animate-[fade-in-up_0.3s_ease-out] mt-8 flex flex-col gap-3.5">
           @if (modulosExtraDisponibles().length) {
@@ -391,7 +391,7 @@
         </div>
       }
 
-      <!-- ── 5 · Enviado ── -->
+      <!-- 5 · Enviado -->
       @if (paso() === 5) {
         <div class="mt-7 grid gap-3 sm:grid-cols-3">
           @for (s of siguientes(); track s.n; let i = $index) {
@@ -444,9 +444,8 @@
       </div>
     </section>
 
-    <!-- ══ Pre-factura en vivo ══
-         Tirilla tipo factura POS (rediseño 2026-10-05): emisor, documento,
-         adquiriente, ítems, totales, pago y CUFE en la parte con scroll
+    <!-- Pre-factura en vivo: tirilla tipo factura POS. Emisor, documento,
+         adquiriente, ítems, totales, pago y CUFE van en la parte con scroll
          propio; el talón (folio, avance y sello) queda siempre visible. -->
     <aside class="flex flex-col gap-2.5 lg:sticky lg:top-[104px]">
       <span class="pl-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Tu solicitud, en vivo</span>

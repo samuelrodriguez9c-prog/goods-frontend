@@ -1,9 +1,4 @@
-<!-- projects/staff/src/app/features/roles/pages/roles-page/roles-page.component.html -->
-
 <div class="p-6">
-  <!-- `pt-2` (no `p-8` arriba): para alinear el título con el sidebar —
-       ver el comentario equivalente en `empresas-page.component.html`. -->
-  <!-- Migrada a v2 (badge + lectura arriba) por LEEME.md §16, 2026-09-24. -->
   <app-cabecera-modulo
     titulo="Roles y permisos"
     [periodo]="null"
@@ -22,12 +17,12 @@
       </button>
     </ng-container>
     <ng-container lectura>
-      Quién puede hacer qué, en todo el sistema. Tocá una celda para subir o bajar el nivel de acceso — se guarda
-      cuando confirmás.
+      Quién puede hacer qué, en todo el sistema. Toca una celda para subir o bajar el nivel de acceso — se guarda
+      cuando confirmas.
     </ng-container>
   </app-cabecera-modulo>
 
-  <!-- Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) -->
+  <!-- Aviso "Hay cambios nuevos" -->
   @if (cambiosEnVivo()) {
     <app-aviso-datos-nuevos [cantidad]="cambiosEnVivo()" (actualizar)="actualizarPorCambioEnVivo()" />
   }
@@ -57,52 +52,6 @@
       </span>
     </div>
 
-    <!-- Navegación de la matriz (2026-10-05): con tantos módulos, un salto
-         directo a cada uno, flechas y una barrita de qué parte se ve. -->
-    <!-- <div class="mt-3 flex items-center gap-2">
-      <button
-        type="button"
-        (click)="desplazar(-1)"
-        [disabled]="!hayIzquierda()"
-        aria-label="Ver módulos anteriores"
-        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-gray-600 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] transition-all duration-200 hover:text-gray-900 disabled:opacity-35"
-      >
-        <tabler-icon [icon]="iconos.izquierda" [size]="16" [stroke]="2" />
-      </button>
-      <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div class="flex gap-1 overflow-x-auto [scrollbar-width:none]">
-          @for (m of modulos(); track m.id) {
-            <button
-              type="button"
-              (click)="irAModulo(m.id)"
-              (mouseenter)="moduloHover.set(m.id)"
-              (mouseleave)="moduloHover.set(null)"
-              class="shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-colors duration-150"
-              [class]="moduloHover() === m.id ? 'bg-[#303030] text-white' : 'bg-white text-gray-600 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] hover:text-gray-900'"
-            >
-              {{ m.corto }} <span class="tabular-nums opacity-60">{{ m.acciones.length }}</span>
-            </button>
-          }
-        </div>
-        <span class="relative h-1 overflow-hidden rounded-full bg-[#e3e3e3]">
-          <span
-            class="absolute inset-y-0 rounded-full bg-[#303030] transition-[left,width] duration-150"
-            [style.left.%]="vista().desde"
-            [style.width.%]="vista().ancho"
-          ></span>
-        </span>
-      </div>
-      <button
-        type="button"
-        (click)="desplazar(1)"
-        [disabled]="!hayDerecha()"
-        aria-label="Ver más módulos"
-        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-gray-600 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] transition-all duration-200 hover:text-gray-900 disabled:opacity-35"
-      >
-        <tabler-icon [icon]="iconos.derecha" [size]="16" [stroke]="2" />
-      </button>
-    </div> -->
-
     <div class="relative mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
     <!-- Sombras en los bordes cuando hay más columnas a un lado -->
     <span
@@ -115,21 +64,10 @@
     ></span>
     <div #matriz (scroll)="medirDesplazamiento()" class="overflow-x-auto overflow-y-hidden">
     <div class="w-max min-w-full">
-      <!-- Encabezado: una columna por módulo real del backend. Columnas más
-           anchas a propósito (ajuste "se ve apretado" de 2026-09-22): en vez
-           de achicar todo para que quepa, se deja que el contenedor
-           `overflow-x-auto` haga scroll horizontal. "Rol" y "Total" quedan
-           `sticky` (ajuste "el total no se ve bien" de 2026-09-22, segunda
-           vuelta): con 16+ módulos reales, ensanchar ya no alcanza para que
-           Total quede siempre visible en una pantalla normal — fijo a los
-           dos costados es la solución que no depende del ancho de pantalla
-           ni de cuántos módulos haya. El padding lateral de la fila (antes
-           `px-5` en el `.grid`) se sacó de ahí y se puso como `pl-5`/`pr-5`
-           dentro de las columnas Rol/Total: así `sticky left-0`/`right-0`
-           queda exacto contra el borde del contenedor con scroll, sin
-           depender de un margen negativo para "tapar" el padding (esa
-           primera versión con `left-5`/`-ml-5` dejaba un hueco de ~20px por
-           el que se colaba la celda de al lado — ver ADMIN_DISENO.md). -->
+      <!-- Encabezado: una columna por módulo. "Rol" y "Total" son `sticky` para
+           que Total siga visible con muchos módulos; el padding lateral va en
+           esas columnas (`pl-5`/`pr-5`) y no en la fila, para que el `sticky`
+           quede pegado al borde sin dejar hueco. -->
       <div
         class="grid w-full items-end border-b border-gray-200 bg-[#fafafa] py-3"
         [style.gridTemplateColumns]="plantillaColumnas()"
@@ -206,13 +144,8 @@
               </button>
             </div>
 
-            <!-- Una celda por módulo; un segmento por acción real. Cada
-                 segmento es `flex-1` (mismo reparto) para que el color
-                 llene todo el ancho de la celda en vez de quedar agrupado
-                 chiquito al centro — ajuste "los colores no se extienden"
-                 de 2026-09-22: con columnas más anchas, los chips de ancho
-                 fijo dejaban demasiado blanco alrededor. `s.ancho` queda
-                 como piso mínimo (min-width), no como ancho fijo. -->
+            <!-- Un segmento `flex-1` por acción para que el color llene la celda;
+                 `s.ancho` es solo el mínimo. -->
             @for (c of f.celdas; track c.modulo) {
               <div
                 class="flex items-stretch gap-1 rounded-md px-1.5 py-2.5 transition-colors duration-150"
@@ -299,13 +232,7 @@
   </div>
 }
 
-<!--
-  Panel único: ficha, edición y alta — componente aparte
-  (`RolPanelComponent`, ver su docstring). La página le pasa todo lo que
-  ya tiene armado con el estado compartido (`niveles`/`edits`/`roles`) y
-  escucha sus outputs; el overlay `fixed`, el backdrop transparente y el
-  clic-afuera-cierra viven en el propio `RolPanelComponent`.
--->
+<!-- Panel de ficha, edición y alta -->
 @if (panelAbierto()) {
   <app-rol-panel
     [creando]="creando()"

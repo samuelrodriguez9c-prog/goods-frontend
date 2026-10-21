@@ -35,9 +35,9 @@ export class InventarioService {
   private readonly base = `${environment.apiUrl}/inventario`;
 
   /**
-   * Momento (ms) de la última escritura propia, al salir y al volver. La
-   * página la usa para no contar como "cambio nuevo en vivo" el eco de
-   * `datos:cambio` que el backend emite por nuestra propia escritura.
+   * Momento (ms) de la última escritura propia, al salir y al volver. Sirve
+   * para no contar como «cambio nuevo en vivo» el eco de `datos:cambio` de
+   * nuestra propia escritura.
    */
   ultimaEscritura = 0;
 

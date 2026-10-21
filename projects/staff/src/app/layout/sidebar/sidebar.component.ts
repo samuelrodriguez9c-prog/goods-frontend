@@ -17,74 +17,23 @@ import { CambiosPendientesService } from '../../core/realtime/cambios-pendientes
 interface NavItem {
   label: string;
   path: string;
-  /** Nombre de ícono de Tabler (kebab-case, sin prefijo "Icon") —
-   *  registrado en `app.config.ts` vía `provideTablerIcons`, mismo
-   *  criterio que `admin/layout/sidebar/sidebar.component.ts`. */
+  /** Nombre de ícono de Tabler (kebab-case, sin prefijo "Icon"); tiene que
+   *  estar registrado en `app.config.ts` vía `provideTablerIcons`. */
   icon: string;
   exact: boolean;
-  /** Permiso que hace falta tener para que el item tenga sentido
-   *  mostrarlo — `undefined` para los 3 placeholders (Facturación/
-   *  Ingresos/Soporte) que no pegan contra ningún endpoint protegido
-   *  todavía. Antes de Fase 3 de `PROPUESTA_ROLES_Y_ACCESOS.md`, TODO
-   *  rol de staff (solo existía `staff_goods`) tenía automáticamente el
-   *  permiso de cada item — con roles de staff más chicos
-   *  (`auditoria_goods`, `empleado_goods`) eso deja de ser cierto, así
-   *  que el sidebar ahora oculta lo que la cuenta logueada no puede usar
-   *  en vez de dejarla clickear a un 403. */
+  /** Permiso necesario para mostrar el ítem; sin `permiso` se muestra
+   *  siempre (hoy solo Soporte). Ocultar lo que la cuenta no puede usar
+   *  evita que haga clic y caiga en un 403. */
   permiso?: string;
 }
 
 /**
- * Navegación lateral del panel de staff — mismo lenguaje visual que
- * `admin/layout/sidebar/` (indicador deslizante de primer nivel, mismos
- * tokens de color) pero sin nada de la complejidad de ese sidebar
- * (submenú "árbol" de Products, sección "Sales channels"): acá los 5
- * items son todos de primer nivel, sin hijos — no hace falta esa
- * maquinaria, ver PIVOTE_SAAS_MULTITENANT.md §8 paso 5.
+ * Navegación lateral del panel de staff: lista plana de módulos (sin
+ * submenús a propósito), filtrada por permisos, con una pill que se desliza
+ * entre ítems.
  *
- * Los primeros 5 items son el núcleo del panel de staff aprobado por
- * gerencia en §7.2: Empresas (clientes+plan+estado) y Altas pendientes
- * tienen pantalla real conectada al backend (`GET /empresas`);
- * Facturación, Ingresos y Soporte quedan como placeholder "TODO" — mismo
- * criterio que el Dashboard de `admin` hoy (ver ADMIN_DISENO.md >
- * "Dashboard / Analítica") — porque el backend todavía no tiene un
- * endpoint de historial de pagos, una vista de ingresos agregados, ni el
- * módulo de mensajería adaptado a conversaciones staff↔Empresa (el
- * `ChatModule` existente es cliente↔negocio, de un emprendimiento, no de
- * Goods con sus clientes).
- *
- * Los 5 items que siguen (Planes, Suscripciones, Auditoría, Usuarios,
- * Roles y permisos) se sumaron después (pedido explícito 2026-09-15:
- * "coloca en el sidebar todos los módulos que son de la empresa, todos
- * los que estén en el backend") — son módulos del backend que ya
- * existían (Plan/Suscripcion desde el paso 4 de §8, Auditoría desde
- * §7.5a) pero que hasta ahora no tenían pantalla propia en `staff`, solo
- * se consumían de refilón desde Empresas/Altas pendientes (ver
- * `core/catalog/plan-lookup.util.ts`). Usuarios/Roles y permisos son la
- * excepción a "ya existían sin pantalla": el backend siempre tuvo
- * `UsuarioController`/`RolController`, pero `staff_goods` no tenía los
- * permisos para usarlos (ver la migración
- * `SeedPermisosUsuariosRolesStaffGoods`) — antes solo `admin` podía, y
- * de hecho sobre CUALQUIER usuario de CUALQUIER Empresa hasta el fix de
- * aislamiento por tenant en `UsuarioService` del backend (ver ese
- * archivo para el detalle del hallazgo de seguridad).
- *
- * Sin sección "Administración" (a diferencia de `admin`, que agrupa
- * Usuarios/Roles bajo esa sección con submenú): acá el sidebar sigue
- * siendo plano a propósito (sin árbol de submenús), así que Usuarios y
- * Roles y permisos son dos items de primer nivel más, no una sección
- * aparte.
- *
- * **Settings sí se suma** (pedido explícito 2026-09-22: "agregar la
- * opcion de settings en el sidebar como en el panel de admin"), calcado
- * en posición y estilo del `settingsItem` de `admin` — link simple, sin
- * submenú propio, empujado al fondo con `mt-auto`, fuera del `@for`/del
- * indicador deslizante de primer nivel (ver `sidebar.component.html`).
- * A diferencia de admin, acá no hay una sección "Administración" arriba
- * de él (no aplica, ver el párrafo anterior), así que en staff Settings
- * queda solo en ese bloque de abajo. Su contenido (perfil propio, no
- * gestión de personal ni de roles — eso ya vive arriba) está en
- * `features/settings/`.
+ * Settings va aparte, empujado al fondo con `mt-auto` y fuera del indicador
+ * deslizante. Es el perfil de la propia cuenta, no la gestión de personal.
  */
 @Component({
   selector: 'app-sidebar',
@@ -112,9 +61,7 @@ export class SidebarComponent {
     { label: 'Roles y permisos', path: '/roles', icon: 'shield-lock', exact: false, permiso: 'roles.ver' },
   ];
 
-  /** Fase 3 de `PROPUESTA_ROLES_Y_ACCESOS.md` §5.3 — ver el comentario de
-   *  `NavItem.permiso`. Los 3 placeholders (sin `permiso`) siempre se
-   *  muestran, igual que antes. */
+  /** Ítems cuyo `permiso` tiene la cuenta; los que no piden permiso, siempre. */
   protected readonly navItems = computed(() => {
     const permisos = this.authService.currentUser()?.permisos ?? [];
     return this.todosLosNavItems.filter(
@@ -122,13 +69,9 @@ export class SidebarComponent {
     );
   });
 
-  /** Settings queda fuera de `navItems`/del indicador deslizante de primer
-   *  nivel — mismo criterio que `admin/layout/sidebar/sidebar.component.ts`
-   *  (ver el comentario de esa clase): es un link simple, empujado abajo
-   *  con `mt-auto`. Sin `permiso`: es el perfil de la propia cuenta, algo
-   *  que cualquier rol de staff puede ver/editar (el backend tampoco lo
-   *  gatea — `GET/PATCH /usuarios/:id` permiten el propio id sin permiso
-   *  especial). */
+  /** Fuera de `navItems` y del indicador deslizante. Sin `permiso`: es el
+   *  perfil de la propia cuenta, que cualquier rol de staff puede editar
+   *  (el backend permite `GET/PATCH /usuarios/:id` sobre el propio id). */
   protected readonly settingsItem: NavItem = {
     label: 'Settings',
     path: '/settings',
@@ -136,21 +79,17 @@ export class SidebarComponent {
     exact: true,
   };
 
-  /** Mismo mecanismo que `admin`: una única pill que se desliza entre
-   *  items (hover, o si no hay hover, la ruta activa) — ver
-   *  ADMIN_DISENO.md > "Sidebar > Animación" para el porqué del diseño. */
+  /** Una única pill que se desliza entre ítems: el del hover o, si no hay
+   *  hover, el de la ruta activa. */
   protected readonly hoveredIndex = signal<number | null>(null);
 
   /** Índice del ítem de la ruta actual DENTRO de `navItems()` (-1 si la
    *  ruta no es de la lista, ej. Settings: la pill se oculta).
    *
-   *  Antes salía de `(isActiveChange)` de cada `routerLinkActive`, y eso
-   *  fallaba al entrar directo por URL (2026-10-02): hasta que llega
-   *  `/auth/me` los ítems con `permiso` no se muestran, así que la pill se
-   *  calculaba sobre la lista corta (ej. Facturación quedaba en el índice
-   *  0); cuando la lista crecía, `isActive` no cambiaba y nadie la movía —
-   *  quedaba resaltando Empresas. Calcularlo de la URL + `navItems()` lo
-   *  recalcula solo cuando cambia cualquiera de los dos. */
+   *  Sale de la URL + `navItems()` y no de `(isActiveChange)`: al entrar
+   *  directo por URL, los ítems con `permiso` aparecen recién cuando llega
+   *  `/auth/me`, la lista crece sin que `isActive` cambie y la pill quedaría
+   *  en el índice viejo. */
   private readonly router = inject(Router);
   private readonly url = toSignal(
     this.router.events.pipe(

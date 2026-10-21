@@ -1,13 +1,7 @@
-/**
- * Misma forma que `Notificacion` del backend (`modules/notificacion/`) —
- * campanita real de staff, 2026-09-23 (antes el ícono del topbar de
- * `admin` existía sin lógica, y `staff` ni siquiera lo tenía — ver el
- * comentario viejo de `TopbarComponent`).
- */
+/** Tipos de `Notificacion` del backend. */
 export type TipoNotificacion =
-  // Categoría cliente (no debería aparecer nunca acá — /notificaciones/staff
-  // solo devuelve categoría staff — pero se tipan igual por si el backend
-  // alguna vez cambia).
+  // Categoría cliente: /notificaciones/staff no los devuelve, pero se tipan
+  // por si el backend cambia.
   | 'pedido_estado'
   | 'pago_estado'
   | 'stock_bajo'
@@ -20,15 +14,15 @@ export type TipoNotificacion =
   | 'conversacion_cerrada'
   | 'plan_por_vencer'
   | 'plan_pago_vencido'
-  // Segunda vuelta, mismo día (2026-09-23): avisa quién quedó a cargo de
-  // una conversación — ver ChatService.notificarConversacionAsignada.
+  // Avisa quién quedó a cargo de una conversación.
   | 'conversacion_asignada'
-  // Solicitudes de personalización (2026-10-04).
+  // Solicitudes de personalización.
   | 'solicitud_nueva'
   | 'solicitud_actualizada'
   | 'seguridad_reporte'
   | 'alta_mensaje';
 
+/** Espejo de `Notificacion` del backend. */
 export interface Notificacion {
   id: number;
   usuarioId: number;

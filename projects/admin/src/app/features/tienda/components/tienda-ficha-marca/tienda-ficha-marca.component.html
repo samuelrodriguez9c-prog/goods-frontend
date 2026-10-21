@@ -1,0 +1,47 @@
+@let fx = s.f();
+<section #sec (mouseenter)="s.hov.set('marca')" (mouseleave)="s.hov.set(null)"
+  class="tienda-ficha flex flex-col gap-[18px] rounded-2xl border bg-white p-5 transition-[border-color,box-shadow] duration-[250ms] [animation-delay:.1s]" [style.border-color]="s.borde('marca')" [style.box-shadow]="s.sombra('marca')">
+  <app-tienda-cabeza [icono]="i.badge" titulo="Presentación" sub="Lo primero que ve tu cliente al abrir el enlace." />
+  <div class="flex flex-col gap-2">
+    <app-tienda-etiqueta t="Logo" sub="Cuadrado, de al menos 200 × 200 px. Sin logo se muestra la inicial del negocio." [opc]="true" />
+    @if (!fx.logoUrl) {
+      <label (drop)="alSoltar($event)" (dragover)="$event.preventDefault(); arrastrando.set(true)" (dragleave)="arrastrando.set(false)"
+        class="flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-4 rounded-[14px] bg-[radial-gradient(#e2e2e2_1px,transparent_1px)] bg-[length:16px_16px] px-5 py-6 text-center transition-[box-shadow,background-color] hover:shadow-[inset_0_0_0_1.5px_#2be0d5]"
+        [style.background-color]="arrastrando() ? '#f0fdfc' : '#fafafa'" [style.box-shadow]="arrastrando() ? 'inset 0 0 0 1.5px #2be0d5' : 'inset 0 0 0 1.5px #e5e5e5'">
+        <div class="relative h-[92px] w-[140px] shrink-0 transition-transform duration-300 ease-[cubic-bezier(.3,1.4,.5,1)]" [style.transform]="arrastrando() ? 'scale(1.06) translateY(-2px)' : 'scale(1)'">
+          <span class="absolute left-1.5 top-3.5 grid size-[72px] -rotate-9 place-items-center rounded-[14px] bg-[#1d211e] font-display text-[26px] font-bold text-[#f5f6f3] shadow-[0_0_0_1px_#ececec,0_10px_24px_-16px_rgba(0,0,0,.35)]">{{ s.nombreNegocio().charAt(0) }}</span>
+          <span class="absolute right-1.5 top-3.5 grid size-[72px] rotate-8 place-items-center rounded-[14px] bg-white text-[#c4c4c4] shadow-[0_0_0_1px_#ececec,0_10px_24px_-16px_rgba(0,0,0,.35)]"><tabler-icon [icon]="i.tienda" [size]="22" [stroke]="1.75" /></span>
+          <span class="absolute left-[30px] top-0.5 grid size-20 place-items-center rounded-2xl bg-white text-[#00807a] shadow-[0_0_0_1px_#e5e5e5,0_18px_34px_-18px_rgba(0,0,0,.4)]"><tabler-icon [icon]="i.subir" [size]="28" [stroke]="1.75" /></span>
+        </div>
+        <span class="flex max-w-[340px] flex-col gap-[5px]"><span class="font-display text-[17px] font-semibold tracking-[-0.01em] text-[#111827]">{{ arrastrando() ? 'Suéltalo aquí' : 'Suelta aquí tu logo' }}</span><span class="text-pretty text-[12.5px] leading-[18px] text-[#6b7280]">PNG, JPG o WebP · hasta 4 MB. Mejor con fondo blanco o transparente.</span></span>
+        <span class="flex h-8 items-center gap-1.5 rounded-full bg-[#303030] px-3.5 text-[12.5px] font-medium text-white"><tabler-icon [icon]="i.upload" [size]="14" [stroke]="2" />Elegir archivo</span>
+        <input type="file" accept="image/*" (change)="alElegirLogo($event)" class="hidden" />
+      </label>
+    } @else {
+      <div class="tienda-ficha flex items-center gap-4 rounded-[14px] p-3.5 shadow-[0_0_0_1px_#ececec]">
+        <span class="size-[88px] shrink-0 rounded-[18px] bg-white bg-cover bg-center shadow-[0_0_0_1px_#e5e5e5,0_10px_22px_-14px_rgba(0,0,0,.35)]" [style.background-image]="'url(' + fx.logoUrl + ')'"></span>
+        <span class="flex min-w-0 flex-1 flex-col gap-2">
+          <span class="flex flex-col gap-0.5"><span class="truncate text-[13px] font-semibold text-[#111827]">{{ fx.logoNombre || 'logo' }}</span><span class="text-xs text-[#8a8a8a]">Se ve en la cabecera y al compartir el enlace.</span></span>
+          <span class="flex gap-2">
+            <label class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] hover:shadow-[0_0_0_1px_#b5b5b5]"><tabler-icon [icon]="i.reemplazar" [size]="14" [stroke]="2" />Reemplazar<input type="file" accept="image/*" (change)="alElegirLogo($event)" class="hidden" /></label>
+            <button type="button" (click)="quitarLogo()" class="flex items-center gap-1.5 rounded-full bg-transparent px-3 py-1.5 text-[12.5px] font-medium text-[#b42318] hover:bg-[#fff1f0]"><tabler-icon [icon]="i.quitar" [size]="14" [stroke]="2" />Quitar</button>
+          </span>
+        </span>
+      </div>
+    }
+  </div>
+  <div class="flex flex-col gap-2">
+    <app-tienda-etiqueta t="Frase bajo el nombre" sub="Qué vendes, dónde estás o cómo entregas. Una o dos líneas." [opc]="true" />
+    <div class="relative">
+      <textarea rows="3" maxlength="280" [ngModel]="fx.frase" (ngModelChange)="s.set('frase', $event)" placeholder="Ej. Herramientas y materiales en Pereira. Entregas el mismo día."
+        class="block w-full resize-none rounded-[10px] border-0 bg-[#fafafa] px-3 pb-[26px] pt-[9px] text-[13px] leading-[19px] text-[#111827] shadow-[0_0_0_1px_#e5e5e5] outline-none transition-[box-shadow,background-color] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]"></textarea>
+      <span class="absolute bottom-2 right-2.5 text-[11px] tabular-nums text-[#9ca3af]">{{ fx.frase.length }}/280</span>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      @for (sug of sugerencias(); track sug) {
+        <button type="button" (click)="s.agregarSugerencia(sug)" class="tienda-sube flex items-center gap-[5px] rounded-full bg-white px-[11px] py-[5px] text-xs font-medium text-[#374151] shadow-[0_0_0_1px_#e5e5e5] transition-[box-shadow,transform] hover:shadow-[0_0_0_1px_#b5b5b5] active:scale-[.96]"><tabler-icon [icon]="i.plus" [size]="12" [stroke]="2" class="text-[#8a8a8a]" />{{ sug }}</button>
+      }
+    </div>
+  </div>
+</section>
+

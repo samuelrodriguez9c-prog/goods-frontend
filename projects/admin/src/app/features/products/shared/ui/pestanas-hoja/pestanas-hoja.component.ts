@@ -12,7 +12,7 @@ export interface PestanaHojaV5 {
 }
 
 /**
- * Pestañas de la hoja (v5): columnas iguales, la activa en negrita y una
+ * Pestañas de la hoja: columnas iguales, la activa en negrita y una
  * barra de 2 px que se desliza debajo.
  */
 @Component({

@@ -9,26 +9,17 @@ import {
 } from './models/asistente-staff.model';
 
 /**
- * Cliente de los 4 endpoints de `AsistenteStaffController` (backend,
- * `modules/asistente-staff/`) — ver PROPUESTA_ASISTENTE_IA_RAG.md §5.4.
- * Calcado de `admin/core/asistente/asistente.service.ts`, con dos
- * diferencias: pega contra `/asistente-staff` (no `/asistente`), y el
- * gating del lado del backend es por PERMISO (`asistente_staff.usar`,
- * `PermissionsGuard`) en vez de por módulo de plan (`ModuloGuard`) — acá
- * tampoco se duplica ese chequeo, solo se oculta el ícono del topbar
- * (ver `TopbarComponent`) si la cuenta no tiene ese permiso.
- *
- * `abierto` (signal): mismo motivo que en `admin` — quien ABRE el panel
- * es `TopbarComponent` y quien lo RENDERIZA es `ShellComponent`. Desde el
- * rediseño (2026-09-30) significa "mini chat abierto"
- * (`AsistenteDockComponent`, antes `AsistenteStaffPanelComponent`), dos
- * hermanos sin relación padre/hijo directa.
+ * Cliente de `/asistente-staff` (conversaciones con el Asistente de IA y
+ * extracción de comprobantes). El backend exige el permiso
+ * `asistente_staff.usar`; acá no se repite el chequeo.
  */
 @Injectable({ providedIn: 'root' })
 export class AsistenteStaffService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/asistente-staff`;
 
+  /** Mini chat abierto. Vive acá porque lo abre el topbar y lo pinta el
+   * shell, que no son padre e hijo. */
   readonly abierto = signal(false);
 
   abrirPanel(): void {
@@ -55,10 +46,7 @@ export class AsistenteStaffService {
     );
   }
 
-  /** El backend devuelve únicamente el mensaje FINAL del asistente — mismo
-   * criterio que `admin`: `AsistenteStaffPanelComponent` refresca con
-   * `listarMensajes` después de esto en vez de reconstruir a mano el
-   * mensaje del usuario. */
+  /** @returns Solo la respuesta final del asistente (sin streaming), no el mensaje del usuario. */
   enviarMensaje(conversacionId: number, cuerpo: string): Observable<AsistenteStaffMensaje> {
     return this.http.post<AsistenteStaffMensaje>(
       `${this.base}/conversaciones/${conversacionId}/mensajes`,
@@ -66,9 +54,8 @@ export class AsistenteStaffService {
     );
   }
 
-  /** §5.5.6 (2026-09-30) — espejo de `AsistenteService.registrarMensajeSistema`
-   * de `admin` (ver su docblock): confirma un `SuscripcionPago` registrado
-   * desde el modo documento sin pasar por OpenRouter. */
+  /** Guarda en la conversación un mensaje fijo del asistente (p. ej. la
+   * confirmación de un pago registrado) sin pasar por el modelo. */
   registrarMensajeSistema(
     conversacionId: number,
     cuerpo: string,
@@ -79,14 +66,12 @@ export class AsistenteStaffService {
     );
   }
 
-  /** §5.5 — modo documento: sube el comprobante de pago (imagen o PDF) y
-   * devuelve lo que el modelo detectó, sin persistir nada todavía (ver
-   * `ExtraccionComprobantePagoService`, backend: el archivo viaja en
-   * memoria, se descarta si nunca se confirma). Mismo criterio que
-   * `AsistenteService.extraerFacturaProveedor` de `admin`: nunca se fija
-   * el header `Content-Type` a mano, `HttpClient` arma el boundary solo
-   * a partir del `FormData`. */
+  /**
+   * Sube un comprobante de pago (imagen o PDF) y devuelve lo que detectó el
+   * modelo, sin guardar nada: el pago se registra aparte, al confirmar.
+   */
   extraerComprobantePago(archivo: File): Observable<ComprobantePagoExtraido> {
+    // Sin `Content-Type` a mano: `HttpClient` arma el boundary a partir del `FormData`.
     const formData = new FormData();
     formData.append('file', archivo);
     return this.http.post<ComprobantePagoExtraido>(
@@ -95,17 +80,10 @@ export class AsistenteStaffService {
     );
   }
 
-  /** Rediseño (2026-09-30), `PATCH /asistente-staff/conversaciones/:id` —
-   * endpoint PENDIENTE en el backend (`modules/asistente-staff/`). Hasta
-   * que exista, `AsistenteChatStore.renombrar` revierte el cambio
-   * optimista si esta llamada falla. */
   renombrarConversacion(id: number, titulo: string): Observable<AsistenteStaffConversacion> {
     return this.http.patch<AsistenteStaffConversacion>(`${this.base}/conversaciones/${id}`, { titulo });
   }
 
-  /** Rediseño (2026-09-30), `DELETE /asistente-staff/conversaciones/:id` —
-   * mismo criterio que `renombrarConversacion`: endpoint pendiente, el
-   * store revierte si falla. */
   eliminarConversacion(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/conversaciones/${id}`);
   }

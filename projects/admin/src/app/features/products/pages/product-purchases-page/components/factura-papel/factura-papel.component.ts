@@ -13,7 +13,7 @@ const SELLO: Record<EstadoCompra, { texto: string; tinta: string }> = {
 };
 /** Anchos (px) de las barras del código de barras. */
 const BARRAS = [1, 2, 1, 3, 1, 1, 2, 1, 1, 2, 1, 3, 1, 1, 2, 1, 1, 2, 1, 3, 1, 1, 2, 1, 1, 2, 1, 3, 1, 1, 2, 1, 1, 2, 1, 3, 1, 1];
-/** Borde inferior dentado del papel (28 dientes de 10 px). */
+/** Borde inferior dentado del papel: zigzag de 28 puntos y 10 px de alto. */
 const RECORTE = (() => {
   const puntos = ['0 0', '100% 0', '100% calc(100% - 10px)'];
   for (let i = 27; i >= 0; i--) puntos.push(((i * 100) / 28).toFixed(2) + '% calc(100% - ' + (i % 2 ? 10 : 0) + 'px)');

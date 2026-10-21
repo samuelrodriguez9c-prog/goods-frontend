@@ -1,32 +1,3 @@
-// projects/admin/src/app/features/asistente/pages/documentos-internos-page/documentos-internos-page.component.ts
-//
-// Pantalla de gestión de "Documentos" (Fase 6, §5.6.4 de
-// PROPUESTA_ASISTENTE_IA_RAG.md) — listar/crear/editar/eliminar los
-// manuales/procedimientos que el asistente busca por similitud
-// (`buscarEnDocumentosInternos`, backend). Hasta el 2026-10-02 esto se
-// cargaba a mano por Postman/Thunder Client porque no existía ninguna
-// pantalla (ver AsistenteDocumentoService).
-//
-// Primer consumidor real de `SidePanelComponent` (editor) y
-// `ModalComponent` (confirmación de eliminar) — ninguno de los dos tenía
-// uso real en el proyecto todavía (confirmado por grep antes de escribir
-// esto), así que esta pantalla sigue el criterio documentado en sus
-// propios docblocks (formularios de crear/editar en el panel,
-// confirmaciones en el modal) en vez de copiar un ejemplo ya armado.
-//
-// Fuera del Shell, igual que `AsistentePageComponent` (ver
-// `asistente.routes.ts`): trae su propia `<app-topbar />`.
-//
-// "Subir archivo" (§5.6.5, 2026-10-02): a diferencia del comprobante de
-// pago / factura de proveedor (Fase 5, admin/staff), acá NO se manda
-// nada a una IA — .md/.txt se leen directo en el navegador
-// (`FileReader`) y .pdf/.docx se mandan al nuevo
-// `POST /asistente-staff/documentos/extraer-texto`, que extrae el texto
-// con una librería (sin IA, ver `extraccion-texto-documento.util.ts`,
-// backend). En los dos casos el resultado solo PRELLENA el formulario —
-// se sigue guardando con el mismo `guardar()` de siempre, así que el
-// staff revisa/edita antes de confirmar, igual que el resto de
-// extracciones del proyecto.
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -59,6 +30,15 @@ const LARGO_PREVIEW = 160;
  * acá para no repetirlo entre el template y la validación. */
 const EXTENSIONES_ACEPTADAS = '.md,.txt,.pdf,.docx';
 
+/**
+ * Documentos que el asistente busca por similitud (políticas, manuales):
+ * listar, crear, editar y eliminar. Fuera del Shell, con su propio topbar.
+ *
+ * @remarks
+ * «Subir archivo» no usa IA: .md/.txt se leen en el navegador y .pdf/.docx
+ * van a `POST /asistente/documentos/extraer-texto`. En los dos casos solo se
+ * prellena el formulario; el usuario revisa antes de guardar.
+ */
 @Component({
   selector: 'app-documentos-internos-page',
   standalone: true,
@@ -89,7 +69,7 @@ export class DocumentosInternosPageComponent implements OnInit {
   protected readonly skeletons = [1, 2, 3, 4];
   protected readonly extensionesAceptadas = EXTENSIONES_ACEPTADAS;
 
-  // ── Listado ─────────────────────────────────────────────────
+  // Listado
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly documentos = signal<AsistenteDocumento[]>([]);
@@ -108,8 +88,7 @@ export class DocumentosInternosPageComponent implements OnInit {
     return lista.filter((d) => d.titulo.toLowerCase().includes(q) || d.contenido.toLowerCase().includes(q));
   });
 
-  /** Subtítulo de la cabecera — misma convención del resto de `staff`:
-   * prosa corta que refleja el estado real, no una etiqueta genérica. */
+  /** Subtítulo de la cabecera: prosa corta con el estado real, no una etiqueta genérica. */
   protected readonly lectura = computed(() => {
     const total = this.documentos().length;
     const q = this.busqueda().trim();
@@ -125,7 +104,7 @@ export class DocumentosInternosPageComponent implements OnInit {
     return `El asistente busca por similitud en estos ${total} documento${total === 1 ? '' : 's'} cuando una pregunta tuya lo necesita.`;
   });
 
-  // ── Panel crear/editar ──────────────────────────────────────
+  // Panel crear/editar
   protected readonly panelAbierto = signal(false);
   protected readonly editandoId = signal<number | null>(null);
   protected readonly cargandoDocumento = signal(false);
@@ -134,7 +113,7 @@ export class DocumentosInternosPageComponent implements OnInit {
   protected readonly guardando = signal(false);
   protected readonly errorGuardar = signal('');
 
-  // ── Subir archivo (precarga el form, no guarda nada por sí sola) ──
+  // Subir archivo (precarga el form, no guarda nada por sí sola)
   protected readonly subiendoArchivo = signal(false);
   protected readonly errorArchivo = signal('');
 
@@ -145,7 +124,7 @@ export class DocumentosInternosPageComponent implements OnInit {
     () => this.tituloForm().trim().length > 0 && this.contenidoForm().trim().length > 0,
   );
 
-  // ── Confirmación de borrado ──────────────────────────────────
+  // Confirmación de borrado
   protected readonly documentoABorrar = signal<AsistenteDocumento | null>(null);
   protected readonly eliminando = signal(false);
   protected readonly errorEliminar = signal('');
@@ -181,7 +160,7 @@ export class DocumentosInternosPageComponent implements OnInit {
     this.router.navigateByUrl('/asistente');
   }
 
-  // ── Crear / editar ────────────────────────────────────────────
+  // Crear / editar
   protected abrirNuevo(): void {
     this.editandoId.set(null);
     this.tituloForm.set('');
@@ -226,13 +205,8 @@ export class DocumentosInternosPageComponent implements OnInit {
     this.panelAbierto.set(false);
   }
 
-  // ── Subir archivo ──────────────────────────────────────────────
-  /** `(change)` del `<input type="file">` del panel. `.md`/`.txt` se leen
-   * directo en el navegador — no hace falta IA ni backend para texto que
-   * ya está en texto plano. `.pdf`/`.docx` se mandan a
-   * `extraer-texto` (sin IA tampoco, ver el docblock de este archivo). En
-   * los dos casos solo se PRELLENA el formulario: nada se guarda hasta
-   * que el staff revise y toque "Guardar". */
+  // Subir archivo
+  /** `(change)` del `<input type="file">`: solo prellena el formulario (ver la clase). */
   protected manejarArchivoSeleccionado(event: Event): void {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0] ?? null;
@@ -330,7 +304,7 @@ export class DocumentosInternosPageComponent implements OnInit {
     }
   }
 
-  // ── Eliminar ──────────────────────────────────────────────────
+  // Eliminar
   protected pedirEliminar(doc: AsistenteDocumento): void {
     this.documentoABorrar.set(doc);
     this.errorEliminar.set('');
@@ -367,7 +341,7 @@ export class DocumentosInternosPageComponent implements OnInit {
     });
   }
 
-  // ── Presentación ──────────────────────────────────────────────
+  // Presentación
   protected preview(contenido: string): string {
     const limpio = contenido.replace(/\s+/g, ' ').trim();
     return limpio.length > LARGO_PREVIEW ? `${limpio.slice(0, LARGO_PREVIEW)}…` : limpio;
@@ -383,10 +357,7 @@ export class DocumentosInternosPageComponent implements OnInit {
     return dias === 1 ? 'ayer' : `hace ${dias} días`;
   }
 
-  /** Mismo criterio que `SettingsPageComponent.mensajeDeError`: el
-   * backend (ValidationPipe de Nest) devuelve `message` como string o
-   * array de strings según el error — se normaliza acá para no repetir
-   * esto en cada `.subscribe({ error })`. */
+  /** El `ValidationPipe` del backend manda `message` como string o como lista; se normaliza acá. */
   private mensajeDeError(err: unknown, fallback: string): string {
     if (err instanceof HttpErrorResponse) {
       const m = (err.error as { message?: string | string[] } | null)?.message;

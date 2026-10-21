@@ -2,9 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { IconArrowUp, TablerIconComponent } from '@tabler/icons-angular';
 
 /**
- * Aviso "N cambios nuevos · Actualizar" — v2 píldora flotante (LEEME §8).
+ * Píldora flotante "N cambios nuevos · Actualizar".
  *
- * Mismo selector y mismo `(actualizar)` que antes: las páginas no cambian.
  * El host es `sticky` y de alto 0, así que no empuja la tabla: la píldora
  * flota centrada sobre el contenido y acompaña el scroll de `<main>`.
  * Nunca reordena filas por su cuenta — eso pasa recién al tocar Actualizar.

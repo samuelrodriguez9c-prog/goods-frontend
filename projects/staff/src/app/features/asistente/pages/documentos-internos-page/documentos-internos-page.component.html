@@ -1,10 +1,6 @@
-<!-- projects/staff/src/app/features/asistente/pages/documentos-internos-page/documentos-internos-page.component.html -->
 <div class="flex h-screen flex-col overflow-hidden bg-white text-[#111827]">
-  <!-- ─── Topbar ─── -->
-  <!-- Mismo criterio que AsistentePageComponent (§5.4.4): fuera del
-       Shell, trae su propia topbar — TopbarComponent ya detecta
-       `/asistente` por prefijo, así que "Volver al panel" aparece acá
-       también sin tocar ese componente. -->
+  <!-- Fuera del Shell, con su propia topbar: TopbarComponent detecta
+       `/asistente` por prefijo y muestra "Volver al panel". -->
   <app-topbar />
 
   <div class="min-h-0 flex-1 overflow-y-auto">
@@ -108,7 +104,7 @@
   </div>
 </div>
 
-<!-- ─── Panel crear/editar ─── -->
+<!-- Panel crear/editar -->
 @if (panelAbierto()) {
   <app-side-panel [titulo]="tituloPanel()" (cerrar)="cerrarPanel()">
     <div class="flex flex-col gap-4">
@@ -160,7 +156,7 @@
           rows="16"
           [ngModel]="contenidoForm()"
           (ngModelChange)="contenidoForm.set($event)"
-          placeholder="Pegá el manual completo, en texto corrido — el asistente lo trocea y lo busca por similitud solo."
+          placeholder="Pega el manual completo, en texto corrido — el asistente lo trocea y lo busca por similitud solo."
           [disabled]="guardando() || subiendoArchivo()"
           class="resize-y rounded-lg border border-gray-200 px-3 py-2 text-[13px] leading-[19px] text-gray-900 outline-none transition-colors duration-150 focus:border-gray-400 disabled:opacity-60"
         ></textarea>
@@ -194,7 +190,7 @@
   </app-side-panel>
 }
 
-<!-- ─── Confirmación de borrado ─── -->
+<!-- Confirmación de borrado -->
 @if (documentoABorrar(); as doc) {
   <app-modal titulo="Eliminar documento" (cerrar)="cancelarEliminar()">
     <div class="flex flex-col gap-4">

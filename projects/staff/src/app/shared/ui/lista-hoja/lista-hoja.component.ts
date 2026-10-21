@@ -11,8 +11,7 @@ import { FilaLista, GrupoLista, Icono } from './lista-hoja.model';
 
 /**
  * Esqueleto "lista + hoja" de Empresas, Altas pendientes, Suscripciones,
- * Facturación y Solicitudes (diseños `* - Lista y ficha v2`, `* - Cola y
- * llamada`, `* - Por empresa`, `* - Pagos y cuenta`, `* - Cola y decisión`).
+ * Facturación y Solicitudes.
  *
  * - Izquierda: buscador + orden, contador / filtro / "En vivo", grupos
  *   plegables con encabezado sticky y filas con gauge.
@@ -91,6 +90,7 @@ export class ListaHojaComponent {
     return i < 0 ? '' : `${i + 1} de ${filas.length}`;
   }
 
+  /** Para la hoja: elige la fila anterior (-1) o siguiente (1) entre las visibles; emite `seleccionar`. */
   mover(d: 1 | -1): void {
     const filas = this.plano();
     if (!filas.length) return;

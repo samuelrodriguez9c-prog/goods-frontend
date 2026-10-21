@@ -10,32 +10,19 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
 
 /**
- * Layout raíz del panel de staff.
+ * Layout raíz del panel de staff: topbar, sidebar, `<main>` y los avisos
+ * globales.
  *
- * La carga de perfil tras un F5 (`currentUser` no se persiste, solo el
- * accessToken, así que hay que volver a pedir `GET /auth/me`) YA NO vive
- * acá — se movió al constructor de `TopbarComponent` (§5.4.4, 2026-10-01)
- * porque `/asistente` es una ruta de nivel superior FUERA de este Shell
- * que también monta ese mismo topbar, y necesitaba el mismo bootstrap al
- * recargar directo ahí. Ver el comentario de ese constructor.
+ * El perfil tras un F5 (`GET /auth/me`) no se carga acá sino en
+ * `TopbarComponent`, porque `/asistente` monta ese topbar fuera de este shell.
  *
- * También abre acá el socket de `RealtimeService` (ver
- * `RealtimeService.mantenerConectado`) para que la presencia ("¿quién
- * está en línea ahora?" en la matriz de Usuarios) quede activa desde que
- * alguien entra al panel — en la práctica, `TopbarComponent.escuchar(...)`
- * ya abre ese mismo socket apenas se monta (en cualquiera de las dos
- * rutas de nivel superior), así que esta llamada queda como refuerzo
- * explícito, no como la única vía.
+ * Abre el socket de `RealtimeService` para que la presencia (quién está en
+ * línea, en Usuarios) quede activa desde la entrada. `TopbarComponent` también
+ * lo abre al montarse; esta llamada es un refuerzo, no la única vía.
  *
- * `AlertaPilaComponent`/`AlertaOverlayComponent` (LEEME.md §12, integrado
- * 2026-09-22) van acá — una sola vez para toda la sesión — porque el
- * estado vive en `AlertaService` (`providedIn: 'root'`): una operación
- * lanzada en una pantalla sigue avisando si el usuario navega a otra
- * antes de que termine.
- *
- * `PistaComponent` (LEEME.md §18, integrado 2026-09-23) va por el mismo
- * motivo: `PistaService` también es `providedIn: 'root'`, un solo aviso
- * transversal para toda la sesión.
+ * Alertas, overlay y Pista se montan una sola vez acá: su estado vive en
+ * servicios `root`, así que una operación lanzada en una pantalla sigue
+ * avisando aunque el usuario navegue a otra.
  */
 @Component({
   selector: 'app-shell',

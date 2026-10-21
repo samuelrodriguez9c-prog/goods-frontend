@@ -1,0 +1,58 @@
+@if (st.destacado(); as d) {
+  <section data-screen-label="Destacado" class="mx-auto max-w-[1320px] px-[clamp(16px,3vw,40px)] pt-[clamp(48px,7vw,96px)]">
+    <div revelar class="relative mx-auto grid max-w-[1140px] grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] items-center gap-[clamp(20px,3vw,48px)] px-[clamp(20px,3vw,44px)] pb-[clamp(20px,3vw,44px)] pt-[clamp(56px,6vw,80px)]">
+      <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden rounded-[44px] bg-menta">
+        <div class="forma-0 absolute bottom-[-18%] right-[-6%] aspect-square w-[42%] bg-menta-2 [animation:morph_22s_ease-in-out_infinite]"></div>
+      </div>
+      <span class="pointer-events-none absolute left-[calc(100%-max(150px,13%))] top-0 z-[3] grid aspect-square w-[clamp(84px,8vw,104px)] -translate-x-1/2 -translate-y-1/2 -rotate-10 place-items-center">
+        <span class="forma-tag absolute inset-0 bg-bosque"></span>
+        <span class="relative flex flex-col items-center gap-[3px] text-center text-[13px] font-bold leading-[1.05] text-hoja"><tabler-icon [icon]="i.estrella" [size]="17" class="text-wa" />Destacado</span>
+      </span>
+
+      <div class="relative aspect-[1/1.05] w-full max-w-[440px] justify-self-center">
+        <button type="button" (click)="st.abrirDetalle(d)" class="absolute inset-0 cursor-pointer overflow-hidden rounded-[999px_999px_40px_40px] border-0 p-0 transition-transform duration-[600ms] ease-[cubic-bezier(.3,1.3,.5,1)] hover:scale-[.985]" [style.background]="'#bfe3cf'" aria-label="Ver detalle">
+          @if (d.imagenes[0]) { <img [src]="d.imagenes[0]" [alt]="d.nombre" class="size-full object-cover" /> }
+          @else {
+            <div class="animate-morph absolute inset-x-[16%] top-[16%] aspect-square bg-[#a3d1b9] [animation-duration:16s]"></div>
+            <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-display text-[360px] font-extrabold leading-none text-[rgba(11,61,51,.1)] [font-variation-settings:'wdth'_72]">{{ st.inicial(d.nombre) }}</span>
+          }
+        </button>
+        @if (d.precioAntes) {
+          <span class="forma-1 pointer-events-none absolute left-[2%] top-[8%] grid aspect-square w-[clamp(72px,8vw,96px)] place-items-center bg-bosque font-display text-[clamp(20px,2vw,26px)] font-extrabold tabular-nums text-wa">−{{ st.porcentaje(d) }}%</span>
+        }
+      </div>
+
+      <div class="relative flex w-full max-w-[480px] flex-col gap-5 justify-self-center p-[clamp(4px,1.5vw,24px)] pl-0">
+        <div class="flex flex-col gap-3">
+          <h2 class="m-0 text-balance font-display text-[clamp(38px,4.4vw,62px)] font-bold leading-[.92] tracking-[-0.03em] text-bosque [font-variation-settings:'wdth'_80]">{{ d.nombre }}</h2>
+          @if (d.descripcion) { <p class="m-0 max-w-[42ch] text-pretty text-base leading-[1.55] text-texto-2">{{ d.descripcion }}</p> }
+        </div>
+        <div class="flex flex-col gap-1">
+          <p class="m-0 flex items-baseline gap-2.5 tabular-nums">
+            <span class="font-display text-[34px] font-bold tracking-[-0.015em] text-bosque">{{ st.monto(d.precio) }}</span>
+            @if (d.precioAntes) { <s class="text-base text-[#6f857d]">{{ st.monto(d.precioAntes) }}</s> }
+          </p>
+          @if (d.precioAntes) {
+            <span class="flex h-6 items-center self-start rounded-full bg-wa px-2.5 text-xs font-bold tabular-nums text-noche">Ahorras {{ st.monto((d.precioAntes - d.precio) * st.destQty()) }}</span>
+          }
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex h-14 shrink-0 items-center rounded-full bg-white px-1">
+            <button type="button" (click)="st.destQty.set(Math.max(1, st.destQty() - 1))" aria-label="Quitar uno" class="grid h-11 w-[38px] place-items-center rounded-full text-bosque hover:bg-hoja"><tabler-icon [icon]="i.menos" [size]="17" [stroke]="2" /></button>
+            <span class="min-w-7 text-center font-display text-xl font-bold tabular-nums text-bosque">{{ st.destQty() }}</span>
+            <button type="button" (click)="st.destQty.set(Math.min(9, st.destQty() + 1))" aria-label="Sumar uno" class="grid h-11 w-[38px] place-items-center rounded-full text-bosque hover:bg-hoja"><tabler-icon [icon]="i.mas" [size]="17" [stroke]="2" /></button>
+          </div>
+          <button type="button" (click)="st.agregar(d, $event, st.destQty()); st.destQty.set(1)" class="flex h-14 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-bosque px-3.5 text-[14.5px] font-semibold tabular-nums text-hoja transition-transform hover:bg-bosque-2 active:scale-[.97]">
+            <span class="truncate">Agregar {{ st.monto(d.precio * st.destQty()) }}</span>
+          </button>
+          @if (!st.movil()) {
+            <button type="button" (click)="st.abrirDetalle(d)" aria-label="Ver detalle" title="Ver detalle" class="grid size-14 shrink-0 place-items-center rounded-full bg-white text-bosque hover:bg-hoja"><tabler-icon [icon]="i.diagonal" [size]="20" [stroke]="2" /></button>
+          }
+        </div>
+        @if (st.cantidad(d.id)) {
+          <span class="-mt-2.5 flex items-center gap-1.5 text-[12.5px] font-medium text-teal"><tabler-icon [icon]="i.checkLleno" [size]="15" />{{ st.cantidad(d.id) }} en tu pedido</span>
+        }
+      </div>
+    </div>
+  </section>
+}

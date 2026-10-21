@@ -1,0 +1,43 @@
+<div #catalogo></div>
+@if (!st.hayQ() && st.movil()) {
+  <div class="sin-barra flex gap-2 overflow-x-auto px-4 pt-14">
+    @for (s of st.secciones(); track s.id; let k = $index) {
+      <button type="button" (click)="st.irSeccion(k)" class="h-10 flex-none whitespace-nowrap rounded-full bg-menta px-4 text-sm font-semibold text-bosque">{{ s.nombre }}</button>
+    }
+  </div>
+}
+
+@if (st.sinResultados()) {
+  <section data-screen-label="Sin resultados" class="animate-fundido mx-auto flex max-w-[1320px] flex-col items-center gap-6 px-[clamp(16px,3vw,40px)] pb-40 pt-[clamp(120px,14vw,180px)] text-center">
+    <div aria-hidden="true" class="relative grid size-[120px] place-items-center">
+      <div burbuja="0.05,22,0.14" class="absolute inset-0 bg-menta [animation:morph_10s_ease-in-out_infinite]"></div>
+      <tabler-icon [icon]="i.sinResultados" [size]="40" [stroke]="1.75" class="relative text-teal" />
+    </div>
+    <h2 class="m-0 max-w-[16ch] text-balance break-words font-display text-[clamp(36px,5vw,64px)] font-bold leading-[.95] tracking-[-0.025em] text-bosque [font-variation-settings:'wdth'_78]">Nada con «{{ st.busqueda().trim() }}»</h2>
+    <p class="m-0 max-w-[44ch] text-pretty text-base leading-[1.55] text-texto-2">Revisa cómo está escrito o mira una categoría. Si no aparece, pregúntale al negocio: puede que lo tenga.</p>
+    <div class="flex flex-wrap justify-center gap-2">
+      @for (c of st.categorias().slice(0, 3); track c.id; let k = $index) {
+        <button type="button" (click)="st.sugerir(k)" class="h-11 rounded-full bg-niebla px-[18px] text-sm font-medium text-bosque hover:bg-niebla-2">{{ c.nombre }}</button>
+      }
+    </div>
+    <a [href]="st.waBusqueda()" target="_blank" rel="noopener" class="flex h-[52px] items-center gap-2 rounded-full bg-wa px-6 text-[15px] font-semibold text-noche no-underline hover:bg-wa-hover hover:text-noche"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" />Preguntar por «{{ st.busqueda().trim() }}»</a>
+  </section>
+}
+
+<!-- Catálogo -->
+@for (s of st.secciones(); track s.id) {
+  <section #seccion data-screen-label="Catálogo" class="mx-auto max-w-[1320px] px-[clamp(16px,3vw,40px)] pt-[clamp(72px,8vw,112px)]">
+    <div revelar class="mb-9 flex flex-wrap items-center gap-3.5">
+      <h2 class="m-0 font-display text-[clamp(36px,4.4vw,60px)] font-bold leading-[.95] tracking-[-0.025em] text-bosque [font-variation-settings:'wdth'_78]">{{ s.nombre }}</h2>
+      <span class="relative -mt-[18px] grid size-[46px] place-items-center">
+        <span burbuja="0.05,18,0.16" class="absolute inset-0 bg-wa [animation:morph_9s_ease-in-out_infinite]"></span>
+        <span class="relative text-[15px] font-bold tabular-nums text-noche">{{ s.productos.length }}</span>
+      </span>
+    </div>
+    <div class="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-3.5 gap-y-12 md:grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] md:gap-x-[clamp(16px,2.4vw,32px)] md:gap-y-16">
+      @for (p of s.productos; track p.id; let k = $index) {
+        <app-tarjeta-producto [producto]="p" [indice]="k" />
+      }
+    </div>
+  </section>
+}

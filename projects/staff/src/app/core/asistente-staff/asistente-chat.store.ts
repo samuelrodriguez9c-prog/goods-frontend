@@ -5,7 +5,7 @@ import { Subscription, of, switchMap } from 'rxjs';
 import { AsistenteStaffService } from './asistente-staff.service';
 import { AsistenteStaffConversacion, AsistenteStaffMensaje } from './models/asistente-staff.model';
 
-/** Nombre de tool → etiqueta para "Consulté …" (mismo mapa que el panel viejo). */
+/** Nombre de tool → etiqueta para "Consulté …". */
 export const ETIQUETAS_HERRAMIENTA: Record<string, string> = {
   empresasPorEstado: 'las Empresas por estado',
   altasPendientes: 'las altas pendientes',
@@ -17,23 +17,20 @@ const KEY_FIJADAS = 'goods-ia-fijadas';
 const VELOCIDAD_MS = 34;
 
 /**
- * Estado compartido del Asistente de IA de staff. Lo usan los DOS
- * componentes del rediseño: el mini chat (`AsistenteDockComponent`,
- * montado en el Shell) y la pantalla completa (`AsistentePageComponent`,
- * ruta `/asistente`). Al ser `providedIn: 'root'`, maximizar el mini
- * chat conserva la conversación activa, los mensajes y la respuesta en
- * curso: la pantalla completa lee lo mismo.
+ * Estado compartido del Asistente de IA de staff entre el mini chat
+ * (`AsistenteDockComponent`) y la pantalla completa (`AsistentePageComponent`):
+ * al maximizar se conservan la conversación, los mensajes y la respuesta en curso.
  *
- * El backend devuelve el mensaje FINAL (sin streaming), así que la
- * "escritura progresiva" es solo visual: `escribir()` revela el texto ya
- * recibido de a dos tokens cada 34 ms.
+ * El backend no hace streaming, así que la escritura progresiva es solo
+ * visual: `escribir()` revela el texto ya recibido palabra por palabra
+ * (cada `VELOCIDAD_MS`).
  */
 @Injectable({ providedIn: 'root' })
 export class AsistenteChatStore {
   private readonly api = inject(AsistenteStaffService);
   private readonly documentosApi = inject(AsistenteStaffDocumentoService);
 
-  /** Documentos internos (v3): alimentan el submenú "Documentos internos" del +. */
+  /** Alimentan el submenú "Documentos internos" del botón +. */
   readonly documentos = signal<AsistenteStaffDocumento[]>([]);
 
   readonly conversaciones = signal<AsistenteStaffConversacion[]>([]);
@@ -67,6 +64,7 @@ export class AsistenteChatStore {
     });
   }
 
+  /** Carga documentos y conversaciones una sola vez por sesión de la app. */
   cargar(): void {
     if (this.cargado) return;
     this.cargado = true;
@@ -105,7 +103,14 @@ export class AsistenteChatStore {
     this.error.set(null);
   }
 
-  /** Devuelve `false` si no se pudo enviar (vacío o ya generando). */
+  /**
+   * Envía el mensaje, creando la conversación si no hay una activa.
+   *
+   * @remarks
+   * Agrega el mensaje del usuario de forma optimista; si falla, lo saca,
+   * deja el texto en `borradorDevuelto` y pone `error`.
+   * @returns `false` si no se envió (texto vacío o ya generando).
+   */
   enviar(texto: string): boolean {
     const cuerpo = texto.trim();
     if (!cuerpo || this.generando()) return false;
@@ -133,7 +138,7 @@ export class AsistenteChatStore {
           this.fase.set(null);
           this.mensajes.update((m) => m.filter((x) => x.id !== optimista.id));
           this.borradorDevuelto.set(cuerpo);
-          this.error.set('El asistente no pudo responder. Probá de nuevo en un momento.');
+          this.error.set('El asistente no pudo responder. Prueba de nuevo en un momento.');
         },
       });
     return true;
@@ -153,6 +158,7 @@ export class AsistenteChatStore {
       });
   }
 
+  /** Corta el envío en curso y la escritura progresiva. */
   detener(): void {
     this.envio?.unsubscribe();
     clearInterval(this.timer);
@@ -160,6 +166,7 @@ export class AsistenteChatStore {
     this.escribiendoId.set(null);
   }
 
+  /** Texto a pintar: el parcial si el mensaje se está escribiendo. */
   textoDe(m: AsistenteStaffMensaje): string {
     return m.id === this.escribiendoId() ? this.visible() : m.cuerpo;
   }
@@ -171,6 +178,7 @@ export class AsistenteChatStore {
   }
 
 
+  /** Las fijadas se guardan en localStorage (por navegador, no por cuenta). */
   toggleFijada(id: number): void {
     const s = new Set(this.fijadas());
     s.has(id) ? s.delete(id) : s.add(id);
@@ -178,18 +186,18 @@ export class AsistenteChatStore {
     try {
       localStorage.setItem(KEY_FIJADAS, JSON.stringify([...s]));
     } catch {
-      /* sin storage */
+      // Sin almacenamiento: la fijada dura solo esta sesión.
     }
   }
 
-  /** Requiere `PATCH /asistente-staff/conversaciones/:id` (no existe aún). */
+  /** Renombra de forma optimista; si el backend falla, revierte. */
   renombrar(id: number, titulo: string): void {
     const previo = this.conversaciones();
     this.conversaciones.update((l) => l.map((c) => (c.id === id ? { ...c, titulo } : c)));
     this.api.renombrarConversacion(id, titulo).subscribe({ error: () => this.conversaciones.set(previo) });
   }
 
-  /** Requiere `DELETE /asistente-staff/conversaciones/:id` (no existe aún). */
+  /** Elimina de forma optimista; si el backend falla, la lista vuelve (la activa no). */
   eliminar(id: number): void {
     const previo = this.conversaciones();
     this.conversaciones.update((l) => l.filter((c) => c.id !== id));

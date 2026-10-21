@@ -1,4 +1,3 @@
-<!-- projects/staff/src/app/shared/ui/breadcrumb-trail/breadcrumb-trail.component.html -->
 @if (trailService.trail().length) {
   <nav aria-label="Rastro de navegación" class="flex min-w-0 items-center gap-1 overflow-hidden">
     @for (item of trailService.trail(); track item.id; let last = $last) {

@@ -1,9 +1,4 @@
-<!-- projects/staff/src/app/features/soporte/pages/soporte-page/soporte-page.component.html -->
 <div class="flex h-full min-h-[640px] flex-col p-6">
-  <!-- Migrada a v2 (badge "En vivo" + lectura arriba) por LEEME.md §16,
-       2026-09-24 — usa el ejemplo literal del handoff (`badge="En vivo"
-       badgeTono="vivo"`) en vez del pill manual que había en [acciones],
-       que quedaba duplicando lo que el badge ya resuelve. -->
   <app-cabecera-modulo
     titulo="Soporte"
     [periodo]="null"
@@ -66,7 +61,7 @@
     <div
       class="mt-4 grid min-h-0 flex-1 grid-cols-[minmax(260px,320px)_minmax(0,1fr)] overflow-hidden rounded-xl bg-card-bg shadow-[0_1px_0_rgba(0,0,0,0.07),0_0_0_1px_rgba(0,0,0,0.05)]"
     >
-      <!-- ─── Lista ─── -->
+      <!-- Lista -->
       <div class="flex min-h-0 flex-col border-r border-[#ebebeb]">
         <div class="flex items-center gap-2 border-b border-gray-100 px-3 py-2.5">
           <tabler-icon [icon]="i.buscar" [size]="15" [stroke]="2" class="shrink-0 text-gray-400" />
@@ -177,7 +172,7 @@
         </div>
       </div>
 
-      <!-- ─── Hilo ─── -->
+      <!-- Hilo -->
       <div class="flex min-h-0 min-w-0 flex-col">
         @if (seleccionada(); as c) {
           @if (cabeceraHilo(); as h) {
@@ -250,7 +245,7 @@
                           class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] text-[#303030] transition-colors duration-150 hover:bg-[#f1f1f1]"
                         >
                           <span class="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[#ebebeb] text-[9.5px] font-semibold text-gray-600">{{ u.iniciales }}</span>
-                          <span class="min-w-0 flex-1 truncate">{{ u.nombres }} {{ u.apellidos }}{{ u.esYo ? ' (vos)' : '' }}</span>
+                          <span class="min-w-0 flex-1 truncate">{{ u.nombres }} {{ u.apellidos }}{{ u.esYo ? ' (tú)' : '' }}</span>
                           <span class="text-[11px] text-gray-400">{{ u.carga }} abiertas</span>
                           @if (u.id === c.agenteAsignadoId) {
                             <tabler-icon [icon]="i.check" [size]="14" [stroke]="2" class="text-[#303030]" />
@@ -355,7 +350,7 @@
             }
           </div>
 
-          <!-- ─── Composer ─── -->
+          <!-- Composer -->
           <div class="px-3.5 pb-3.5 pt-2.5">
             @if (c.estado === 'cerrada') {
               <div class="flex items-center gap-2.5 rounded-[10px] bg-[#f7f7f7] px-3.5 py-3 text-[12.5px] text-gray-500">
@@ -445,7 +440,7 @@
         } @else {
           <div class="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
             <tabler-icon [icon]="i.modulo" [size]="28" [stroke]="1.5" class="text-gray-300" />
-            <p class="text-[13px] font-medium text-gray-500">Elegí una conversación de la lista.</p>
+            <p class="text-[13px] font-medium text-gray-500">Elige una conversación de la lista.</p>
           </div>
         }
       </div>

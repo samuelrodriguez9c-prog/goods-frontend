@@ -58,7 +58,7 @@ interface FilaSuscripcion {
   historial: Suscripcion[];
   vigente: boolean;
   mora: boolean;
-  /** En período de prueba (2026-10-10): no factura hasta que paga. */
+  /** En período de prueba: no factura hasta que paga. */
   prueba: boolean;
   venc: string | null;
 }
@@ -71,11 +71,9 @@ const ESTADO_SUS: Record<string, { texto: string; punto: string }> = {
 };
 
 /**
- * Suscripciones — una fila por Empresa + hoja (diseño `Suscripciones - Por empresa`).
- *
- * Mismo `forkJoin` de antes (suscripciones + empresas + planes). La hoja
- * suma `estadoCuenta` (cuota con extras, último pago) y `listarDesglose`
- * (extras) de la Empresa elegida.
+ * Suscripciones: una fila por Empresa (su suscripción vigente o la última) y
+ * una hoja con plan, historial y extras. La hoja suma `estadoCuenta` (cuota
+ * con extras, último pago) y `listarDesglose` (extras) de la Empresa elegida.
  *
  * Grupos: Cobran pronto (en mora o vencen en ≤7 días), Al día, Sin cobrar
  * (vencidas/canceladas/pendientes; arranca plegado).
@@ -133,7 +131,7 @@ export class SuscripcionesPageComponent {
   private grupoDe(f: FilaSuscripcion): Grupo {
     return !f.vigente ? 'sin' : f.mora || (f.venc !== null && dias(f.venc) <= 7) ? 'pronto' : 'aldia';
   }
-  /** Lo que factura por mes según su plan, neto de su descuento (2026-10-10). */
+  /** Lo que factura por mes según su plan, neto de su descuento. */
   private precio = (f: FilaSuscripcion) => {
     const base = f.plan?.precioMensual ?? 0;
     const pct = f.empresa.acceso?.descuentoPorcentaje ?? 0;
@@ -325,7 +323,7 @@ export class SuscripcionesPageComponent {
       .seguir(this.suscripcionService.cambiarEstado(f.actual.id, d), {
         titulo: 'Cambiando el estado', texto: f.empresa.nombre,
         exito: { titulo: d === 'activa' ? 'Suscripción reactivada' : d === 'vencida' ? 'Marcada como vencida' : 'Suscripción cancelada', texto: f.empresa.nombre },
-        error: { titulo: 'No se pudo cambiar el estado', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo cambiar el estado', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: () => this.cargar(), error: () => undefined });
   }
@@ -342,7 +340,7 @@ export class SuscripcionesPageComponent {
     const f = this.sel();
     const total = this.mrr() || 1;
     const tramos = [...this.vigentes().filter((x) => !x.prueba)].sort((a, b) => this.precio(b) - this.precio(a)).map((x) => ({ id: x.empresaId, nombre: x.empresa.nombre, grow: this.precio(x), actual: x.empresaId === f?.empresaId }));
-    // Una prueba no suma al MRR todavía: no tiene peso (2026-10-10).
+    // Una prueba no suma al MRR todavía: no tiene peso.
     return { pct: f?.vigente && !f.prueba ? pct(this.precio(f) / total) : '—', total: `de ${plata(this.mrr())}`, tramos };
   });
 
@@ -417,7 +415,7 @@ export class SuscripcionesPageComponent {
       .seguir(op, {
         titulo: f.vigente ? 'Cambiando el plan' : 'Reactivando', texto: `${f.empresa.nombre} → ${p.nombre}`,
         exito: { titulo: f.vigente ? 'Plan cambiado' : 'Suscripción reactivada', texto: `${f.empresa.nombre} con ${p.nombre}.` },
-        error: { titulo: 'No se pudo aplicar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo aplicar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: () => this.cargar(), error: () => undefined });
   }
@@ -480,7 +478,8 @@ export class SuscripcionesPageComponent {
     });
   }
 
+  /** «Volver al inicio» de la pantalla de error: va a la portada de staff. */
   protected volver(): void {
-    this.router.navigateByUrl('/suscripciones');
+    this.router.navigateByUrl('/');
   }
 }

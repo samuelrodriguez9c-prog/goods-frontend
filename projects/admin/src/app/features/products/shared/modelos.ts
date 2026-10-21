@@ -1,6 +1,8 @@
-// Modelos del módulo Productos v5 (Productos · Categorías · Inventario · Proveedores · Compras).
+// Modelos del módulo Productos (Productos · Categorías · Inventario · Proveedores · Compras).
 // Extienden los espejos mínimos de core/*/models con los campos que usan las pantallas.
 // Nombres = entidades del backend (producto, categoria, inventario, proveedor, compra).
+
+import { Atributos } from '../../../core/campos/campo-personalizado.model';
 
 export type EstadoProducto = 'activo' | 'agotado' | 'descontinuado';
 export type EstadoCompra = 'pendiente' | 'recibida' | 'cancelada';
@@ -74,8 +76,10 @@ export interface ProveedorV5 {
   contactoNombre: string;
   notas: string;
   activo: boolean;
-  /** NUEVO campo: días de entrega 1–6 (Lun–Sáb). */
+  /** Días de entrega: 1–6 (lunes a sábado). */
   diasEntrega: number[];
+  /** Campos propios de la Empresa. Opcional porque Compras crea proveedores sin ellos. */
+  atributos?: Atributos;
 }
 
 export interface LineaCompra {
@@ -99,7 +103,7 @@ export interface CompraV5 {
   llenadoPorIa?: string[];
 }
 
-// ── Lista + hoja (compartido por los 5 módulos) ──────────────────────────
+// Lista + hoja (compartido por los 5 módulos)
 
 export interface Miniatura {
   fondo: string;
@@ -119,6 +123,10 @@ export interface FilaModulo<T = unknown> {
   mini: Miniatura;
   /** Pastilla gris junto al nombre ("Inactiva", "Destacado"...). */
   etiqueta?: string | null;
+  /** Pastilla turquesa al inicio del subtítulo (Pedidos: «Nuevo» de la tienda). */
+  pastilla?: { texto: string; tip: string } | null;
+  /** Código en monoespaciada antes del subtítulo (Pedidos: «#1049»). */
+  codigo?: string | null;
   /** Columna derecha (84 px): texto + barra de 64×4. */
   valor: string;
   valorColor: string;
@@ -161,7 +169,7 @@ export interface PestanaHoja {
   alerta?: boolean;
 }
 
-// ── Tablas de estilo (idénticas al prototipo, productos-datos.js) ────────
+// Tablas de estilo
 
 export const EST: Record<EstadoProducto, { t: string; bg: string; fg: string; dot: string }> = {
   activo: { t: 'Activo', bg: '#a4ffb6', fg: '#0b5c3f', dot: '#087b5d' },

@@ -5,8 +5,7 @@ export const FACTURACION_ROUTES: Routes = [
   {
     path: '',
     component: FacturacionPageComponent,
-    // Rastro de navegación global del topbar (§5.4.4, 2026-10-02) —
-    // ver `NavigationTrailService`.
+    // Lo lee el rastro de navegación del topbar (`NavigationTrailService`).
     data: { breadcrumb: 'Facturación', icon: 'receipt-2' },
   },
 ];

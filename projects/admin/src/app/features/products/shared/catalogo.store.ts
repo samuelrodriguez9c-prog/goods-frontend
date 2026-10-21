@@ -8,8 +8,8 @@ import { CompraService } from '../../../core/compra/compra.service';
 import { Inventario, InventarioService, MovimientoInventario } from '../../../core/inventario/inventario.service';
 import { ProductoCatalogo } from '../../../core/producto/models/producto.model';
 import { ProductoService } from '../../../core/producto/producto.service';
-import { Proveedor } from '../../../core/proveedor/models/proveedor.model';
-import { ProveedorService } from '../../../core/proveedor/proveedor.service';
+import { Proveedor, ProveedorPayload } from '../../../core/proveedor/models/proveedor.model';
+import { CrearProveedorPayload, ProveedorService } from '../../../core/proveedor/proveedor.service';
 import { CambiosEnVivoService } from '../../../core/realtime/cambios-en-vivo.service';
 import { AccionAlerta, AlertaService } from '../../../core/ui/alerta.service';
 import { codigoCompra, cop, num, pl } from './formato';
@@ -36,10 +36,11 @@ const texto = (v: string | null | undefined) => v ?? '';
 const nulo = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
 
 /**
- * Estado compartido de Categorías, Inventario, Proveedores y Compras
- * (handoff-productos-v5), conectado al backend. Products (v4) tiene su
- * propio `ProductosStore`; los dos leen los mismos endpoints.
+ * Estado compartido de Categorías, Inventario, Proveedores y Compras.
+ * Products tiene su propio `ProductosStore`; los dos leen los mismos
+ * endpoints.
  *
+ * @remarks
  * - `asegurar()` lo llama cada página al entrar: la primera vez carga con
  *   esqueletos; después refresca en silencio (así lo que se cambió en
  *   Products se ve al volver).
@@ -93,7 +94,7 @@ export class CatalogoStore {
       .subscribe(() => this.refrescar());
   }
 
-  // ── Carga ─────────────────────────────────────────────────────────────
+  // Carga
 
   private readonly alCargar: (() => void)[] = [];
 
@@ -167,7 +168,7 @@ export class CatalogoStore {
     });
   }
 
-  // ── Lectura ───────────────────────────────────────────────────────────
+  // Lectura
 
   /** Mismos códigos que `@RequirePermissions` del backend. */
   puede(permiso: string): boolean {
@@ -206,7 +207,7 @@ export class CatalogoStore {
       .filter((c) => c.estado === 'pendiente')
       .reduce((t, c) => t + c.items.filter((i) => i.productoId === productoId).reduce((u, i) => u + i.cantidad, 0), 0);
 
-  // ── Categorías ────────────────────────────────────────────────────────
+  // Categorías
 
   /** Crea o guarda. Devuelve la categoría como quedó en el servidor (con su id real). */
   async guardarCategoria(c: Categoria, nueva: boolean): Promise<Categoria | null> {
@@ -260,7 +261,7 @@ export class CatalogoStore {
     });
   }
 
-  // ── Inventario ────────────────────────────────────────────────────────
+  // Inventario
 
   /** −1 / +1 del hover y "Ajustar stock" de la hoja. */
   ajustarStock(productoId: number, delta: number, motivo: string, deshacible = true): void {
@@ -340,12 +341,20 @@ export class CatalogoStore {
     this.cargarMovimientos(productoId);
   }
 
-  // ── Proveedores ───────────────────────────────────────────────────────
+  // Proveedores
 
-  /** Crea o guarda. Devuelve el proveedor como quedó en el servidor (con su id real). */
-  async guardarProveedor(p: ProveedorV5, nuevo: boolean, exito: { texto?: string; accion?: (r: ProveedorV5) => AccionAlerta } = {}): Promise<ProveedorV5 | null> {
+  /**
+   * Crea o guarda. Devuelve el proveedor como quedó en el servidor (con su id real).
+   * `atributos` solo cuando hay campos propios activos: sin ellos el backend no exige obligatorios.
+   */
+  async guardarProveedor(
+    p: ProveedorV5,
+    nuevo: boolean,
+    exito: { texto?: string; accion?: (r: ProveedorV5) => AccionAlerta } = {},
+    atributos?: ProveedorPayload['atributos'],
+  ): Promise<ProveedorV5 | null> {
     if (this.niega(nuevo ? 'proveedores.crear' : 'proveedores.editar')) return null;
-    const payload = {
+    const payload: CrearProveedorPayload = {
       nombre: p.nombre.trim(),
       nit: nulo(p.nit),
       correo: nulo(p.correo),
@@ -355,6 +364,7 @@ export class CatalogoStore {
       notas: nulo(p.notas),
       activo: p.activo,
       diasEntrega: [...p.diasEntrega].sort((a, b) => a - b),
+      ...(atributos ? { atributos } : {}),
     };
     const id = this.alertas.mostrar({ titulo: nuevo ? 'Creando proveedor' : 'Guardando cambios', texto: payload.nombre });
     try {
@@ -419,7 +429,7 @@ export class CatalogoStore {
     });
   }
 
-  // ── Compras ───────────────────────────────────────────────────────────
+  // Compras
 
   /** Crea una compra pendiente. Devuelve la compra con su id real, o null si falló. */
   async crearCompra(
@@ -524,7 +534,7 @@ export class CatalogoStore {
     });
   }
 
-  // ── Interno ───────────────────────────────────────────────────────────
+  // Interno
 
   /** Marca la escritura como propia (al salir y al volver) para no tomar su eco como cambio de otro. */
   private propia<T>(obs: Observable<T>): Observable<T> {
@@ -539,7 +549,7 @@ export class CatalogoStore {
   }
 }
 
-// ── Del backend al modelo de las pantallas ────────────────────────────────
+// Del backend al modelo de las pantallas
 
 function aProducto(p: ProductoCatalogo): ProductoV5 {
   return {
@@ -585,6 +595,7 @@ function aProveedor(p: Proveedor): ProveedorV5 {
     notas: texto(p.notas),
     activo: p.activo,
     diasEntrega: [...(p.diasEntrega ?? [])].sort((a, b) => a - b),
+    atributos: p.atributos ?? {},
   };
 }
 

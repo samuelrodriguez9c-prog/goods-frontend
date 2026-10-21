@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { AudienciaCampanas } from '../../../../../../core/whatsapp/whatsapp.model';
 
 /**
- * "Recibirían una campaña hoy" (LEEME §7): el alcance en grande, cuántos
+ * «Recibirían una campaña hoy»: el alcance en grande, cuántos
  * aceptan promociones y cuántos están protegidos por la regla de N días, con
  * la barra turquesa + rayada.
  */

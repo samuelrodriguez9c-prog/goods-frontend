@@ -128,7 +128,7 @@
           }
 
           @switch (s.pestana()) {
-            <!-- ── GENERAL ── -->
+            <!-- General -->
             @case ('general') {
               <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
                 <div class="flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
@@ -211,10 +211,34 @@
                     <span class="pointer-events-none absolute bottom-2 right-3 text-[11px] tabular-nums text-[#9ca3af]">{{ b.descripcion.length }} / 2000</span>
                   </div>
                 </div>
+
+                @if (s.campos().length || s.puede('campos.gestionar')) {
+                  <div class="col-span-full flex flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
+                    <div class="flex items-start gap-3">
+                      <span class="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f4f4f4] text-[#303030]"><tabler-icon [icon]="ic.campos" [size]="17" /></span>
+                      <span class="flex min-w-0 flex-1 flex-col gap-0.5"><span class="text-[15px] font-semibold tracking-[-0.005em] text-[#111827]">Campos propios</span><span class="text-xs leading-[17px] text-[#8a8a8a]">Los datos que tu negocio guarda de cada producto.</span></span>
+                      @if (s.puede('campos.gestionar')) {
+                        <a routerLink="/settings/campos" [queryParams]="{ entidad: 'producto' }" class="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium text-[#4b5563] hover:bg-[#f4f4f4] hover:text-[#111827]">{{ s.campos().length ? 'Editar campos' : 'Crear campos' }}</a>
+                      }
+                    </div>
+                    @if (s.campos().length) {
+                      <app-campos-propios
+                        [campos]="s.campos()"
+                        [valores]="b.atributos"
+                        [errores]="s.erroresAtributos()"
+                        [mostrarErrores]="s.intento()"
+                        [soloLectura]="soloLectura()"
+                        (cambio)="s.editarAtributo($event.clave, $event.valor)"
+                      />
+                    } @else {
+                      <p class="m-0 text-[12.5px] leading-[18px] text-[#6b7280]">¿Necesitas guardar talla, color, lote o algo propio de tu negocio? Crea tus campos y aparecen aquí, en los filtros y en la exportación.</p>
+                    }
+                  </div>
+                }
               </div>
             }
 
-            <!-- ── MULTIMEDIA ── -->
+            <!-- Multimedia -->
             @case ('multimedia') {
               <div class="flex min-h-[calc(100vh-260px)] flex-col gap-3 pt-4">
                 <div class="flex flex-1 flex-col gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">
@@ -265,7 +289,7 @@
               </div>
             }
 
-            <!-- ── PRECIO ── -->
+            <!-- Precio -->
             @case ('precio') {
               @let r = rentabilidad();
               <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
@@ -309,7 +333,7 @@
               </div>
             }
 
-            <!-- ── INVENTARIO ── -->
+            <!-- Inventario -->
             @case ('inventario') {
               @let iv = inv();
               <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
@@ -359,7 +383,7 @@
               </div>
             }
 
-            <!-- ── ENVÍO ── -->
+            <!-- Envío -->
             @case ('envio') {
               @let c = caja();
               <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
@@ -395,7 +419,7 @@
               </div>
             }
 
-            <!-- ── TIENDA / SEO ── -->
+            <!-- Tienda / SEO -->
             @case ('tienda') {
               @let v = vitrina();
               <div class="grid grid-cols-[repeat(auto-fit,minmax(max(270px,calc((100%-12px)/2)),1fr))] gap-3 pt-4">
@@ -410,7 +434,7 @@
                     @if (err('slug')) { <ng-container *ngTemplateOutlet="error; context: { m: err('slug') }" /> }
                   </label>
                   <button type="button" (click)="regenerarSlug()" class="flex items-center gap-1.5 self-start rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#303030] shadow-[0_0_0_1px_#e5e5e5] hover:shadow-[0_0_0_1px_#b5b5b5]"><tabler-icon [icon]="ic.regen" [size]="13" />Regenerar desde el nombre</button>
-                  <!-- TODO: dominio real de la tienda de la Empresa (hoy no viene en CurrentUser) -->
+                  <!-- TODO(backend): mandar el dominio de la tienda en `/auth/me` para mostrar la URL real. -->
                   <span class="mt-auto flex min-w-0 items-center gap-1.5 rounded-[10px] bg-white px-3 py-[9px] text-xs text-[#4b5563] shadow-[0_0_0_1px_#ececec]"><tabler-icon [icon]="ic.link" [size]="14" class="shrink-0 text-[#8a8a8a]" /><span class="truncate">…/p/{{ b.slug || 'nombre-del-producto' }}</span></span>
                 </div>
                 <div class="flex flex-col items-center gap-[18px] rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)]">

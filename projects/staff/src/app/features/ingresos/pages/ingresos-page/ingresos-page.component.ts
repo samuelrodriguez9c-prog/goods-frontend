@@ -49,11 +49,9 @@ function ritmo(serie: MesIngresos[]): Sim {
 }
 
 /**
- * Ingresos v2 — lienzo + escenario (diseño `Ingresos v2 - Lienzo y escenario`).
- *
- * Una sola superficie: KPIs del mes elegido → gráfico combinado (MRR arriba,
- * entra/sale abajo, escenario a 6 meses) → frase del escenario con números
- * arrastrables → el mes (puente, planes, cobrado) + movimientos.
+ * Ingresos en una sola superficie: KPIs del mes elegido → gráfico combinado
+ * (MRR arriba, entra/sale abajo, escenario a 6 meses) → frase del escenario con
+ * números arrastrables → el mes (puente, planes, cobrado) + movimientos.
  *
  * Datos: `resumen(12)` (serie, porPlan, movimientos del mes en curso) y
  * `movimientos(mes)` al elegir otro mes. Todo lo demás es `computed`.
@@ -170,7 +168,7 @@ export class IngresosPageComponent {
       this.textoPruebas();
   });
 
-  /** Pruebas en curso (2026-10-10): no suman al MRR hasta que pagan. */
+  /** Pruebas en curso: no suman al MRR hasta que pagan. */
   private textoPruebas(): string {
     const p = this.datos()?.actual.pruebas;
     if (!p || (!p.enCurso && !p.convertidasMes && !p.perdidasMes)) return '';
@@ -349,9 +347,8 @@ export class IngresosPageComponent {
   }
 
   /**
-   * Planes del mes elegido (2026-10-07: cada mes de la serie trae su
-   * `porPlan`). El mes en curso usa el `porPlan` del resumen, que además
-   * sabe cuántas están en mora hoy.
+   * Planes del mes elegido, del `porPlan` de cada mes de la serie. El mes en
+   * curso usa el `porPlan` del resumen, que además sabe cuántas están en mora hoy.
    */
   protected readonly planes = computed(() => {
     const M = this.M();
@@ -402,7 +399,8 @@ export class IngresosPageComponent {
   }
 
   protected readonly nombreMes = nombreMes;
+  /** «Volver al inicio» de la pantalla de error: va a la portada de staff. */
   protected volver(): void {
-    this.router.navigateByUrl('/ingresos');
+    this.router.navigateByUrl('/');
   }
 }

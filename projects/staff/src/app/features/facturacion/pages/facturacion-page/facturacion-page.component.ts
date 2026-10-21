@@ -90,12 +90,12 @@ const mesesDe = (p: PagoResumen) => {
 const mesesTxt = (m: number | null) => (m === null ? '—' : m >= 0.95 ? `${pl(Math.round(m * 10) / 10, 'mes', 'meses')}`.replace('.', ',') : `${Math.round(m * 100)}%`);
 
 /**
- * Facturación — pagos + cuenta (diseño `Facturación - Pagos y cuenta`).
+ * Facturación: lista de pagos agrupada por mes de `fechaPago` y hoja con el
+ * detalle del pago y el estado de cuenta de su Empresa (saldo, cuota, cargos,
+ * descuentos, cobros y pagos).
  *
- * Lista: `listar({ pageSize: 100 })`, agrupada por mes de `fechaPago`.
- * Hoja: `obtener(id)` (detalle + `anulable`) y `estadoCuenta(empresaId)`
- * (saldo, cuota, cargos, cobros, pagos de la Empresa).
- * "Registrar pago" reemplaza la hoja (sin modal) → `registrar()`.
+ * @remarks
+ * "Registrar pago" reemplaza la hoja (sin modal) y llama a `registrar()`.
  */
 @Component({
   selector: 'app-facturacion-page',
@@ -151,7 +151,7 @@ export class FacturacionPageComponent {
   protected readonly copiado = signal(false);
   protected readonly formExtra = signal<{ concepto: string; monto: string } | null>(null);
   protected readonly bajaCargo = signal<{ id: number; motivo: string } | null>(null);
-  // Descuentos y prueba (2026-10-10)
+  // Descuentos y prueba
   protected readonly motivosDescuento = MOTIVOS_DESCUENTO;
   protected readonly porcentajesRapidos = [10, 20, 30];
   protected readonly duracionesDescuento: { meses: number | null; texto: string }[] = [
@@ -161,17 +161,16 @@ export class FacturacionPageComponent {
   protected readonly bajaDescuento = signal<{ id: number; motivo: string } | null>(null);
   protected readonly formPrueba = signal<{ dias: string; motivo: string } | null>(null);
   private readonly permisos = computed(() => new Set(this.auth.currentUser()?.permisos ?? []));
-  /** Solo `admin_goods` y `admin` (permiso `facturacion.descuentos`, decisión de gerencia). */
+  /** Permiso `facturacion.descuentos`: solo lo tienen `admin_goods` y `admin`. */
   protected readonly puedeDescontar = computed(() => this.permisos().has('facturacion.descuentos'));
   protected readonly puedeExtenderPrueba = computed(() => this.permisos().has('suscripciones.gestionar'));
   protected readonly nuevo = signal<{ empresaId: number; metodo: MetodoPago; ref: string; monto: string; fecha: string } | null>(null);
   protected readonly cuentaNuevo = signal<EstadoCuenta | null>(null);
 
   /**
-   * Más de 100 pagos (2026-10-07): los dos meses recientes se traen
-   * completos; "Anteriores" de a 100 con "Cargar más" (crece sin tope con
-   * el tiempo). Buscar con 2 letras o más consulta al servidor, así
-   * encuentra también pagos viejos que no están cargados.
+   * El mes actual y el anterior se traen completos; "Anteriores" se pagina de
+   * a `TAMANO_PAGINA` con "Cargar más" porque crece sin tope. Buscar con 2
+   * letras o más consulta al servidor, así encuentra también pagos no cargados.
    */
   private readonly desdeRecientes = (() => {
     const h = new Date();
@@ -337,7 +336,7 @@ export class FacturacionPageComponent {
       },
       error: () => {
         this.cargandoAnteriores.set(false);
-        this.alertas.mostrar({ estado: 'error', titulo: 'No se pudieron cargar más pagos', texto: 'Intentá de nuevo.' });
+        this.alertas.mostrar({ estado: 'error', titulo: 'No se pudieron cargar más pagos', texto: 'Intenta de nuevo.' });
       },
     });
   }
@@ -457,7 +456,7 @@ export class FacturacionPageComponent {
       .seguir(this.facturacion.anular(p.id, motivo), {
         titulo: 'Anulando el pago', texto: `#${p.id} · ${p.empresaNombre}`,
         exito: { titulo: 'Pago anulado', texto: `${plata(p.monto)} vuelven al saldo de ${p.empresaNombre}.` },
-        error: { titulo: 'No se pudo anular', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo anular', texto: 'Intenta de nuevo.' },
       })
       .subscribe({
         next: (d) => {
@@ -502,7 +501,7 @@ export class FacturacionPageComponent {
     return { icono: IconCircleCheck, tinta: '#087b5d', titulo: 'Al día', texto: venc ? `Próximo cobro de ${plata(cuota)} el ${fmt(venc)}.` : 'Sin cobros pendientes.' };
   });
 
-  // ── Descuentos (2026-10-10) ───────────────────────────────────────────
+  // ── Descuentos ────────────────────────────────────────────────────────
 
   /** El descuento activo de la Empresa de la hoja (a lo sumo uno). */
   protected readonly descuentoActivo = computed(() => this.cuenta()?.descuentos?.find((d) => d.activo) ?? null);
@@ -561,7 +560,7 @@ export class FacturacionPageComponent {
         {
           titulo: 'Aplicando el descuento', texto: `${c.empresa.nombre} · ${v.concepto}`,
           exito: { titulo: 'Descuento aplicado', texto: `La cuota pasa a ${plata(v.despues)} desde el próximo cobro. Le avisamos por correo.` },
-          error: { titulo: 'No se pudo aplicar el descuento', texto: 'Intentá de nuevo.' },
+          error: { titulo: 'No se pudo aplicar el descuento', texto: 'Intenta de nuevo.' },
         },
       )
       .subscribe({ next: (x) => this.cuenta.set(x), error: () => this.formDescuento.set(f) });
@@ -575,12 +574,12 @@ export class FacturacionPageComponent {
       .seguir(this.facturacion.darDeBajaDescuento(b.id, b.motivo.trim()), {
         titulo: 'Quitando el descuento', texto: '',
         exito: { titulo: 'Descuento quitado', texto: 'Vuelve al precio del plan desde el próximo cobro.' },
-        error: { titulo: 'No se pudo quitar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo quitar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: (x) => this.cuenta.set(x), error: () => undefined });
   }
 
-  // ── Prueba (2026-10-10) ───────────────────────────────────────────────
+  // ── Prueba ────────────────────────────────────────────────────────────
 
   protected readonly diasPruebaMax = DIAS_PRUEBA_MAX;
   protected extenderPrueba(): void {
@@ -612,7 +611,7 @@ export class FacturacionPageComponent {
       .seguir(this.facturacion.crearCargo(c.empresa.id, f.concepto.trim(), monto), {
         titulo: 'Agregando extra mensual', texto: f.concepto.trim(),
         exito: { titulo: 'Extra mensual agregado', texto: `${f.concepto.trim()} · ${plata(monto)} desde el próximo cobro.` },
-        error: { titulo: 'No se pudo agregar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo agregar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: (x) => this.cuenta.set(x), error: () => this.formExtra.set(f) });
   }
@@ -624,7 +623,7 @@ export class FacturacionPageComponent {
       .seguir(this.facturacion.darDeBajaCargo(b.id, b.motivo.trim()), {
         titulo: 'Quitando extra', texto: '',
         exito: { titulo: 'Extra quitado', texto: 'Deja de cobrarse desde el próximo período.' },
-        error: { titulo: 'No se pudo quitar', texto: 'Intentá de nuevo.' },
+        error: { titulo: 'No se pudo quitar', texto: 'Intenta de nuevo.' },
       })
       .subscribe({ next: (x) => this.cuenta.set(x), error: () => undefined });
   }
@@ -766,7 +765,8 @@ export class FacturacionPageComponent {
     });
   }
 
+  /** «Volver al inicio» de la pantalla de error: va a la portada de staff. */
   protected volver(): void {
-    this.router.navigateByUrl('/facturacion');
+    this.router.navigateByUrl('/');
   }
 }

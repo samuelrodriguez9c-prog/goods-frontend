@@ -75,11 +75,10 @@ const SUGERENCIAS = [
 
 /**
  * Botón del Asistente pegado a un borde de la ventana + mini chat.
- * Reemplaza a `AsistenteStaffPanelComponent` en `ShellComponent`.
  *
- * - En reposo: círculo negro de 52 px, medio escondido tras el borde.
- * - Hover: crece (scale 1.2) desde el borde sin despegarse, la marca gira
- *   más rápido y hace un "saludo", aparece la etiqueta.
+ * - En reposo: píldora negra que asoma 40 px del borde (se lee como un círculo).
+ * - Hover: asoma más (58 px) sin despegarse del borde, la marca gira más
+ *   rápido y hace un "saludo", aparece la etiqueta.
  * - Arrastre: se mueve libre por la pantalla; al soltar se pega al borde
  *   más cercano (cualquiera de los 4) con rebote. La posición se guarda
  *   en localStorage (`goods-ia-dock`).
@@ -146,11 +145,11 @@ export class AsistenteDockComponent implements OnDestroy {
   protected readonly lado = computed<Lado>(() => (this.drag() ? this.masCercano(this.base().x, this.base().y) : this.dock().lado));
 
   /**
-   * Forma del botón (v3), relativa a la caja de 52×52 pegada al borde:
+   * Forma del botón, relativa a la caja de 52×52 pegada al borde:
    *  - Reposo: píldora pegada al borde. Asoma 40 px (el extremo redondo,
    *    se lee como un círculo) y sigue 40 px más detrás del borde, así que
    *    su final del lado del borde nunca se ve.
-   *  - Hover: sale el rectángulo redondeado (radio 20): asoma 74 px.
+   *  - Hover: sale el rectángulo redondeado (radio 20): asoma 58 px.
    *  - Arrastre: círculo perfecto de 56 px, igual en cualquier lado.
    *  - Abierto: círculo de 52 px con el chevron.
    * La marca (26 px) se ubica cerca del extremo visible.

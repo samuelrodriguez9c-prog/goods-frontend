@@ -1,5 +1,5 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import {
   AudienciaCampanas,
@@ -17,10 +17,17 @@ import {
   TipoVariable,
 } from './whatsapp.model';
 
+/** Cliente de `/whatsapp`: conexión del número, bandeja, plantillas, automatizaciones y campañas. */
 @Injectable({ providedIn: 'root' })
 export class WhatsappService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/whatsapp`;
+
+  /**
+   * Sin número conectado (o todavía sin saberlo) el topbar muestra solo
+   * «WhatsApp» en la miga, sin la sección. Lo actualiza `WhatsappShellComponent`.
+   */
+  readonly sinNumero = signal(false);
 
   conexion() {
     return this.http.get<EstadoConexion>(`${this.base}/conexion`);
@@ -64,7 +71,7 @@ export class WhatsappService {
     return this.http.post<Mensaje>(`${this.base}/mensajes/${mensajeId}/reintentar`, {});
   }
 
-  // ── Fase 3 ──
+  // Plantillas, respuestas automáticas y campañas
 
   plantillas() {
     return this.http.get<Plantilla[]>(`${this.base}/plantillas`);

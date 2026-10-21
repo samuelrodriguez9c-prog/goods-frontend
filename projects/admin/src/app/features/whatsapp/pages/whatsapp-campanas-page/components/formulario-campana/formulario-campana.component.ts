@@ -17,8 +17,10 @@ interface Formulario {
   fecha: string;
 }
 
-/** Variables por defecto de una plantilla: la 1 es el nombre de cada cliente ("cliente" si no tiene). */
-/** Las variables de tipo "nombre" se llenan con el de cada cliente; el resto es texto fijo de la campaña. */
+/**
+ * Variables por defecto de una plantilla: las de tipo «nombre» se llenan con
+ * el de cada cliente («cliente» si no tiene); el resto es texto fijo de la campaña.
+ */
 function variablesPara(p: Plantilla | null): VariableCampana[] {
   return Array.from({ length: p ? variablesDe(p.cuerpo) : 0 }, (_, k) =>
     tipoVariable(p?.tiposVariables, k) === 'nombre' ? { tipo: 'nombre', valor: 'cliente' } : { tipo: 'texto', valor: '' },
@@ -26,7 +28,7 @@ function variablesPara(p: Plantilla | null): VariableCampana[] {
 }
 
 /**
- * "Nueva campaña" / "Editar campaña" (LEEME §7): nombre, plantilla (solo si
+ * «Nueva campaña» / «Editar campaña»: nombre, plantilla (solo si
  * hay más de una de promoción aprobada), la oferta, cuándo, vista previa y
  * el costo. Enviar va en dos toques ("Sí, enviar a N clientes"). Crea con
  * `crearCampana` o guarda una programada con `editarCampana`, y avisa con

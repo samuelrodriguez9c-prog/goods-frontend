@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inj
 import {
   IconAdjustments, IconAlertCircle, IconAlertTriangle, IconAlignLeft, IconArrowDownLeft, IconArrowUpRight,
   IconArrowsMaximize, IconArrowsMinimize, IconBell, IconCamera, IconChartPie, IconCheck, IconChevronDown,
-  IconChevronUp, IconCloudUpload, IconCornerDownRight, IconDots, IconEye, IconFolder, IconFolderOff, IconHash,
+  IconChevronUp, IconCloudUpload, IconCornerDownRight, IconDots, IconEye, IconFolder, IconForms, IconFolderOff, IconHash,
   IconHistory, IconId, IconInfoCircle, IconLink, IconLock, IconPackages, IconPhoto, IconPointer, IconRefresh,
   IconSelector, IconStar, IconStarFilled, IconTag, IconTrash, IconWeight, IconWorld, IconX, TablerIconComponent,
 } from '@tabler/icons-angular';
@@ -15,6 +15,8 @@ import { AlertaService } from '../../../../core/ui/alerta.service';
 import { PistaService } from '../../../../core/ui/pista.service';
 import { UploadService } from '../../../../core/upload/upload.service';
 import { AutofocoDirective } from '../../../../shared/ui/autofoco.directive';
+import { CamposPropiosComponent } from '../../../../shared/ui/campos-propios/campos-propios.component';
+import { RouterLink } from '@angular/router';
 import { Borrador, Pestana, ProductosStore, cop, num, pct, slugDe } from '../../productos.store';
 
 const MAX_IMAGEN = 8e6;
@@ -26,7 +28,7 @@ const DESC_ESTADO: Record<EstadoProducto, string> = {
 };
 
 /**
- * Ficha del producto (handoff-productos §2.3). Lee y escribe el borrador del
+ * Ficha del producto. Lee y escribe el borrador del
  * `ProductosStore` del padre. Seis pestañas; cada una en tarjetas de 2 columnas
  * que pasan a 1 con poco ancho.
  */
@@ -34,7 +36,7 @@ const DESC_ESTADO: Record<EstadoProducto, string> = {
   selector: 'app-producto-ficha',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TablerIconComponent, NgTemplateOutlet, SlicePipe, AutofocoDirective],
+  imports: [TablerIconComponent, NgTemplateOutlet, SlicePipe, AutofocoDirective, CamposPropiosComponent, RouterLink],
   templateUrl: './producto-ficha.component.html',
   host: { class: 'contents' },
 })
@@ -54,7 +56,7 @@ export class ProductoFichaComponent {
     subir: IconCloudUpload, tag: IconTag, pie: IconChartPie, alerta: IconAlertTriangle, info: IconInfoCircle,
     error: IconAlertCircle, cajas: IconPackages, campana: IconBell, historial: IconHistory, peso: IconWeight,
     mundo: IconWorld, ojo: IconEye, link: IconLink, regen: IconRefresh, puntero: IconPointer,
-    entrada: IconArrowDownLeft, salida: IconArrowUpRight,
+    entrada: IconArrowDownLeft, salida: IconArrowUpRight, campos: IconForms,
   };
   protected readonly EST = ESTADOS_PRODUCTO;
   protected readonly estados = Object.keys(ESTADOS_PRODUCTO) as EstadoProducto[];
@@ -230,7 +232,7 @@ export class ProductoFichaComponent {
     this.s.borrador.update((b) => (b ? { ...b, slug: slugDe(b.nombre), slugManual: false } : b));
   }
 
-  // ── imágenes ──
+  // imágenes
   protected subir(files: FileList | null): void {
     const p = this.p();
     if (!p) return void this.alertas.mostrar({ estado: 'warning', titulo: 'Guarda el producto antes de subir imágenes' });
@@ -295,10 +297,8 @@ export class ProductoFichaComponent {
     });
   }
 
-  /**
-   * Reordenar. TODO backend: no hay endpoint de orden (`PATCH /productos/:id/imagenes/orden`
-   * con `[{id, orden}]`). Mientras tanto se reordena solo en pantalla.
-   */
+  // TODO(backend): endpoint para guardar el orden (`PATCH /productos/:id/imagenes/orden`
+  // con `[{id, orden}]`). Mientras tanto se reordena solo en pantalla.
   protected soltarImagen(destino: number, e: DragEvent): void {
     e.preventDefault();
     const desde = this.arrastrando(), p = this.p();
@@ -316,7 +316,7 @@ export class ProductoFichaComponent {
     input.value = '';
   }
 
-  // ── ajuste de stock ──
+  // ajuste de stock
   protected cambiarAjuste(c: Partial<{ signo: '+' | '-'; cantidad: string; motivo: string; otro: string }>): void {
     this.ajuste.update((a) => (a ? { ...a, ...c } : a));
   }
@@ -361,12 +361,10 @@ export class ProductoFichaComponent {
       });
   }
 
-  /**
-   * "Mejorar con IA". TODO backend: no existe endpoint. Contrato sugerido:
-   * `POST /asistente/productos/descripcion { nombre, categoria, descripcion } → { texto }`.
-   * Al tenerlo: poner el textarea en solo lectura, escribir `texto` de a 2–4
-   * caracteres cada 24 ms y ofrecer Deshacer / Mantener (ver referencia).
-   */
+  // TODO(backend): endpoint para «Mejorar con IA», por ejemplo
+  // `POST /asistente/productos/descripcion { nombre, categoria, descripcion } → { texto }`.
+  // Con él: textarea en solo lectura, escribir `texto` de a 2–4 caracteres
+  // cada 24 ms y ofrecer Deshacer / Mantener.
   protected mejorarConIA(): void {
     if (!this.b()?.nombre.trim()) return void this.alertas.mostrar({ estado: 'warning', titulo: 'Escribe primero el nombre' });
     this.alertas.mostrar({ estado: 'info', titulo: 'Mejorar con IA', texto: 'Disponible cuando el Asistente tenga el endpoint de descripciones.' });

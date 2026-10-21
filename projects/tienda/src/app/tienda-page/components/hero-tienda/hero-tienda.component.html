@@ -1,0 +1,34 @@
+@let t = st.tienda()!;
+<div class="p-3">
+  <section data-screen-label="Inicio" class="relative flex min-h-[min(880px,calc(100dvh-24px))] flex-col justify-end overflow-hidden rounded-[36px] bg-bosque px-[clamp(24px,5vw,72px)] pb-[clamp(36px,5vw,64px)] pt-[140px] text-hoja">
+    <div burbuja="0.03,40,0.04" [parallax]="[-0.12, 0.32, 0.04]" aria-hidden="true" class="absolute right-[-10%] top-[-18%] size-[58vw] max-h-[860px] max-w-[860px]"><div class="animate-morph size-full bg-bosque-2"></div></div>
+    <div burbuja="0.07,70,0.12" [parallax]="[-0.35, 0.12, 0, 0.0006]" aria-hidden="true" class="absolute right-[24%] top-[14%] size-[16vw] max-h-[240px] max-w-[240px]"><div class="animate-morph-r size-full bg-teal"></div></div>
+    <div burbuja="0.12,56,0.18" [parallax]="[0.1, -0.45]" aria-hidden="true" class="absolute bottom-[12%] right-[8%] size-[7vw] max-h-[110px] max-w-[110px]"><div class="size-full bg-wa [animation:morph_13s_ease-in-out_infinite]"></div></div>
+
+    <div #hero class="relative flex flex-col gap-[clamp(28px,4vw,48px)] will-change-transform">
+      <p class="m-0 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <span class="flex items-center gap-2.5 text-[15px] font-medium text-lima">
+          <span class="relative flex size-2"><span class="animate-anillo absolute inset-0 rounded-full bg-wa"></span><span class="relative size-2 rounded-full bg-wa"></span></span>Recibiendo pedidos
+        </span>
+        @if (t.ciudad) {
+          <span class="flex items-center gap-1.5 text-[15px] text-salvia"><tabler-icon [icon]="i.pin" [size]="17" [stroke]="2" />{{ t.ciudad }}</span>
+        }
+      </p>
+      <h1 class="titular m-0 text-balance font-bold" [style.font-size]="st.titularHero().fs" [style.max-width]="st.titularHero().mw">{{ t.nombre }}</h1>
+      <div class="flex flex-wrap items-end justify-between gap-7">
+        <div class="flex max-w-[520px] flex-col gap-6">
+          @if (t.descripcion) { <p class="m-0 text-pretty text-[clamp(17px,1.5vw,20px)] leading-normal text-salvia">{{ t.descripcion }}</p> }
+          <div class="flex flex-wrap gap-2.5">
+            <button type="button" (click)="st.irCatalogo()" class="flex h-[52px] items-center gap-2 rounded-full bg-wa px-6 text-[15px] font-semibold text-noche transition-transform hover:bg-wa-hover active:scale-[.97]">Ver productos<tabler-icon [icon]="i.abajo" [size]="17" [stroke]="2" /></button>
+            <a [href]="st.waGeneral()" target="_blank" rel="noopener" class="flex h-[52px] items-center gap-2 rounded-full bg-white/10 px-[22px] text-[15px] font-medium text-hoja no-underline hover:bg-white/[.18] hover:text-hoja"><tabler-icon [icon]="i.wa" [size]="19" [stroke]="2" />Escribir</a>
+          </div>
+        </div>
+        <ol class="m-0 flex list-none flex-wrap gap-2 p-0">
+          <li class="flex h-11 items-center gap-2.5 rounded-full bg-white/[.07] py-0 pl-1.5 pr-[18px] text-sm"><span class="grid size-8 place-items-center rounded-full bg-white/10 text-xs font-semibold">1</span>Elige</li>
+          <li class="flex h-11 items-center gap-2.5 rounded-full bg-white/[.07] py-0 pl-1.5 pr-[18px] text-sm"><span class="grid size-8 place-items-center rounded-full bg-white/10 text-xs font-semibold">2</span>Revisa tu pedido</li>
+          <li class="flex h-11 items-center gap-2.5 rounded-full bg-turquesa py-0 pl-1.5 pr-[18px] text-sm font-medium text-noche"><span class="grid size-8 place-items-center rounded-full bg-noche text-turquesa"><tabler-icon [icon]="i.wa" [size]="16" [stroke]="2" /></span>Envíalo por WhatsApp</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</div>

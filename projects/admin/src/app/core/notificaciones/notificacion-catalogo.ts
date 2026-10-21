@@ -1,8 +1,5 @@
-// projects/admin/src/app/core/notificaciones/notificacion-catalogo.ts
-//
-// Categoría, ícono, etiqueta, acción y destino por tipo — lo comparten la
-// campanita (`TopbarComponent`) y la página (`NotificacionesPageComponent`).
-// Calcado de `staff` (2026-10-07) con las categorías del cliente.
+// Categoría, ícono, etiqueta, acción y destino de cada tipo de notificación.
+// Lo comparten la campanita del topbar y la página de notificaciones.
 import {
   IconAlertTriangle,
   IconBulb,
@@ -74,8 +71,7 @@ export const TIPOS: Record<TipoNotificacion, DefTipo> = {
   },
   plan_por_vencer: { cat: 'cuenta', etiqueta: 'Por vencer', icono: IconCalendarDue, accion: 'Ver mi cuenta', ruta: cuenta, accionable: true },
   plan_pago_vencido: { cat: 'cuenta', etiqueta: 'Pago vencido', icono: IconCreditCardOff, accion: 'Ver mi cuenta', ruta: cuenta, accionable: true },
-  // Tipos de staff: /notificaciones nunca debería devolverlos a una
-  // Empresa — se tipan igual para no romper si el backend cambia.
+  // Tipos de staff: no deberían llegarle a una Empresa, pero se cubren por si el backend cambia.
   empresa_registrada: { cat: 'otras', etiqueta: 'Aviso', icono: IconMessage, accion: 'Ver', ruta: otra },
   empresa_estado_cambio: { cat: 'cuenta', etiqueta: 'Tu cuenta', icono: IconUserCircle, accion: 'Ver mi cuenta', ruta: cuenta },
   conversacion_solicitada: { cat: 'otras', etiqueta: 'Aviso', icono: IconMessage, accion: 'Ver', ruta: otra },

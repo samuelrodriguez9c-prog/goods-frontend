@@ -5,7 +5,7 @@ import { Subscription, of, switchMap } from 'rxjs';
 import { AsistenteService } from './asistente.service';
 import { AsistenteConversacion, AsistenteMensaje } from './models/asistente.model';
 
-/** Nombre de tool → etiqueta para "Consulté …" (mismo mapa que el panel viejo). */
+/** Nombre de tool → etiqueta para "Consulté …". */
 export const ETIQUETAS_HERRAMIENTA: Record<string, string> = {
   consultarStock: 'tu inventario',
   resumenVentas: 'tus ventas',
@@ -24,17 +24,13 @@ const KEY_FIJADAS = 'goods-admin-ia-fijadas';
 const VELOCIDAD_MS = 34;
 
 /**
- * Estado compartido del Asistente de IA de la Empresa (calcado del de
- * staff, 2026-10-07). Lo usan los DOS
- * componentes del rediseño: el mini chat (`AsistenteDockComponent`,
- * montado en el Shell) y la pantalla completa (`AsistentePageComponent`,
- * ruta `/asistente`). Al ser `providedIn: 'root'`, maximizar el mini
- * chat conserva la conversación activa, los mensajes y la respuesta en
- * curso: la pantalla completa lee lo mismo.
+ * Estado del Asistente de IA de la Empresa, compartido por el mini chat
+ * (`AsistenteDockComponent`) y la pantalla completa (`AsistentePageComponent`):
+ * al maximizar se conservan la conversación y la respuesta en curso.
  *
- * El backend devuelve el mensaje FINAL (sin streaming), así que la
- * "escritura progresiva" es solo visual: `escribir()` revela el texto ya
- * recibido de a dos tokens cada 34 ms.
+ * @remarks
+ * El backend devuelve el mensaje completo (sin streaming); la escritura
+ * progresiva es solo visual: `escribir()` revela dos tokens cada 34 ms.
  */
 @Injectable({ providedIn: 'root' })
 export class AsistenteChatStore {

@@ -1,4 +1,3 @@
-// projects/staff/src/app/features/soporte/pages/soporte-page/soporte-page.component.ts
 import {
   ChangeDetectionStrategy,
   Component,
@@ -60,7 +59,7 @@ import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/p
 
 const MS_MINUTO = 60_000;
 const MS_HORA = 3_600_000;
-/** Desde 2 h la espera se marca más oscura (sin rojo, ver LEEME §15). */
+/** Desde 2 h (en minutos) la espera se marca más oscura, sin llegar a rojo. */
 const ESPERA_LARGA_MIN = 120;
 /** Ventana en la que una fila/mensaje "recién llegado" anima su entrada. */
 const MS_ANIMACION = 1_500;
@@ -77,10 +76,11 @@ const PALETA: readonly (readonly [string, string])[] = [
   ['#fef6d8', '#854d0e'],
 ];
 
+// TODO(backend): devolver `ultimoMensaje` en `ChatService.listarBandeja` (subconsulta del último mensaje).
 /**
  * `ultimoMensaje` es OPCIONAL: hoy `GET /chat/conversaciones` no lo trae.
  * Con él la lista muestra la vista previa y "Te toca responder"; sin él
- * cae al correo del cliente y a "Asignada a vos". Ver LEEME §15.
+ * cae al correo del cliente y a "Asignada a ti".
  */
 type ConversacionBandeja = Conversacion & {
   ultimoMensaje?: { autorId: number | null; cuerpo: string; esSistema: boolean; creadoEn: string } | null;
@@ -93,40 +93,18 @@ interface Chip {
   tinta: string;
 }
 
+// TODO(front): falta el widget del lado del cliente (`admin`) para que una Empresa abra conversaciones; hoy solo se crean por API.
 /**
- * Bandeja de soporte (§7.2/§8 de `PIVOTE_SAAS_MULTITENANT.md`) — rediseño
- * de LEEME §15. El backend (`modules/chat/`) sigue igual (conversaciones
- * tipo ticket, bandeja compartida con auto-asignación al primero que
- * responde, tiempo real vía `RealtimeGateway`) — ver `ChatService`
- * (frontend) y la migración `AjustarPermisosDeConversacionesPorRol`
- * (2026-09-23), que le dio `conversaciones.ver`/`conversaciones.gestionar`
- * a los roles de staff reales (antes solo los tenía el rol `admin` viejo).
+ * Bandeja de soporte del staff sobre `ChatService`: conversaciones tipo ticket
+ * en una bandeja compartida, que se asignan solas al primero que responde, con
+ * tiempo real por `RealtimeService`.
  *
- * El widget del lado del cliente (`admin`, para que una Empresa pueda
- * ABRIR una conversación) todavía no existe — pendiente explícito,
- * decidido junto con el usuario el 2026-09-23: por ahora nadie puede
- * escribir del lado del cliente salvo por API directa. Esta pantalla no
- * depende de eso: lee/responde lo que ya haya en la bandeja.
- *
- * Misma lógica de permisos y de asignación que la versión anterior
- * (`puedeEscribir`, `puedeAsignarme`, `puedeDevolver`, `reasignarA`,
- * refrescos silenciosos): lo nuevo acá es la lista agrupada y plegable
- * (Sin asignar / Mías / Con el equipo / Resueltas), la búsqueda, el
- * control único de asignación (reemplaza Asignarme/Devolver/Asignar a
- * otro de tres botones sueltos), los atajos de teclado (J/K, R, A, /), el
- * aviso de mensaje entrante de otra conversación, y animaciones
- * selectivas: solo lo que llega EN VIVO anima (mensajes/filas nuevos),
- * no cada carga de hilo.
- *
- * `ultimoMensaje` en `ConversacionBandeja` es OPCIONAL y hoy el backend
- * (`GET /chat/conversaciones`) no lo manda — se deja pendiente a
- * propósito (LEEME §15, "A revisar al integrar", punto 1: requeriría una
- * subconsulta del último mensaje en `ChatService.listarBandeja`). Sin él
- * la vista previa de cada fila cae al correo del cliente y el chip de
- * "Mías" muestra "Asignada a vos" en vez de "Te toca responder"/
- * "Esperando al cliente" — degradación explícitamente contemplada en el
- * handoff, no un bug. La UI ya queda lista para consumirlo el día que se
- * agregue esa subconsulta.
+ * @remarks
+ * Lista agrupada y plegable (Sin asignar / Mías / Con el equipo / Resueltas),
+ * búsqueda, un solo control de asignación, atajos de teclado (J/K, R, A, /) y
+ * aviso de mensajes de otras conversaciones. Solo anima lo que llega en vivo,
+ * no cada carga del hilo. Leer y responder requiere `conversaciones.ver` /
+ * `conversaciones.gestionar`.
  */
 @Component({
   selector: 'app-soporte-page',
@@ -172,7 +150,7 @@ export class SoportePageComponent implements OnDestroy {
   };
   private readonly iconosSistema = { asignada: IconUserCheck, tomada: IconHandGrab, devuelta: IconArrowBackUp, cerrada: IconCircleCheck };
 
-  // ── Permisos (idénticos a la versión anterior) ──────────────────────────
+  // ── Permisos ────────────────────────────────────────────────────────────
   protected readonly miId = computed(() => this.authService.currentUser()?.id ?? null);
   protected readonly puedeGestionar = computed(() =>
     (this.authService.currentUser()?.permisos ?? []).includes('conversaciones.gestionar'),
@@ -201,8 +179,9 @@ export class SoportePageComponent implements OnDestroy {
     }
     return c.agenteAsignadoId === this.miId() && c.agenteAnteriorId !== null;
   });
-  /** El control de asignación solo abre menú para admin/admin_goods; para
-   * el resto del staff es una etiqueta de solo lectura. */
+  /** El control de asignación solo abre menú para admin/admin_goods con
+   * `conversaciones.gestionar` y en conversaciones abiertas; si no, es una
+   * etiqueta de solo lectura. */
   protected readonly menuHabilitado = computed(
     () => this.esAdminOAdminGoods() && this.puedeGestionar() && this.seleccionada()?.estado === 'abierta',
   );
@@ -230,9 +209,8 @@ export class SoportePageComponent implements OnDestroy {
   /** ids de mensajes/filas que llegaron en vivo — son los únicos que animan. */
   private readonly recientes = signal<ReadonlySet<number>>(new Set());
   private readonly filasRecientes = signal<ReadonlySet<number>>(new Set());
-  /** Aviso de mensaje entrante en la pila global (AlertaService) — antes
-   *  era un toast local abajo al centro que se encimaba con la pila
-   *  (2026-10-02). Se guarda para cerrarlo al abrir esa conversación. */
+  /** Aviso de mensaje entrante en la pila global (`AlertaService`); se guarda
+   *  para cerrarlo al abrir esa conversación. */
   private aviso: { alertaId: number; conversacionId: number } | null = null;
   /** Reloj para los tiempos relativos ("38 min") — se refresca cada 30 s. */
   private readonly ahora = signal(Date.now());
@@ -288,11 +266,9 @@ export class SoportePageComponent implements OnDestroy {
     };
   });
 
-  /** Cabecera compartida (LEEME.md §14). Migrada a v2 (badge "En vivo" +
-   *  serie) por LEEME.md §16, 2026-09-24 — series por `creadoEn`
-   *  (`serieConteo(…, 8, 3)`, 8 cubos de 3 h = últimas 24 h) para las tres
-   *  colas activas, y por `cerradaEn` (`serieConteo(…, 8, 24)`) para
-   *  Resueltas, tal como lo pide la tabla del handoff. */
+  /** Métricas de la cabecera. Las tres colas activas grafican `creadoEn` en
+   *  8 cubos de 3 h (últimas 24 h); Resueltas grafica `cerradaEn` en 8 cubos
+   *  de 24 h. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() => {
     const vieja = this.masVieja();
     const hoy = new Date().toDateString();
@@ -313,7 +289,7 @@ export class SoportePageComponent implements OnDestroy {
       {
         id: 'mias',
         etiqueta: 'Mías',
-        titulo: 'Asignadas a vos',
+        titulo: 'Asignadas a ti',
         valor: this.mias().length,
         delta: this.teToca().length ? `${this.teToca().length} te toca responder` : null,
         deltaTono: 'info',
@@ -461,7 +437,7 @@ export class SoportePageComponent implements OnDestroy {
   );
 
   protected readonly notaComposer = computed(() =>
-    this.seleccionada()?.agenteAsignadoId ? 'Enter envía · Shift+Enter salto de línea' : 'Al responder, la conversación queda asignada a vos.',
+    this.seleccionada()?.agenteAsignadoId ? 'Enter envía · Shift+Enter salto de línea' : 'Al responder, la conversación queda asignada a ti.',
   );
 
   constructor() {
@@ -547,7 +523,7 @@ export class SoportePageComponent implements OnDestroy {
       },
       error: () => {
         if (mostrarCargando) {
-          this.error.set('No se pudo cargar la bandeja de soporte. Intentá de nuevo.');
+          this.error.set('No se pudo cargar la bandeja de soporte. Intenta de nuevo.');
         }
         this.cargando.set(false);
       },
@@ -807,7 +783,7 @@ export class SoportePageComponent implements OnDestroy {
     }
     if (c.agenteAsignadoId === this.miId()) {
       if (c.ultimoMensaje === undefined) {
-        return { texto: 'Asignada a vos', icono: IconUserCheck, fondo: '#f1f1f1', tinta: '#616161' };
+        return { texto: 'Asignada a ti', icono: IconUserCheck, fondo: '#f1f1f1', tinta: '#616161' };
       }
       return this.clienteHabloUltimo(c)
         ? { texto: 'Te toca responder', icono: IconArrowBackUp, fondo: '#e0f0ff', tinta: '#075985' }
@@ -822,7 +798,7 @@ export class SoportePageComponent implements OnDestroy {
   }
 
   /** El backend no tipa el motivo del mensaje de sistema: se infiere del
-   * texto para elegir el ícono. Si agregan un campo `tipo`, usalo acá. */
+   * texto para elegir el ícono. Si agregan un campo `tipo`, úsalo aquí. */
   private iconoSistema(cuerpo: string) {
     const t = cuerpo.toLowerCase();
     if (t.includes('cerr')) return this.iconosSistema.cerrada;

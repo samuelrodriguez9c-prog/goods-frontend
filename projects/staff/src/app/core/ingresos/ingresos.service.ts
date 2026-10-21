@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { MovimientosDelMes, ResumenIngresos } from './models/ingresos.model';
 
-/** Cliente de `/ingresos` (backend `IngresosController`, 2026-10-04). */
+/** Cliente de `/ingresos`: MRR, cobros y movimientos de las suscripciones. */
 @Injectable({ providedIn: 'root' })
 export class IngresosService {
   private readonly http = inject(HttpClient);
@@ -14,10 +14,12 @@ export class IngresosService {
     return this.http.get<ResumenIngresos>(`${this.base}/resumen`, { params: new HttpParams().set('meses', meses) });
   }
 
+  /** @param mes - `YYYY-MM`. */
   movimientos(mes: string): Observable<MovimientosDelMes> {
     return this.http.get<MovimientosDelMes>(`${this.base}/movimientos`, { params: new HttpParams().set('mes', mes) });
   }
 
+  /** CSV de los últimos `meses`, como respuesta completa (blob y cabeceras) para descargarlo. */
   exportar(meses: number): Observable<HttpResponse<Blob>> {
     return this.http.get(`${this.base}/exportar`, {
       params: new HttpParams().set('meses', meses),

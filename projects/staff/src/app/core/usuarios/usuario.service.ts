@@ -5,10 +5,8 @@ import { environment } from '../../../environments/environment';
 import { ActualizarPerfilPayload } from './models/mi-perfil.model';
 import { RespuestaPaginada, UsuarioGoods } from './models/usuario.model';
 
-/** Body de `POST /usuarios` — mismos campos que `CreateUsuarioDto` del
- * backend que de verdad hacen falta para dar de alta a alguien del
- * personal de Goods (el resto del DTO es de e-commerce: dirección,
- * marketing, etc., no aplica acá). */
+/** Body de `POST /usuarios` con lo necesario para el personal de Goods (el
+ * resto del DTO es de e-commerce y no aplica). */
 export interface CrearUsuarioGoodsPayload {
   nombres: string;
   apellidos: string;
@@ -21,46 +19,30 @@ export interface ActualizarUsuarioGoodsPayload {
   nombres?: string;
   apellidos?: string;
   telefono?: string;
-  /** Ver `UsuarioGoods.imagenPerfil` — la URL ya subida (ver
-   *  `core/upload/upload.service.ts`), nunca el archivo en sí: ese POST
-   *  es un paso aparte, este PATCH solo asocia la URL resultante. */
+  /** URL ya subida con `UploadService`, no el archivo. */
   imagenPerfil?: string;
 }
 
 /**
- * Personal de Goods (`GET /usuarios`, exige `usuarios.ver`) — desde el
- * fix de aislamiento por tenant en `UsuarioService` del backend (ver ese
- * archivo), `staff_goods` acá ve únicamente usuarios con `empresaId
- * null` (sus propios colegas), nunca el equipo de un cliente. Es la
- * pantalla "Usuarios" del sidebar de staff (PIVOTE_SAAS_MULTITENANT.md
- * §8).
- *
- * `POST /usuarios` (público, sin permiso) siempre asigna el rol por
- * defecto (`cliente`, salvo que sea el primer usuario del sistema —
- * ver `resolverRolIdInicial` del backend) y nunca `empresaId` — por eso
- * `crear()` encadena un `PATCH /usuarios/:id/rol` inmediatamente después
- * para dejar al usuario nuevo con el rol de Goods que se eligió en el
- * formulario (ver `UsuariosPageComponent`, que arma esa secuencia).
+ * Personal de Goods (`usuarios.ver`). El backend solo devuelve usuarios sin
+ * Empresa: staff nunca ve el equipo de un cliente.
  */
 @Injectable({ providedIn: 'root' })
 export class UsuarioService {
   private readonly http = inject(HttpClient);
 
-  /** `GET /usuarios/:id` — el backend permite ver el PROPIO perfil sin
-   *  ningún permiso especial (`usuarios.ver` solo hace falta para ver el
-   *  de alguien más, ver `UsuarioController.verificarPropioOPermiso`), así
-   *  que `features/settings/` lo usa así: cualquier cuenta de staff, tenga
-   *  o no `usuarios.ver`, puede traer su propio registro completo.
+  /**
+   * El propio perfil no exige `usuarios.ver`; el de otro, sí.
    *
-   *  Genérico en el tipo de respuesta (por defecto `UsuarioGoods`, lo que
-   *  ya usaba `features/usuarios/`) para que `features/settings/` pueda
-   *  pedir el mismo endpoint tipado contra `MiPerfil` (más campos — ver
-   *  ese modelo) sin duplicar este método ni forzar a `UsuarioGoods` a
-   *  cargar con columnas que esa pantalla no necesita. */
+   * @remarks
+   * Genérico para que Settings lo pida como `MiPerfil` (más campos) sin un
+   * método aparte.
+   */
   obtener<T = UsuarioGoods>(id: number): Observable<T> {
     return this.http.get<T>(`${environment.apiUrl}/usuarios/${id}`);
   }
 
+  /** Trae hasta 100, sin paginar. */
   listar(): Observable<RespuestaPaginada<UsuarioGoods>> {
     const params = new HttpParams().set('pageSize', 100);
     return this.http.get<RespuestaPaginada<UsuarioGoods>>(`${environment.apiUrl}/usuarios`, {
@@ -68,15 +50,19 @@ export class UsuarioService {
     });
   }
 
+  /**
+   * Crea la cuenta con `POST /usuarios`, que siempre asigna el rol por
+   * defecto y nunca `empresaId`.
+   *
+   * @remarks
+   * No pone el rol de Goods: quien llama debe encadenar `cambiarRol()`
+   * (lo hace `CrearUsuarioPanelComponent`).
+   */
   crear(payload: CrearUsuarioGoodsPayload): Observable<UsuarioGoods> {
     return this.http.post<UsuarioGoods>(`${environment.apiUrl}/usuarios`, payload);
   }
 
-  /** Mismo criterio genérico que `obtener()` — `features/settings/` pasa
-   *  un `ActualizarPerfilPayload` (más campos que
-   *  `ActualizarUsuarioGoodsPayload`, ver ese modelo) y pide de vuelta un
-   *  `MiPerfil`, sin que esto deje de servir a `features/usuarios/` con
-   *  su payload/respuesta de siempre (tipo por defecto). */
+  /** Genérico como `obtener()`: Settings manda un `ActualizarPerfilPayload` y recibe `MiPerfil`. */
   actualizar<TRespuesta = UsuarioGoods>(
     id: number,
     payload: ActualizarUsuarioGoodsPayload | ActualizarPerfilPayload,
@@ -92,10 +78,8 @@ export class UsuarioService {
     return this.http.delete<void>(`${environment.apiUrl}/usuarios/${id}`);
   }
 
-  /** Foto de quién está conectado AHORA (`RealtimeGateway.usuariosEnLineaIds`
-   * del backend) — es solo el punto de partida; `usuarios-page` se suscribe
-   * aparte a `RealtimeService` para las actualizaciones en vivo después de
-   * esta carga (ver `EVENTO_PRESENCIA_CAMBIO`). */
+  /** Ids de quién está conectado ahora. Es solo la foto inicial: los cambios
+   * posteriores llegan por `RealtimeService`. */
   enLinea(): Observable<{ ids: number[] }> {
     return this.http.get<{ ids: number[] }>(`${environment.apiUrl}/usuarios/en-linea`);
   }

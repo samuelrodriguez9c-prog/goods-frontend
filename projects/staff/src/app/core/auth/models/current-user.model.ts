@@ -1,14 +1,10 @@
-/** Espejo exacto de lo que devuelve `GET /auth/me` — mismo modelo que
- * `admin/core/auth/models/current-user.model.ts` (no se comparte vía
- * `shared-ui` a propósito: esa librería es para composites de UI, no para
- * tipos de dominio — ver ADMIN_DISENO.md sobre el criterio de qué entra
- * en `shared-ui`). Acá `empresaId` siempre va a ser `null`.
+/**
+ * Respuesta de `GET /auth/me`. No se comparte con `admin` porque `shared-ui`
+ * es solo para UI. En staff `empresaId` es `null`.
  *
- * `rol.esRolStaff` (no `rol.nombre === 'staff_goods'`) es lo que decide si
- * la cuenta puede entrar a este panel — ver `LoginComponent.submit()` y
- * `PROPUESTA_ROLES_Y_ACCESOS.md` §5.1: con esto, cualquier rol de staff
- * nuevo (`admin_goods`, `auditoria_goods`, `empleado_goods`) entra sin
- * tocar este archivo ni el login. */
+ * `rol.esRolStaff` (y no el nombre del rol) decide si la cuenta entra al
+ * panel, para que un rol de staff nuevo no obligue a tocar el login.
+ */
 export interface CurrentUser {
   id: number;
   correo: string;
@@ -23,12 +19,10 @@ export interface CurrentUser {
     esRolStaff: boolean;
   };
   permisos: string[];
-  // Fase 7 de PROPUESTA_ROLES_Y_ACCESOS.md (§5.5) — `true` solo cuando
-  // esta sesión puntual se abrió "prestando" identidad de staff vía el
-  // acceso especial de superadmin (Usuario.accesoStaffGoods), no porque el
-  // usuario sea de verdad parte del staff de Goods. Ver
-  // `TopbarComponent`, que lo usa para mostrar el aviso correspondiente —
-  // sin esto, alguien usando su acceso especial no tendría forma de
-  // distinguirlo de una sesión de staff normal.
+  /**
+   * `true` cuando la sesión se abrió prestando identidad de staff con el
+   * acceso especial de superadmin (`Usuario.accesoStaffGoods`). El topbar
+   * lo usa para avisar que no es una sesión de staff normal.
+   */
   esSesionCrossPanelStaff: boolean;
 }

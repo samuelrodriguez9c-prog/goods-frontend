@@ -13,18 +13,14 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
 
 /**
- * Layout raíz del admin: topbar + sidebar + área de contenido — mismo
- * armado que el de staff desde 2026-10-07 (contenido al 90 %, pila de
- * alertas, pista y el botón del Asistente de IA pegado al borde).
+ * Layout del admin: topbar, sidebar y contenido (al 90 %), con la pila de
+ * alertas, la pista y el botón del asistente. Es la ruta `''` protegida por
+ * `authGuard`; cada feature cuelga como hija y el login queda fuera.
  *
- * Se monta
- * como el componente de la ruta `''` en `app.routes.ts` (protegida por
- * `authGuard`), con cada feature colgando como ruta hija — así el login
- * vive en otra rama de rutas sin este layout, sin tener que tocar `App`.
- *
- * El perfil (`GET /auth/me`) tras un F5 lo pide `TopbarComponent`, igual
- * que en staff: `/asistente` vive fuera de este Shell y monta el mismo
- * topbar, así que ese es el único punto que cubre los dos casos.
+ * @remarks
+ * El perfil tras un F5 lo pide `TopbarComponent`, no el Shell: `/asistente`
+ * vive fuera del Shell y monta el mismo topbar, así que es el único punto que
+ * cubre los dos casos.
  */
 @Component({
   selector: 'app-shell',
@@ -48,7 +44,7 @@ export class ShellComponent implements OnInit {
   private readonly realtime = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
-  /** Ver `AccesoEmpresaComponent`. */
+  /** Acceso de la Empresa (ver `AccesoEmpresaComponent`). */
   protected readonly acceso = computed(() => this.authService.currentUser()?.accesoEmpresa ?? null);
 
   /** Con la cuenta bloqueada se puede seguir usando el chat con Goods
@@ -65,10 +61,9 @@ export class ShellComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    // Acceso en vivo (2026-10-04): cuando Goods registra un pago, anula uno,
-    // suspende o reactiva la cuenta, o el cron la vence, el backend emite
-    // `acceso:cambio` y el panel se bloquea o desbloquea sin recargar
-    // (también se recalculan los módulos del sidebar).
+    // Cuando Goods registra o anula un pago, suspende o reactiva la cuenta, o
+    // el cron la vence, el backend emite `acceso:cambio`: el panel se bloquea
+    // o desbloquea sin recargar (y se recalculan los módulos del sidebar).
     if (this.authService.isAuthenticated()) {
       this.realtime
         .escuchar<{ empresaId: number }>('acceso:cambio')

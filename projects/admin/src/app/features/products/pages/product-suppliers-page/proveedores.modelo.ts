@@ -1,3 +1,4 @@
+import { CampoPersonalizado, ValoresCampos, firmaValores, valoresDe } from '../../../../core/campos/campo-personalizado.model';
 import { CatalogoStore } from '../../shared/catalogo.store';
 import { EstadoCompra, NivelStock, ProductoV5, ProveedorV5 } from '../../shared/modelos';
 import { AccionProveedor, ClaveAccion, tonoProveedor } from '../../shared/proveedores.util';
@@ -15,6 +16,8 @@ export type Modal = { tipo: 'compra' | 'baja'; proveedorId: number } | null;
 /** Campos de texto de la ficha. */
 export type CampoTexto = 'nombre' | 'nit' | 'correo' | 'telefono' | 'direccion' | 'contactoNombre';
 export type Errores = Partial<Record<keyof ProveedorV5, string>>;
+/** La ficha en edición: los campos propios van como texto (ver `ValoresCampos`). */
+export type BorradorProveedor = Omit<ProveedorV5, 'atributos'> & { atributos: ValoresCampos };
 
 /** Fila de la lista (vista Lista y Tarjetas). */
 export interface FilaProveedor {
@@ -55,7 +58,7 @@ export const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'a
 /** Etiquetas de "Cambios sin guardar". */
 export const ETIQUETAS_CAMPOS: Partial<Record<keyof ProveedorV5, string>> = {
   nombre: 'Nombre', nit: 'NIT', correo: 'Correo', telefono: 'Teléfono', direccion: 'Dirección', contactoNombre: 'Contacto',
-  notas: 'Notas', activo: 'Estado', diasEntrega: 'Días de entrega',
+  notas: 'Notas', activo: 'Estado', diasEntrega: 'Días de entrega', atributos: 'Campos propios',
 };
 
 /** Clases de la etiqueta "próxima acción" en la lista y las tarjetas. */
@@ -88,15 +91,18 @@ export const tonoAvatar = (id: number, activo: boolean): [string, string] => (ac
 export const soloDigitos = (v: unknown) => String(v ?? '').replace(/\D/g, '');
 
 /** Copia editable del proveedor (textos vacíos en vez de null). */
-export const borradorDe = (p: ProveedorV5): ProveedorV5 => ({
+export const borradorDe = (p: ProveedorV5, campos: CampoPersonalizado[]): BorradorProveedor => ({
   ...p,
   nit: p.nit ?? '', correo: p.correo ?? '', telefono: p.telefono ?? '', direccion: p.direccion ?? '', contactoNombre: p.contactoNombre ?? '',
-  notas: p.notas ?? '', diasEntrega: [...(p.diasEntrega ?? [])],
+  notas: p.notas ?? '', diasEntrega: [...(p.diasEntrega ?? [])], atributos: valoresDe(p.atributos, campos),
 });
 /** Borrador de "Nuevo proveedor" (id 0 = todavía no existe; el real llega al guardar). */
-export const proveedorVacio = (): ProveedorV5 => ({
+export const proveedorVacio = (campos: CampoPersonalizado[]): BorradorProveedor => ({
   id: 0, nombre: '', nit: '', correo: '', telefono: '', direccion: '', contactoNombre: '', notas: '', activo: true, diasEntrega: [2, 5],
+  atributos: valoresDe({}, campos),
 });
+/** Para comparar borradores: los campos propios vacíos no cuentan como cambio. */
+export const conFirma = (b: BorradorProveedor) => ({ ...b, atributos: firmaValores(b.atributos) });
 
 /** Puntos del polyline de la sparkline (viewBox 64×22), con valores normalizados. */
 export function puntosSpark(serie: number[]): string {

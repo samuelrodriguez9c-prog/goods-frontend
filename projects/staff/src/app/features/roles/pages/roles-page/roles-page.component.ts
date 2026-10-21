@@ -1,5 +1,3 @@
-// projects/staff/src/app/features/roles/pages/roles-page/roles-page.component.ts
-
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
@@ -70,17 +68,8 @@ const TONO_VACIO = '#d6d6d6';
  * porque las claves reales son numéricas. */
 const BORRADOR = 'nuevo';
 
-/** Mismo ajuste que `ETIQUETA_ROL`/`etiquetaRolTexto()` en
- * `usuarios-page.component.ts` (mismos roles de sistema, mismas
- * etiquetas) — acá aplicado al propio módulo de Roles: un trabajador ve
- * "Admin de Goods" en la matriz y en el panel, no el slug `admin_goods`
- * crudo de la base. Se exporta para que `RolPanelComponent` no tenga que
- * duplicarlo — a diferencia de `CrearUsuarioPanelComponent` (that panel
- * es completamente autónomo, sin dependencia de tiempo de ejecución con
- * su página), `RolPanelComponent` ya depende de `RolesPageComponent`
- * para todo lo demás (`niveles`/`edits` compartidos), así que importar
- * esto de acá es el mismo criterio que `FichaUsuarioPanelComponent`
- * importando `ETIQUETA_ROL`/`etiquetaRolTexto` de `usuarios-page`. */
+/** Etiquetas legibles de los roles de sistema (`admin_goods` → "Admin de
+ * Goods"); son las mismas que usa `usuarios-page`. */
 export const ETIQUETA_ROL: Record<string, string> = {
   admin: 'Administrador',
   staff_goods: 'Staff Goods',
@@ -92,15 +81,13 @@ export const ETIQUETA_ROL: Record<string, string> = {
   empleado_empresa: 'Empleado de la Empresa',
 };
 
-/** Traduce el nombre técnico (slug) de un rol a algo legible. Los roles
- * conocidos de sistema (arriba) tienen etiqueta a mano; cualquier otro —
- * un rol propio creado desde acá mismo, ya con nombre humano tecleado
- * por alguien ("Cajero", "soporte-690") — cae al fallback: separa por
- * `_`/`-` y pone cada palabra en mayúscula inicial, en vez de mostrar el
- * slug crudo. Es puramente de lectura: nunca se usa para el valor de un
- * campo editable (ver `nombreEdicion` en `RolesPageComponent`), solo para
- * la fila de la matriz, el título del panel, y las plantillas de "Partir
- * de" al crear. */
+/**
+ * Nombre legible de un rol: `ETIQUETA_ROL` si es de sistema; si no, separa
+ * por `_`/`-` y pone mayúscula inicial a cada palabra.
+ *
+ * @remarks
+ * Solo para mostrar; nunca para el valor de un campo editable (ver `nombreEdicion`).
+ */
 export function etiquetaRolTexto(nombre: string): string {
   return (
     ETIQUETA_ROL[nombre] ??
@@ -156,56 +143,13 @@ const BORRADOR_VACIO: Borrador = { nombre: '', descripcion: '', baseId: null };
 
 /**
  * "Roles y permisos" como matriz roles × módulos, editable en la celda.
- * Reemplaza la tabla + los tres modales (`abrirCrear`/`abrirEditar`/
- * `abrirPermisos`/`abrirEliminar`) de la pantalla anterior.
  *
- * El modelo mental: el nivel de acceso de un rol en un módulo es
- * **acumulativo** — 0 sin acceso, 1 `ver`, 2 `ver+crear`, 3 `+editar`,
- * 4 `+eliminar`. La celda tiene un segmento por acción real del módulo
- * (`auditoria` y `permisos` tienen una sola, `suscripciones` tres), así que
- * la grilla no miente sobre lo que existe en la tabla `permiso`.
- *
- * Nada viaja al backend hasta confirmar: los cambios viven en `niveles` y se
- * comparan contra `nivelesOriginales`. Guardar hace un
- * `PUT /roles/:id/permisos` por rol tocado (más el `PATCH` si se editó
- * nombre/descripción), que es exactamente lo que ya hacía
- * `guardarPermisos()`, pero en lote y sin modal.
- *
- * El panel lateral (ficha/edición/alta) vive en `RolPanelComponent`, aparte,
- * sibling en `pages/` — mismo patrón que el resto de los módulos
- * (`EmpresaDetallePanelComponent`, `FichaUsuarioPanelComponent`). A
- * diferencia de Usuarios (que separó ficha y alta en dos componentes
- * distintos), acá queda uno solo: el LEEME (§10) diseñó a propósito un
- * único panel que cambia de modo con `creando()`, reusando la misma lista
- * de switches de permisos y los mismos preajustes para ver/editar y para
- * dar de alta — separarlo en dos hubiera duplicado ese template entero,
- * justo lo que el diseño evitaba (ver el docstring de `RolPanelComponent`).
- *
- * `niveles`/`nivelesOriginales`/`edits`/`roles`/`modulos` siguen viviendo
- * acá, no en el panel: la matriz (afuera del panel) tiene que pintar el
- * diff en vivo de TODOS los roles tocados, no solo el que está abierto, y
- * la barra flotante (`tocadosFuera`) necesita lo mismo. El panel recibe
- * todo lo que arma con ese estado ya calculado — `modulosPanel`/
- * `metricas`/`bases`/`metadatos`/`chip`/`nombrePanel`/`textoPie`, etc. —
- * por `@Input`, y `persistir`/`crearRol`/`eliminarRol` (que necesitan ese
- * mismo estado compartido) se quedan acá: el panel solo emite
- * `confirmar`/`eliminar`/`duplicar`, nunca llama a `RolService` por su
- * cuenta. Mismo tipo de excepción que `[matrizPanel]`/`[textoCambioRol]`
- * en `FichaUsuarioPanelComponent`.
- *
- * El panel es un overlay `fixed`, nunca corre la página con `marginRight`
- * — mismo criterio que se corrigió en Usuarios el mismo día que se
- * integró este módulo (ver ADMIN_DISENO.md). A diferencia de
- * Empresas/Usuarios, su backdrop es transparente en vez de oscurecer la
- * pantalla — ver el docstring de `RolPanelComponent`.
- *
- * Los nombres de rol que se MUESTRAN (fila de la matriz, título del
- * panel, plantillas de "Partir de") pasan por `etiquetaRolTexto()` —
- * mismo ajuste que ya tenía Usuarios para sus cabeceras de grupo, ahora
- * también acá: un rol de sistema como `admin_goods` se lee "Admin de
- * Goods", no el slug crudo. El campo editable nunca pasa por ahí (ver
- * `nombreEdicion`), así que lo que se guarda es siempre, letra por letra,
- * lo que la persona tecleó — la traducción es puramente de lectura.
+ * @remarks
+ * El nivel de un rol en un módulo es acumulativo (0 sin acceso, 1 `ver`,
+ * 2 `+crear`, 3 `+editar`, 4 `+eliminar`), con un segmento por acción real
+ * del módulo. Nada viaja al backend hasta confirmar: los cambios viven en
+ * `niveles` y se comparan con `nivelesOriginales`. Ese estado vive aquí y no
+ * en `RolPanelComponent` porque la matriz pinta los cambios de todos los roles tocados.
  */
 @Component({
   selector: 'app-roles-page',
@@ -233,9 +177,7 @@ export class RolesPageComponent {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  /** Aviso "Hay cambios nuevos" (§5.4.4/§8, 2026-10-02) — ver `CambiosEnVivoService`. */
-  /** Cambios en vivo acumulados desde la última carga — alimenta la
-   *  píldora "N cambios nuevos · Actualizar" (handoff-alertas-pila §2). */
+  /** Cambios en vivo desde la última carga, para la píldora "N cambios nuevos · Actualizar". */
   protected readonly cambiosEnVivo = signal(0);
   /** Filas resaltadas 2 s después de tocar "Actualizar". */
   protected readonly resaltadas = signal<ReadonlySet<number>>(new Set());
@@ -279,9 +221,8 @@ export class RolesPageComponent {
     this.cargar();
   }
 
-  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar"
-   *  (handoff-alertas-pila §2). `clave` = id de la fila en pantalla, por si
-   *  no coincide con el id del dato comparado. */
+  /** Marca 2 s las filas nuevas o cambiadas al tocar "Actualizar". `clave` =
+   *  id de la fila en pantalla, por si no coincide con el id del dato comparado. */
   private resaltarCambios<T>(
     antes: readonly T[],
     despues: readonly T[],
@@ -364,10 +305,7 @@ export class RolesPageComponent {
     this.modulos().reduce((s, m) => s + m.acciones.length, 0),
   );
 
-  /** Ancho del segmento según cuántas acciones tenga el módulo, para que
-   * todas las celdas midan lo mismo. Escalado hacia arriba junto con el
-   * ancho de columna de módulo (ajuste "se ve apretado" del 2026-09-22:
-   * 52px → minmax(88px, 1fr) y gap-0.5 → gap-1 en la celda). */
+  /** Ancho mínimo de cada segmento según cuántas acciones tenga el módulo. */
   protected anchoSegmento(cantidad: number): string {
     if (cantidad === 1) {
       return '44px';
@@ -375,10 +313,8 @@ export class RolesPageComponent {
     return cantidad === 3 ? '15px' : '10px';
   }
 
-  /** Ancho de la columna de un módulo según cuántas acciones tiene
-   *  (2026-10-05): con el mínimo fijo de 88px, un módulo de 9 acciones
-   *  (9 × 10px + huecos) no cabía y sus segmentos se montaban sobre la
-   *  columna de al lado. Ahora cada columna mide lo que necesita. */
+  /** Ancho mínimo de la columna: 88px o lo que ocupen sus segmentos, para que
+   *  un módulo con muchas acciones no se monte sobre la columna de al lado. */
   protected anchoColumna(cantidad: number): number {
     const segmento = parseInt(this.anchoSegmento(cantidad), 10);
     return Math.max(88, cantidad * segmento + (cantidad - 1) * 4 + 12);
@@ -395,8 +331,6 @@ export class RolesPageComponent {
   private readonly matriz = viewChild<ElementRef<HTMLElement>>('matriz');
   protected readonly hayIzquierda = signal(false);
   protected readonly hayDerecha = signal(false);
-  /** Qué parte de la matriz se ve (para la barrita de la leyenda). */
-  protected readonly vista = signal({ desde: 0, ancho: 100 });
 
   protected medirDesplazamiento(): void {
     const el = this.matriz()?.nativeElement;
@@ -404,25 +338,6 @@ export class RolesPageComponent {
     const max = el.scrollWidth - el.clientWidth;
     this.hayIzquierda.set(el.scrollLeft > 4);
     this.hayDerecha.set(el.scrollLeft < max - 4);
-    this.vista.set({
-      desde: (el.scrollLeft / el.scrollWidth) * 100,
-      ancho: Math.min(100, (el.clientWidth / el.scrollWidth) * 100),
-    });
-  }
-
-  protected desplazar(sentido: 1 | -1): void {
-    const el = this.matriz()?.nativeElement;
-    el?.scrollBy({ left: sentido * el.clientWidth * 0.6, behavior: 'smooth' });
-  }
-
-  /** Lleva la columna de un módulo a la vista (chips de la leyenda). */
-  protected irAModulo(id: string): void {
-    const el = this.matriz()?.nativeElement;
-    const col = el?.querySelector<HTMLElement>(`[data-modulo="${id}"]`);
-    if (!el || !col) return;
-    el.scrollTo({ left: col.offsetLeft - 240 - 24, behavior: 'smooth' });
-    this.moduloHover.set(id);
-    setTimeout(() => this.moduloHover.update((m) => (m === id ? null : m)), 1200);
   }
 
   protected descripcionDe(p: Permiso): string {
@@ -431,10 +346,8 @@ export class RolesPageComponent {
 
   // ── Niveles ─────────────────────────────────────────────────────────────
 
-  /** Nivel = cuántas acciones consecutivas (desde `ver`) tiene el rol. Si el
-   * backend tiene un set "con agujeros" (ej. `editar` sin `crear`), el nivel
-   * es la cantidad de acciones otorgadas: guardar lo normaliza al prefijo.
-   * Ver LEEME, punto 4. */
+  /** Nivel = cantidad de acciones del módulo que tiene el rol. Si el set
+   * tiene huecos (ej. `editar` sin `crear`), guardar lo normaliza al prefijo. */
   private nivelGuardado(rol: Rol, modulo: ModuloMatriz): number {
     const ids = new Set(rol.permisos.map((p) => p.id));
     return modulo.acciones.filter((a) => ids.has(a.id)).length;
@@ -537,12 +450,7 @@ export class RolesPageComponent {
     return this.edits().get(rol.id)?.nombre ?? rol.nombre;
   }
 
-  /** Versión legible de `nombreDe()` — para la fila de la matriz, el
-   * título del panel y las plantillas de "Partir de" al crear. Nunca para
-   * un campo editable: ver `nombreEdicion`, que le pasa al panel el
-   * mismo `nombreDe()` crudo (sin este `etiquetaRolTexto()`) para que el
-   * input de "Datos del rol" muestre y guarde exactamente lo que hay,
-   * letra por letra. */
+  /** Versión legible de `nombreDe()`; nunca para un campo editable (ver `nombreEdicion`). */
   protected nombreMostrado(rol: Rol): string {
     return etiquetaRolTexto(this.nombreDe(rol));
   }
@@ -594,8 +502,7 @@ export class RolesPageComponent {
     };
   }
 
-  /** Dos grupos: plantillas del sistema (`esRolSistema`) y roles propios de
-   * cada cliente. Hoy la tabla los mezclaba sin distinguirlos. */
+  /** Dos grupos: plantillas del sistema (`esRolSistema`) y roles propios de cada cliente. */
   protected readonly grupos = computed<GrupoMatriz[]>(() => [
     {
       titulo: 'Plantillas del sistema',
@@ -631,15 +538,7 @@ export class RolesPageComponent {
     },
   ]);
 
-  /** Cabecera compartida (LEEME.md §14) — mismos 3 valores de `cifras()`,
-   *  sin serie: no hay historia de roles en el tiempo. La leyenda de
-   *  niveles sigue fuera de la cabecera, debajo.
-   *
-   *  Migrada a v2 (badge) por LEEME.md §16, 2026-09-24 — el badge lo pone
-   *  el HTML (`roles().length + ' roles activos'`). La tabla del handoff
-   *  sugiere `serieAcumulada(roles.map(r => r.creadoEn))`, pero `Rol` (ver
-   *  `rol.model.ts`) no tiene `creadoEn`: el backend no lo expone. Sigue sin
-   *  serie, como ya decía este mismo comentario antes de la migración. */
+  /** Los mismos valores de `cifras()`, sin serie: `Rol` no trae `creadoEn`. */
   protected readonly metricasCabecera = computed<MetricaCabecera[]>(() =>
     this.cifras().map((c, i): MetricaCabecera => ({ id: `cifra-${i}`, etiqueta: c.etiqueta, valor: c.valor })),
   );
@@ -685,9 +584,9 @@ export class RolesPageComponent {
     this.edits.set(new Map());
   }
 
-  /** Un `PUT /roles/:id/permisos` (+ `PATCH` si cambió el texto) por rol
-   * tocado. El backend ya reemplaza el set completo, así que mandar el
-   * prefijo del nivel es suficiente. */
+  /** Un `PUT /roles/:id/permisos` (+ `PATCH` si cambió el texto de un rol
+   * propio) por rol tocado. El backend reemplaza el set completo, así que
+   * basta mandar el prefijo del nivel. */
   protected guardarTodo(): void {
     const ids = this.rolesTocados();
     if (!ids.length || this.guardando()) {
@@ -767,10 +666,8 @@ export class RolesPageComponent {
     this.seleccionadoId.set(rol.id);
   }
 
-  /** El alta abre el mismo panel en la pestaña Datos (la pestaña activa
-   * es estado interno de `RolPanelComponent` — se resetea sola cuando
-   * cambia `creando()`, ver su docstring), con el borrador en cero. No
-   * hay modal de "Nuevo rol". */
+  /** Abre el panel en modo alta con el borrador vacío; si llega `base`,
+   * copia sus niveles como punto de partida. */
   protected abrirCreacion(base?: Rol): void {
     this.seleccionadoId.set(null);
     this.creando.set(true);
@@ -812,12 +709,8 @@ export class RolesPageComponent {
     };
   });
 
-  /** Título del panel — pasa por `etiquetaRolTexto()` cuando se está
-   * viendo un rol existente (un `admin_goods` se lee "Admin de Goods").
-   * Mientras se está creando uno nuevo queda crudo: es lo que la persona
-   * está tecleando en ese mismo instante, no un slug de la base que haga
-   * falta traducir. Para el VALOR del input editable, ver
-   * `nombreEdicion` — nunca este. */
+  /** Título del panel: legible para un rol existente; al crear, crudo,
+   * porque es lo que se está escribiendo. */
   protected readonly nombrePanel = computed(() => {
     if (this.creando()) {
       return this.borrador().nombre.trim();
@@ -826,12 +719,8 @@ export class RolesPageComponent {
     return rol ? this.nombreMostrado(rol) : '';
   });
 
-  /** Valor crudo para el input de "Datos del rol" — a diferencia de
-   * `nombrePanel()` (título, ya "prolijo"), este tiene que reflejar
-   * exactamente lo guardado o lo que se está tecleando, letra por letra:
-   * si mostrara la versión traducida, cada tecla pisaría el cursor y lo
-   * que se termina guardando dejaría de ser lo que la persona ve
-   * escrito. */
+  /** Valor crudo del input "Nombre": si mostrara la versión legible, cada
+   * tecla movería el cursor y se guardaría algo distinto a lo escrito. */
   protected readonly nombreEdicion = computed(() => {
     if (this.creando()) {
       return this.borrador().nombre;
@@ -850,7 +739,7 @@ export class RolesPageComponent {
 
   protected readonly subtitulo = computed(() => {
     if (this.creando()) {
-      return 'Definí nombre y permisos — se crea cuando confirmás.';
+      return 'Define nombre y permisos — se crea cuando confirmas.';
     }
     const rol = this.seleccionado();
     if (!rol) {
@@ -861,10 +750,8 @@ export class RolesPageComponent {
       : `Rol propio · ${rol.permisos.length} permisos guardados`;
   });
 
-  /** Tira de métricas del panel. NOTA: el mockup mostraba "usuarios" como
-   * tercera métrica; `Rol` no trae ese conteo (`GET /roles` no cuenta
-   * usuarios por rol), así que va "módulos sin acceso". Si el backend
-   * agrega `usuariosCount`, es un cambio de una línea. Ver LEEME, punto 11. */
+  // TODO(backend): contar usuarios por rol en `GET /roles`; mientras tanto la
+  // tercera métrica es "sin acceso" en lugar de "usuarios".
   protected readonly metricas = computed(() => {
     const clave = this.claveObjetivo();
     if (clave === null) {
@@ -971,7 +858,7 @@ export class RolesPageComponent {
     if (this.creando()) {
       return this.nombreValido()
         ? `Se creará con ${this.totalDe(BORRADOR)} permisos.`
-        : 'Poné un nombre para poder crearlo.';
+        : 'Pon un nombre para poder crearlo.';
     }
     const rol = this.seleccionado();
     if (!rol) {
@@ -1109,8 +996,8 @@ export class RolesPageComponent {
     this.cargar();
   }
 
-  /** `(volver)` — mismo criterio que `EmpresasPageComponent.volver()`. */
+  /** «Volver al inicio» de la pantalla de error: va a la portada de staff. */
   protected volver(): void {
-    this.router.navigateByUrl('/roles');
+    this.router.navigateByUrl('/');
   }
 }

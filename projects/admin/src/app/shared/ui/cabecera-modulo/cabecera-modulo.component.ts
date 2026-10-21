@@ -1,23 +1,3 @@
-// projects/admin/src/app/shared/ui/cabecera-modulo/cabecera-modulo.component.ts
-//
-// Cabecera compartida de los módulos del panel de staff (handoff de diseño
-// "Cabecera de módulo (tipo panel, transversal)", §14 de LEEME.md,
-// 2026-09-23; actualizada a v2 —"badge + subtítulo arriba, líneas de las
-// métricas", §16, 2026-09-24, para que Notificaciones y el Topbar puedan
-// usar `[badge]`). Adaptada del handoff original en dos puntos:
-// - El ícono del período usaba PrimeIcons (`pi pi-calendar`), que este
-//   proyecto no tiene instalado — se usa `tabler-icon` (`IconCalendar`),
-//   el mismo sistema de íconos que ya usa el resto de `staff`.
-// - `[total]` NO se ignora como en el handoff v2 original: se mantiene
-//   activo por compatibilidad, para que un `[total]` sin `[badge]` siga
-//   funcionando en layout v1 (lectura + total abajo) si alguna pantalla
-//   nueva lo necesitara. Pasar `[badge]` activa el layout v2 (badge junto
-//   al título, lectura arriba) y ahí `[total]` deja de importar — así lo
-//   pide el diseño. Las 9 pantallas que usaban este componente antes de la
-//   Cabecera v2 (Empresas, Altas pendientes, Planes, Suscripciones,
-//   Usuarios, Roles, Auditoría, Soporte, Settings) ya se migraron todas a
-//   `[badge]` en la pasada dedicada del 2026-09-24 (LEEME.md §16) — ver el
-//   comentario "Migrada a v2" en cada `*-page.component.html`/`.ts`.
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { IconCalendar, TablerIconComponent } from '@tabler/icons-angular';
 
@@ -35,7 +15,7 @@ export interface MetricaCabecera {
   deltaTono?: TonoMetrica;
   /** Puntos de la línea (el más viejo primero). Sin serie no se dibuja trazo. */
   serie?: number[] | null;
-  /** Color del trazo si no sale del tono (ej. Solicitudes #78350f en Empresas). */
+  /** Color del trazo cuando no debe salir del tono. */
   trazo?: string;
   /** Tooltip de la etiqueta punteada. */
   titulo?: string;
@@ -71,13 +51,15 @@ const ANCHO = 84;
 const ALTO = 28;
 
 /**
- * Cabecera común de los módulos del panel de staff.
+ * Cabecera de módulo: título, badge, acciones y tira de métricas con su
+ * línea. La usan Notificaciones, Documentos internos y Settings.
  *
+ * @remarks
  * Slots:
  *   [icono]     ícono del módulo (20px)
  *   [acciones]  botones de la derecha
- *   [lectura]   subtítulo — bajo el título si hay `[badge]` (v2), si no
- *               bajo la tira de métricas junto a `[total]` (v1)
+ *   [lectura]   subtítulo: bajo el título si hay `[badge]`; si no, bajo la
+ *               tira de métricas junto a `[total]`
  */
 @Component({
   selector: 'app-cabecera-modulo',
@@ -93,11 +75,10 @@ export class CabeceraModuloComponent {
   readonly metricas = input<MetricaCabecera[]>([]);
   /** id de la métrica que está filtrando la vista. */
   readonly activa = input<string | null>(null);
-  /** Dato que identifica al módulo, al lado del título: "14 clientes", "En
-   *  vivo". Activa el layout v2 (lectura arriba, `[total]` se ignora). */
+  /** Dato al lado del título («14 clientes», «En vivo»). Con badge, la lectura sube y `[total]` se ignora. */
   readonly badge = input<string>('');
   readonly badgeTono = input<TonoBadge>('neutro');
-  /** v1: se muestra abajo junto a `[lectura]`. Se ignora si hay `[badge]`. */
+  /** Se muestra abajo junto a `[lectura]`. Se ignora si hay `[badge]`. */
   readonly total = input<string>('');
 
   readonly metricaClick = output<string>();

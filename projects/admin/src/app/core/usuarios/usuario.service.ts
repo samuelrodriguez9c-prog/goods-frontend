@@ -15,29 +15,23 @@ export interface CrearEmpleadoPayload {
   nombres: string;
   apellidos: string;
   correo: string;
-  /** Opcional: sin contraseña, el backend envía una invitación por correo (2026-10-06). */
+  /** Opcional: sin contraseña, el backend envía una invitación por correo. */
   password?: string;
 }
 
 /**
- * Equipo de MI Empresa, del lado `admin` (`PROPUESTA_ROLES_Y_ACCESOS.md`
- * §6 paso 5) — `GET /usuarios` ya viene filtrado por tenant desde el
- * backend (`usuarios.ver`), así que acá nunca hace falta pasar
- * `empresaId`: siempre trae a mi propio equipo, nunca el de otra Empresa.
- * `crearEmpleado` pega contra `POST /usuarios/empleado` (no
- * `POST /usuarios`, que es el registro público de un `cliente`) — ver
- * `UsuarioController.crearEmpleado` del backend.
+ * Equipo de la Empresa y el propio perfil. El backend filtra por la Empresa
+ * del token: nunca hace falta pasar `empresaId`.
  */
 @Injectable({ providedIn: 'root' })
 export class UsuarioService {
   private readonly http = inject(HttpClient);
 
-  /** `GET /usuarios/:id` — Settings lo pide con su propio id, tipado contra `MiPerfil`. */
+  /** Settings lo usa con el propio id y `T = MiPerfil`. */
   obtener<T = Usuario>(id: number): Observable<T> {
     return this.http.get<T>(`${environment.apiUrl}/usuarios/${id}`);
   }
 
-  /** `PATCH /usuarios/:id` — el propio perfil desde Settings. */
   actualizar<T = Usuario>(id: number, payload: ActualizarPerfilPayload): Observable<T> {
     return this.http.patch<T>(`${environment.apiUrl}/usuarios/${id}`, payload);
   }
@@ -48,6 +42,10 @@ export class UsuarioService {
     });
   }
 
+  /**
+   * Suma a alguien al equipo con `POST /usuarios/empleado` (no
+   * `POST /usuarios`, que es el registro público).
+   */
   crearEmpleado(payload: CrearEmpleadoPayload): Observable<Usuario> {
     return this.http.post<Usuario>(`${environment.apiUrl}/usuarios/empleado`, payload);
   }
@@ -56,7 +54,7 @@ export class UsuarioService {
     return this.http.delete<void>(`${environment.apiUrl}/usuarios/${id}`);
   }
 
-  /** Manda un enlace nuevo de 48 h (el anterior deja de servir). */
+  /** Manda un enlace nuevo de 48 h; el anterior deja de servir. */
   reenviarInvitacion(id: number): Observable<{ venceEn: string }> {
     return this.http.post<{ venceEn: string }>(`${environment.apiUrl}/usuarios/${id}/reenviar-invitacion`, {});
   }

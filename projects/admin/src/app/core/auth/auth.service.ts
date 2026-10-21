@@ -14,15 +14,13 @@ interface RespuestaTokens {
 }
 
 /**
- * Estado de sesión del admin: tokens (persistidos en localStorage, para
- * sobrevivir un refresh de página) + perfil/rol/permisos (en memoria,
- * salen de `GET /auth/me` — nunca se guardan en localStorage porque no
- * hace falta y así un cambio de permisos en el backend se refleja apenas
- * se recargue `currentUser`, no queda una copia vieja dando vueltas).
+ * Sesión del admin: tokens en localStorage (sobreviven a un F5) y perfil en
+ * memoria (`GET /auth/me`).
  *
- * `authInterceptor` (core/http) es quien realmente adjunta el
- * `accessToken` a cada request y dispara `refrescarToken()` ante un 401;
- * este servicio expone los métodos pero no se "auto-engancha" a HttpClient.
+ * @remarks
+ * El perfil no se guarda en localStorage para que un cambio de permisos se vea
+ * al recargarlo, sin copias viejas. Quien adjunta el token y llama a
+ * `refrescarToken()` ante un 401 es `authInterceptor`.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -40,17 +38,16 @@ export class AuthService {
   readonly accessToken = this._accessToken.asReadonly();
   readonly currentUser = this._currentUser.asReadonly();
 
-  // Solo mira si hay un access token guardado — no valida que siga
-  // vigente (eso lo resuelve el backend en cada request; ver
-  // authInterceptor). Sirve para decisiones "optimistas" como el guard
-  // de rutas, que igual se corrige solo si el token ya expiró (el
-  // interceptor intenta refrescar, y si el refresh también falla, acá
-  // mismo se llama logout() y el guard vuelve a mandar a /login).
+  // Solo mira si hay un token guardado, no si sigue vigente: si venció, el
+  // interceptor intenta refrescar y, si falla, limpia la sesión.
   readonly isAuthenticated = computed(() => this._accessToken() !== null);
 
-  /** POST /auth/login + carga inmediata del perfil, así quien llama
-   * termina con accessToken guardado y currentUser ya listo en un solo
-   * paso (el login page no tiene que encadenar dos llamadas). */
+  /**
+   * Inicia sesión y carga el perfil en el mismo paso.
+   *
+   * @returns El perfil; al emitir, los tokens ya están guardados y
+   * `currentUser` listo.
+   */
   login(correo: string, password: string): Observable<CurrentUser> {
     return this.http
       .post<RespuestaTokens>(`${environment.apiUrl}/auth/login`, { correo, password })
@@ -60,19 +57,20 @@ export class AuthService {
       );
   }
 
-  /** GET /auth/me — separado de login() porque también hace falta solo
-   * (ej. al arrancar la app con un accessToken ya guardado de una sesión
-   * anterior, antes de mostrar el shell). */
+  /** Pide `GET /auth/me` y lo deja en `currentUser`. También se usa solo, al arrancar con un token guardado. */
   cargarPerfil(): Observable<CurrentUser> {
     return this.http.get<CurrentUser>(`${environment.apiUrl}/auth/me`).pipe(
       tap((perfil) => this._currentUser.set(perfil)),
     );
   }
 
-  /** POST /auth/refresh — usado por authInterceptor ante un 401. El
-   * backend rota el refresh token en cada uso (ver
-   * AuthService.refrescarToken del backend), así que acá también hay
-   * que reemplazar los dos tokens guardados, no solo el access token. */
+  /**
+   * Pide tokens nuevos con el refresh token guardado.
+   *
+   * @remarks
+   * El backend rota el refresh token en cada uso, así que se reemplazan los
+   * dos tokens, no solo el de acceso.
+   */
   refrescarToken(): Observable<RespuestaTokens> {
     const refreshToken = this._refreshToken();
     return this.http
@@ -80,17 +78,18 @@ export class AuthService {
       .pipe(tap((tokens) => this.guardarTokens(tokens)));
   }
 
-  /** POST /auth/reset-password — pantalla `/reset-password`
-   * (ResetPasswordComponent). A diferencia de `login()`, esto NO guarda
-   * tokens: el backend revoca todas las sesiones activas al cambiar la
-   * contraseña (ver `AuthService.resetPassword` del backend), así que
-   * quien restablece su contraseña siempre vuelve a `/login` a entrar de
-   * nuevo, nunca queda logueado automáticamente. */
-  /** "No fui yo" del correo de contraseña cambiada (página /cuenta/no-fui-yo). */
+  /** «No fui yo» del correo de contraseña cambiada (página `/cuenta/no-fui-yo`). */
   reportarCambioPassword(token: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reportar-cambio-password`, { token });
   }
 
+  /**
+   * Define la contraseña con el token del enlace del correo.
+   *
+   * @remarks
+   * No guarda tokens: el backend cierra todas las sesiones al cambiar la
+   * contraseña, así que después hay que entrar por `/login`.
+   */
   resetPassword(token: string, password: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reset-password`, {
       token,
@@ -98,10 +97,10 @@ export class AuthService {
     });
   }
 
-  /** Best-effort: revoca la sesión en el backend, pero limpia el estado
-   * local aunque la llamada falle (ej. sin conexión) — no tiene sentido
-   * dejar a alguien "atrapado" logueado localmente porque el logout de
-   * verdad no llegó a salir. */
+  /**
+   * Cierra la sesión en el backend y limpia el estado local aunque esa
+   * llamada falle (por ejemplo, sin conexión), para no dejar a nadie atrapado.
+   */
   logout(): void {
     const refreshToken = this._refreshToken();
     if (refreshToken) {
@@ -122,18 +121,16 @@ export class AuthService {
     this.navigationTrailService.reiniciar();
   }
 
-  /** `POST /auth/forgot-password` — Settings · Seguridad ("Cambiar
-   *  contraseña" manda el enlace al correo de la cuenta logueada). */
+  /** Manda al correo el enlace para cambiar la contraseña (Settings › Seguridad). */
   solicitarRecuperacionPassword(correo: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/forgot-password`, { correo });
   }
 
-  /** `POST /auth/send-verification` — reenvía el código de verificación de correo. */
   reenviarVerificacionCorreo(correo: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/send-verification`, { correo });
   }
 
-  /** `POST /auth/verify-email` — confirma el código de 6 dígitos. */
+  /** Confirma el correo con el código de 6 dígitos que se le mandó. */
   verificarCorreoConCodigo(correo: string, codigo: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/verify-email`, { correo, codigo });
   }

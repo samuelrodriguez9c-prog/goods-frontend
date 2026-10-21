@@ -1,18 +1,16 @@
 import { Routes } from '@angular/router';
 import { SettingsPageComponent } from './pages/settings-page/settings-page.component';
 
-/** Una sola ruta — a diferencia de `admin/features/settings/` (que tiene
- *  sub-rutas `usuarios`/`roles` porque gestiona el equipo de UNA Empresa),
- *  acá Settings es solo el perfil de la propia cuenta: no hay nada que
- *  gestionar sobre "otros" (eso ya vive en los ítems de primer nivel
- *  Usuarios/Roles y permisos del sidebar de staff), así que no hace falta
- *  un árbol de sub-páginas. */
+/**
+ * Una sola ruta: aquí Settings es solo el perfil de la propia cuenta. El equipo
+ * se gestiona en los ítems Usuarios y Roles y permisos del sidebar, así que no
+ * hace falta un árbol de sub-páginas como en `admin/features/settings/`.
+ */
 export const SETTINGS_ROUTES: Routes = [
   {
     path: '',
     component: SettingsPageComponent,
-    // Rastro de navegación global del topbar (§5.4.4, 2026-10-02) —
-    // ver `NavigationTrailService`.
+    // Lo lee el rastro de navegación del topbar (`NavigationTrailService`).
     data: { breadcrumb: 'Settings', icon: 'settings-2' },
   },
 ];

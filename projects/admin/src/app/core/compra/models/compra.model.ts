@@ -1,10 +1,5 @@
-// Espejo de `Compra`/`CompraItem`/`CreateCompraDto` del backend
-// (`modules/compra/`) — primer modelo de Compra en el frontend de
-// `admin`: `ProductPurchasesPageComponent` sigue siendo un placeholder,
-// así que esto nace acá para el modo documento del Asistente de IA
-// (§5.5 de `PROPUESTA_ASISTENTE_IA_RAG.md`, "factura de proveedor →
-// Compra nueva") — no para una pantalla de gestión de compras, que
-// todavía no existe.
+// Espejo de `Compra`, `CompraItem` y los DTO de compras del backend. Lo usan
+// Compras (Productos) y el modo documento del asistente (factura → compra).
 
 export interface CompraItem {
   id: number;

@@ -187,13 +187,8 @@
     </div>
 
     <div class="flex shrink-0 items-center gap-2 border-t border-gray-100 px-5 py-3">
-      <!-- Ajuste propio: el handoff traía acá "Se le pide cambiar la
-           contraseña en su primer acceso" — no existe ese flujo (no hay
-           invitación ni `debeCambiarPassword`, el usuario entra
-           directamente con la contraseña que se define acá). Se saca la
-           frase en vez de dejar un texto que no es cierto, tal como
-           sugería el propio LEEME si no se iba a implementar. Ver
-           ADMIN_DISENO.md. -->
+      <!-- Sin aviso de "cambiar la contraseña al primer acceso": ese flujo no
+           existe; la persona entra con la contraseña que se define aquí. -->
       <span class="min-w-0 flex-1"></span>
       <button
         type="button"

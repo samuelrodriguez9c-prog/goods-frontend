@@ -1,4 +1,3 @@
-// projects/staff/src/app/layout/topbar/topbar.component.ts
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
@@ -39,13 +38,12 @@ const MS_VUELTA = 320;
 const MS_DESPEDIDA = 1100;
 
 /**
- * Topbar de staff — rediseño (LEEME §17, 2026-09-24): campanita con
- * pestañas por categoría, agrupación por día y acción directa; menú de
- * cuenta en el avatar/nombre (Mi perfil · Configuración · Cerrar sesión
- * manteniendo). El botón "Salir" suelto desaparece.
+ * Topbar de staff: rastro de navegación, acceso al Asistente de IA,
+ * campanita (pestañas por categoría, agrupación por día y acción directa) y
+ * menú de cuenta (Mi perfil · Configuración · Cerrar sesión manteniendo).
  *
- * Misma lógica de datos que antes: `GET /notificaciones/staff` + socket
- * `notificacion:nueva`, `marcarLeida`, `marcarTodasLeidas`, `ocultarTodas`.
+ * Notificaciones: `GET /notificaciones/staff` + socket `notificacion:nueva`.
+ * También carga el perfil tras un F5 (ver el constructor).
  */
 @Component({
   selector: 'app-topbar',
@@ -76,19 +74,14 @@ export class TopbarComponent implements OnDestroy {
 
   protected readonly currentUser = this.authService.currentUser;
 
-  /** Ícono del Asistente de IA para staff (§5.4 de
-   *  `PROPUESTA_ASISTENTE_IA_RAG.md`) — gateado por el permiso
-   *  `asistente_staff.usar`, mismo criterio de `permisos.includes(...)`
-   *  que ya usa `SidebarComponent.navItems` (no por `modulosDisponibles`,
-   *  que es para features de plan de una Empresa — esto no lo es). */
+  /** Ícono del Asistente de IA: depende del permiso `asistente_staff.usar`,
+   *  no de `modulosDisponibles` (eso es para features del plan de una Empresa). */
   protected readonly tieneAsistenteIa = computed(() =>
     (this.currentUser()?.permisos ?? []).includes('asistente_staff.usar'),
   );
 
-  /** Breadcrumb + "Volver al panel" del topbar compartido, SOLO en la
-   *  pantalla completa del asistente (`/asistente`, fuera del Shell —
-   *  rediseño 2026-10-01, ver `PROPUESTA_ASISTENTE_IA_RAG.md` §5.4.4).
-   *  Mismo patrón `toSignal` que `SettingsPageComponent.seccionUrl`. */
+  /** Muestra "Volver al panel" solo en la pantalla completa del asistente
+   *  (`/asistente`, que monta este topbar fuera del Shell). */
   protected readonly enAsistente = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
@@ -151,17 +144,10 @@ export class TopbarComponent implements OnDestroy {
   private holdRaf = 0;
 
   constructor() {
-    // Carga el perfil (`GET /auth/me`) si todavía no está en memoria —
-    // `currentUser` no se persiste, solo el `accessToken` (ver
-    // `AuthService`), así que tras un F5 hace falta volver a pedirlo antes
-    // de que el topbar tenga algo real que mostrar (nombre/iniciales en
-    // vez de "…"). Esto antes solo vivía en `ShellComponent.ngOnInit` (el
-    // layout raíz), pero `/asistente` (§5.4.4, 2026-10-01) es una ruta de
-    // nivel superior FUERA del Shell que también monta este mismo
-    // `TopbarComponent` — al recargar directo ahí, `ShellComponent` nunca
-    // se instanciaba y el perfil quedaba sin pedirse nunca (bug: el "…"
-    // quedaba fijo en vez de mostrar el nombre real). Centralizado acá,
-    // con un solo punto de verdad, cubre los dos casos.
+    // `currentUser` no se persiste (solo el `accessToken`), así que tras un
+    // F5 hay que volver a pedir `GET /auth/me`. Se hace acá y no en el Shell
+    // porque `/asistente` monta este topbar fuera del Shell: así cubre las
+    // dos rutas.
     if (this.authService.isAuthenticated() && !this.authService.currentUser()) {
       this.authService.cargarPerfil().subscribe({ error: () => undefined });
     }
@@ -301,7 +287,7 @@ export class TopbarComponent implements OnDestroy {
     this.router.navigate(['/settings'], { queryParams: { seccion: o.seccion } });
   }
 
-  /** Cerrar sesión "puerta" (2026-10-05): mientras se mantiene, la barra se
+  /** Cerrar sesión "puerta": mientras se mantiene, la barra se
    *  llena, la puerta del ícono se abre y sale la flecha; al completar, la
    *  puerta se cierra con un rebote y el texto se despide letra por letra.
    *  `progreso` (0–1) se mueve cuadro a cuadro para que soltar a mitad de
@@ -331,7 +317,7 @@ export class TopbarComponent implements OnDestroy {
     this.animarProgreso(-1);
   }
 
-  /** `true` ~1,6 s después de un clic corto: el texto pasa a "Mantené presionado". */
+  /** `true` ~1,6 s después de un clic corto: el texto pasa a "Mantén presionado". */
   protected readonly pistaHold = signal(false);
   private pistaTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -366,7 +352,7 @@ export class TopbarComponent implements OnDestroy {
     const texto =
       this.hold() === 'listo'
         ? nombre ? `Hasta luego, ${nombre}` : 'Hasta luego'
-        : this.pistaHold() && !this.hold() ? 'Mantené presionado' : 'Cerrar sesión';
+        : this.pistaHold() && !this.hold() ? 'Mantén presionado' : 'Cerrar sesión';
     return [...texto].map((c, i) => ({ c, retraso: i * 28 }));
   });
 
@@ -385,12 +371,9 @@ export class TopbarComponent implements OnDestroy {
   });
   protected readonly correo = computed(() => this.currentUser()?.correo ?? '');
   protected readonly esCrossPanelStaff = computed(() => this.currentUser()?.esSesionCrossPanelStaff ?? false);
-  /** Corona junto al nombre en el menú. El handoff proponía
-   *  `['superadmin', 'admin'].includes(rol.nombre)`, pero este proyecto no
-   *  tiene ningún rol llamado así (ver `ROL_*` en
-   *  `modules/rol/rol.service.ts` del backend): el rol más alto DENTRO del
-   *  panel de staff es `admin_goods`. El acceso especial de superadmin
-   *  (`esSesionCrossPanelStaff`) ya se cubre aparte. */
+  /** Corona junto al nombre en el menú. No hay roles `superadmin`/`admin`
+   *  en el backend: el más alto dentro del panel de staff es `admin_goods`,
+   *  y el acceso especial de superadmin llega por `esSesionCrossPanelStaff`. */
   protected readonly esSuperadmin = computed(
     () => this.esCrossPanelStaff() || this.currentUser()?.rol?.nombre === 'admin_goods',
   );
@@ -406,10 +389,8 @@ export class TopbarComponent implements OnDestroy {
     this.asistenteService.abrirPanel();
   }
 
-  /** Mismo criterio que `AsistentePageComponent.volver()` (ese método
-   *  se mantiene ahí, propio, para el atajo Esc de esa página — acá es
-   *  solo para el click del botón "Volver al panel" visible en este
-   *  topbar compartido cuando `enAsistente()`). */
+  /** Botón "Volver al panel"; mismo criterio que
+   *  `AsistentePageComponent.volver()`, que atiende el Esc de esa página. */
   protected volver(): void {
     history.length > 1 ? history.back() : this.router.navigate(['/']);
   }

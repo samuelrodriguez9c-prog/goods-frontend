@@ -14,7 +14,7 @@ import {
   ResumenFacturacion,
 } from './models/facturacion.model';
 
-/** Cliente de `/facturacion` (backend `FacturacionController`, 2026-10-02). */
+/** Cliente de `/facturacion`: pagos manuales, cobros, cargos recurrentes y descuentos. */
 @Injectable({ providedIn: 'root' })
 export class FacturacionService {
   private readonly http = inject(HttpClient);
@@ -46,6 +46,10 @@ export class FacturacionService {
     return this.http.get<EstadoCuenta>(`${this.base}/empresas/${empresaId}/estado-cuenta`);
   }
 
+  /**
+   * Registra un pago y renueva la suscripción de la Empresa.
+   * @returns El pago, con `diferenciaConPlan` si el monto no coincide con el precio del plan (es solo un aviso).
+   */
   registrar(payload: RegistrarPagoPayload): Observable<PagoRegistrado> {
     return this.http.post<PagoRegistrado>(`${this.base}/pagos`, payload);
   }
@@ -67,11 +71,13 @@ export class FacturacionService {
     return this.http.post<EstadoCuenta>(`${this.base}/descuentos/${descuentoId}/baja`, { motivo });
   }
 
+  /** Solo se puede anular un pago con `anulable: true`; si no, el backend lo rechaza. */
   anular(id: number, motivo: string): Observable<PagoDetalle> {
     return this.http.post<PagoDetalle>(`${this.base}/pagos/${id}/anular`, { motivo });
   }
 }
 
+/** Query params sin los valores vacíos (`undefined`, `null`, `''`). */
 function aParams(filtro: object): HttpParams {
   let params = new HttpParams();
   for (const [clave, valor] of Object.entries(filtro)) {
@@ -80,7 +86,7 @@ function aParams(filtro: object): HttpParams {
   return params;
 }
 
-// ── Formato compartido por las pantallas de Facturación ──────────────────
+// Formato compartido por las pantallas de Facturación.
 
 /** `$80.000` (COP, sin decimales) / `US$25.00` (USD). */
 export function formatMonto(monto: number, moneda: MonedaPago = 'COP'): string {

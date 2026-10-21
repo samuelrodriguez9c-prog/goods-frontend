@@ -1,10 +1,5 @@
 <main class="flex min-h-screen flex-col items-center justify-center bg-login-bg p-6">
-  <!-- Ícono grande centrado sobre la tarjeta — calcado del layout de
-       Shopify (capturas 1050-1056): el logo va SOLO acá, no repetido
-       adentro de la tarjeta. Logo real de Goods (Gds_images), no un
-       placeholder de texto. Tamaño subido de h-20 → h-28 → h-32
-       (2026-09-14): en las capturas el logo realza bastante más que un
-       ícono chico de topbar. -->
+  <!-- El logo va solo acá, no se repite dentro de la tarjeta. -->
   <img src="/logo-goods-icon.png" alt="Goods" class="mb-8 h-40 w-auto" />
 
   <div class="w-full max-w-md rounded-2xl bg-card-bg p-8 shadow-xl">
@@ -28,10 +23,6 @@
             [class.bg-field-error-bg]="correoInvalido()"
             class="w-full rounded-lg bg-canvas-bg px-3 py-2.5 text-sm text-gray-900 outline-none ring-1 ring-transparent transition-colors duration-200 focus:ring-2 focus:ring-gray-400"
           />
-          <!-- Aparece con un fundido + desplazamiento suave en vez de de
-               golpe (pedido 2026-09-14) — misma animación que el resto de
-               los mensajes de error de la página, ver @keyframes
-               fade-in-up en styles.css. -->
           @if (correoInvalido()) {
             <p
               class="mt-1.5 flex animate-[fade-in-up_0.2s_ease-out] items-center gap-1 text-sm text-badge-error-solid"
@@ -42,11 +33,7 @@
           }
         </div>
 
-        <!-- Flecha que aparece/desaparece suave al pasar el mouse (pedido
-             2026-09-14): la flecha vive siempre en el DOM, con ancho 0 y
-             opacidad 0 — al hacer hover del botón (`group`) se expande y
-             se hace visible con una transición; al sacar el mouse vuelve
-             a colapsar con la misma transición. -->
+        <!-- La flecha está siempre en el DOM con ancho y opacidad 0; el hover del botón la despliega. -->
         <button
           type="submit"
           class="group flex w-full items-center justify-center rounded-lg bg-primary-button px-3 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
@@ -59,13 +46,7 @@
           </span>
         </button>
 
-        <!-- Passkey + redes sociales (captura 1050) — integrados a nivel
-             visual, sin lógica real (WebAuthn / OAuth de cada proveedor
-             quedan pendientes, ver comentario de la clase). Sin (click):
-             mismo criterio que otros placeholders inertes del admin
-             (botones de asistente IA / notificaciones del topbar). Con
-             transición suave en hover (pedido 2026-09-14), igual que el
-             resto de los controles de la página. -->
+        <!-- Passkey y redes sociales: solo visuales, sin acción todavía. -->
         <div class="flex items-center gap-3 py-1 text-xs text-gray-400">
           <span class="h-px flex-1 bg-gray-200"></span>
           O
@@ -116,9 +97,7 @@
         class="animate-[fade-in-up_0.25s_ease-out] space-y-4"
         (submit)="$event.preventDefault(); submit()"
       >
-        <!-- Pill de correo ya elegido + "Cambiar correo" — capturas
-             1052-1056: en el paso 2 el correo queda fijo, no editable
-             en el mismo campo. -->
+        <!-- En este paso el correo queda fijo; se cambia con «Cambiar correo». -->
         <div class="flex items-center justify-between rounded-lg bg-canvas-bg px-3 py-2.5 text-sm">
           <span class="truncate text-gray-900">{{ correo() }}</span>
           <button
@@ -160,10 +139,7 @@
               {{ mensaje }}
             </p>
           }
-          <!-- Sin lógica real todavía (necesitaría una pantalla propia
-               para pedir el correo y llamar POST /auth/forgot-password,
-               que el backend ya expone) — mismo criterio que otros
-               placeholders del admin (topbar, notificaciones). -->
+          <!-- TODO(front): pantalla para pedir el correo y llamar a `POST /auth/forgot-password`; hoy el enlace no hace nada. -->
           <a
             href="#"
             class="mt-2 inline-block text-sm font-medium text-blue-600 transition-colors duration-200 hover:underline"
@@ -181,9 +157,7 @@
         </button>
       </form>
     } @else {
-      <!-- Paso "dosFactores" (capturas 1057-1058) — hoy inalcanzable
-           desde el flujo real, ver comentario de la clase. Se revisa
-           entrando a /login?paso=2fa. -->
+      <!-- Dos factores: el flujo real no llega acá; se revisa con /login?paso=2fa. -->
       <form
         class="animate-[fade-in-up_0.25s_ease-out] space-y-4"
         (submit)="$event.preventDefault()"
@@ -231,12 +205,7 @@
     }
   </div>
 
-  <!-- Pie de página (captura debajo de 1056) — "¿Necesitas ayuda?" +
-       texto legal. Sin páginas propias de Términos/Privacidad todavía,
-       así que quedan como enlaces placeholder (href="#"); se omite la
-       cláusula de "recibir emails de marketing" del texto de Shopify
-       porque acá no aplica (no hay ese consentimiento en el formulario).
-       Ver ADMIN_DISENO.md > "Login". -->
+  <!-- TODO(front): enlazar Términos y Privacidad cuando existan sus páginas; hoy son href="#". -->
   <footer class="mt-8 w-full max-w-md text-center">
     <a href="#" class="text-sm font-medium text-gray-300 transition-colors duration-200 hover:underline">
       ¿Necesitas ayuda?

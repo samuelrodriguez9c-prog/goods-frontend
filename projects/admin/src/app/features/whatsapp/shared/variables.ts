@@ -2,7 +2,7 @@ import { IconCurrencyDollar, IconMessageCircle, IconPackage, IconPencil, IconRec
 import { TipoVariable } from '../../../core/whatsapp/whatsapp.model';
 
 /**
- * De dónde sale cada variable de una plantilla (2026-10-13): lo que se ve en
+ * De dónde sale cada variable de una plantilla: lo que se ve en
  * "De dónde sale cada dato" y en el selector de tipo. `auto` = se llena sola
  * al enviar (en turquesa); `texto` lo escribe quien envía.
  */

@@ -1,10 +1,6 @@
-<!-- projects/admin/src/app/features/asistente/pages/documentos-internos-page/documentos-internos-page.component.html -->
 <div class="flex h-screen flex-col overflow-hidden bg-white text-[#111827]">
-  <!-- ─── Topbar ─── -->
-  <!-- Mismo criterio que AsistentePageComponent (§5.4.4): fuera del
-       Shell, trae su propia topbar — TopbarComponent ya detecta
-       `/asistente` por prefijo, así que "Volver al panel" aparece acá
-       también sin tocar ese componente. -->
+  <!-- Topbar -->
+  <!-- Fuera del Shell, con su propio topbar (que en `/asistente/*` muestra «Volver al panel»). -->
   <app-topbar />
 
   <div class="min-h-0 flex-1 overflow-y-auto">
@@ -108,7 +104,7 @@
   </div>
 </div>
 
-<!-- ─── Panel crear/editar ─── -->
+<!-- Panel crear/editar -->
 @if (panelAbierto()) {
   <app-side-panel [titulo]="tituloPanel()" (cerrar)="cerrarPanel()">
     <div class="flex flex-col gap-4">
@@ -116,8 +112,7 @@
         <p class="m-0 text-[13px] text-gray-400">Cargando la versión más reciente…</p>
       }
 
-      <!-- Subir archivo: precarga título/contenido, no guarda nada por
-           sí sola — el staff sigue revisando antes de tocar "Guardar". -->
+      <!-- Subir archivo: precarga título y contenido, no guarda nada; el usuario revisa antes de «Guardar». -->
       <input
         #inputArchivo
         type="file"
@@ -194,7 +189,7 @@
   </app-side-panel>
 }
 
-<!-- ─── Confirmación de borrado ─── -->
+<!-- Confirmación de borrado -->
 @if (documentoABorrar(); as doc) {
   <app-modal titulo="Eliminar documento" (cerrar)="cancelarEliminar()">
     <div class="flex flex-col gap-4">

@@ -20,18 +20,13 @@ interface DemoOrder {
   fulfillmentLabel: string;
   total: string;
   items: string;
-  /** #1003 en la captura 61: orden reembolsada, fila entera tachada. */
+  /** Orden reembolsada: la fila entera va tachada. */
   struck: boolean;
 }
 
 /**
- * Página de validación visual de los composites de `shared/ui/` — vive
- * en `/dev`, fuera de la navegación real del admin. No reemplaza a
- * ninguna pantalla de negocio; es donde se comparan los componentes
- * nuevos contra las capturas de Shopify antes de darlos por buenos (el
- * mismo propósito que tenía el `app.html` original, antes de que
- * existiera un layout/rutas reales — ver ADMIN_DISENO.md > "Estado de
- * la librería interna").
+ * Vitrina de los composites de `shared-ui` en `/dev`, fuera de la navegación
+ * del admin: sirve para revisar cómo se ven antes de usarlos en una pantalla.
  */
 @Component({
   selector: 'app-showcase-page',
@@ -48,7 +43,7 @@ interface DemoOrder {
   templateUrl: './showcase-page.component.html',
 })
 export class ShowcasePageComponent {
-  /** Datos calcados de la captura 61 (Orders) para validar el composite. */
+  /** Pedidos de ejemplo para la tabla. */
   protected readonly orders = signal<DemoOrder[]>([
     {
       id: '1005',
@@ -138,7 +133,7 @@ export class ShowcasePageComponent {
     this.selectedOrders.set(checked ? [...this.orders()] : []);
   }
 
-  /** Datos calcados de la captura 304 (ficha de producto > Inventory). */
+  /** Inventario de ejemplo (ficha de producto). */
   protected readonly inventory = signal({
     location: 'Shop location',
     unavailable: 0,
@@ -177,7 +172,7 @@ export class ShowcasePageComponent {
       </svg>`,
     );
 
-  /** Calcado de la captura 106 (detalle de orden, modo solo-lectura). */
+  /** Detalle de orden en solo lectura. */
   protected readonly readonlyLineItems = signal([
     {
       id: 'a',
@@ -197,7 +192,7 @@ export class ShowcasePageComponent {
     },
   ]);
 
-  /** Calcado de la captura 133 (Edit order, modo cantidad-editable simple). */
+  /** Edición de orden con cantidad editable. */
   protected readonly editableLineItems = signal([
     {
       id: 'a',
@@ -227,11 +222,7 @@ export class ShowcasePageComponent {
     this.editableLineItems.update((items) => items.filter((item) => item.id !== id));
   }
 
-  /**
-   * Modo "X of Y" del flujo de hold/refund — no hay captura de ese modal
-   * en el muestreo, así que las cantidades originales (`maxQuantity`)
-   * simulan el mismo pedido #1003 de las otras previews.
-   */
+  /** Modo «X of Y» de retener o reembolsar: `maxQuantity` simula el mismo pedido #1003 de los otros ejemplos. */
   protected readonly partialLineItems = signal([
     {
       id: 'a',

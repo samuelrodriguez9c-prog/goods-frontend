@@ -12,7 +12,7 @@ export interface RespuestaSimulada {
 const EJEMPLOS = ['¿Tienen catálogo?', '¿Aceptan Nequi?', 'Hola', '¿Precio del taladro?'];
 
 /**
- * "Pruébalo" (handoff-whatsapp §6): el dueño escribe como si fuera un cliente,
+ * «Pruébalo»: el dueño escribe como si fuera un cliente,
  * elige cliente nuevo/conocido y tienda abierta/cerrada, y ve quién
  * respondería. La página calcula la respuesta con las reglas reales.
  */

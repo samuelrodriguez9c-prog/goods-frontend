@@ -1,0 +1,43 @@
+@let t = st.tienda()!;
+<div [inert]="pd.paso() !== 1" data-screen-label="Entrega" class="flex h-full w-1/6 flex-col">
+  <div data-scroll class="sin-barra flex flex-1 flex-col gap-[22px] overflow-y-auto px-4 pb-12 pt-2">
+    <div class="flex flex-col gap-2">
+      <div class="flex items-baseline gap-2.5 px-1 pb-1"><span class="text-xs font-semibold uppercase tracking-[.08em] text-salvia-2">Entrega</span><span class="text-[12.5px] text-salvia">Elige una opción</span></div>
+      <div class="grid grid-cols-2 items-start gap-3.5">
+        @for (op of [{ k: 'recoger', titulo: 'Recoger en tienda', sub: t.direccionTienda ?? 'Coordina con el negocio', icono: i.tienda, forma: 'forma-0', desfase: 0 }, { k: 'domicilio', titulo: 'Envío a domicilio', sub: 'El costo se acuerda por WhatsApp', icono: i.camion, forma: 'forma-1', desfase: 8 }]; track op.k) {
+          @let on = pd.entrega() === op.k;
+          <button type="button" (click)="pd.elegirEntrega($any(op.k))" class="flex flex-col items-center gap-3 border-0 bg-transparent p-0 text-center text-hoja" [style.margin-top.px]="op.desfase">
+            <span class="relative grid aspect-square w-[min(100%,120px,20vh)] place-items-center transition-[background-color,color,transform] duration-[450ms] ease-[cubic-bezier(.3,1.5,.5,1)]" [class]="op.forma"
+              [style.background]="on ? '#25d366' : 'rgba(255,255,255,.07)'" [style.color]="on ? '#072a23' : '#b5d8cc'" [style.transform]="'scale(' + (on ? 1 : 0.92) + ')'">
+              <tabler-icon [icon]="op.icono" [size]="46" [stroke]="1.5" />
+              <span class="absolute bottom-[8%] right-[8%] grid size-8 place-items-center rounded-full bg-bosque text-wa transition-transform duration-[350ms] ease-[cubic-bezier(.3,1.6,.5,1)]"
+                [style.box-shadow]="'0 0 0 3px ' + (on ? '#25d366' : 'rgba(255,255,255,.07)')" [style.transform]="'scale(' + (on ? 1 : 0) + ')'"><tabler-icon [icon]="i.check" [size]="17" [stroke]="2.25" /></span>
+            </span>
+            <span class="flex flex-col gap-[3px] px-1">
+              <span class="text-balance text-[15px] font-semibold leading-tight">{{ op.titulo }}</span>
+              <span class="text-balance text-[12.5px] leading-[1.4] text-salvia-2">{{ op.sub }}</span>
+            </span>
+          </button>
+        }
+      </div>
+    </div>
+    <div class="relative -mx-4 -mb-12 mt-3 flex-[1_0_auto] px-4 pb-12 text-bosque">
+      <app-ola />
+      @if (pd.esDomicilio()) {
+        <label class="animate-fundido relative flex flex-col gap-2.5 px-1 pt-[72px]">
+          <span class="flex flex-col gap-[3px]">
+            <span class="font-display text-[28px] font-bold leading-[1.05] tracking-[-0.015em] [font-variation-settings:'wdth'_80]">¿A dónde lo enviamos?</span>
+            <span class="text-[12.5px] text-musgo">Dirección, barrio y alguna referencia</span>
+          </span>
+          <span class="flex h-[54px] items-center gap-2.5 rounded-full bg-menta px-2 transition-shadow" [style.box-shadow]="pd.faltaDir() ? 'inset 0 0 0 1.5px #b3261e' : 'none'">
+            <span class="grid size-[38px] shrink-0 place-items-center rounded-full bg-bosque text-wa"><tabler-icon [icon]="i.pin" [size]="18" [stroke]="2" /></span>
+            <input #inputDir maxlength="200" [ngModel]="pd.direccion()" (ngModelChange)="pd.direccion.set($event); pd.faltaDir.set(false)" placeholder="Calle, número y barrio" autocomplete="street-address"
+              class="h-full min-w-0 flex-1 border-0 bg-transparent pr-2 text-base font-medium text-bosque outline-none" />
+          </span>
+          @if (pd.faltaDir()) { <span class="flex items-center gap-[5px] px-2 text-[12.5px] text-error"><tabler-icon [icon]="i.alerta" [size]="14" [stroke]="2" />Escribe a dónde enviamos tu pedido</span> }
+        </label>
+      }
+    </div>
+  </div>
+  <app-pie-paso bg="#ffffff" etiqueta="Envío" [valor]="pd.esDomicilio() ? 'Por acordar' : 'Sin costo · recoges tú'" boton="Continuar" [chico]="true" />
+</div>

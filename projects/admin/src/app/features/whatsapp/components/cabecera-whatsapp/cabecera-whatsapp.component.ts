@@ -23,7 +23,7 @@ const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 
 
 /**
- * Cabecera de las secciones de WhatsApp (handoff-whatsapp §3): "WhatsApp /
+ * Cabecera de las secciones de WhatsApp: "WhatsApp /
  * {sección}" con el tambor, insignia de no leídos, "Conectado", el número
  * (con Desconectar), la acción principal ("Nueva plantilla"…), una línea de
  * lectura y la franja de métricas, que en Bandeja y Plantillas filtran.

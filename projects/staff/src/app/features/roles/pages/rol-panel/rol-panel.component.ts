@@ -1,5 +1,3 @@
-// projects/staff/src/app/features/roles/pages/rol-panel/rol-panel.component.ts
-
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { IconCopy, IconLock, IconTrash, IconX, TablerIconComponent, type TablerIcon } from '@tabler/icons-angular';
 import { Rol } from '../../../../core/roles/models/rol.model';
@@ -32,38 +30,14 @@ interface BaseOpcion {
 }
 
 /**
- * Panel único (ficha / edición / alta) de "Roles y permisos" — componente
- * aparte, sibling de `roles-page` en `pages/`, mismo patrón que el resto
- * de los módulos (`EmpresaDetallePanelComponent`, `FichaUsuarioPanelComponent`).
+ * Panel lateral de "Roles y permisos": ficha, edición y alta en un solo
+ * componente (cambia de modo con `creando()`) para no duplicar la lista de
+ * permisos ni los preajustes.
  *
- * A diferencia de Usuarios, acá NO se separó en dos componentes (uno para
- * ver/editar y otro para dar de alta): el LEEME (§10) diseñó a propósito
- * un solo panel que cambia de modo con `creando()`, reusando la misma
- * lista de switches de permisos y los mismos preajustes para ficha y alta
- * — separarlo en dos hubiera significado duplicar ese template entero,
- * exactamente lo que el diseño evitaba. Ver el docstring de
- * `RolesPageComponent` para el resto del razonamiento.
- *
- * Todo lo que necesita el `niveles`/`edits`/`roles` compartido de la
- * página (métricas, la lista de módulos con sus switches, las plantillas
- * de partida, la ficha de metadatos, el texto del pie) llega "ya armado"
- * por `@Input` — mismo criterio que `[matrizPanel]`/`[textoCambioRol]` en
- * `FichaUsuarioPanelComponent`: recalcularlo acá duplicaría `niveles`,
- * que tiene que seguir viviendo en la página porque la matriz (afuera de
- * este panel) también pinta el diff en vivo de TODOS los roles tocados,
- * no solo el que está abierto acá. Este panel no hace ningún llamado a
- * `RolService` por su cuenta tampoco, por la misma razón: guardar toca
- * `niveles`/`edits`/`roles` de la página, así que `confirmar`/`eliminar`/
- * `duplicar` son outputs que la página resuelve, no HTTP directo acá.
- *
- * Lo único genuinamente interno es la pestaña activa (`permisos`/`datos`)
- * — a nadie afuera del panel le importa cuál está abierta. El `effect`
- * del constructor la reinicia solo cuando cambia DE QUÉ se trata el panel
- * (`creando()`, o el id del rol seleccionado) — mismo criterio que
- * `FichaUsuarioPanelComponent`: si reiniciara con cualquier cambio de
- * referencia de `[rol]` (pasa cada vez que se guarda algo, la página
- * reemplaza el objeto en su lista), guardar datos estando en la pestaña
- * "Datos" te mandaría de vuelta a "Permisos" cada vez.
+ * @remarks
+ * Todo llega armado por inputs y las acciones salen como outputs: el estado
+ * de edición (`niveles`/`edits`) vive en `RolesPageComponent` porque la
+ * matriz de afuera también pinta los cambios de todos los roles tocados.
  */
 @Component({
   selector: 'app-rol-panel',
@@ -81,16 +55,12 @@ export class RolPanelComponent {
   readonly creando = input.required<boolean>();
   readonly rol = input<Rol | null>(null);
   readonly chip = input.required<{ texto: string; icono: TablerIcon; clase: string }>();
-  /** Título del panel y valor del campo "Nombre" son dos strings
-   * distintos a propósito: `nombrePanel` ya pasó por `etiquetaRolTexto()`
-   * (mismo ajuste que en Usuarios — un rol como `admin_goods` se lee
-   * "Admin de Goods"), pero el input editable tiene que mostrar y guardar
-   * el valor crudo tal cual está en la base, letra por letra mientras se
-   * escribe — si mostrara la versión prolija, cada tecla pisaría el
-   * cursor y lo que se termina guardando dejaría de ser lo que la
-   * persona ve escrito. Ver `nombrePanel`/`nombreEdicion` en
-   * `RolesPageComponent`. */
+  /** Nombre legible para el título (pasado por `etiquetaRolTexto()`). */
   readonly nombrePanel = input.required<string>();
+  /**
+   * Nombre crudo para el campo editable: si mostrara la versión legible,
+   * cada tecla movería el cursor y se guardaría algo distinto a lo escrito.
+   */
   readonly nombreEdicion = input.required<string>();
   readonly descripcionPanel = input.required<string>();
   readonly subtitulo = input.required<string>();
@@ -116,6 +86,8 @@ export class RolPanelComponent {
   private readonly rolId = computed(() => this.rol()?.id ?? null);
 
   constructor() {
+    // Reinicia la pestaña solo si cambia el modo o el id del rol, no la
+    // referencia: la página reemplaza el objeto al guardar y te sacaría de "Datos".
     effect(() => {
       const creando = this.creando();
       this.rolId();

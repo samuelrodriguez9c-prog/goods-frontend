@@ -5,8 +5,7 @@ export const ROLES_ROUTES: Routes = [
   {
     path: '',
     component: RolesPageComponent,
-    // Rastro de navegación global del topbar (§5.4.4, 2026-10-02) —
-    // ver `NavigationTrailService`.
+    // Lo lee el rastro de navegación del topbar (`NavigationTrailService`).
     data: { breadcrumb: 'Roles y permisos', icon: 'shield-lock' },
   },
 ];
