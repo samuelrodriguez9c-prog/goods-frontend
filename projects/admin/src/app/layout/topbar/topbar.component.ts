@@ -9,6 +9,7 @@ import {
 import { Subscription } from 'rxjs';
 import { AsistenteService } from '../../core/asistente/asistente.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { PagoEnLineaService } from '../../core/pago-en-linea/pago-en-linea.service';
 import { AccesoEmpresa } from '../../core/auth/models/current-user.model';
 import { Notificacion } from '../../core/notificaciones/models/notificacion.model';
 import { NotificacionService } from '../../core/notificaciones/notificacion.service';
@@ -44,7 +45,7 @@ const fechaCorta = (iso: string) => new Date(iso).toLocaleDateString('es-CO', { 
  *
  * @remarks
  * - Marca: logo Goods + al pasar el cursor se despliega "× [logo de la empresa]" (550 ms).
- * - Migas: rastro de las últimas páginas visitadas (ícono turquesa); Products y WhatsApp llevan el módulo delante.
+ * - Migas: la página anterior y la actual (ícono turquesa), y el registro abierto en la hoja.
  * - Buscador central ⌘K · Atajos (Ctrl + .) · Asistente de IA (aro con punto turquesa).
  * - Campanita: pestañas Todas/Soporte/Tienda/Cuenta, agrupada por día, acción directa, punto leída/no leída.
  * - Cuenta compacta: solo avatar; al abrir se despliega nombre + línea que alterna
@@ -60,6 +61,7 @@ const fechaCorta = (iso: string) => new Date(iso).toLocaleDateString('es-CO', { 
 })
 export class TopbarComponent implements OnDestroy {
   private readonly auth = inject(AuthService);
+  private readonly pagoEnLinea = inject(PagoEnLineaService);
   private readonly router = inject(Router);
   private readonly notificacionService = inject(NotificacionService);
   private readonly realtime = inject(RealtimeService);
@@ -162,24 +164,18 @@ export class TopbarComponent implements OnDestroy {
   /** Atajos: el diálogo vive en la lista de Products. */
   protected readonly conAtajos = computed(() => this.url().split(/[?#]/)[0] === '/products');
   /**
-   * Migas: rastro de las últimas páginas visitadas (`NavigationTrailService`),
-   * con chevron, ícono turquesa y la actual en blanco. Las anteriores llevan de
-   * vuelta con un clic y con los mismos filtros (guardan la URL completa).
-   * Las secciones de Products y WhatsApp llevan el módulo delante
-   * («Products · Inventario», «WhatsApp · Plantillas») para que se entiendan
-   * fuera de contexto. Sin número de WhatsApp (o mientras se sabe) la de
-   * WhatsApp dice solo «WhatsApp».
+   * Migas: la página anterior y la actual (`NavigationTrailService`), con
+   * chevron, ícono turquesa y la actual en blanco; la anterior vuelve con un
+   * clic y con los mismos filtros. Con un registro abierto en la hoja, va al
+   * final («Pedidos › #123»). Sin número de WhatsApp (o mientras se sabe)
+   * WhatsApp dice solo «WhatsApp»: la pantalla es Conectar.
    */
   protected readonly migas = computed(() => {
-    const ruta = '/' + this.url().split(/[?#]/)[0].split('/').filter(Boolean).join('/');
     const items = this.rastro.trail();
     return items.map((it, k) => {
-      const seg = it.id.split('/').filter(Boolean);
-      const actual = k === items.length - 1 && it.id === ruta;
-      let texto = it.etiqueta;
-      if (seg[0] === 'whatsapp') texto = actual && this.whatsapp.sinNumero() ? 'WhatsApp' : `WhatsApp · ${it.etiqueta}`;
-      else if (seg[0] === 'products' && seg.length > 1) texto = `Products · ${it.etiqueta}`;
-      return { texto, icono: ICONO_RUTA[it.icono] ?? it.icono, ruta: it.href, actual };
+      const actual = k === items.length - 1;
+      const texto = it.id.startsWith('/whatsapp') && actual && this.whatsapp.sinNumero() ? 'WhatsApp' : it.etiqueta;
+      return { texto, icono: ICONO_RUTA[it.icono] ?? it.icono, ruta: it.href, accion: it.accion, actual };
     });
   });
 
@@ -324,10 +320,11 @@ export class TopbarComponent implements OnDestroy {
     if (o?.ruta) this.router.navigateByUrl(o.ruta);
     else this.router.navigate(['/settings'], { queryParams: { seccion } });
   }
-  /** El plan y los cobros están en Settings › Cuenta. */
+  /** Con pago en línea, a la página de Wompi; si no, a Settings › Cuenta. */
   protected pagar(): void {
     this.cerrarMenu();
-    this.router.navigate(['/settings'], { queryParams: { seccion: 'cuenta' } });
+    if (this.pagoEnLinea.disponible()) this.pagoEnLinea.pagar();
+    else this.router.navigate(['/settings'], { queryParams: { seccion: 'cuenta' } });
   }
   protected atajosClick(): void {
     this.atajos.guia.set(true);
@@ -368,7 +365,9 @@ export class TopbarComponent implements OnDestroy {
     this.router.navigateByUrl('/login');
   }
 
-  protected irMiga(ruta: string): void {
-    this.router.navigateByUrl(ruta);
+  /** La miga de una página con la hoja abierta la cierra; las demás navegan. */
+  protected irMiga(m: { ruta: string; accion?: () => void; actual: boolean }): void {
+    if (m.accion) return m.accion();
+    if (!m.actual) void this.router.navigateByUrl(m.ruta);
   }
 }

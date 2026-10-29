@@ -50,9 +50,12 @@ export const routes: Routes = [
   {
     // Asistente a pantalla completa: fuera del Shell, con su propio topbar y «Volver al panel».
     path: 'asistente',
+    data: { breadcrumb: 'Asistente de IA', icon: 'ia' },
     loadChildren: () => import('./features/asistente/asistente.routes').then((m) => m.ASISTENTE_ROUTES),
   },
   {
+    // Migas del topbar: cada sección lleva su `data.breadcrumb` y sus páginas
+    // el suyo (ver `NavigationTrailService`).
     path: '',
     component: ShellComponent,
     canActivate: [authGuard],
@@ -64,46 +67,55 @@ export const routes: Routes = [
       },
       {
         path: 'orders',
+        data: { breadcrumb: 'Pedidos', icon: 'inbox' },
         loadChildren: () => import('./features/orders/orders.routes').then((m) => m.ORDERS_ROUTES),
       },
       {
         path: 'products',
+        data: { breadcrumb: 'Productos', icon: 'tag' },
         loadChildren: () =>
           import('./features/products/products.routes').then((m) => m.PRODUCTS_ROUTES),
       },
       {
         path: 'customers',
+        data: { breadcrumb: 'Clientes', icon: 'user' },
         loadChildren: () =>
           import('./features/customers/customers.routes').then((m) => m.CUSTOMERS_ROUTES),
       },
       {
         path: 'discounts',
+        data: { breadcrumb: 'Descuentos', icon: 'discount-2' },
         loadChildren: () =>
           import('./features/discounts/discounts.routes').then((m) => m.DISCOUNTS_ROUTES),
       },
       {
         path: 'messages',
+        data: { breadcrumb: 'Mensajes', icon: 'message-circle-2' },
         loadChildren: () =>
           import('./features/messages/messages.routes').then((m) => m.MESSAGES_ROUTES),
       },
       {
         path: 'whatsapp',
+        data: { breadcrumb: 'WhatsApp', icon: 'brand-whatsapp' },
         canActivate: [moduloGuard('whatsapp')],
         loadChildren: () => import('./features/whatsapp/whatsapp.routes').then((m) => m.WHATSAPP_ROUTES),
       },
       {
         // Configuración de la tienda en línea (la tienda pública es el proyecto `tienda`).
         path: 'tienda',
+        data: { breadcrumb: 'Tienda en línea', icon: 'building-store' },
         canActivate: [moduloGuard('tienda')],
         loadChildren: () => import('./features/tienda/tienda.routes').then((m) => m.TIENDA_ROUTES),
       },
       {
         path: 'notificaciones',
+        data: { breadcrumb: 'Notificaciones', icon: 'bell' },
         loadChildren: () =>
           import('./features/notificaciones/notificaciones.routes').then((m) => m.NOTIFICACIONES_ROUTES),
       },
       {
         path: 'settings',
+        data: { breadcrumb: 'Configuración', icon: 'settings-2' },
         loadChildren: () =>
           import('./features/settings/settings.routes').then((m) => m.SETTINGS_ROUTES),
       },

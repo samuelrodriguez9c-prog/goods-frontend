@@ -32,10 +32,13 @@ import { EstadoIconoComponent } from '../../../../shared/ui/estado-icono/estado-
 import { FranjaMetricasComponent, MetricaFranja } from '../../../../shared/ui/franja-metricas/franja-metricas.component';
 import { pl } from '../../shared/formato';
 import { ModuloCabeceraComponent } from '../../shared/ui/modulo-cabecera/modulo-cabecera.component';
+import { IcComponent } from '../../shared/ui/ic/ic.component';
+import { AnchoDirective, DespegueDirective } from '../../../../shared/ui/despegue/despegue.directive';
 import { AtajosDialogoComponent } from '../../components/atajos-dialogo/atajos-dialogo.component';
 import { ProductoFichaComponent } from '../../components/producto-ficha/producto-ficha.component';
 import { Agrupar, Metrica, PMAX, ProductosStore, cop, num } from '../../productos.store';
 import { CampoPersonalizado } from '../../../../core/campos/campo-personalizado.model';
+import { migaDeHoja } from '../../../../core/navigation/navigation-trail.service';
 
 type SeccionFiltro = 'agrupar' | 'estado' | 'categorias' | 'precio' | 'campos';
 
@@ -52,7 +55,10 @@ const ECO_PROPIO_MS = 2500;
   selector: 'app-product-list-page',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TablerIconComponent, EstadoIconoComponent, AutofocoDirective, ProductoFichaComponent, AtajosDialogoComponent, ModuloCabeceraComponent, FranjaMetricasComponent],
+  imports: [
+    TablerIconComponent, EstadoIconoComponent, AutofocoDirective, ProductoFichaComponent, AtajosDialogoComponent, ModuloCabeceraComponent, FranjaMetricasComponent,
+    IcComponent, DespegueDirective, AnchoDirective,
+  ],
   providers: [ProductosStore],
   templateUrl: './product-list-page.component.html',
 })
@@ -97,6 +103,16 @@ export class ProductListPageComponent {
   protected readonly seccion = signal<SeccionFiltro>('estado');
   protected readonly qFoco = signal(false);
   protected readonly hover = signal<number | null>(null);
+  /** Ancho de la grilla lista + ficha: hasta ahí crece la franja al desplegarse. */
+  protected readonly anchoGrid = signal(0);
+  /** Cuánto baja la ficha cuando la franja se despliega encima. */
+  protected readonly bajar = signal(0);
+  /** Insignia y etiqueta de cada estado en la fila. */
+  protected readonly ESTF: Record<EstadoProducto, { t: string; bg: string; fg: string; icono: string }> = {
+    activo: { t: 'Activo', bg: '#dcfce7', fg: '#0b5c3f', icono: 'check' },
+    agotado: { t: 'Agotado', bg: '#ffe6e5', fg: '#b42318', icono: 'x' },
+    descontinuado: { t: 'Descontinuado', bg: '#e3e3e3', fg: '#4b5563', icono: 'archive' },
+  };
   protected readonly menuMasivo = signal<'estado' | 'categoria' | null>(null);
   protected readonly atajosAbierto = this.atajos.guia;
   protected readonly cambiosEnVivo = signal(0);
@@ -182,6 +198,11 @@ export class ProductListPageComponent {
   });
 
   constructor() {
+    // Miga del producto abierto: «Productos › Audífonos JBL Tune 520BT».
+    migaDeHoja(() => {
+      const a = this.s.abierto();
+      return a === 'nuevo' ? 'Nuevo producto' : a != null ? this.s.producto(a)?.nombre ?? null : null;
+    }, () => this.s.cerrarFicha());
     const productosApi = inject(ProductoService);
     const inventarioApi = inject(InventarioService);
     this.s.cargar();
@@ -263,9 +284,6 @@ export class ProductListPageComponent {
   }
 
   // fila
-  protected unida(id: number): boolean {
-    return this.s.abierto() === id || this.hover() === id;
-  }
   protected miniatura(p: ProductoCatalogo): { url: string | null; letra: string } {
     return { url: p.imagenes[0]?.url ?? null, letra: ((p.nombre || '?').trim()[0] || '?').toUpperCase() };
   }

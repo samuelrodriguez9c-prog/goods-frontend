@@ -27,7 +27,70 @@ export interface AsistenteMensaje {
   rol: 'usuario' | 'asistente';
   cuerpo: string;
   herramientasUsadas: HerramientaUsada[] | null;
+  /** Lo que se guardó o se propuso recordar en esta respuesta (la tarjeta del chat). */
+  recuerdos?: AsistenteRecuerdo[];
+  /** Acciones que propuso en esta respuesta, para confirmar o descartar. */
+  acciones?: AsistenteAccion[];
   creadoEn: string;
+}
+
+/**
+ * Algo que el asistente recuerda: de la persona (`personal`) o de todo el
+ * equipo (`empresa`). Las `propuesta` esperan «Guardar» o «Descartar» en la
+ * tarjeta del chat; solo las `activa` llegan al asistente.
+ */
+export interface AsistenteRecuerdo {
+  id: number;
+  texto: string;
+  alcance: 'personal' | 'empresa';
+  estado: 'propuesta' | 'activa' | 'descartada';
+  /** `pedido`: «recuerda que…»; `sugerido`: lo propuso el asistente; `manual`: escrito en la pantalla. */
+  origen: 'pedido' | 'sugerido' | 'manual';
+  creadoPor: string | null;
+  conversacionId: number | null;
+  mensajeId: number | null;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+/** Línea de una compra propuesta por el asistente. */
+export interface LineaCompraPropuesta {
+  productoId: number;
+  producto: string;
+  cantidad: number;
+  costoUnitario: number;
+  subtotal: number;
+}
+
+/**
+ * Acción que propuso el asistente (por ahora, `armarCompra`). No pasa nada
+ * hasta que la persona la confirma; `ejecutando` dura lo que tarda en crearse.
+ */
+export interface AsistenteAccion {
+  id: number;
+  tipo: 'armarCompra';
+  estado: 'propuesta' | 'ejecutando' | 'confirmada' | 'descartada' | 'fallida' | 'vencida';
+  resumen: {
+    proveedor: { id: number; nombre: string };
+    lineas: LineaCompraPropuesta[];
+    total: number;
+    notas?: string;
+    /** Ya hay compras pendientes parecidas a este proveedor. */
+    aviso?: string;
+  };
+  resultado: { compraId: number; codigo: string; total: number } | null;
+  error: string | null;
+  creadoEn: string;
+  venceEn: string | null;
+  resueltoEn: string | null;
+}
+
+/** `GET /asistente/recuerdos`. */
+export interface ListaRecuerdos {
+  personales: AsistenteRecuerdo[];
+  empresa: AsistenteRecuerdo[];
+  /** Tiene `asistente.recuerdos`: puede guardar y editar los de la Empresa. */
+  puedeEditarEmpresa: boolean;
 }
 
 /** Documento propio de la Empresa (políticas, manuales) que el asistente busca por similitud. */

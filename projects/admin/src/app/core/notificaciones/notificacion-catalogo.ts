@@ -10,6 +10,7 @@ import {
   IconMessage,
   IconPackage,
   IconReceipt,
+  IconTruckDelivery,
   IconShoppingBag,
   IconUserCheck,
   IconUserCircle,
@@ -39,12 +40,12 @@ interface DefTipo {
   accionable?: boolean;
 }
 
-const chat = () => ({ url: '/messages', destino: 'Messages' });
+const chat = () => ({ url: '/messages', destino: 'Mensajes' });
 const pedido = (d: Record<string, unknown>) =>
   d['pedidoId']
-    ? { url: `/orders/${d['pedidoId']}`, destino: `Orders · #${d['numero'] ?? d['pedidoId']}` }
-    : { url: '/orders', destino: 'Orders' };
-const cuenta = () => ({ url: '/', destino: 'Dashboard' });
+    ? { url: `/orders/${d['pedidoId']}`, destino: `Pedidos · #${d['numero'] ?? d['pedidoId']}` }
+    : { url: '/orders', destino: 'Pedidos' };
+const cuenta = () => ({ url: '/', destino: 'Inicio' });
 const otra = () => ({ url: '/notificaciones', destino: 'Notificaciones' });
 
 export const TIPOS: Record<TipoNotificacion, DefTipo> = {
@@ -56,7 +57,12 @@ export const TIPOS: Record<TipoNotificacion, DefTipo> = {
     etiqueta: 'Solicitud',
     icono: IconBulb,
     accion: 'Ver solicitud',
-    ruta: (d) => ({ url: '/settings/solicitudes', query: d['solicitudId'] ? { id: d['solicitudId'] } : undefined, destino: 'Solicitudes a Goods' }),
+    ruta: (d) => ({
+      url: '/settings/solicitudes',
+      // `tablero` llega en los avisos de una solicitud de otra tienda que se apoya.
+      query: d['solicitudId'] ? { solicitud: d['solicitudId'], ...(d['tablero'] ? { tablero: 1 } : {}) } : undefined,
+      destino: 'Solicitudes a Goods',
+    }),
   },
   pedido_estado: { cat: 'tienda', etiqueta: 'Pedido', icono: IconPackage, accion: 'Ver pedido', ruta: pedido },
   pedido_nuevo: { cat: 'tienda', etiqueta: 'Pedido nuevo', icono: IconShoppingBag, accion: 'Ver pedido', ruta: pedido, accionable: true },
@@ -67,6 +73,15 @@ export const TIPOS: Record<TipoNotificacion, DefTipo> = {
     icono: IconAlertTriangle,
     accion: 'Ver inventario',
     ruta: () => ({ url: '/products/inventario', destino: 'Inventario' }),
+    accionable: true,
+  },
+  reposicion_sugerida: {
+    cat: 'tienda',
+    etiqueta: 'Reponer',
+    icono: IconTruckDelivery,
+    accion: 'Ver qué pedir',
+    // `reponer=1` abre el modal «Reponer stock» de Inventario.
+    ruta: () => ({ url: '/products/inventario', query: { reponer: 1 }, destino: 'Inventario › Reponer' }),
     accionable: true,
   },
   plan_por_vencer: { cat: 'cuenta', etiqueta: 'Por vencer', icono: IconCalendarDue, accion: 'Ver mi cuenta', ruta: cuenta, accionable: true },

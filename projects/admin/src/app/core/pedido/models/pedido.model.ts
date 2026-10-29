@@ -141,7 +141,7 @@ export interface CrearPedidoPayload {
   canal?: 'panel' | 'whatsapp';
   whatsappConversacionId?: number;
   /** Campos propios; `null` quita el valor. */
-  atributos?: Record<string, string | number | boolean | null>;
+  atributos?: Record<string, string | number | boolean | string[] | null>;
 }
 
 /** Solo mientras está pendiente. */
@@ -153,5 +153,5 @@ export interface ActualizarPedidoPayload {
   metodoPago?: string | null;
   notas?: string | null;
   /** Campos propios; `null` quita el valor. */
-  atributos?: Record<string, string | number | boolean | null>;
+  atributos?: Record<string, string | number | boolean | string[] | null>;
 }

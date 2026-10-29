@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, NgZone, afterNextRender, computed, effect, inject, input, viewChild } from '@angular/core';
+import { Location } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, NgZone, afterNextRender, computed, effect, inject, input, untracked, viewChild } from '@angular/core';
 import { TablerIconComponent } from '@tabler/icons-angular';
 import { BurbujaDirective } from '../core/movimiento';
 import { NoDisponibleComponent } from '../no-disponible/no-disponible.component';
@@ -43,6 +44,11 @@ export class TiendaPageComponent {
   private readonly zone = inject(NgZone);
 
   readonly slug = input.required<string>();
+  /** `/<tienda>/p/<producto>`: el slug (o el id) del producto que se abre al cargar. */
+  readonly producto = input<string>();
+  private readonly location = inject(Location);
+  /** El producto del enlace ya se abrió (no reabrirlo al recargar en silencio). */
+  private enlaceAbierto: string | null = null;
 
   protected readonly i = ICONOS;
   protected readonly verSubir = computed(() => this.st.trasHero() && !this.pd.abierto() && !this.st.detalle());
@@ -50,6 +56,20 @@ export class TiendaPageComponent {
 
   constructor() {
     effect(() => this.st.cargar(this.slug()));
+    // Enlace directo: con la tienda lista, abre el detalle de ese producto.
+    effect(() => {
+      const pedido = this.producto(), t = this.st.tienda();
+      if (!pedido || !t || this.st.estado() !== 'lista' || this.enlaceAbierto === pedido) return;
+      this.enlaceAbierto = pedido;
+      const p = t.productos.find((x) => x.slug === pedido || String(x.id) === pedido);
+      if (p) untracked(() => this.st.abrirDetalle(p));
+    });
+    // La dirección sigue al detalle: abierto se puede copiar y compartir; cerrado vuelve a la tienda.
+    effect(() => {
+      const d = this.st.detalle();
+      if (this.st.estado() !== 'lista') return;
+      this.location.replaceState(`/${this.slug()}` + (d ? `/p/${encodeURIComponent(d.slug ?? String(d.id))}` : ''));
+    });
     effect(() => { document.body.style.overflow = this.pd.abierto() || this.st.detalle() ? 'hidden' : ''; });
 
     const alTeclear = (e: KeyboardEvent) => {

@@ -8,12 +8,13 @@ import {
   IconExclamationCircleFilled,
   TablerIconComponent,
 } from '@tabler/icons-angular';
-import { AuthService } from '../../auth.service';
+import { AuthService, InfoEnlace } from '../../auth.service';
 
 type FuerzaPassword = 'ninguna' | 'debil' | 'media' | 'fuerte';
 type PasoResetPassword = 'formulario' | 'exito';
 
 interface CamposInvalidos {
+  nombres?: boolean;
   password?: boolean;
   confirmar?: boolean;
 }
@@ -24,8 +25,11 @@ interface CamposInvalidos {
  * llama `POST /auth/reset-password`.
  *
  * @remarks
- * Sin token en la URL se muestra «enlace no válido». Un token vencido recién
- * se descubre al enviar: el backend no tiene cómo validarlo sin consumirlo.
+ * - Sin token en la URL, o si `GET /auth/enlace` dice que venció o ya se
+ *   usó, se muestra «enlace no válido».
+ * - `primeraVez` (invitación o activación) cambia el título a «Crea tu
+ *   contraseña»; `necesitaNombre` (invitación solo con el correo) pide nombre
+ *   y apellido, que van en el mismo `POST /auth/reset-password`.
  */
 @Component({
   selector: 'app-reset-password',
@@ -46,6 +50,11 @@ export class ResetPasswordComponent implements OnInit {
 
   protected readonly token = signal<string | null>(null);
   protected readonly paso = signal<PasoResetPassword>('formulario');
+  /** `null` mientras carga; si el enlace no sirve, queda en `enlaceMalo`. */
+  protected readonly info = signal<InfoEnlace | null>(null);
+  protected readonly enlaceMalo = signal<string | null>(null);
+  protected readonly nombres = signal('');
+  protected readonly apellidos = signal('');
 
   protected readonly password = signal('');
   protected readonly confirmarPassword = signal('');
@@ -73,7 +82,23 @@ export class ResetPasswordComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.token.set(this.route.snapshot.queryParamMap.get('token'));
+    const token = this.route.snapshot.queryParamMap.get('token');
+    this.token.set(token);
+    if (!token) return;
+    this.authService.infoEnlace(token).subscribe({
+      next: (i) => this.info.set(i),
+      // Sin conexión no se sabe si el enlace sirve: se deja enviar igual.
+      error: (err: unknown) =>
+        err instanceof HttpErrorResponse && err.status === 0
+          ? this.info.set({ correo: '', nombres: '', apellidos: '', primeraVez: false, necesitaNombre: false })
+          : this.enlaceMalo.set(this.mensajeDeError(err).replace(/\.$/, '')),
+    });
+  }
+
+  protected onNombresChange(value: string): void {
+    this.nombres.set(value);
+    this.camposInvalidos.update((actual) => ({ ...actual, nombres: false }));
+    this.error.set(null);
   }
 
   protected togglePassword(): void {
@@ -105,19 +130,24 @@ export class ResetPasswordComponent implements OnInit {
     const password = this.password();
     const confirmar = this.confirmarPassword();
     // El backend solo exige 8 caracteres; lo de los espacios en los bordes es validación del cliente.
+    const pideNombre = !!this.info()?.necesitaNombre;
     const invalidos: CamposInvalidos = {
+      nombres: pideNombre && !this.nombres().trim(),
       password: password.length < 8 || password !== password.trim(),
       confirmar: password !== confirmar,
     };
     this.camposInvalidos.set(invalidos);
-    if (invalidos.password || invalidos.confirmar) {
+    if (invalidos.nombres || invalidos.password || invalidos.confirmar) {
       return;
     }
 
     this.enviando.set(true);
     this.error.set(null);
 
-    this.authService.resetPassword(token, password).subscribe({
+    const nombre = pideNombre
+      ? { nombres: this.nombres().trim(), apellidos: this.apellidos().trim() }
+      : undefined;
+    this.authService.resetPassword(token, password, nombre).subscribe({
       next: () => {
         this.enviando.set(false);
         this.paso.set('exito');

@@ -24,6 +24,8 @@ export interface FilaProveedor {
   proveedor: ProveedorV5;
   /** Contacto · última compra. */
   detalle: string;
+  /** «hace 3 d» / «sin compras» (derecha de la fila). */
+  ultima: string;
   /** Total recibido (0 = sin compras recibidas). */
   total: number;
   /** Total frente al proveedor que más se le ha comprado, en %. */

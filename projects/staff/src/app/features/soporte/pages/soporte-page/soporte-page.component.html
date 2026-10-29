@@ -138,16 +138,28 @@
                     >
                       <span class="relative flex size-[30px] shrink-0 items-center justify-center rounded-full text-[11px] font-semibold" [style.background]="f.fondo" [style.color]="f.tinta">
                         {{ f.iniciales }}
-                        @if (f.nueva) {
+                        @if (f.nueva && !f.noLeidos) {
                           <span class="absolute -right-px -top-px size-[9px] rounded-full bg-[#2c6ecb] shadow-[0_0_0_2px_#fff]"></span>
                         }
                       </span>
                       <span class="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span class="flex items-baseline gap-2">
                           <span class="min-w-0 flex-1 truncate text-[13px] text-gray-900" [class]="f.nueva ? 'font-bold' : 'font-semibold'">{{ f.cliente }}</span>
-                          <span class="shrink-0 text-[11px] tabular-nums text-gray-400">{{ f.cuando }}</span>
+                          <span class="shrink-0 text-[11px] tabular-nums" [class]="f.noLeidos ? 'font-semibold text-[#2c6ecb]' : 'text-gray-400'">{{ f.cuando }}</span>
                         </span>
-                        <span class="truncate text-xs leading-[17px]" [class]="f.nueva ? 'text-[#303030]' : 'text-gray-500'">{{ f.preview }}</span>
+                        @if (f.tema) {
+                          <span class="truncate text-xs font-medium leading-[17px] text-[#4b5563]" [title]="f.tema">{{ f.tema }}</span>
+                        }
+                        <span class="flex items-center gap-2">
+                          <span class="min-w-0 flex-1 truncate text-xs leading-[17px]" [class]="f.nueva ? 'text-[#303030]' : 'text-gray-500'">{{ f.preview }}</span>
+                          @if (f.noLeidos) {
+                            <span
+                              class="flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#2c6ecb] px-[5px] text-[10.5px] font-semibold tabular-nums text-white"
+                              [title]="f.noLeidos === 1 ? '1 mensaje sin leer' : f.noLeidos + ' mensajes sin leer'"
+                              >{{ f.noLeidos }}</span
+                            >
+                          }
+                        </span>
                         <span class="mt-0.5 flex">
                           <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-px text-[11px] font-medium" [style.background]="f.chip.fondo" [style.color]="f.chip.tinta">
                             <tabler-icon [icon]="f.chip.icono" [size]="12" [stroke]="2" />
@@ -181,6 +193,9 @@
               <div class="min-w-[160px] flex-[1_1_200px]">
                 <p class="truncate text-sm font-semibold text-gray-900">{{ h.cliente }}</p>
                 <p class="truncate text-xs text-gray-500">{{ h.correo }} · abierta {{ h.desde }}</p>
+                @if (h.tema) {
+                  <p class="mt-0.5 truncate text-xs text-[#4b5563]" [title]="h.tema"><span class="text-gray-400">Tema:</span> {{ h.tema }}</p>
+                }
               </div>
 
               <div class="flex items-center gap-1.5">
@@ -311,8 +326,24 @@
                         @if (!x.agrupado) {
                           <span class="mb-1 px-1 text-[11.5px] font-medium text-gray-500">{{ x.autor }}</span>
                         }
+                        @if (x.m.adjuntos?.length) {
+                          <div class="mb-1 grid gap-1" [class.grid-cols-2]="x.m.adjuntos!.length > 1">
+                            @for (a of x.m.adjuntos; track a.id) {
+                              @if (imgs()[a.id]; as url) {
+                                <a [href]="url" target="_blank" rel="noopener" [title]="a.nombre" class="block overflow-hidden rounded-[14px] bg-[#f4f4f4] shadow-[0_0_0_1px_rgba(0,0,0,.06)]">
+                                  <img [src]="url" [alt]="a.nombre" class="block object-cover" [class]="x.m.adjuntos!.length > 1 ? 'size-[120px]' : 'max-h-64 max-w-[260px]'" />
+                                </a>
+                              } @else {
+                                <span class="flex items-center justify-center rounded-[14px] bg-[#f4f4f4] text-[#b5b5b5]" [class]="x.m.adjuntos!.length > 1 ? 'size-[120px]' : 'h-[140px] w-[200px]'" [title]="a.nombre">
+                                  <tabler-icon [icon]="i.foto" [size]="20" [stroke]="1.75" />
+                                </span>
+                              }
+                            }
+                          </div>
+                        }
                         <div class="flex max-w-full items-center gap-1" [class]="x.mio ? 'flex-row-reverse' : 'flex-row'">
                           <div
+                            [class.hidden]="!x.m.cuerpo && !x.m.respondeA"
                             class="max-w-[min(560px,72%)] px-[13px] py-2 text-[13.5px] leading-[19px] text-pretty"
                             [class]="
                               (x.mio ? (x.propio ? 'bg-[#303030] text-white ' : 'bg-[#4a4a4a] text-white ') : 'bg-[#f1f1f1] text-gray-900 ') +
@@ -338,7 +369,18 @@
                           >
                             <tabler-icon [icon]="i.citar" [size]="14" [stroke]="2" />
                           </button>
-                          <span class="shrink-0 text-[11px] tabular-nums text-[#b5b5b5]">{{ x.hora }}</span>
+                          <span class="inline-flex shrink-0 items-center gap-0.5 text-[11px] tabular-nums text-[#b5b5b5]">
+                            {{ x.hora }}
+                            @if (x.mio) {
+                              <tabler-icon
+                                [icon]="x.leido ? i.leido : i.check"
+                                [size]="13"
+                                [stroke]="2"
+                                [style.color]="x.leido ? '#00a39b' : '#b5b5b5'"
+                                [attr.title]="x.leido ? 'Leído' : 'Enviado'"
+                              />
+                            }
+                          </span>
                         </div>
                       </div>
                     }
@@ -411,22 +453,51 @@
                   </div>
                 </div>
 
+                @if (archivos().length) {
+                  <div class="flex gap-1.5 px-3 pt-2.5">
+                    @for (a of archivos(); track a.url; let k = $index) {
+                      <span class="relative size-14 shrink-0 overflow-hidden rounded-xl bg-[#f4f4f4] shadow-[0_0_0_1px_rgba(0,0,0,.06)]">
+                        <img [src]="a.url" [alt]="a.f.name" class="size-full object-cover" />
+                        <button
+                          type="button"
+                          (click)="quitarArchivo(k)"
+                          title="Quitar"
+                          class="absolute right-1 top-1 flex rounded-full bg-[rgba(10,10,10,.65)] p-0.5 text-white hover:bg-[#0a0a0a]"
+                        >
+                          <tabler-icon [icon]="i.x" [size]="11" [stroke]="2.5" />
+                        </button>
+                      </span>
+                    }
+                  </div>
+                }
                 <textarea
                   #inputMensaje
                   rows="1"
                   [ngModel]="mensajeNuevo()"
                   (ngModelChange)="mensajeNuevo.set($event); autoAltura(inputMensaje)"
                   (keydown)="teclaComposer($event)"
+                  (paste)="alPegar($event)"
                   (focus)="composerConFoco.set(true)"
                   (blur)="composerConFoco.set(false)"
                   [placeholder]="'Responder a ' + (c.usuario?.nombres ?? 'la Empresa') + '…'"
                   class="block w-full resize-none border-0 bg-transparent px-3.5 pb-1 pt-[11px] text-[13.5px] leading-5 text-gray-900 outline-none placeholder:text-gray-400"
                 ></textarea>
-                <div class="flex items-center gap-2.5 pb-2 pl-3.5 pr-2 pt-1.5">
+                <div class="flex items-center gap-2.5 pb-2 pl-2 pr-2 pt-1.5">
+                  <input #archivo type="file" multiple [accept]="tiposImagen" class="hidden" (change)="alElegir($event)" />
+                  <button
+                    type="button"
+                    (click)="elegirArchivos()"
+                    [disabled]="archivos().length >= maxImagenes"
+                    title="Adjuntar imagen · también puedes pegar una captura"
+                    aria-label="Adjuntar imagen"
+                    class="flex size-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-[background-color,color,transform] duration-200 hover:bg-[#f1f1f1] hover:text-gray-900 active:scale-90 disabled:opacity-40"
+                  >
+                    <tabler-icon [icon]="i.adjuntar" [size]="16" [stroke]="2" />
+                  </button>
                   <span class="min-w-0 flex-1 truncate text-[11.5px]" [class]="c.agenteAsignadoId ? 'text-gray-400' : 'text-[#b45309]'">{{ notaComposer() }}</span>
                   <button
                     type="button"
-                    [disabled]="enviando() || !mensajeNuevo().trim()"
+                    [disabled]="enviando() || (!mensajeNuevo().trim() && !archivos().length)"
                     (click)="enviar()"
                     class="flex shrink-0 items-center gap-1.5 rounded-lg bg-primary-button px-3 py-1.5 text-[12.5px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[opacity,transform,background-color] duration-200 hover:bg-[#1a1a1a] active:scale-[0.96] disabled:opacity-40"
                   >

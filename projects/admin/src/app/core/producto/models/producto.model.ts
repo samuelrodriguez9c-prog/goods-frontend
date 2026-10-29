@@ -45,7 +45,7 @@ export interface ProductoCatalogo extends Producto {
 /** Body de `POST /productos` y `PATCH /productos/:id` (CreateProductoDto). `null` en atributos quita el valor. */
 export type ProductoPayload = Partial<
   Omit<ProductoCatalogo, 'id' | 'imagenes' | 'creadoEn' | 'actualizadoEn' | 'atributos'>
-> & { atributos?: Record<string, string | number | boolean | null> };
+> & { atributos?: Record<string, string | number | boolean | string[] | null> };
 
 /** Etiqueta y colores de cada estado. */
 export const ESTADOS_PRODUCTO: Record<EstadoProducto, { t: string; dot: string; bg: string; fg: string }> = {

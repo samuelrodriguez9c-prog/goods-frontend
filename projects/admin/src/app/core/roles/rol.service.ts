@@ -7,6 +7,8 @@ import { Permiso, Rol, RolAsignable } from './models/rol.model';
 export interface GuardarRolPayload {
   nombre: string;
   descripcion?: string;
+  /** Ícono de Tabler sin `ti-` («chef-hat»). */
+  icono?: string;
 }
 
 /**
@@ -33,6 +35,10 @@ export class RolService {
     return this.http.get<Permiso[]>(`${environment.apiUrl}/permisos/asignables`);
   }
 
+  /**
+   * El nombre es único por Empresa sin distinguir mayúsculas, y no puede
+   * repetir el de una plantilla: si choca, 409 con el motivo en español.
+   */
   crear(payload: GuardarRolPayload): Observable<Rol> {
     return this.http.post<Rol>(`${environment.apiUrl}/roles`, payload);
   }
@@ -41,13 +47,15 @@ export class RolService {
     return this.http.patch<Rol>(`${environment.apiUrl}/roles/${id}`, payload);
   }
 
+  /** 409 si alguien del equipo todavía lo tiene. Quien se quitó del equipo pasa a Empleado. */
   eliminar(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.apiUrl}/roles/${id}`);
   }
 
   /**
    * Reemplaza todos los permisos del rol (no es incremental). El backend
-   * rechaza los permisos reservados a staff.
+   * rechaza los permisos reservados a staff y avisa `permisos:cambio` a cada
+   * persona con ese rol.
    */
   asignarPermisos(id: number, permisoIds: number[]): Observable<Rol> {
     return this.http.put<Rol>(`${environment.apiUrl}/roles/${id}/permisos`, { permisoIds });

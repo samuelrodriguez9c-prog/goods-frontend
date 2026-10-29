@@ -53,6 +53,9 @@
             <tabler-icon [icon]="i.libros" [size]="18" /><span class="flex-1">Documentos</span>
             <span class="text-[11.5px] tabular-nums text-[#9ca3af]">{{ store.documentos().length }}</span>
           </button>
+          <a routerLink="/asistente/recuerdos" class="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-2 text-left text-[13.5px] font-medium transition-[background-color,scale] duration-150 hover:bg-[#efefef] active:scale-[0.98]">
+            <tabler-icon [icon]="i.recuerdos" [size]="18" /><span class="flex-1">Lo que recuerdo</span>
+          </a>
         </div>
 
         <div class="flex-1 overflow-y-auto px-2 pb-3 pt-1">
@@ -152,6 +155,14 @@
                           <span class="ia-caret"></span>
                         }
                       </div>
+                      @if (m.id !== store.escribiendoId()) {
+                        @for (a of m.acciones ?? []; track a.id) {
+                          <app-ia-accion [accion]="a" [mensajeId]="m.id" />
+                        }
+                        @for (r of m.recuerdos ?? []; track r.id) {
+                          <app-ia-recuerdo [recuerdo]="r" [mensajeId]="m.id" />
+                        }
+                      }
                       @if (m.id !== store.escribiendoId()) {
                         <div class="ia-msg-in flex flex-wrap items-center gap-1">
                           @if (store.herramientasTexto(m); as f) {

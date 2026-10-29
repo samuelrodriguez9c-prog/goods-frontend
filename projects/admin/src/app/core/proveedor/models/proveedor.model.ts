@@ -32,5 +32,5 @@ export interface ProveedorPayload {
   activo?: boolean;
   diasEntrega?: number[];
   /** `null` o `''` quita la clave; si se manda, el backend exige los obligatorios. */
-  atributos?: Record<string, string | number | boolean | null>;
+  atributos?: Record<string, string | number | boolean | string[] | null>;
 }

@@ -1,235 +1,360 @@
-<div class="p-8">
-  <div class="flex flex-wrap items-start justify-between gap-4">
-    <div class="max-w-[640px]">
-      <h1 class="text-lg font-semibold text-gray-900">Campos propios</h1>
-      <p class="mt-2 text-sm text-gray-500">
-        Los datos que tu negocio necesita y Goods no trae: talla y color en productos, NIT en clientes, número de mesa en
-        pedidos. Aparecen en los formularios, en los filtros y en la exportación.
-      </p>
-    </div>
-    @if (puedeGestionar()) {
+@if (!completa() || !hayHoja()) {
+  <div>
+    <app-modulo-cabecera
+      [icono]="icono('forms')"
+      titulo="Campos propios"
+      [cuenta]="totalActivos()"
+      cuentaTitulo="Campos activos"
+      [alDia]="false"
+    >
+      <app-pastilla-cabecera
+        pastilla
+        [bg]="pastilla().bg"
+        [fg]="pastilla().fg"
+        [punto]="pastilla().punto"
+        >{{ pastilla().t }}</app-pastilla-cabecera
+      >
+      <app-atajos-teclado
+        [atajos]="atajos"
+        [abierto]="verAtajos()"
+        (alternar)="verAtajos.update((v) => !v)"
+      />
       <button
         type="button"
         (click)="nuevo()"
-        [disabled]="activos() >= tope"
-        [title]="activos() >= tope ? 'Llegaste a ' + tope + ' activos: desactiva uno para sumar otro' : ''"
-        class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700 disabled:opacity-40"
+        [title]="puede() ? 'Nuevo campo (N)' : 'Necesitas el permiso «Definir los campos propios»'"
+        class="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] hover:opacity-90"
+        [style.cursor]="puede() ? 'pointer' : 'not-allowed'"
+        [style.opacity]="puede() ? 1 : 0.45"
       >
-        <tabler-icon [icon]="i.nuevo" [size]="16" [stroke]="2" />
-        Nuevo campo
+        <app-ic nombre="plus" [size]="14" />Nuevo campo<kbd
+          class="ml-0.5 rounded bg-white/[.14] px-[5px] font-sans text-[11px] leading-4 text-[#d4d4d4]"
+          >N</kbd
+        >
       </button>
-    }
+    </app-modulo-cabecera>
   </div>
+}
 
-  <!-- Secciones -->
-  <div class="mt-6 inline-grid max-w-full grid-cols-4 rounded-[11px] bg-[#ebebeb] p-[3px]" role="tablist">
-    @for (e of entidades; track e.k) {
-      @let on = entidad() === e.k;
+@if (cargando()) {
+  <div class="flex flex-1 items-center justify-center text-[13px] text-[#6b7280]">
+    Cargando campos…
+  </div>
+} @else if (error()) {
+  <app-estado-pagina
+    class="mb-4 flex-1"
+    tono="error"
+    [icono]="icono('cloud-off')"
+    titulo="No pudimos cargar los campos"
+    texto="Revisa tu conexión e intenta de nuevo."
+    accion="Reintentar"
+    (accionar)="cargar()"
+  />
+} @else {
+  <app-lista-ficha
+    #lf="listaFicha"
+    [haySeleccion]="hayHoja()"
+    [seleccionId]="sel()"
+    [bajar]="bajar()"
+    [cabeceraGrupo]="48"
+    [completa]="completa() && hayHoja()"
+    [pie]="pieLista()"
+  >
+    <p arriba class="mb-3.5 max-w-[668px] pr-7 text-[13px] leading-5 text-pretty text-[#6b7280]">
+      {{ lectura }}
+    </p>
+    <app-tarjetas-plegables
+      arriba
+      [items]="capacidad()"
+      [min]="150"
+      [anchoExpandido]="lf.ancho()"
+      [permitirDesplegar]="hayHoja()"
+      (fondo)="bajar.set($event)"
+    >
+      <ng-template #tarjeta let-c>
+        <app-tarjeta-capacidad [capacidad]="c" (elegir)="elegirEntidad($event)" />
+      </ng-template>
+    </app-tarjetas-plegables>
+    <ng-container buscador>
+      <app-buscador-lista
+        class="flex-1"
+        [(valor)]="busqueda"
+        placeholder="Nombre del campo u opción"
+        atajo
+      />
+      <app-filtros-campos
+        [abierto]="filtros()"
+        [activo]="hayFiltros()"
+        [estados]="opcionesEstado()"
+        [tipos]="opcionesTipo()"
+        (alternar)="filtros.update((f) => !f)"
+        (elegirEstado)="fEstado.set($event)"
+        (elegirTipo)="fTipo.set($event)"
+        (abrirTodos)="plegados.set([])"
+        (plegarTodos)="alternarTodos()"
+      />
       <button
         type="button"
-        role="tab"
-        [attr.aria-selected]="on"
-        (click)="irA(e.k)"
-        class="flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 text-[13px] transition-[background-color,color,box-shadow] duration-200"
-        [class]="on ? 'bg-white font-semibold text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,.08)]' : 'font-medium text-gray-500 hover:text-gray-900'"
+        (click)="alternarTodos()"
+        [title]="todosPlegados() ? 'Abrir todos' : 'Plegar todos'"
+        class="flex size-[34px] shrink-0 items-center justify-center rounded-full text-[#4b5563] hover:bg-[#e6e6e6]"
       >
-        {{ e.t }}
-        @if (cuenta(e.k)) {
-          <span class="text-[11.5px] tabular-nums" [class]="on ? 'text-gray-500' : 'text-gray-400'">{{ cuenta(e.k) }}</span>
-        }
+        <app-ic [nombre]="todosPlegados() ? 'chevrons-down' : 'chevrons-up'" />
       </button>
-    }
-  </div>
+    </ng-container>
 
-  <div class="mt-4 max-w-[760px]">
-    <p class="mb-3 text-xs text-gray-500">
-      {{ entidades[indiceEntidad()].d }} · <span class="tabular-nums">{{ activos() }} de {{ tope }}</span> activos
-    </p>
-
-    @if (!puedeGestionar()) {
-      <p class="mb-3 rounded-xl bg-[#f7f7f7] px-3.5 py-2.5 text-[12.5px] text-gray-600">
-        Puedes verlos, pero crearlos o cambiarlos pide el permiso «Definir los campos propios». Pídeselo a quien administra tu cuenta.
-      </p>
-    }
-
-    <!-- Editor de campo nuevo -->
-    @if (editor(); as ed) {
-      @if (!ed.campo) {
-        <ng-container *ngTemplateOutlet="editorTpl" />
-      }
-    }
-
-    @if (cargando() && !campos().length) {
-      <p class="text-sm text-gray-400">Cargando…</p>
-    } @else if (!campos().length && !editor()) {
-      <div class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[#e3e3e3] px-6 py-10 text-center">
-        <span class="flex size-10 items-center justify-center rounded-xl bg-[#f4f4f4] text-gray-500"><tabler-icon [icon]="i.campos" [size]="20" /></span>
-        <p class="m-0 text-sm font-medium text-gray-900">Todavía no tienes campos en {{ entidades[indiceEntidad()].t.toLowerCase() }}</p>
-        <p class="m-0 max-w-[420px] text-xs leading-[18px] text-gray-500">Por ejemplo: {{ entidades[indiceEntidad()].d }}</p>
-        @if (puedeGestionar()) {
-          <button type="button" (click)="nuevo()" class="mt-2 rounded-full bg-[#f4f4f4] px-3.5 py-1.5 text-[12.5px] font-medium text-gray-900 hover:bg-[#ebebeb]">Crear el primero</button>
+    <ng-container lista>
+      <div class="flex min-h-[26px] flex-wrap items-center gap-2 pb-2 pl-1 pr-7">
+        <span class="text-xs tabular-nums text-[#6b7280]"
+          >{{ filtrados().length }} {{ filtrados().length === 1 ? 'campo' : 'campos' }}</span
+        >
+        @for (c of chips(); track c.t) {
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pl-2.5 pr-1 text-[11.5px] font-medium text-[#374151]"
+            >{{ c.t
+            }}<button
+              type="button"
+              (click)="c.quitar()"
+              class="flex size-4 items-center justify-center rounded-full text-[#6b7280] hover:bg-[#d4d4d4]"
+            >
+              <app-ic nombre="x" [size]="11" /></button
+          ></span>
+        }
+        @if (busqueda()) {
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pl-2.5 pr-1 text-[11.5px] font-medium text-[#374151]"
+            >«{{ busqueda() }}»<button
+              type="button"
+              (click)="busqueda.set('')"
+              class="flex size-4 items-center justify-center rounded-full text-[#6b7280] hover:bg-[#d4d4d4]"
+            >
+              <app-ic nombre="x" [size]="11" /></button
+          ></span>
         }
       </div>
-    } @else {
-      <div class="flex flex-col overflow-hidden rounded-2xl border border-[#ebebeb] bg-white shadow-[0_1px_2px_rgba(0,0,0,.03)]">
-        @for (c of campos(); track c.id; let k = $index, ultimo = $last) {
-          <div class="border-b border-[#f2f2f2] last:border-b-0">
-            @if (editor()?.campo?.id === c.id) {
-              <div class="p-3"><ng-container *ngTemplateOutlet="editorTpl" /></div>
-            } @else {
-              <div class="group flex items-center gap-3 px-4 py-3" [class.opacity-55]="!c.activo">
-                <span class="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-[#f4f4f4] text-[#4b5563]" [title]="nombreTipo[c.tipo]">
-                  <tabler-icon [icon]="iconoTipo[c.tipo]" [size]="16" />
-                </span>
-                <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span class="flex flex-wrap items-center gap-2 text-[13.5px] font-semibold text-gray-900">
-                    {{ c.etiqueta }}
-                    @if (c.obligatorio) {
-                      <span class="rounded-md bg-[#ffe6e5] px-[7px] py-px text-[11px] font-medium text-[#c4320a]">Requerido</span>
-                    }
-                    @if (!c.activo) {
-                      <span class="rounded-md bg-[#f1f1f1] px-[7px] py-px text-[11px] font-medium text-[#6b7280]">Inactivo</span>
-                    }
-                  </span>
-                  <span class="truncate text-xs text-gray-500">{{ nombreTipo[c.tipo] }} · {{ resumen(c) }}</span>
-                </span>
-                @if (puedeGestionar()) {
-                  <div class="flex shrink-0 items-center gap-0.5">
-                    <button type="button" (click)="mover(c, -1)" [disabled]="k === 0" aria-label="Subir" class="rounded-lg p-1.5 text-gray-400 hover:bg-[#f4f4f4] hover:text-gray-900 disabled:invisible"><tabler-icon [icon]="i.arriba" [size]="15" /></button>
-                    <button type="button" (click)="mover(c, 1)" [disabled]="ultimo" aria-label="Bajar" class="rounded-lg p-1.5 text-gray-400 hover:bg-[#f4f4f4] hover:text-gray-900 disabled:invisible"><tabler-icon [icon]="i.abajo" [size]="15" /></button>
-                    <button type="button" (click)="editar(c)" aria-label="Editar" class="rounded-lg p-1.5 text-gray-500 hover:bg-[#f4f4f4] hover:text-gray-900"><tabler-icon [icon]="i.editar" [size]="15" /></button>
-                    <button
-                      type="button"
-                      role="switch"
-                      [attr.aria-checked]="c.activo"
-                      [attr.aria-label]="(c.activo ? 'Desactivar ' : 'Activar ') + c.etiqueta"
-                      (click)="alternarActivo(c)"
-                      class="relative mx-1.5 h-[18px] w-8 shrink-0 rounded-full transition-colors duration-200"
-                      [class]="c.activo ? 'bg-[#303030]' : 'bg-[#d4d4d4]'"
-                    >
-                      <span class="absolute top-[2px] size-3.5 rounded-full bg-white transition-[left] duration-200" [style.left.px]="c.activo ? 16 : 2"></span>
-                    </button>
-                    <button type="button" (click)="pedirBorrar(c)" aria-label="Borrar" class="rounded-lg p-1.5 text-gray-400 hover:bg-[#fef3f2] hover:text-[#b42318]"><tabler-icon [icon]="i.borrar" [size]="15" /></button>
-                  </div>
-                }
+      @if (!filtrados().length && (busqueda() || hayFiltros()) && todos().length) {
+        <div class="py-10 pl-4 pr-11 text-center">
+          <span
+            class="mx-auto flex size-10 items-center justify-center rounded-full bg-[#e6e6e6] text-[#8a8a8a]"
+            ><app-ic nombre="search-off" [size]="18"
+          /></span>
+          <p class="m-0 mt-2.5 text-[13px] text-[#6b7280]">
+            Ningún campo coincide con lo que buscas.
+          </p>
+          <button
+            type="button"
+            (click)="limpiarTodo()"
+            class="mt-3 rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[13px] font-medium text-[#374151]"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+      }
+      @for (g of grupos(); track g.k) {
+        @let nuevoAqui = esNuevo() && borrador()!.entidad === g.k;
+        <app-grupo-campos
+          [titulo]="g.t"
+          [descripcion]="g.d"
+          [icono]="g.icono"
+          [total]="g.total"
+          [activos]="g.activos"
+          [abierto]="g.abierto"
+          (alternar)="alternarGrupo(g.k)"
+          [puedeAgregar]="puede()"
+          (nuevo)="nuevo(g.k)"
+        >
+          @let pg = pagina.ver(g.k, g.filas, sel());
+          @for (c of pg.filas; track c.id; let k = $index) {
+            <app-fila-lista
+              #fila
+              [seleccionada]="sel() === c.id"
+              [despegada]="lf.despegada()"
+              [indice]="k"
+              columnas="38px minmax(0,1fr) auto"
+              arriba
+              [alto]="10"
+              (abrir)="abrir(c.id)"
+            >
+              <app-fila-campo
+                [campo]="c"
+                [marcado]="marcado(c.id)"
+                [hayMarcados]="seleccion().length > 0"
+                [conDato]="conDato()[c.id] ?? null"
+                [seleccionada]="sel() === c.id"
+                [resaltada]="fila.resaltada()"
+                (marcar)="marcar(c.id)"
+              />
+            </app-fila-lista>
+          }
+          <app-cargar-mas [quedan]="pg.quedan" (cargar)="pagina.mas(g.k)" />
+          @if (nuevoAqui) {
+            <div
+              class="mr-0 flex items-center gap-2.5 rounded-l-xl bg-white py-2 pl-[38px] pr-[30px] text-[13.5px] font-semibold text-[#111827]"
+            >
+              <span
+                class="flex size-9 items-center justify-center rounded-[11px] bg-[#303030] text-white"
+                ><app-ic [nombre]="iconoTipo[borrador()!.tipo]" [size]="16"
+              /></span>
+              <span class="truncate">{{ borrador()!.etiqueta || 'Campo nuevo' }}</span>
+              <span
+                class="ml-auto rounded-md bg-[#fff1d6] px-1.5 text-[10.5px] font-semibold leading-[17px] text-[#8a5a00]"
+                >Sin guardar</span
+              >
+            </div>
+          }
+          @if (g.vacio && !nuevoAqui) {
+            <button
+              type="button"
+              (click)="nuevo(g.k)"
+              class="mb-1 ml-[46px] mr-7 mt-0.5 flex items-center gap-1.5 rounded-xl border border-dashed border-[#d4d4d4] px-3 py-2.5 text-left text-[12.5px] text-[#6b7280] hover:border-[#9ca3af] hover:text-[#111827]"
+            >
+              <app-ic nombre="plus" [size]="14" />Crear el primer campo de {{ g.t.toLowerCase() }}
+            </button>
+          }
+          @if (g.sinFiltrados) {
+            <p class="m-0 mb-1 ml-[46px] mr-7 mt-0.5 text-xs text-[#9ca3af]">
+              Nada con este filtro.
+            </p>
+          }
+        </app-grupo-campos>
+      }
+    </ng-container>
+
+    <app-ficha-vacia
+      vacio
+      icono="pointer"
+      titulo="Elige un campo"
+      texto="Elige un campo de la lista o empieza con una plantilla."
+      [resumen]="totalActivos() + ' activos · ' + todos().length + ' en total'"
+      [accion]="puede() ? 'Ver plantillas' : ''"
+      accionIcono="template"
+      (accionar)="nuevo()"
+      atajos="↑ ↓ para moverte · N para crear"
+    />
+
+    @if (borrador(); as d) {
+      <div
+        ficha
+        class="flex min-h-full animate-[st-ficha_.3s_cubic-bezier(.2,.8,.2,1)_both] flex-col"
+      >
+        <div class="mx-auto w-full max-w-[860px] shrink-0 px-6 pt-4">
+          <app-ficha-barra
+            class="!mb-0"
+            [kicker]="esNuevo() ? 'Nuevo campo' : 'Campo · ' + nombreEntidad(d.entidad)"
+            [pos]="pos()"
+            [total]="plano().length"
+            [enCompleta]="completa()"
+            (anterior)="ir(-1)"
+            (siguiente)="ir(1)"
+            (completa)="completa.update((c) => !c)"
+            (cerrar)="cerrar()"
+          >
+            @if (!esNuevo()) {
+              <app-menu-ficha [abierto]="menu()" [ancho]="230" (alternar)="menu.update((m) => !m)">
+                <app-item-menu icono="copy" (elegir)="duplicar()">Duplicar</app-item-menu>
+                <app-item-menu icono="code" (elegir)="copiarClave()">Copiar clave</app-item-menu>
+                <app-item-menu
+                  [icono]="campo()?.activo ? 'eye-off' : 'eye'"
+                  (elegir)="alternarActivo()"
+                  >{{ campo()?.activo ? 'Desactivar' : 'Activar' }}</app-item-menu
+                >
+                <app-item-menu
+                  icono="trash"
+                  peligro
+                  [title]="puede() ? '' : 'Necesitas el permiso «Definir los campos propios»'"
+                  (elegir)="pedirBorrar()"
+                  >Eliminar campo</app-item-menu
+                >
+              </app-menu-ficha>
+            }
+          </app-ficha-barra>
+          <app-cabecera-campo
+            [borrador]="d"
+            [lugar]="lugar()"
+            [conDato]="esNuevo() ? null : (uso()?.conDato ?? null)"
+            [contadores]="contadores()"
+            [(pestana)]="pestana"
+          />
+        </div>
+
+        <div class="min-h-0 flex-1 bg-white">
+          <div class="mx-auto flex w-full max-w-[860px] flex-col gap-3.5 px-6 pb-8 pt-[18px]">
+            @if (!puede()) {
+              <div
+                class="flex items-center gap-2 rounded-xl bg-[#f7f7f7] px-3 py-2.5 text-[12.5px] text-[#4b5563]"
+              >
+                <app-ic nombre="lock" [size]="15" />Solo lectura · necesitas el permiso «Definir los
+                campos propios»
               </div>
-              @if (borrando()?.id === c.id) {
-                <div class="mx-4 mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-[#fef3f2] px-3 py-2.5 animate-[fade-in-up_.18s_ease-out]">
-                  @if (borrando()!.error) {
-                    <span class="min-w-0 flex-1 text-[12.5px] text-[#b42318]">{{ borrando()!.error }}</span>
-                    <button type="button" (click)="borrando.set(null)" class="rounded-full px-3 py-1 text-[12.5px] font-medium text-gray-600 hover:bg-white">Cerrar</button>
-                    @if (c.activo) {
-                      <button type="button" (click)="borrando.set(null); alternarActivo(c)" class="rounded-full bg-[#303030] px-3 py-1 text-[12.5px] font-medium text-white">Desactivar</button>
-                    }
-                  } @else {
-                    <span class="min-w-0 flex-1 text-[12.5px] text-[#7a271a]">¿Borrar «{{ c.etiqueta }}»? Si algún registro ya tiene datos en él, te ofrecemos desactivarlo.</span>
-                    <button type="button" (click)="borrando.set(null)" class="rounded-full px-3 py-1 text-[12.5px] font-medium text-gray-600 hover:bg-white">Cancelar</button>
-                    <button type="button" (click)="borrar(c)" class="rounded-full bg-[#b42318] px-3 py-1 text-[12.5px] font-medium text-white">Borrar</button>
-                  }
-                </div>
+            }
+            @switch (pestana()) {
+              @case ('general') {
+                <app-pestana-general
+                  [borrador]="d"
+                  [esNuevo]="esNuevo()"
+                  [clave]="clave()"
+                  [errorNombre]="errorNombre()"
+                  [errorOpciones]="errorOpciones()"
+                  [lugar]="lugar()"
+                  [usoOpciones]="usoOpciones()"
+                  [soloLectura]="!puede()"
+                  (cambio)="cambiar($event)"
+                  (ordenar)="ordenar($event)"
+                />
+              }
+              @case ('validacion') {
+                <app-pestana-validacion
+                  [borrador]="d"
+                  [errorRango]="errorRango()"
+                  [errorDefecto]="errorDefecto()"
+                  [soloLectura]="!puede()"
+                  (cambio)="cambiar($event)"
+                />
+              }
+              @case ('visibilidad') {
+                <app-pestana-visibilidad
+                  [borrador]="d"
+                  [soloLectura]="!puede()"
+                  (cambio)="cambiar($event)"
+                />
+              }
+              @case ('vista') {
+                <app-pestana-vista-previa
+                  [campos]="camposPrueba()"
+                  [campoId]="d.id ?? -1"
+                  [entidad]="d.entidad"
+                />
+              }
+              @case ('actividad') {
+                <app-pestana-actividad
+                  [borrador]="d"
+                  [uso]="uso()"
+                  [falloUso]="falloUso()"
+                  [historial]="historial()"
+                />
               }
             }
           </div>
-        }
+        </div>
       </div>
-      <p class="mt-3 text-xs leading-[17px] text-gray-400">
-        El orden es el de los formularios. Un campo inactivo deja de verse, pero los datos que ya tenía quedan guardados.
-      </p>
     }
-  </div>
-</div>
+  </app-lista-ficha>
+}
 
-<ng-template #editorTpl>
-  @if (editor(); as ed) {
-    <div class="mb-3 flex flex-col gap-4 rounded-2xl border border-[#ebebeb] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.03),0_12px_28px_-22px_rgba(0,0,0,.28)] animate-[fade-in-up_.18s_ease-out]">
-      <p class="m-0 text-[15px] font-semibold text-gray-900">{{ ed.campo ? 'Editar campo' : 'Nuevo campo en ' + entidades[indiceEntidad()].t.toLowerCase() }}</p>
+@if (seleccion().length) {
+  <app-barra-seleccion
+    [cuenta]="seleccion().length"
+    (accion)="masivo($event)"
+    (limpiar)="seleccion.set([])"
+  />
+}
 
-      <label class="flex flex-col gap-2">
-        <span class="text-[13px] font-semibold text-[#303030]">Nombre</span>
-        <input
-          appAutofoco
-          [value]="ed.etiqueta"
-          (input)="parche({ etiqueta: $any($event.target).value })"
-          (keydown.enter)="ed.tipo !== 'lista' && guardar()"
-          (keydown.escape)="editor.set(null)"
-          maxlength="40"
-          placeholder="Ej. Talla"
-          class="w-full rounded-[10px] border-0 bg-[#fafafa] px-3 py-[9px] text-[13px] outline-none shadow-[0_0_0_1px_#e5e5e5] focus:bg-white focus:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]"
-        />
-      </label>
-
-      <div class="flex flex-col gap-2">
-        <span class="flex items-baseline gap-2 text-[13px] font-semibold text-[#303030]">
-          Tipo
-          @if (ed.campo) {
-            <span class="text-xs font-normal text-gray-400">no se puede cambiar después de crearlo</span>
-          }
-        </span>
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-1.5" role="radiogroup" aria-label="Tipo">
-          @for (t of tipos; track t.k) {
-            @let on = ed.tipo === t.k;
-            <button
-              type="button"
-              role="radio"
-              [attr.aria-checked]="on"
-              [disabled]="!!ed.campo && !on"
-              (click)="parche({ tipo: t.k })"
-              class="flex flex-col items-start gap-1 rounded-xl px-3 py-2.5 text-left transition-[background-color,box-shadow] disabled:opacity-35"
-              [class]="on ? 'bg-white shadow-[0_0_0_1.5px_#303030]' : 'bg-[#f7f7f7] hover:bg-[#f1f1f1]'"
-            >
-              <span class="flex items-center gap-1.5 text-[13px] font-semibold text-gray-900"><tabler-icon [icon]="iconoTipo[t.k]" [size]="15" />{{ t.t }}</span>
-              <span class="text-[11.5px] leading-[15px] text-gray-500">{{ t.d }}</span>
-            </button>
-          }
-        </div>
-      </div>
-
-      @if (ed.tipo === 'lista') {
-        <div class="flex flex-col gap-2">
-          <span class="flex flex-col gap-0.5">
-            <span class="text-[13px] font-semibold text-[#303030]">Opciones</span>
-            <span class="text-xs text-gray-500">Escribe una y presiona Enter. Quitar una opción no borra ese dato de los registros que ya la tienen.</span>
-          </span>
-          <div class="flex flex-wrap items-center gap-1.5 rounded-[10px] bg-[#fafafa] px-2 py-1.5 shadow-[0_0_0_1px_#e5e5e5] focus-within:bg-white focus-within:shadow-[0_0_0_1px_#303030,0_0_0_4px_rgba(48,48,48,.08)]">
-            @for (o of ed.opciones; track o) {
-              <span class="flex items-center gap-1 rounded-full bg-[#ececec] py-[3px] pl-2.5 pr-1 text-[12.5px] font-medium text-gray-900">
-                {{ o }}
-                <button type="button" (click)="quitarOpcion(o)" [attr.aria-label]="'Quitar ' + o" class="flex rounded-full p-0.5 text-gray-500 hover:bg-white hover:text-gray-900"><tabler-icon [icon]="i.x" [size]="12" /></button>
-              </span>
-            }
-            <input
-              [value]="nuevaOpcion()"
-              (input)="nuevaOpcion.set($any($event.target).value)"
-              (keydown)="teclaOpcion($event)"
-              (blur)="agregarOpcion()"
-              maxlength="60"
-              [placeholder]="ed.opciones.length ? 'Otra opción' : 'Ej. S, M, L'"
-              class="min-w-[120px] flex-1 border-0 bg-transparent px-1 py-1 text-[13px] outline-none"
-            />
-          </div>
-        </div>
-      }
-
-      <div (click)="parche({ obligatorio: !ed.obligatorio })" class="flex cursor-pointer items-center gap-3">
-        <span class="flex flex-col gap-0.5">
-          <span class="text-[13px] font-semibold text-[#303030]">Obligatorio</span>
-          <span class="text-xs text-gray-500">No se puede guardar el registro sin este dato.</span>
-        </span>
-        <span class="flex-1"></span>
-        <span class="relative h-5 w-[34px] shrink-0 rounded-full transition-colors" [style.background]="ed.obligatorio ? '#303030' : '#d4d4d4'">
-          <span class="absolute top-0.5 size-4 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,.2)] transition-[left] duration-[220ms]" [style.left.px]="ed.obligatorio ? 16 : 2"></span>
-        </span>
-      </div>
-
-      @if (errorEditor()) {
-        <p class="m-0 text-xs text-[#b42318]">{{ errorEditor() }}</p>
-      }
-      <div class="flex justify-end gap-1.5">
-        <button type="button" (click)="editor.set(null)" class="rounded-full px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:bg-[#f4f4f4]">Cancelar</button>
-        <button type="button" (click)="guardar()" [disabled]="guardando()" class="rounded-full bg-[#303030] px-3.5 py-1.5 text-[13px] font-medium text-white disabled:opacity-50">
-          {{ ed.campo ? 'Guardar cambios' : 'Crear campo' }}
-        </button>
-      </div>
-    </div>
-  }
-</ng-template>
+@if (creador(); as ent) {
+  <app-modal-nuevo-campo
+    [entidadInicial]="ent"
+    [activos]="activosPor()"
+    [existentes]="nombresPor()"
+    (elegir)="crearDesde($event)"
+    (cerrar)="creador.set(null)"
+  />
+}

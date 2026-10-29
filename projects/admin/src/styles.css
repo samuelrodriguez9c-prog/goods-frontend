@@ -1970,3 +1970,168 @@ html:has(.shell-raiz) body {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Settings (Roles, Usuarios, Solicitudes, Campos, Actividad).
+ * Prefijo st- porque sus nombres chocan con keyframes ya usados. */
+@keyframes st-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes st-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes st-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* La ficha entra desde la derecha. */
+@keyframes st-ficha {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes st-rebote {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes st-escribiendo {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* Esquinas cóncavas de la fila resaltada que se «pega» a la ficha. */
+.st-esquina-arriba {
+  background: radial-gradient(circle at 0 0, transparent 11.5px, #fff 12px);
+}
+.st-esquina-abajo {
+  background: radial-gradient(circle at 0 100%, transparent 11.5px, #fff 12px);
+}
+
+/* SoporteDock: el panel crece desde el botón, los mensajes suben, los ojos
+ * parpadean y el botón se asoma cuando un agente respondió. */
+@keyframes sp-mini-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sp-msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sp-parpadeo {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  94% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes sp-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  80%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+@keyframes sp-pop {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes sp-asomar-x {
+  0%,
+  62%,
+  100% {
+    transform: translateX(0);
+  }
+  72% {
+    transform: translateX(-9px);
+  }
+  80% {
+    transform: translateX(0);
+  }
+  86% {
+    transform: translateX(-4px);
+  }
+  92% {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*='animate-[st-'],
+  [class*='animate-[sp-'] {
+    animation: none !important;
+  }
+}
+
+/* `pop-in`: entrada con escala del «+N» de las franjas plegables y del botón circular de la fila. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

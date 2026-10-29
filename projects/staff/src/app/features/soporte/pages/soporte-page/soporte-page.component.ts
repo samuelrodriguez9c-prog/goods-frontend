@@ -11,11 +11,13 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import {
   IconArrowBackUp,
   IconArrowUpRight,
   IconCheck,
+  IconChecks,
   IconChevronDown,
   IconCircleCheck,
   IconClock,
@@ -28,6 +30,8 @@ import {
   IconInfoCircle,
   IconLock,
   IconMoodEmpty,
+  IconPaperclip,
+  IconPhoto,
   IconSearch,
   IconUser,
   IconUserCheck,
@@ -42,10 +46,12 @@ import { AlertaService } from '../../../../core/ui/alerta.service';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { ChatService } from '../../../../core/chat/chat.service';
 import {
+  Adjunto,
   ChatUsuario,
   Conversacion,
   EventoConversacionAsignada,
   EventoMensajeNuevo,
+  EventoMensajesLeidos,
   Mensaje,
 } from '../../../../core/chat/models/conversacion.model';
 import { UsuarioService } from '../../../../core/usuarios/usuario.service';
@@ -59,6 +65,10 @@ import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/p
 
 const MS_MINUTO = 60_000;
 const MS_HORA = 3_600_000;
+/** Lo mismo que acepta el backend en `POST …/mensajes/adjuntos`. */
+const TIPOS_IMAGEN = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const MAX_IMAGENES = 4;
+const MAX_BYTES = 5 * 1024 * 1024;
 /** Desde 2 h (en minutos) la espera se marca más oscura, sin llegar a rojo. */
 const ESPERA_LARGA_MIN = 120;
 /** Ventana en la que una fila/mensaje "recién llegado" anima su entrada. */
@@ -76,15 +86,8 @@ const PALETA: readonly (readonly [string, string])[] = [
   ['#fef6d8', '#854d0e'],
 ];
 
-// TODO(backend): devolver `ultimoMensaje` en `ChatService.listarBandeja` (subconsulta del último mensaje).
-/**
- * `ultimoMensaje` es OPCIONAL: hoy `GET /chat/conversaciones` no lo trae.
- * Con él la lista muestra la vista previa y "Te toca responder"; sin él
- * cae al correo del cliente y a "Asignada a ti".
- */
-type ConversacionBandeja = Conversacion & {
-  ultimoMensaje?: { autorId: number | null; cuerpo: string; esSistema: boolean; creadoEn: string } | null;
-};
+/** La bandeja trae además `noLeidos`, `tema` y `ultimoMensaje` (sin los avisos del sistema). */
+type ConversacionBandeja = Conversacion;
 
 interface Chip {
   texto: string;
@@ -93,7 +96,6 @@ interface Chip {
   tinta: string;
 }
 
-// TODO(front): falta el widget del lado del cliente (`admin`) para que una Empresa abra conversaciones; hoy solo se crean por API.
 /**
  * Bandeja de soporte del staff sobre `ChatService`: conversaciones tipo ticket
  * en una bandeja compartida, que se asignan solas al primero que responde, con
@@ -102,7 +104,10 @@ interface Chip {
  * @remarks
  * Lista agrupada y plegable (Sin asignar / Mías / Con el equipo / Resueltas),
  * búsqueda, un solo control de asignación, atajos de teclado (J/K, R, A, /) y
- * aviso de mensajes de otras conversaciones. Solo anima lo que llega en vivo,
+ * aviso de mensajes de otras conversaciones. Abrir un hilo lo marca leído
+ * (`POST …/leida`) y `mensajes:leidos` pone las ✓✓ cuando el cliente lee.
+ * Las imágenes del cliente son privadas: se descargan con la sesión y se
+ * muestran como `blob:`. Solo anima lo que llega en vivo,
  * no cada carga del hilo. Leer y responder requiere `conversaciones.ver` /
  * `conversaciones.gestionar`.
  */
@@ -139,6 +144,9 @@ export class SoportePageComponent implements OnDestroy {
     citar: IconCornerUpLeft,
     enviar: IconCornerDownLeft,
     vacio: IconMoodEmpty,
+    leido: IconChecks,
+    foto: IconPhoto,
+    adjuntar: IconPaperclip,
     sinAgente: IconUserQuestion,
     info: IconInfoCircle,
   };
@@ -212,6 +220,13 @@ export class SoportePageComponent implements OnDestroy {
   /** Aviso de mensaje entrante en la pila global (`AlertaService`); se guarda
    *  para cerrarlo al abrir esa conversación. */
   private aviso: { alertaId: number; conversacionId: number } | null = null;
+  /** `blob:` de cada imagen ya descargada, por id de adjunto. */
+  protected readonly imgs = signal<Record<number, string>>({});
+  private readonly pedidas = new Set<number>();
+  /** Imágenes elegidas para el próximo mensaje, con su vista previa. */
+  protected readonly archivos = signal<{ f: File; url: string }[]>([]);
+  protected readonly tiposImagen = TIPOS_IMAGEN.join(',');
+  protected readonly maxImagenes = MAX_IMAGENES;
   /** Reloj para los tiempos relativos ("38 min") — se refresca cada 30 s. */
   private readonly ahora = signal(Date.now());
 
@@ -227,12 +242,14 @@ export class SoportePageComponent implements OnDestroy {
 
   private mensajeSub: Subscription | undefined;
   private asignadaSub: Subscription | undefined;
+  private leidosSub: Subscription | undefined;
   private reloj: ReturnType<typeof setInterval> | undefined;
   private primeraCargaHilo = true;
 
   @ViewChild('inputMensaje') private readonly inputMensajeRef?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('hiloScroll') private readonly hiloScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('buscador') private readonly buscadorRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('archivo') private readonly archivoRef?: ElementRef<HTMLInputElement>;
 
   // ── Derivados ───────────────────────────────────────────────────────────
   protected readonly abiertas = computed(() => this.conversaciones().filter((c) => c.estado === 'abierta'));
@@ -396,8 +413,9 @@ export class SoportePageComponent implements OnDestroy {
       desde: this.relativo(c.creadoEn, true),
       agente,
       agenteIniciales: agente ? this.iniciales(agente) : '',
-      agenteTexto: agente ? (esMia ? 'Vos' : agente) : 'Sin asignar',
+      agenteTexto: agente ? (esMia ? 'Tú' : agente) : 'Sin asignar',
       esMia,
+      tema: c.tema ?? null,
     };
   });
 
@@ -423,6 +441,8 @@ export class SoportePageComponent implements OnDestroy {
         hora: this.horaCorta(m.creadoEn),
         icono: m.esSistema ? this.iconoSistema(m.cuerpo) : null,
         animar: recientes.has(m.id),
+        // ✓✓ solo en lo que mandó soporte: el cliente ya lo vio.
+        leido: mio && !!m.leidoEn,
       };
     });
   });
@@ -452,12 +472,20 @@ export class SoportePageComponent implements OnDestroy {
       this.primeraCargaHilo = false;
       setTimeout(() => this.scrollAlFinal(suave), 30);
     });
+    effect(() => {
+      const id = this.seleccionadaId();
+      if (id === null) return;
+      for (const m of this.mensajes()) for (const a of m.adjuntos ?? []) this.pedirImagen(id, a);
+    });
   }
 
   ngOnDestroy(): void {
     this.mensajeSub?.unsubscribe();
     this.asignadaSub?.unsubscribe();
+    this.leidosSub?.unsubscribe();
     clearInterval(this.reloj);
+    Object.values(this.imgs()).forEach((u) => URL.revokeObjectURL(u));
+    this.quitarArchivos();
   }
 
   // ── Teclado y clic afuera ───────────────────────────────────────────────
@@ -553,6 +581,7 @@ export class SoportePageComponent implements OnDestroy {
     this.seleccionadaId.set(id);
     this.menuAbierto.set(false);
     this.respondiendoA.set(null);
+    this.quitarArchivos();
     this.nuevas.update((s) => this.sin(s, id));
     if (this.aviso?.conversacionId === id) {
       this.alertas.cerrar(this.aviso.alertaId);
@@ -567,6 +596,31 @@ export class SoportePageComponent implements OnDestroy {
         next: (r) => this.mensajes.set(r.data),
         error: () => this.mensajes.set([]),
       });
+    this.marcarLeida(id);
+  }
+
+  /** Abrir o seguir mirando un hilo lo marca leído; el backend decide si cuenta (ver `ChatService.marcarLeida`). */
+  private marcarLeida(id: number): void {
+    this.chatService.marcarLeida(id).subscribe({
+      next: (r) => {
+        if (r.marcados > 0) this.ponerNoLeidos(id, 0);
+      },
+      error: () => undefined,
+    });
+  }
+
+  private ponerNoLeidos(id: number, n: number): void {
+    this.conversaciones.update((l) => l.map((c) => (c.id === id && c.noLeidos !== n ? { ...c, noLeidos: n } : c)));
+  }
+
+  private pedirImagen(convId: number, a: Adjunto): void {
+    if (this.pedidas.has(a.id)) return;
+    this.pedidas.add(a.id);
+    this.chatService.imagen(convId, a.id).subscribe({
+      next: (b) => this.imgs.update((x) => ({ ...x, [a.id]: URL.createObjectURL(b) })),
+      // Sin la imagen queda un marcador; se reintenta al volver a abrir el hilo.
+      error: () => this.pedidas.delete(a.id),
+    });
   }
 
   protected limpiarBusqueda(): void {
@@ -607,16 +661,33 @@ export class SoportePageComponent implements OnDestroy {
   protected enviar(): void {
     const conversacion = this.seleccionada();
     const cuerpo = this.mensajeNuevo().trim();
-    if (!conversacion || !cuerpo || this.enviando() || !this.puedeEscribir()) {
+    const elegidas = this.archivos();
+    if (!conversacion || (!cuerpo && !elegidas.length) || this.enviando() || !this.puedeEscribir()) {
       return;
     }
     this.enviando.set(true);
     const citado = this.respondiendoA();
-    this.chatService
-      .enviarMensaje(conversacion.id, cuerpo, citado?.id)
+    (elegidas.length
+      ? this.chatService.enviarConImagenes(conversacion.id, cuerpo, elegidas.map((a) => a.f), citado?.id)
+      : this.chatService.enviarMensaje(conversacion.id, cuerpo, citado?.id)
+    )
       .pipe(finalize(() => this.enviando.set(false)))
       .subscribe({
+        error: (e: unknown) =>
+          this.alertas.mostrar({
+            estado: 'error',
+            titulo: 'No se pudo enviar',
+            texto: e instanceof HttpErrorResponse && typeof e.error?.message === 'string' ? e.error.message : 'Revisa tu conexión e intenta de nuevo.',
+          }),
         next: (mensaje) => {
+          // La vista previa ya es la imagen: se reusa en vez de descargarla otra vez.
+          (mensaje.adjuntos ?? []).forEach((a, k) => {
+            const local = elegidas[k];
+            if (!local) return;
+            this.pedidas.add(a.id);
+            this.imgs.update((x) => ({ ...x, [a.id]: local.url }));
+          });
+          this.archivos.set([]);
           const conCita: Mensaje = citado
             ? { ...mensaje, respondeA: { id: citado.id, autorId: citado.autorId, autor: citado.autor, cuerpo: citado.cuerpo, creadoEn: citado.creadoEn } }
             : mensaje;
@@ -635,6 +706,52 @@ export class SoportePageComponent implements OnDestroy {
           if (!conversacion.agenteAsignadoId) this.refrescarHilo(conversacion.id);
         },
       });
+  }
+
+  // ── Imágenes ────────────────────────────────────────────────────────────
+  protected elegirArchivos(): void {
+    this.archivoRef?.nativeElement.click();
+  }
+
+  protected alElegir(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    this.agregarArchivos([...(input.files ?? [])]);
+    input.value = '';
+  }
+
+  /** Pegar una captura en el campo la adjunta. */
+  protected alPegar(e: ClipboardEvent): void {
+    const fs = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'));
+    if (!fs.length) return;
+    e.preventDefault();
+    this.agregarArchivos(fs);
+  }
+
+  protected quitarArchivo(i: number): void {
+    const a = this.archivos()[i];
+    if (a) URL.revokeObjectURL(a.url);
+    this.archivos.update((xs) => xs.filter((_, k) => k !== i));
+  }
+
+  private agregarArchivos(fs: File[]): void {
+    const buenos = fs.filter((f) => TIPOS_IMAGEN.includes(f.type) && f.size <= MAX_BYTES);
+    const cupo = MAX_IMAGENES - this.archivos().length;
+    if (fs.some((f) => !TIPOS_IMAGEN.includes(f.type))) {
+      this.alertas.mostrar({ estado: 'warning', titulo: 'Solo imágenes', texto: 'Adjunta PNG, JPG, WebP o GIF.' });
+    } else if (buenos.length < fs.length) {
+      this.alertas.mostrar({ estado: 'warning', titulo: 'La imagen pesa más de 5 MB', texto: 'Prueba con una más liviana.' });
+    }
+    if (buenos.length > cupo) {
+      this.alertas.mostrar({ estado: 'warning', titulo: `Hasta ${MAX_IMAGENES} imágenes por mensaje` });
+    }
+    const nuevos = buenos.slice(0, Math.max(0, cupo)).map((f) => ({ f, url: URL.createObjectURL(f) }));
+    if (nuevos.length) this.archivos.update((xs) => [...xs, ...nuevos]);
+    this.inputMensajeRef?.nativeElement.focus();
+  }
+
+  private quitarArchivos(): void {
+    this.archivos().forEach((a) => URL.revokeObjectURL(a.url));
+    this.archivos.set([]);
   }
 
   protected alternarMenu(): void {
@@ -706,6 +823,10 @@ export class SoportePageComponent implements OnDestroy {
       this.cargarBandeja(false);
       if (evento.conversacionId === this.seleccionadaId()) {
         this.refrescarHilo(evento.conversacionId);
+        // Lo está mirando: lo del cliente queda leído al llegar.
+        if (!evento.esSistema && evento.autorId !== this.miId()) {
+          setTimeout(() => this.marcarLeida(evento.conversacionId), 300);
+        }
         return;
       }
       // Mensaje de un cliente en otra conversación → punto azul + aviso.
@@ -723,6 +844,28 @@ export class SoportePageComponent implements OnDestroy {
         this.cargarBandeja(false);
         if (e.conversacionId === this.seleccionadaId()) this.refrescarHilo(e.conversacionId);
       });
+    this.leidosSub = this.realtimeService.escuchar<EventoMensajesLeidos>('mensajes:leidos').subscribe((e) => {
+      // Leyó soporte (otra pestaña u otro agente): ya no hay pendientes.
+      if (e.lado === 'soporte') {
+        this.ponerNoLeidos(e.conversacionId, 0);
+        return;
+      }
+      // Leyó el cliente: ✓✓ en lo que soporte le mandó hasta ese momento.
+      this.conversaciones.update((l) =>
+        l.map((c) =>
+          c.id === e.conversacionId && c.ultimoMensaje && !c.ultimoMensaje.leidoEn && c.ultimoMensaje.autorId !== c.usuarioId
+            ? { ...c, ultimoMensaje: { ...c.ultimoMensaje, leidoEn: e.leidoEn } }
+            : c,
+        ),
+      );
+      const c = this.seleccionada();
+      if (!c || c.id !== e.conversacionId) return;
+      this.mensajes.update((ms) =>
+        ms.map((m) =>
+          !m.esSistema && m.autorId !== c.usuarioId && !m.leidoEn && m.creadoEn <= e.leidoEn ? { ...m, leidoEn: e.leidoEn } : m,
+        ),
+      );
+    });
   }
 
   /** Trae el hilo de nuevo y marca como "recientes" solo los mensajes que
@@ -754,10 +897,11 @@ export class SoportePageComponent implements OnDestroy {
     const nombre = this.nombreCliente(c);
     const u = c.ultimoMensaje;
     let preview = c.usuario?.correo ?? '';
-    if (u && !u.esSistema) {
-      const quien = u.autorId === c.usuarioId ? '' : u.autorId === this.miId() ? 'Vos: ' : `${c.agenteAsignado?.nombres ?? 'Equipo'}: `;
-      preview = quien + u.cuerpo;
+    if (u) {
+      const quien = u.autorId === c.usuarioId ? '' : u.autorId === this.miId() ? 'Tú: ' : `${c.agenteAsignado?.nombres ?? 'Equipo'}: `;
+      preview = quien + resumen(u.cuerpo, u.adjuntos);
     }
+    const noLeidos = c.noLeidos ?? 0;
     return {
       id: c.id,
       cliente: nombre,
@@ -766,7 +910,9 @@ export class SoportePageComponent implements OnDestroy {
       tinta,
       cuando: this.relativo(c.actualizadoEn),
       preview,
-      nueva: this.nuevas().has(c.id),
+      tema: c.tema ?? null,
+      noLeidos,
+      nueva: noLeidos > 0 || this.nuevas().has(c.id),
       animar: this.filasRecientes().has(c.id),
       chip: this.chip(c),
     };
@@ -794,7 +940,7 @@ export class SoportePageComponent implements OnDestroy {
 
   private clienteHabloUltimo(c: ConversacionBandeja): boolean {
     const u = c.ultimoMensaje;
-    return !!u && !u.esSistema && u.autorId === c.usuarioId;
+    return !!u && u.autorId === c.usuarioId;
   }
 
   /** El backend no tipa el motivo del mensaje de sistema: se infiere del
@@ -857,7 +1003,7 @@ export class SoportePageComponent implements OnDestroy {
   }
 
   protected nombreDeAutor(autor: ChatUsuario | null, autorId: number | null): string {
-    if (autorId !== null && autorId === this.miId()) return 'Vos';
+    if (autorId !== null && autorId === this.miId()) return 'Tú';
     if (autor) return `${autor.nombres} ${autor.apellidos}`.trim();
     return autorId === null ? 'Sistema' : `Usuario #${autorId}`;
   }
@@ -889,4 +1035,11 @@ export class SoportePageComponent implements OnDestroy {
     const hh = d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
     return d.toDateString() === new Date().toDateString() ? hh : `${d.toLocaleDateString('es-CO', { weekday: 'short' })} ${hh}`;
   }
+}
+
+/** «📷 Foto» cuando el mensaje es solo una imagen. */
+function resumen(cuerpo: string, adjuntos: number): string {
+  if (cuerpo) return cuerpo;
+  if (!adjuntos) return '';
+  return adjuntos === 1 ? '📷 Foto' : `📷 ${adjuntos} fotos`;
 }

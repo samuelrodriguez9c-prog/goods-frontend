@@ -1,4 +1,5 @@
-<header class="relative z-40 flex h-[60px] shrink-0 items-center gap-4 bg-[#0a0a0a] px-4 text-white">
+<!-- Fondo: mosaico de iconos del negocio con trazos al 14 % de blanco, como los bordes del registro; a 360 px caben unas dos filas en los 60 px de alto. -->
+<header class="relative z-40 flex h-[60px] shrink-0 items-center gap-4 bg-[#0a0a0a] bg-[url('/fondo-topbar.webp')] bg-[length:360px_360px] bg-repeat px-4 text-white">
   <!-- Marca + migas -->
   <div class="flex min-w-0 flex-1 items-center gap-3">
     <span class="flex h-[34px] shrink-0 items-center" (mouseenter)="hoverMarca.set(true)" (mouseleave)="hoverMarca.set(false)">
@@ -20,14 +21,17 @@
     <nav class="flex min-w-0 items-center gap-1.5 overflow-hidden text-[13px]">
       <!-- track por posición: en WhatsApp las dos migas comparten ruta (/whatsapp y la Bandeja) -->
       @for (m of migas(); track $index) {
-        <button type="button" (click)="irMiga(m.ruta)" class="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+        <!-- Con tres migas (anterior, actual y la hoja) la anterior queda solo en ícono para que las otras se lean. -->
+        <button type="button" (click)="irMiga(m)" [title]="m.texto" class="flex min-w-0 items-center gap-1.5 whitespace-nowrap" [class.shrink-0]="migas().length > 2 && $index === 0">
           <tabler-icon [icon]="i.chevron" [size]="13" [stroke]="2" class="text-[#525252]" />
           @if (m.icono === 'ia') {
             <app-ia-marca [size]="14" />
-          } @else {
+          } @else if (m.icono) {
             <tabler-icon [icon]="$any(m.icono)" [size]="15" [stroke]="1.75" class="text-[#2be0d5]" />
           }
-          <span class="max-w-[260px] truncate" [class]="m.actual ? 'text-white' : 'text-[#a3a3a3]'">{{ m.texto }}</span>
+          @if (!(migas().length > 2 && $index === 0)) {
+            <span class="max-w-[260px] truncate" [class]="m.actual ? 'text-white' : 'text-[#a3a3a3]'">{{ m.texto }}</span>
+          }
         </button>
       }
     </nav>

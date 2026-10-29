@@ -2,7 +2,12 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { CrearSolicitudPayload, Solicitud } from './models/solicitud.model';
+import {
+  AreaSolicitud,
+  CrearSolicitudPayload,
+  Solicitud,
+  SolicitudPublica,
+} from './models/solicitud.model';
 
 interface Paginado<T> {
   data: T[];
@@ -36,6 +41,53 @@ export class SolicitudesService {
 
   cancelar(id: number, motivo?: string): Observable<Solicitud> {
     return this.http.post<Solicitud>(`${this.base}/${id}/cancelar`, { motivo });
+  }
+
+  /** Áreas (módulos) y sus secciones para el modal «Nueva solicitud». */
+  areas(): Observable<AreaSolicitud[]> {
+    return this.http.get<AreaSolicitud[]>(`${this.base}/areas`);
+  }
+
+  /**
+   * «Adjuntar captura»: hasta 4 por envío y 8 por solicitud (PNG, JPG, WebP o
+   * GIF de 5 MB). Devuelve el detalle con sus `adjuntos`.
+   */
+  adjuntar(id: number, archivos: File[]): Observable<Solicitud> {
+    const form = new FormData();
+    for (const a of archivos) form.append('archivos', a, a.name);
+    return this.http.post<Solicitud>(`${this.base}/${id}/adjuntos`, form);
+  }
+
+  /** Las capturas son privadas: se piden con el token y se muestran como blob. */
+  adjunto(id: number, adjuntoId: number): Observable<Blob> {
+    return this.http.get(`${this.base}/${id}/adjuntos/${adjuntoId}`, { responseType: 'blob' });
+  }
+
+  // Tablero «De otras tiendas»
+
+  tablero(orden: 'votadas' | 'recientes' = 'votadas'): Observable<Paginado<SolicitudPublica>> {
+    return this.http.get<Paginado<SolicitudPublica>>(`${this.base}/tablero`, {
+      params: { orden, pageSize: 100 },
+    });
+  }
+
+  obtenerDelTablero(id: number): Observable<SolicitudPublica> {
+    return this.http.get<SolicitudPublica>(`${this.base}/tablero/${id}`);
+  }
+
+  /** Votar también hace que la persona la siga. */
+  votar(id: number): Observable<SolicitudPublica> {
+    return this.http.post<SolicitudPublica>(`${this.base}/${id}/voto`, {});
+  }
+
+  quitarVoto(id: number): Observable<SolicitudPublica> {
+    return this.http.delete<SolicitudPublica>(`${this.base}/${id}/voto`);
+  }
+
+  /** Sirve para las propias y para las del tablero. */
+  seguir(id: number, sigo: boolean): Observable<{ sigo: boolean }> {
+    const url = `${this.base}/${id}/seguir`;
+    return sigo ? this.http.post<{ sigo: boolean }>(url, {}) : this.http.delete<{ sigo: boolean }>(url);
   }
 }
 

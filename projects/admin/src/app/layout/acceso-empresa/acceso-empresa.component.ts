@@ -13,6 +13,8 @@ import {
 } from '@tabler/icons-angular';
 import { AuthService } from '../../core/auth/auth.service';
 import { AccesoEmpresa } from '../../core/auth/models/current-user.model';
+import { PagoEnLineaService } from '../../core/pago-en-linea/pago-en-linea.service';
+import { BotonPagoComponent } from './boton-pago.component';
 
 const TITULOS: Record<string, string> = {
   suspendida: 'Tu cuenta está suspendida',
@@ -35,11 +37,14 @@ const TITULOS: Record<string, string> = {
  * - `variante="bloqueo"` — Empresa no operativa: reemplaza el contenido del
  *   Shell. El backend ya rechaza las llamadas (`AccesoEmpresaInterceptor`),
  *   esto solo explica por qué y qué hacer. Queda la topbar para salir.
+ *
+ * Con pago en línea (Wompi) y si quien mira es el dueño, cada variante con
+ * un cobro pendiente trae el botón «Pagar», que lleva a la página de pago.
  */
 @Component({
   selector: 'app-acceso-empresa',
   standalone: true,
-  imports: [TablerIconComponent, RouterLink],
+  imports: [TablerIconComponent, RouterLink, BotonPagoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (variante() === 'banner') {
@@ -47,8 +52,12 @@ const TITULOS: Record<string, string> = {
         <tabler-icon [icon]="iconoMora" [size]="18" [stroke]="2" class="mt-px shrink-0 text-[#b07400]" />
         <p class="m-0 flex-1 leading-5">
           <strong class="font-semibold">Pago pendiente.</strong>
-          {{ acceso().mensaje }} Si ya pagaste, envíale el comprobante al equipo de Goods.
+          {{ acceso().mensaje }}
+          {{ pagos.enCurso() ? 'Estamos esperando la confirmación de tu pago.' : pagos.disponible() ? 'Págalo en línea y sigue sin interrupciones.' : 'Si ya pagaste, envíale el comprobante al equipo de Goods.' }}
         </p>
+        @if (pagos.disponible() && acceso().proximoCobro; as c) {
+          <app-boton-pago [monto]="c.monto" />
+        }
       </div>
     } @else if (variante() === 'prueba') {
       <!-- Período de prueba: azul mientras quedan días, ámbar los últimos 3. -->
@@ -64,11 +73,20 @@ const TITULOS: Record<string, string> = {
             Puedes usar Goods gratis hasta el {{ fecha(hasta) }}.
           }
           @if (acceso().proximoCobro; as c) {
-            Para seguir sin interrupciones, paga {{ monto(c.monto) }} y envíale el comprobante al equipo de Goods.
+            @if (pagos.enCurso()) {
+              Estamos esperando la confirmación de tu pago de {{ monto(c.monto) }}.
+            } @else if (pagos.disponible()) {
+              Para seguir sin interrupciones, paga {{ monto(c.monto) }} en línea.
+            } @else {
+              Para seguir sin interrupciones, paga {{ monto(c.monto) }} y envíale el comprobante al equipo de Goods.
+            }
           } @else {
             Antes de que termine te avisamos cómo pagar para seguir sin interrupciones.
           }
         </p>
+        @if (pagos.disponible() && acceso().proximoCobro; as c) {
+          <app-boton-pago [monto]="c.monto" />
+        }
       </div>
     } @else if (variante() === 'cobro') {
       @if (acceso().proximoCobro; as c) {
@@ -76,8 +94,12 @@ const TITULOS: Record<string, string> = {
           <tabler-icon [icon]="iconoCobro" [size]="18" [stroke]="2" class="mt-px shrink-0 text-badge-info-solid" />
           <p class="m-0 flex-1 leading-5">
             <strong class="font-semibold">Tu plan se renueva el {{ fecha(c.fechaLimite) }}.</strong>
-            El cobro es de {{ monto(c.monto) }}. Si ya pagaste, envíale el comprobante al equipo de Goods.
+            El cobro es de {{ monto(c.monto) }}.
+            {{ pagos.enCurso() ? 'Estamos esperando la confirmación de tu pago.' : pagos.disponible() ? 'Puedes pagarlo en línea con tarjeta, PSE o Nequi.' : 'Si ya pagaste, envíale el comprobante al equipo de Goods.' }}
           </p>
+          @if (pagos.disponible()) {
+            <app-boton-pago [monto]="c.monto" />
+          }
         </div>
       }
     } @else {
@@ -94,6 +116,12 @@ const TITULOS: Record<string, string> = {
             </p>
           }
           <p class="mt-4 text-sm leading-6 text-gray-600">{{ queHacer() }}</p>
+          @if (pagarParaVolver(); as c) {
+            <app-boton-pago [monto]="c.monto" [bloque]="true" />
+            @if (!pagos.enCurso()) {
+              <p class="mt-2 text-center text-xs text-gray-400">Tarjeta, PSE o Nequi · tu cuenta se reactiva apenas se apruebe.</p>
+            }
+          }
           @if (conChat()) {
             <a
               routerLink="/messages"
@@ -120,6 +148,14 @@ export class AccesoEmpresaComponent {
   protected readonly iconoCobro = IconCalendarDue;
   protected readonly iconoChat = IconMessageCircle;
   protected readonly iconoPrueba = IconGift;
+  protected readonly pagos = inject(PagoEnLineaService);
+
+  /** Bloqueada por falta de pago, con un cobro que se puede pagar en línea. */
+  protected readonly pagarParaVolver = computed(() => {
+    const a = this.acceso();
+    const porPago = a.motivo === 'suscripcion_vencida' || a.motivo === 'prueba_terminada';
+    return porPago && this.pagos.disponible() ? a.proximoCobro : null;
+  });
 
   /** Días que quedan de prueba (redondeado hacia arriba). */
   private readonly diasPrueba = computed(() => {
@@ -165,9 +201,13 @@ export class AccesoEmpresaComponent {
   protected readonly queHacer = computed(() => {
     switch (this.acceso().motivo) {
       case 'suscripcion_vencida':
-        return 'Para recuperar el acceso, realiza el pago de tu plan y envíale el comprobante al equipo de Goods. Apenas lo registremos, tu cuenta vuelve a funcionar.';
+        return this.pagarParaVolver()
+          ? 'Para recuperar el acceso, paga tu plan en línea. Apenas se apruebe, tu cuenta vuelve a funcionar.'
+          : 'Para recuperar el acceso, realiza el pago de tu plan y envíale el comprobante al equipo de Goods. Apenas lo registremos, tu cuenta vuelve a funcionar.';
       case 'prueba_terminada':
-        return 'Para seguir usando Goods, realiza el pago de tu plan y envíale el comprobante al equipo de Goods. Apenas lo registremos, tu cuenta vuelve a funcionar con todo lo que cargaste.';
+        return this.pagarParaVolver()
+          ? 'Para seguir usando Goods, paga tu plan en línea. Apenas se apruebe, tu cuenta vuelve a funcionar con todo lo que cargaste.'
+          : 'Para seguir usando Goods, realiza el pago de tu plan y envíale el comprobante al equipo de Goods. Apenas lo registremos, tu cuenta vuelve a funcionar con todo lo que cargaste.';
       case 'alta_en_curso':
         return 'Te avisaremos por correo cuando esté lista.';
       case 'sin_plan':

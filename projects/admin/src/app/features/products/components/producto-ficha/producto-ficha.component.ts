@@ -1,13 +1,17 @@
 import { NgTemplateOutlet, SlicePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, input, signal } from '@angular/core';
 import {
   IconAdjustments, IconAlertCircle, IconAlertTriangle, IconAlignLeft, IconArrowDownLeft, IconArrowUpRight,
-  IconArrowsMaximize, IconArrowsMinimize, IconBell, IconCamera, IconChartPie, IconCheck, IconChevronDown,
+  IconArrowsMaximize, IconArrowsMinimize, IconBell, IconCopy, IconExternalLink, IconCamera, IconChartPie, IconCheck, IconChevronDown,
   IconChevronUp, IconCloudUpload, IconCornerDownRight, IconDots, IconEye, IconFolder, IconForms, IconFolderOff, IconHash,
   IconHistory, IconId, IconInfoCircle, IconLink, IconLock, IconPackages, IconPhoto, IconPointer, IconRefresh,
   IconSelector, IconStar, IconStarFilled, IconTag, IconTrash, IconWeight, IconWorld, IconX, TablerIconComponent,
 } from '@tabler/icons-angular';
+import { HttpErrorResponse } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
+import { AsistenteService } from '../../../../core/asistente/asistente.service';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { atributosDe, textoValor } from '../../../../core/campos/campo-personalizado.model';
 import { InventarioService, MovimientoInventario } from '../../../../core/inventario/inventario.service';
 import { ESTADOS_PRODUCTO, EstadoProducto } from '../../../../core/producto/models/producto.model';
 import { ProductoService } from '../../../../core/producto/producto.service';
@@ -41,12 +45,33 @@ const DESC_ESTADO: Record<EstadoProducto, string> = {
   host: { class: 'contents' },
 })
 export class ProductoFichaComponent {
+  /** Margen superior animado: la franja de métricas desplegada encima (0 = arriba). */
+  readonly bajar = input(0);
   protected readonly s = inject(ProductosStore);
   private readonly api = inject(ProductoService);
   private readonly inventarioApi = inject(InventarioService);
   private readonly upload = inject(UploadService);
   private readonly alertas = inject(AlertaService);
   private readonly pista = inject(PistaService);
+  private readonly asistente = inject(AsistenteService);
+  protected readonly auth = inject(AuthService);
+
+  /**
+   * Enlace real del producto en la tienda: `<dirección de la tienda>/p/<slug>`
+   * (con el id si todavía no tiene slug). La dirección viene en `/auth/me`;
+   * `null` si la Empresa nunca configuró su tienda o el producto es nuevo.
+   */
+  protected readonly enlaceTienda = computed(() => {
+    const t = this.auth.currentUser()?.empresa?.tienda, p = this.p(), b = this.b();
+    if (!t || !p) return null;
+    return { url: `${t.url}/p/${encodeURIComponent(b?.slug.trim() || String(p.id))}`, activa: t.activa };
+  });
+  protected readonly enlaceCopiado = signal(false);
+  protected copiarEnlace(url: string): void {
+    void navigator.clipboard?.writeText(url);
+    this.enlaceCopiado.set(true);
+    setTimeout(() => this.enlaceCopiado.set(false), 1500);
+  }
 
   protected readonly ic = {
     x: IconX, arriba: IconChevronUp, abajo: IconChevronDown, max: IconArrowsMaximize, min: IconArrowsMinimize,
@@ -56,7 +81,7 @@ export class ProductoFichaComponent {
     subir: IconCloudUpload, tag: IconTag, pie: IconChartPie, alerta: IconAlertTriangle, info: IconInfoCircle,
     error: IconAlertCircle, cajas: IconPackages, campana: IconBell, historial: IconHistory, peso: IconWeight,
     mundo: IconWorld, ojo: IconEye, link: IconLink, regen: IconRefresh, puntero: IconPointer,
-    entrada: IconArrowDownLeft, salida: IconArrowUpRight, campos: IconForms,
+    entrada: IconArrowDownLeft, salida: IconArrowUpRight, campos: IconForms, copiar: IconCopy, abrir: IconExternalLink,
   };
   protected readonly EST = ESTADOS_PRODUCTO;
   protected readonly estados = Object.keys(ESTADOS_PRODUCTO) as EstadoProducto[];
@@ -297,18 +322,30 @@ export class ProductoFichaComponent {
     });
   }
 
-  // TODO(backend): endpoint para guardar el orden (`PATCH /productos/:id/imagenes/orden`
-  // con `[{id, orden}]`). Mientras tanto se reordena solo en pantalla.
+  /**
+   * Arrastrar una foto la cambia de lugar en pantalla al instante y se guarda
+   * (`PATCH /productos/:id/imagenes/orden`); la primera es la portada en la
+   * lista y en la tienda. Si el servidor no lo acepta, vuelve al orden de antes.
+   */
   protected soltarImagen(destino: number, e: DragEvent): void {
     e.preventDefault();
     const desde = this.arrastrando(), p = this.p();
     this.arrastrando.set(null);
-    if (desde == null || desde === destino || !p) return;
-    const im = [...p.imagenes];
+    if (desde == null || desde === destino || !p || this.s.niega('productos.editar')) return;
+    const antes = p.imagenes;
+    const im = [...antes];
     const [x] = im.splice(desde, 1);
     im.splice(destino, 0, x);
-    this.s.productos.update((xs) => xs.map((q) => (q.id === p.id ? { ...q, imagenes: im.map((m, k) => ({ ...m, orden: k })) } : q)));
-    this.pista.hecho(destino === 0 ? 'Nueva portada guardada' : 'Orden guardado');
+    const poner = (imgs: typeof antes) => this.s.productos.update((xs) => xs.map((q) => (q.id === p.id ? { ...q, imagenes: imgs } : q)));
+    poner(im.map((m, k) => ({ ...m, orden: k })));
+    this.api.ordenarImagenes(p.id, im.map((m) => m.id)).subscribe({
+      next: () => this.pista.hecho(destino === 0 ? 'Nueva portada guardada' : 'Orden guardado'),
+      error: (err) => {
+        poner(antes);
+        const texto = err instanceof HttpErrorResponse && typeof err.error?.message === 'string' ? err.error.message : 'Volvió al orden de antes. Inténtalo de nuevo.';
+        this.alertas.mostrar({ estado: 'error', titulo: 'No se pudo guardar el orden', texto });
+      },
+    });
   }
 
   protected elegirArchivos(input: HTMLInputElement): void {
@@ -361,12 +398,68 @@ export class ProductoFichaComponent {
       });
   }
 
-  // TODO(backend): endpoint para «Mejorar con IA», por ejemplo
-  // `POST /asistente/productos/descripcion { nombre, categoria, descripcion } → { texto }`.
-  // Con él: textarea en solo lectura, escribir `texto` de a 2–4 caracteres
-  // cada 24 ms y ofrecer Deshacer / Mantener.
+  /** Mientras el Asistente redacta y escribe: el textarea queda en solo lectura. */
+  protected readonly escribiendoIA = signal(false);
+
+  /**
+   * «Mejorar con IA»: manda lo que hay en la ficha (sin guardar) y escribe
+   * la descripción que vuelve de a 2–4 caracteres cada 24 ms. Al terminar
+   * ofrece Deshacer (vuelve a la que había) o dejarla; se guarda con el
+   * resto de la ficha, como si la hubieras escrito tú.
+   */
   protected mejorarConIA(): void {
-    if (!this.b()?.nombre.trim()) return void this.alertas.mostrar({ estado: 'warning', titulo: 'Escribe primero el nombre' });
-    this.alertas.mostrar({ estado: 'info', titulo: 'Mejorar con IA', texto: 'Disponible cuando el Asistente tenga el endpoint de descripciones.' });
+    const b = this.b();
+    if (!b || this.escribiendoIA()) return;
+    if (!b.nombre.trim()) return void this.alertas.mostrar({ estado: 'warning', titulo: 'Escribe primero el nombre' });
+    const anterior = b.descripcion;
+    const valores = atributosDe(b.atributos, this.s.campos());
+    const caracteristicas = Object.fromEntries(
+      this.s.campos().map((c) => [c.etiqueta, textoValor(c, valores[c.clave])] as const).filter(([, v]) => v),
+    );
+    this.escribiendoIA.set(true);
+    const aviso = this.alertas.mostrar({ titulo: 'Escribiendo la descripción', texto: b.nombre.trim() });
+    this.asistente
+      .mejorarDescripcion({
+        nombre: b.nombre.trim(),
+        marca: b.marca.trim() || undefined,
+        categoria: b.categoriaId ? this.s.categoria(+b.categoriaId)?.nombre : undefined,
+        descripcion: anterior.trim() || undefined,
+        caracteristicas,
+      })
+      .subscribe({
+        next: ({ texto }) => {
+          this.alertas.cerrar(aviso);
+          this.escribir(texto, () => {
+            this.escribiendoIA.set(false);
+            this.alertas.mostrar({
+              estado: 'success',
+              titulo: 'Descripción lista',
+              texto: 'Revísala y guarda el producto para dejarla.',
+              accion: { label: 'Deshacer', ejecutar: () => this.s.editar('descripcion', anterior) },
+            });
+          });
+        },
+        error: (err) => {
+          this.escribiendoIA.set(false);
+          const texto = err instanceof HttpErrorResponse && err.status === 403
+            ? 'Tu plan no incluye el Asistente de IA.'
+            : err instanceof HttpErrorResponse && typeof err.error?.message === 'string' ? err.error.message : 'Inténtalo de nuevo en un momento.';
+          this.alertas.resolver(aviso, { estado: 'error', titulo: 'No se pudo mejorar la descripción', texto });
+        },
+      });
+  }
+
+  /** Efecto de máquina de escribir sobre el borrador; si se cierra la ficha a mitad, para. */
+  private escribir(texto: string, fin: () => void): void {
+    const id = this.p()?.id ?? null;
+    let n = 0;
+    const paso = () => {
+      if ((this.p()?.id ?? null) !== id || !this.b()) return fin();
+      n = Math.min(texto.length, n + 2 + Math.floor(Math.random() * 3));
+      this.s.editar('descripcion', texto.slice(0, n));
+      if (n < texto.length) setTimeout(paso, 24);
+      else fin();
+    };
+    paso();
   }
 }

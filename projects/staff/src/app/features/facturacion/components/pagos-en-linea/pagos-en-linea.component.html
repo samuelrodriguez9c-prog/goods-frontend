@@ -1,0 +1,100 @@
+@if (cargando() && !datos()) {
+  <div class="flex animate-pulse flex-col gap-2 pt-4">
+    @for (s of [1, 2, 3]; track s) {
+      <span class="h-12 rounded-xl bg-[#f1f1f1]" [style.opacity]="1 - s * 0.2"></span>
+    }
+  </div>
+} @else if (error()) {
+  <div class="flex flex-col items-center gap-2 py-8 text-center">
+    <p class="text-[13px] text-gray-500">No se pudo cargar el pago en línea.</p>
+    <button type="button" (click)="reintentar()" class="rounded-full bg-[#f1f1f1] px-[13px] py-1.5 text-[12.5px] font-medium text-[#303030] hover:bg-[#e6e6e6]">Reintentar</button>
+  </div>
+} @else if (datos(); as d) {
+  <!-- Ahora -->
+  @if (ahora(); as a) {
+    <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 py-[18px]">
+      <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Ahora</span>
+      <div class="flex flex-col gap-2.5">
+        <div class="flex items-start gap-2.5">
+          <tabler-icon [icon]="a.icono" [size]="18" [stroke]="1.75" [style.color]="a.color" />
+          <div>
+            <p class="text-[13.5px] font-semibold text-gray-900">{{ a.titulo }}</p>
+            <p class="mt-0.5 text-[13px] leading-5 text-gray-500 [text-wrap:pretty]">{{ a.texto }}</p>
+          </div>
+        </div>
+        @if (linkVigente(); as url) {
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" (click)="copiar(url)" title="Para mandárselo al cliente si no le aparece el botón" class="flex h-[28px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[12.5px] font-medium text-gray-900 hover:bg-[#ebebeb]">
+              <tabler-icon [icon]="copiado() === url ? i.check : i.copiar" [size]="13" [stroke]="1.75" class="text-gray-500" />{{ copiado() === url ? 'Copiado' : 'Copiar link vigente' }}
+            </button>
+            <span class="truncate text-[11.5px] text-gray-400">{{ url }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Verificar -->
+  @if (puedeVerificar() && d.habilitado) {
+    <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+      <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Verificar</span>
+      <div class="flex flex-col gap-1.5">
+        <div class="flex gap-1.5">
+          <input
+            [value]="numero()"
+            (input)="numero.set($any($event.target).value)"
+            (keydown.enter)="verificar()"
+            placeholder="Número de transacción del comprobante"
+            class="min-w-0 flex-1 rounded-[9px] border-0 bg-[#f5f5f5] px-[11px] py-2 text-[13px] tabular-nums outline-none"
+          />
+          <button type="button" (click)="verificar()" [disabled]="!numero().trim() || verificando()" class="flex items-center gap-1.5 rounded-full bg-[#303030] px-[13px] py-1.5 text-[12.5px] font-medium text-white disabled:opacity-40">
+            <tabler-icon [icon]="i.buscar" [size]="13" [stroke]="1.75" />Verificar
+          </button>
+        </div>
+        <p class="text-[11.5px] leading-4 text-gray-400">Si el cliente dice que pagó y aquí no aparece, pídele el número del comprobante de Wompi. Si está aprobado y no estaba, se registra solo.</p>
+      </div>
+    </div>
+  }
+
+  <!-- Historial -->
+  <div class="grid grid-cols-[104px_minmax(0,1fr)] gap-x-[18px] gap-y-1.5 border-t border-[#f1f1f1] py-[18px]">
+    <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Historial</span>
+    <div class="flex flex-col">
+      @for (f of filas(); track f.id) {
+        <div class="grid grid-cols-[22px_minmax(0,1fr)_auto] gap-x-2.5 border-b border-dashed border-[#ececec] py-2.5 last:border-b-0">
+          <tabler-icon [icon]="f.icono" [size]="16" [stroke]="1.75" [style.color]="f.color" class="mt-px" />
+          <div class="flex min-w-0 flex-col gap-0.5">
+            <span class="flex flex-wrap items-center gap-1.5">
+              <span class="text-[13px] font-medium text-gray-900">{{ f.titulo }}</span>
+              @for (c of f.chips; track c) {
+                <span class="rounded-full bg-[#f1f1f1] px-2 py-px text-[11px] font-semibold text-gray-600">{{ c }}</span>
+              }
+            </span>
+            <span class="text-[11.5px] text-gray-400">{{ f.cuando }}</span>
+            @for (l of f.detalle; track $index) {
+              <span class="text-[11.5px] leading-4 text-gray-500">{{ l }}</span>
+            }
+            @if (f.nota; as n) {
+              <span class="text-[12px] leading-4" [style.color]="n.color">{{ n.texto }}</span>
+            }
+            @if (f.transaccionId || f.pagoId) {
+              <span class="mt-1 flex flex-wrap gap-1.5">
+                @if (f.transaccionId; as tx) {
+                  <button type="button" (click)="copiar(tx)" title="Copiar número de transacción" class="flex items-center gap-1 rounded-full bg-[#f4f4f4] px-2 py-0.5 text-[11.5px] font-medium tabular-nums text-gray-700 hover:bg-[#ebebeb]">
+                    <tabler-icon [icon]="copiado() === tx ? i.check : i.copiar" [size]="12" [stroke]="1.75" class="text-gray-500" />{{ copiado() === tx ? 'Copiado' : tx }}
+                  </button>
+                }
+                @if (f.pagoId; as pid) {
+                  <button type="button" (click)="verPago.emit(pid)" class="rounded-full bg-[#eaf4ec] px-2 py-0.5 text-[11.5px] font-medium text-[#0c5132] hover:bg-[#dcefe1]">Registrado · Pago #{{ pid }}</button>
+                }
+              </span>
+            }
+          </div>
+          <span class="text-right text-[13px] font-medium tabular-nums text-gray-900">{{ f.monto ?? '' }}</span>
+        </div>
+      } @empty {
+        <p class="text-[13px] text-gray-500">Sin links ni transacciones todavía.</p>
+      }
+    </div>
+  </div>
+}

@@ -16,6 +16,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   IconAlertCircle,
   IconBooks,
+  IconBookmark,
   IconArrowUp,
   IconArrowUpRight,
   IconBuildingBank,
@@ -75,6 +76,8 @@ import { MarkdownLigeroPipe } from '../../../../shared/ui/markdown-ligero/markdo
 import { IaEscribiendoComponent } from '../../../../shared/ui/ia-escribiendo/ia-escribiendo.component';
 import { IaMenuMasComponent } from '../../../../shared/ui/ia-menu-mas/ia-menu-mas.component';
 import { DocumentoInternoCardComponent } from '../../components/documento-interno-card/documento-interno-card.component';
+import { IaRecuerdoComponent } from '../../../../shared/ui/ia-recuerdo/ia-recuerdo.component';
+import { IaAccionComponent } from '../../../../shared/ui/ia-accion/ia-accion.component';
 import { AsistenteDocumento } from '../../../../core/asistente/models/asistente.model';
 
 type PasoCompra = 'factura' | 'leyendo' | 'revisar' | 'guardando' | 'guardado' | 'cancelado';
@@ -129,7 +132,7 @@ const ALCANCE = [
   standalone: true,
   imports: [
     FormsModule, RouterLink, TablerIconComponent, IaMarcaComponent, IaSaludoComponent, TopbarComponent, MarkdownLigeroPipe,
-    IaEscribiendoComponent, IaMenuMasComponent, DocumentoInternoCardComponent,
+    IaEscribiendoComponent, IaMenuMasComponent, DocumentoInternoCardComponent, IaRecuerdoComponent, IaAccionComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './asistente-page.component.html',
@@ -153,7 +156,7 @@ export class AsistentePageComponent implements OnInit {
     renov: IconCalendarRepeat, alerta: IconAlertCircle, ok: IconCircleCheck, banco: IconBuildingBank, hash: IconHash,
     externo: IconArrowUpRight, cancelado: IconCircleX, compartir: IconShare, fijar: IconPin, desfijar: IconPinnedOff,
     renombrar: IconPencil, eliminar: IconTrash, pdf: IconFileTypePdf, imagen: IconPhoto, archivo: IconFile, libros: IconBooks,
-    documentos: IconFileText,
+    documentos: IconFileText, recuerdos: IconBookmark,
   };
   /** Preguntas de la familia del saludo: se filtran de la lista para no repetir la misma pregunta. */
   protected readonly preguntasSaludo = signal<string[]>([]);

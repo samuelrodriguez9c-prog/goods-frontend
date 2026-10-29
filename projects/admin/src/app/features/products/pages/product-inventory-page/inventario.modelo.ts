@@ -1,4 +1,6 @@
+import { PlanReposicionApi } from '../../../../core/inventario/inventario.service';
 import { CatalogoStore } from '../../shared/catalogo.store';
+import { codigoCompra } from '../../shared/formato';
 import { Categoria, CompraV5, ProductoV5, ProveedorV5, Stock, TipoMovimiento } from '../../shared/modelos';
 
 /** Estado del stock de un producto frente a su mínimo. */
@@ -100,17 +102,56 @@ export interface LineaReponer {
   stock: Stock;
   cantidad: number;
   precio: number;
+  /** Del plan del backend: por qué y qué tan urgente (el cálculo local no los tiene). */
+  motivo?: string;
+  urgencia?: 'agotado' | 'urgente' | 'pronto';
 }
 export interface PlanReponer {
   /** Una compra pendiente por proveedor (el de la última compra de cada producto). */
   grupos: { proveedorId: number; proveedor: ProveedorV5 | undefined; lineas: LineaReponer[] }[];
   /** Nunca comprados: no sabemos a quién pedirlos. */
   sinProveedor: ProductoV5[];
-  /** Ya vienen en una compra pendiente. */
-  enCamino: { producto: ProductoV5; compra: CompraV5 }[];
+  /** Ya vienen en una compra pendiente (códigos C-0042). */
+  enCamino: { producto: ProductoV5; compras: string[] }[];
+  /** Tiempo de entrega por proveedor, en palabras (solo con el plan del backend). */
+  entregas?: Record<number, string>;
+  /** «Las ventas vienen subiendo cerca de 20 % al mes…» (solo con el plan del backend). */
+  tendencia?: { texto: string; sube: boolean } | null;
 }
 
-/** Qué pedir para reponer lo que está bajo el mínimo: hasta el doble del mínimo, al último precio. */
+/**
+ * El plan del backend (ritmo de venta, tiempo de entrega de cada proveedor y
+ * compras pendientes) con los productos del catálogo, para el modal. Sin
+ * permiso de costos, el precio de cada línea es el de su última compra.
+ */
+export function planDesdeApi(api: PlanReposicionApi, catalogo: CatalogoStore): PlanReponer {
+  const producto = (id: number) => catalogo.mapaProductos().get(id);
+  const plan: PlanReponer = { grupos: [], sinProveedor: [], enCamino: [], entregas: {}, tendencia: api.tendencia ? { texto: api.tendencia.texto, sube: api.tendencia.cambioMensual > 0 } : null };
+  for (const g of api.grupos) {
+    if (!g.proveedor) {
+      plan.sinProveedor.push(...g.lineas.map((l) => producto(l.productoId)).filter((p): p is ProductoV5 => !!p));
+      continue;
+    }
+    const lineas = g.lineas.flatMap((l) => {
+      const p = producto(l.productoId);
+      if (!p) return [];
+      const precio = l.costoUnitario ?? ultimaCompra(catalogo, p.id)?.items.find((it) => it.productoId === p.id)?.precioUnitario ?? p.costo ?? 0;
+      return [{ producto: p, stock: catalogo.stockDe(p.id), cantidad: l.sugerido, precio, motivo: l.motivo, urgencia: l.urgencia }];
+    });
+    if (lineas.length) plan.grupos.push({ proveedorId: g.proveedor.id, proveedor: catalogo.proveedor(g.proveedor.id), lineas });
+    plan.entregas![g.proveedor.id] = `Entrega en unos ${g.tiempoEntregaDias} días · ${g.tiempoEntregaFuente}`;
+  }
+  plan.enCamino = api.cubiertosPorCompras.flatMap((c) => {
+    const p = producto(c.productoId);
+    return p ? [{ producto: p, compras: c.compras }] : [];
+  });
+  return plan;
+}
+
+/**
+ * Respaldo si el plan del backend no llega (sin red o un backend anterior):
+ * lo que está bajo el mínimo, hasta el doble del mínimo, al último precio.
+ */
 export function planReponer(catalogo: CatalogoStore): PlanReponer {
   const grupos = new Map<number, LineaReponer[]>();
   const plan: PlanReponer = { grupos: [], sinProveedor: [], enCamino: [] };
@@ -119,7 +160,7 @@ export function planReponer(catalogo: CatalogoStore): PlanReponer {
     if (producto.estado === 'descontinuado' || nivelDe(stock) === 'ok' || stock.minimo <= 0) continue;
     const pendiente = catalogo.compras().find((c) => c.estado === 'pendiente' && c.items.some((it) => it.productoId === producto.id));
     if (pendiente) {
-      plan.enCamino.push({ producto, compra: pendiente });
+      plan.enCamino.push({ producto, compras: [codigoCompra(pendiente.id)] });
       continue;
     }
     const ultima = ultimaCompra(catalogo, producto.id);

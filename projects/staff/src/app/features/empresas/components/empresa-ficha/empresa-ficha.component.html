@@ -401,6 +401,10 @@
           }
         }
 
+        @case ('pagos') {
+          <app-pagos-en-linea [empresaId]="e.id" (verPago)="verPago($event)" />
+        }
+
         @case ('actividad') {
           <div class="flex flex-wrap gap-1.5 py-4">
             @for (x of filtrosActividad(); track x.texto) {

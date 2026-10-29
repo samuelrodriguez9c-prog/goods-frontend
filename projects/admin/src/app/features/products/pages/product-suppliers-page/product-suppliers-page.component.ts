@@ -62,6 +62,11 @@ const FILTRO_METRICA: Record<Metrica, string> = {
  * (tarjeta de contacto · General · Compras · Productos). La ficha queda como
  * borrador hasta guardar ("Cambios sin guardar"); compra rápida y baja van en modales.
  */
+import { AnchoDirective, DespegueDirective } from '../../../../shared/ui/despegue/despegue.directive';
+
+import { CargarMasComponent, PaginaPorGrupo } from '../../../../shared/ui/cargar-mas/cargar-mas.component';
+import { migaDeHoja } from '../../../../core/navigation/navigation-trail.service';
+
 @Component({
   selector: 'app-product-suppliers-page',
   standalone: true,
@@ -69,6 +74,8 @@ const FILTRO_METRICA: Record<Metrica, string> = {
     TablerIconComponent, ModuloCabeceraComponent, FranjaMetricasComponent, EstadoPaginaComponent, PestanasHojaComponent, PopoverDirective,
     GrupoProveedoresComponent, FilaProveedorComponent, TarjetaProveedorComponent, AccionProveedorComponent, TarjetaContactoComponent,
     PestanaGeneralComponent, PestanaComprasComponent, PestanaProductosComponent, ModalCompraRapidaComponent, ModalBajaComponent,
+    DespegueDirective, AnchoDirective,
+    CargarMasComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './product-suppliers-page.component.html',
@@ -150,6 +157,13 @@ export class ProductSuppliersPageComponent {
   protected readonly soloEstado = computed(() => this.carga() === 'error' || this.carga() === 'vacio');
 
   // Cabecera y métricas
+  /** 15 filas por grupo y «Cargar 15 más · quedan N» (como Productos); la abierta siempre se ve. */
+  protected readonly pagina = new PaginaPorGrupo();
+  protected readonly idProveedor = (f: FilaProveedor) => f.proveedor.id;
+  /** Ancho de la grilla lista + hoja: hasta ahí crece la franja al desplegarse. */
+  protected readonly anchoGrid = signal(0);
+  /** Cuánto baja la hoja cuando la franja se despliega encima. */
+  protected readonly bajar = signal(0);
   protected readonly lectura = computed(() => {
     const ps = this.catalogo.proveedores(), cs = this.catalogo.compras(), hoy = this.catalogo.hoy();
     if (!ps.length) return '';
@@ -213,6 +227,7 @@ export class ProductSuppliersPageComponent {
     return {
       proveedor: p,
       detalle: (p.contactoNombre || 'Sin contacto') + ' · ' + (st.ultima ? 'última ' + hace(st.ultima.fecha, this.catalogo.hoy()) : 'sin compras'),
+      ultima: st.ultima ? hace(st.ultima.fecha, this.catalogo.hoy()) : 'sin compras',
       total: st.total,
       proporcion: Math.max(st.total ? 4 : 0, (st.total / this.mayorTotal()) * 100),
       accion: accionProveedor(this.catalogo, p),
@@ -318,6 +333,11 @@ export class ProductSuppliersPageComponent {
   });
 
   constructor() {
+    // Miga del proveedor abierto: «Productos › Proveedores › Distribuidora Andina».
+    migaDeHoja(() => {
+      const id = this.seleccionado();
+      return id === 'nuevo' ? 'Nuevo proveedor' : id != null ? this.catalogo.proveedor(id)?.nombre ?? null : null;
+    }, () => this.cerrar());
     // Se compara con la firma de los campos propios: los vacíos no cuentan como cambio.
     const comparable = (s: () => BorradorProveedor | null) => computed(() => {
       const b = s();

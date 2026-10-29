@@ -1,8 +1,12 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TablerIconComponent } from '@tabler/icons-angular';
+import { AsistenteService } from '../../../../core/asistente/asistente.service';
+import { FacturaProveedorExtraida } from '../../../../core/asistente/models/asistente.model';
 import { CompraService } from '../../../../core/compra/compra.service';
+import { pedirPorWhatsapp } from '../../../../core/compra/pedido-whatsapp';
 import { UploadService } from '../../../../core/upload/upload.service';
 import { AlertaService } from '../../../../core/ui/alerta.service';
 import { CatalogoStore } from '../../shared/catalogo.store';
@@ -42,6 +46,11 @@ const VENTANA: Record<Periodo, number> = { hoy: 864e5, '7': 7 * 864e5, '30': 30 
  * de la compra (Líneas · Datos · Actividad). Una compra pendiente se edita como
  * borrador ("Cambios sin guardar") y el stock entra solo al marcarla recibida.
  */
+import { AnchoDirective, DespegueDirective } from '../../../../shared/ui/despegue/despegue.directive';
+
+import { CargarMasComponent, PaginaPorGrupo } from '../../../../shared/ui/cargar-mas/cargar-mas.component';
+import { migaDeHoja } from '../../../../core/navigation/navigation-trail.service';
+
 @Component({
   selector: 'app-product-purchases-page',
   standalone: true,
@@ -50,6 +59,8 @@ const VENTANA: Record<Periodo, number> = { hoy: 864e5, '7': 7 * 864e5, '30': 30 
     MenuListaComponent, FiltrosComprasComponent, GrupoComprasComponent, FilaCompraComponent, SeguimientoCompraComponent,
     PestanaLineasComponent, PestanaDatosComponent, PestanaActividadComponent, MarcoModalComponent, ModalRecibirComponent,
     ModalFacturaComponent, GlifoAsistenteComponent,
+    DespegueDirective, AnchoDirective,
+    CargarMasComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './product-purchases-page.component.html',
@@ -65,6 +76,7 @@ export class ProductPurchasesPageComponent {
   private readonly router = inject(Router);
   private readonly comprasApi = inject(CompraService);
   private readonly upload = inject(UploadService);
+  private readonly asistente = inject(AsistenteService);
 
   protected readonly icono = icono;
   protected readonly num = num;
@@ -108,6 +120,8 @@ export class ProductPurchasesPageComponent {
   private readonly guardando = signal(false);
   /** Archivo elegido en "Adjuntar factura" (se sube al guardar). */
   private archivoNuevo: File | null = null;
+  /** El Asistente está leyendo una factura: no se abre otra lectura encima. */
+  protected readonly leyendoFactura = signal(false);
 
   // Datos
   protected readonly puedeEditar = computed(() => this.catalogo.puede('compras.editar'));
@@ -127,6 +141,12 @@ export class ProductPurchasesPageComponent {
   protected readonly soloEstado = computed(() => this.carga() === 'error' || this.carga() === 'vacio');
 
   // Cabecera y métricas
+  /** 15 filas por grupo y «Cargar 15 más · quedan N» (como Productos); la abierta siempre se ve. */
+  protected readonly pagina = new PaginaPorGrupo();
+  /** Ancho de la grilla lista + hoja: hasta ahí crece la franja al desplegarse. */
+  protected readonly anchoGrid = signal(0);
+  /** Cuánto baja la hoja cuando la franja se despliega encima. */
+  protected readonly bajar = signal(0);
   protected readonly lectura = computed(() => {
     if (!this.catalogo.cargado()) return '';
     const cs = this.catalogo.compras(), pendientes = cs.filter((c) => c.estado === 'pendiente');
@@ -191,6 +211,9 @@ export class ProductPurchasesPageComponent {
       iniciales: inicialesDe(p?.nombre ?? ''),
       tono: tonoProveedor(p?.id ?? 0),
       estado: c.estado,
+      codigo: codigoCompra(c.id),
+      lineas: c.items.length,
+      factura: c.numeroFactura || (c.archivoNombre ? 'adjunta' : null),
       detalle: codigoCompra(c.id) + ' · ' + (c.numeroFactura || 'sin factura') + ' · ' + pl(c.items.length, 'línea', 'líneas') + ', ' + num(this.catalogo.unidadesCompra(c)) + ' u',
       conFactura: !!c.archivoNombre,
       total: cop(this.catalogo.totalCompra(c)),
@@ -357,6 +380,11 @@ export class ProductPurchasesPageComponent {
   });
 
   constructor() {
+    // Miga de la compra abierta: «Productos › Compras › C-0042».
+    migaDeHoja(() => {
+      const id = this.seleccion();
+      return id === 'nueva' ? 'Nueva compra' : id != null ? codigoCompra(id) : null;
+    }, () => this.cerrar());
     // La alerta "Cambios sin guardar" solo cuando de verdad hay cambios.
     vigilarCambios({
       borrador: computed(() => (this.sucio() ? this.borrador() : null)),
@@ -520,6 +548,13 @@ export class ProductPurchasesPageComponent {
     const siguiente = i < 0 ? ids[d > 0 ? 0 : ids.length - 1] : ids[Math.min(ids.length - 1, Math.max(0, i + d))];
     if (siguiente != null && siguiente !== this.seleccion()) this.abrir(siguiente);
   }
+  /** Abre WhatsApp con el pedido escrito para el proveedor (lo envía la persona). */
+  protected pedirWhatsapp(): void {
+    const id = this.ficha()?.compra?.id;
+    this.menu.set(null);
+    if (id) void pedirPorWhatsapp(id, this.comprasApi, this.alertas);
+  }
+
   protected verProveedor(): void {
     const p = this.ficha()?.proveedor;
     this.menu.set(null);
@@ -625,24 +660,110 @@ export class ProductPurchasesPageComponent {
   // Leer factura con IA
   /** "Leer factura": abre una compra nueva y el modal del Asistente. */
   protected abrirIa(): void {
+    if (this.leyendoFactura()) return;
     if (this.catalogo.niega('compras.crear')) return;
     if (!(this.esNueva() && this.borrador()) && !this.nueva()) return;
     this.modal.set({ tipo: 'ia' });
   }
-  // TODO(front): conectar con `AsistenteService.extraerFacturaProveedor` (el backend ya lee
-  // facturas); mientras tanto se avisa en vez de simular una lectura.
-  protected leerFacturaIa(e: Event): void {
+  /**
+   * Manda la factura a `POST /asistente/facturas-proveedor/extraer`, que la lee
+   * y la cruza con el catálogo sin guardar nada, y vuelca el resultado en la
+   * compra nueva con la marca «IA» en cada campo. La compra solo se crea cuando
+   * la persona revisa y guarda.
+   */
+  protected async leerFacturaIa(e: Event): Promise<void> {
     e.preventDefault();
     const campo = e.target as HTMLInputElement;
     const archivo = (e as DragEvent).dataTransfer?.files?.[0] ?? campo.files?.[0];
     if (campo.value) campo.value = '';
-    if (!archivo) return;
+    if (!archivo || this.leyendoFactura()) return;
     this.modal.set(null);
-    this.alertas.mostrar({
-      estado: 'info',
-      titulo: 'Leer factura con IA todavía no está disponible',
-      texto: 'Por ahora llena la compra a mano; puedes adjuntar «' + archivo.name + '» en Datos.',
+    this.leyendoFactura.set(true);
+    const aviso = this.alertas.mostrar({ titulo: 'Leyendo la factura', texto: archivo.name });
+    try {
+      const x = await firstValueFrom(this.asistente.extraerFacturaProveedor(archivo));
+      // Mientras leía se pudo cerrar la compra nueva: no se pisa otra hoja.
+      if (!this.esNueva() || !this.borrador()) {
+        this.alertas.resolver(aviso, { estado: 'info', titulo: 'Se leyó la factura, pero cerraste la compra nueva', texto: 'Vuelve a «Leer factura» para cargarla.' });
+        return;
+      }
+      const resumen = this.volcarFactura(x, archivo);
+      this.pestana.set('lineas');
+      this.alertas.resolver(aviso, { estado: resumen.pendientes ? 'warning' : 'success', titulo: 'Factura leída · revisa antes de guardar', texto: resumen.texto });
+    } catch (err) {
+      this.alertas.resolver(aviso, { estado: 'error', titulo: 'No se pudo leer la factura', texto: this.mensajeLectura(err) });
+    } finally {
+      this.leyendoFactura.set(false);
+    }
+  }
+  /**
+   * Lo leído entra solo donde la persona no escribió nada: los campos de
+   * cabecera vacíos se llenan y las líneas se suman a las que ya tenía (las
+   * vacías se reemplazan). Un producto que no se reconoció queda sin elegir,
+   * con el texto de la factura a la vista para buscarlo a mano.
+   */
+  private volcarFactura(x: FacturaProveedorExtraida, archivo: File): { texto: string; pendientes: number } {
+    const prov = this.proveedor(x.proveedorIdSugerido) ?? this.porNombre(this.catalogo.proveedores(), x.proveedorNombreDetectado);
+    const fechaOk = !!x.fecha && /^\d{4}-\d{2}-\d{2}$/.test(x.fecha);
+    const lineas = x.items.map((it) => {
+      const producto = (it.productoIdSugerido != null ? this.catalogo.producto(it.productoIdSugerido) : undefined) ?? this.porNombre(this.catalogo.productos(), it.nombreDetectado);
+      return {
+        ...lineaVacia(),
+        productoId: producto?.id ?? null,
+        busqueda: producto?.nombre ?? '',
+        cantidad: it.cantidad != null ? String(it.cantidad) : '1',
+        precioUnitario: it.precioUnitario != null ? String(it.precioUnitario) : '',
+        ia: true,
+        textoFactura: producto ? '' : it.nombreDetectado,
+      };
     });
+    this.archivoNuevo = archivo;
+    this.cambiarBorrador((d) => {
+      const ia = { ...d.ia, archivo: true };
+      const n = { ...d, archivo: { name: archivo.name, url: URL.createObjectURL(archivo) }, ia };
+      if (!d.proveedorId && !d.busquedaProveedor.trim() && (prov || x.proveedorNombreDetectado)) {
+        n.proveedorId = prov?.id ?? null;
+        n.busquedaProveedor = prov?.nombre ?? x.proveedorNombreDetectado ?? '';
+        ia.proveedor = true;
+      }
+      // La fecha siempre trae hoy por defecto: solo se cambia si nadie la tocó.
+      if (fechaOk && d.fecha === this.guardado()?.fecha) {
+        n.fecha = x.fecha!;
+        ia.fecha = true;
+      }
+      if (!d.numeroFactura.trim() && x.numeroFactura) {
+        n.numeroFactura = x.numeroFactura;
+        ia.numeroFactura = true;
+      }
+      if (!d.notas.trim() && x.notas) {
+        n.notas = x.notas;
+        ia.notas = true;
+      }
+      const propias = d.items.filter((it) => it.productoId != null || it.busqueda.trim() || it.precioUnitario.trim());
+      n.items = lineas.length ? [...propias, ...lineas] : d.items;
+      return n;
+    });
+    const pendientes = lineas.filter((l) => l.productoId == null).length;
+    const partes = [pl(lineas.length, 'línea', 'líneas')];
+    if (pendientes) partes.push(pl(pendientes, 'producto', 'productos') + ' por elegir');
+    if (!prov && x.proveedorNombreDetectado) partes.push('proveedor nuevo: «' + x.proveedorNombreDetectado + '»');
+    return { texto: partes.join(' · '), pendientes };
+  }
+  /**
+   * El backend cruza con el catálogo comparando el texto tal cual, así que
+   * «Movil Express» no encuentra a «Móvil Express». Acá se repite el cruce sin
+   * tildes ni mayúsculas, y solo con un nombre idéntico para no adivinar.
+   */
+  private porNombre<T extends { nombre: string }>(lista: T[], nombre: string | null): T | undefined {
+    const n = norm(nombre).trim();
+    return n ? lista.find((x) => norm(x.nombre).trim() === n) : undefined;
+  }
+  private mensajeLectura(err: unknown): string {
+    if (err instanceof HttpErrorResponse) {
+      if (err.status === 403) return 'Tu plan no incluye el Asistente de IA o no tienes permiso para crear compras.';
+      if (typeof err.error?.message === 'string') return err.error.message;
+    }
+    return 'Intenta de nuevo o llena la compra a mano.';
   }
 
   // Lista: filtros, grupos y exportar

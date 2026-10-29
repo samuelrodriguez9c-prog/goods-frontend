@@ -1,0 +1,39 @@
+@let r = recuerdo();
+@if (r.estado === 'propuesta') {
+  <div class="ia-msg-in flex flex-col gap-2 rounded-[14px] border border-[#e8e8e8] bg-[#fafafa] p-3" [style.padding.px]="compacto() ? 10 : null">
+    <div class="flex items-center gap-1.5 text-[11.5px] font-medium text-[#6b7280]">
+      <tabler-icon [icon]="i.recuerdo" [size]="13" />¿Lo recuerdo para las próximas conversaciones?
+    </div>
+    <p class="m-0 text-[13.5px] leading-[1.5] text-[#111827] [text-wrap:pretty]" [style.font-size.px]="compacto() ? 13 : null">{{ r.texto }}</p>
+    <div class="flex flex-wrap items-center gap-1.5">
+      <span class="mr-auto flex items-center gap-1 text-[11.5px] text-[#9ca3af]">
+        <tabler-icon [icon]="r.alcance === 'empresa' ? i.equipo : i.persona" [size]="12" />{{ paraQuien() }}
+      </span>
+      <button type="button" (click)="descartar()" [disabled]="ocupado()"
+        class="rounded-full px-3 py-1 text-[12.5px] font-medium text-[#6b7280] transition-colors duration-150 hover:bg-[#efefef] hover:text-[#111827] disabled:opacity-50">
+        Descartar
+      </button>
+      <button type="button" (click)="guardar()" [disabled]="ocupado()"
+        class="rounded-full bg-[#0a0a0a] px-3 py-1 text-[12.5px] font-medium text-white transition-[translate,opacity] duration-150 hover:-translate-y-px disabled:opacity-50">
+        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </div>
+    @if (error(); as e) {
+      <p class="m-0 text-[12px] text-[#b91c1c]">{{ e }}</p>
+    }
+  </div>
+} @else if (r.estado === 'activa') {
+  <div class="ia-msg-in flex items-start gap-2 text-[12px] leading-[18px] text-[#6b7280]">
+    <span class="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-[#2be0d5]/20 text-[#00807a]"><tabler-icon [icon]="i.ok" [size]="12" /></span>
+    <p class="m-0 min-w-0 flex-1 [text-wrap:pretty]">
+      Lo recordaré{{ r.alcance === 'empresa' ? ' para todo el equipo' : '' }}: <span class="text-[#374151]">{{ r.texto }}</span>
+      <span class="whitespace-nowrap">
+        · <a routerLink="/asistente/recuerdos" class="font-medium text-[#00807a] hover:underline">Ver lo que recuerdo</a>
+        · <button type="button" (click)="deshacer()" [disabled]="ocupado()" class="font-medium text-[#6b7280] hover:text-[#111827] hover:underline disabled:opacity-50">Deshacer</button>
+      </span>
+      @if (error(); as e) {
+        <span class="block text-[#b91c1c]">{{ e }}</span>
+      }
+    </p>
+  </div>
+}

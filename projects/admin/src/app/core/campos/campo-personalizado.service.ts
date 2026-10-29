@@ -2,7 +2,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ActualizarCampoPayload, CampoPersonalizado, CrearCampoPayload, EntidadCampo } from './campo-personalizado.model';
+import {
+  ActualizarCampoPayload,
+  CambioHistorialCampo,
+  CampoPersonalizado,
+  CrearCampoPayload,
+  EntidadCampo,
+  UsoCampo,
+} from './campo-personalizado.model';
 
 /**
  * Campos propios de la Empresa (`/campos-personalizados`). Guarda la lista
@@ -39,7 +46,10 @@ export class CampoPersonalizadoService {
       .pipe(tap((xs) => this.poner(entidad, xs)));
   }
 
-  /** @remarks 409 si ya hay 15 activos o la etiqueta se repite; 400 si una lista no trae opciones. */
+  /**
+   * @remarks 409 si ya hay 15 activos o la etiqueta se repite; 400 si una lista
+   * no trae opciones o una regla no aplica al tipo. Se crea siempre activo.
+   */
   crear(p: CrearCampoPayload): Observable<CampoPersonalizado> {
     return this.http.post<CampoPersonalizado>(this.base, p).pipe(tap((c) => this.poner(c.entidad, [...this.todos(c.entidad), c])));
   }
@@ -50,11 +60,21 @@ export class CampoPersonalizadoService {
       .pipe(tap((c) => this.poner(c.entidad, this.todos(c.entidad).map((x) => (x.id === c.id ? c : x)))));
   }
 
-  /** @remarks 409 si algún registro ya tiene un valor: hay que desactivarlo. */
+  /** @remarks 409 si algún registro ya tiene un valor (el mensaje dice cuántos): hay que desactivarlo. */
   eliminar(campo: CampoPersonalizado): Observable<void> {
     return this.http
       .delete<void>(`${this.base}/${campo.id}`)
       .pipe(tap(() => this.poner(campo.entidad, this.todos(campo.entidad).filter((x) => x.id !== campo.id))));
+  }
+
+  /** Cuántos registros tienen el dato y, en listas y sí/no, cuántos por opción. */
+  uso(id: number): Observable<UsoCampo> {
+    return this.http.get<UsoCampo>(`${this.base}/${id}/uso`);
+  }
+
+  /** Quién cambió qué en la definición del campo (hasta 50, el más reciente primero). */
+  historial(id: number): Observable<CambioHistorialCampo[]> {
+    return this.http.get<CambioHistorialCampo[]>(`${this.base}/${id}/historial`);
   }
 
   /** `ids`: todos los campos de la entidad en el orden nuevo. */

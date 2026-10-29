@@ -49,11 +49,37 @@ export class ChatService {
     return this.http.post<Mensaje>(`${this.base}/${id}/mensajes`, { cuerpo, respondeAId });
   }
 
+  /**
+   * Mensaje con imágenes (hasta 4, PNG/JPG/WebP/GIF de 5 MB). El texto
+   * puede ir vacío si va al menos una.
+   */
+  enviarConImagenes(id: number, cuerpo: string, archivos: File[], respondeAId?: number): Observable<Mensaje> {
+    const fd = new FormData();
+    archivos.forEach((a) => fd.append('archivos', a, a.name));
+    if (cuerpo) fd.append('cuerpo', cuerpo);
+    if (respondeAId) fd.append('respondeAId', String(respondeAId));
+    return this.http.post<Mensaje>(`${this.base}/${id}/mensajes/adjuntos`, fd);
+  }
+
   cerrar(id: number): Observable<Conversacion> {
     return this.http.patch<Conversacion>(`${this.base}/${id}/cerrar`, {});
   }
 
   asignar(id: number, agenteId: number): Observable<Conversacion> {
     return this.http.patch<Conversacion>(`${this.base}/${id}/asignar`, { agenteId });
+  }
+
+  /**
+   * Marca leídos los mensajes del cliente (las ✓✓ de su lado). El backend solo
+   * cuenta a quien la atiende, o a cualquiera si nadie la tomó: un supervisor
+   * que mira no la marca y recibe `marcados: 0`.
+   */
+  marcarLeida(id: number): Observable<{ marcados: number; leidoEn: string | null }> {
+    return this.http.post<{ marcados: number; leidoEn: string | null }>(`${this.base}/${id}/leida`, {});
+  }
+
+  /** Una imagen del chat como blob: es privada y el `<img>` no puede pedirla con la sesión. */
+  imagen(id: number, adjuntoId: number): Observable<Blob> {
+    return this.http.get(`${this.base}/${id}/adjuntos/${adjuntoId}`, { responseType: 'blob' });
   }
 }

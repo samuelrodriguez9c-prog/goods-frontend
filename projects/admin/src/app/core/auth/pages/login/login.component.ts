@@ -17,6 +17,11 @@ import { AuthService } from '../../auth.service';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LARGO_CODIGO_DOS_FACTORES = 6;
+/** Por qué el backend cortó la sesión (`sesion:cerrada`). */
+const AVISOS: Record<string, string> = {
+  sin_acceso: 'Tu acceso a Goods fue desactivado. Habla con quien administra tu tienda.',
+  sesiones_cerradas: 'Se cerraron tus sesiones. Vuelve a entrar para seguir.',
+};
 
 type PasoLogin = 'correo' | 'password' | 'dosFactores';
 
@@ -57,6 +62,9 @@ export class LoginComponent {
   protected readonly paso = signal<PasoLogin>(
     this.route.snapshot.queryParamMap.get('paso') === '2fa' ? 'dosFactores' : 'correo',
   );
+  /** `?motivo=` cuando el backend cortó la sesión (ver `ShellComponent`). */
+  protected readonly aviso: string | null =
+    AVISOS[this.route.snapshot.queryParamMap.get('motivo') ?? ''] ?? null;
   protected readonly correo = signal('');
   protected readonly password = signal('');
   protected readonly mostrarPassword = signal(false);

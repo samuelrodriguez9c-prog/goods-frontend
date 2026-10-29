@@ -1,7 +1,6 @@
 <div class="flex h-full min-h-0 flex-col overflow-hidden px-6 pt-6">
   @if (!(s.abierto() != null && s.completa())) {
-    <app-modulo-cabecera [icono]="ic.tag" titulo="Productos" [cuenta]="num(s.productos().length)" [cuentaTitulo]="pl(s.productos().length, 'producto', 'productos')"
-      [lectura]="s.carga() === 'listo' && s.productos().length ? s.resumen().lectura : ''">
+    <app-modulo-cabecera [icono]="ic.tag" titulo="Productos" [cuenta]="num(s.productos().length)" [cuentaTitulo]="pl(s.productos().length, 'producto', 'productos')">
       <button type="button" (click)="s.exportarCSV()" class="rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-colors hover:bg-[#d4d4d4]">Exportar</button>
       <button
         type="button"
@@ -14,14 +13,9 @@
         <tabler-icon [icon]="ic.plus" [size]="14" />Nuevo producto
       </button>
     </app-modulo-cabecera>
-
-    <!-- Métricas: cada una filtra la lista (clic de nuevo para quitar) -->
-    @if (s.carga() === 'listo' && s.productos().length) {
-      <app-franja-metricas [periodo]="periodo()" [metricas]="metricas()" (cambiarPeriodo)="periodo.set($event)" (metrica)="alternarMetrica($event)" />
-    }
   }
 
-  <div class="mt-4 grid min-h-0 flex-1 pb-4 transition-[grid-template-columns] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-columns]="columnas()">
+  <div class="mt-2.5 grid min-h-0 flex-1 transition-[grid-template-columns] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-columns]="columnas()" (appAncho)="anchoGrid.set($event)">
     <!-- Error / vacío -->
     @if (vacio()) {
       <section class="flex min-h-0 flex-col items-center justify-center rounded-2xl bg-white p-10 text-center shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_40px_-24px_rgba(0,0,0,.22)] animate-[entra_.36s_cubic-bezier(.2,.8,.2,1)]">
@@ -45,6 +39,13 @@
 
     @if (verLista()) {
       <section class="relative z-[2] -mr-4 flex h-full min-h-0 min-w-0 flex-col">
+        <!-- Arriba: la lectura y las métricas (cada una filtra la lista; clic de nuevo para quitar) -->
+        @if (s.carga() === 'listo' && s.productos().length) {
+          <p class="mb-3.5 max-w-[668px] pr-7 text-[13px] leading-5 text-pretty text-[#6b7280]">{{ s.resumen().lectura }}</p>
+          <app-franja-metricas [periodo]="periodo()" [metricas]="metricas()" (cambiarPeriodo)="periodo.set($event)" (metrica)="alternarMetrica($event)"
+            [anchoExpandido]="anchoGrid()" [permitirDesplegar]="s.abierto() != null" (fondo)="bajar.set($event)" />
+        }
+        <div class="relative flex min-h-0 flex-1 flex-col">
         <!-- Popover de filtros: secciones a la izquierda, contenido a la derecha -->
         <div
           (click)="$event.stopPropagation()"
@@ -282,7 +283,7 @@
           }
         </div>
 
-        <div data-atajo="lista" (mouseleave)="hover.set(null)" class="relative min-h-0 flex-1 overflow-y-auto pb-3 [scrollbar-width:none]">
+        <div data-atajo="lista" appDespegue [cabecera]="48" [seleccion]="s.abierto()" #d="despegue" (mouseleave)="hover.set(null)" class="relative min-h-0 flex-1 overflow-y-auto pb-3 [scrollbar-width:none]">
           @if (cambiosEnVivo()) {
             <div class="pointer-events-none sticky top-3 z-30 flex h-0 justify-center overflow-visible pr-7">
               <button type="button" (click)="actualizarEnVivo()" class="pointer-events-auto flex h-9 items-center gap-2.5 whitespace-nowrap rounded-full bg-[#1a1a1a] py-[7px] pl-3 pr-[7px] text-white shadow-[0_10px_24px_-8px_rgba(0,0,0,.4)] animate-[vivo-entrar_320ms_cubic-bezier(.2,.8,.2,1)_both]">
@@ -322,77 +323,85 @@
                   </span>
                 </button>
                 <div class="grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-rows]="g.abierto ? '1fr' : '0fr'">
-                  <div class="min-h-0 overflow-hidden">
+                  <div class="min-h-0" [style.overflow]="g.abierto ? 'visible' : 'hidden'">
                     <div class="flex flex-col gap-0.5 pb-1 pt-0.5">
                       @for (p of g.visibles; track p.id) {
-                        @let j = unida(p.id);
+                        @let abierta = s.abierto() === p.id;
+                        @let j = (abierta && !d.despegada()) || hover() === p.id;
                         @let sel = s.seleccion().has(p.id);
                         @let st = s.stock(p.id);
                         @let ok = s.estadoStock(p.id) === 'ok';
                         @let mini = miniatura(p);
                         @let barra = barraStock(p);
                         @let celda = s.celda();
-                        <!-- La fila abierta o con hover se "une" a la ficha: pierde el margen derecho y las esquinas de ese lado -->
-                        <div (mouseenter)="hover.set(p.id)" (mouseleave)="hover() === p.id && hover.set(null)" class="relative transition-[margin] duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.margin-right.px]="j ? 0 : 28">
+                        @let e = ESTF[p.estado];
+                        @let verCheck = nSel() || hover() === p.id;
+                        <!-- La fila abierta o con hover se "une" a la ficha: pierde el margen derecho y las esquinas de ese lado. -->
+                        <div (mouseenter)="hover.set(p.id)" (mouseleave)="hover() === p.id && hover.set(null)" [attr.data-sel]="abierta ? '1' : null" class="relative transition-[margin] duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.margin-right.px]="j ? 0 : 28">
                           <div
                             (click)="s.abrir(p.id)"
-                            class="relative grid cursor-pointer grid-cols-[16px_32px_minmax(0,1fr)_auto_64px] items-center gap-2.5 py-2 pl-2.5 transition-[background-color,border-radius,padding] duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)]"
+                            class="relative grid cursor-pointer select-none grid-cols-[38px_minmax(0,1fr)_auto] items-start gap-3 py-2.5 pl-2.5 transition-[background-color,border-radius,padding] duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)]"
                             [style.padding-right.px]="j ? 30 : 14"
                             [style.border-radius]="j ? '12px 0 0 12px' : '12px'"
-                            [style.background]="s.destello().has(p.id) ? '#e6fbf9' : j ? '#fff' : 'transparent'"
+                            [style.background]="s.destello().has(p.id) ? '#e6fbf9' : j || abierta ? '#fff' : 'transparent'"
                           >
-                            <span class="flex h-7 items-center justify-center">
-                              @if (nSel() || hover() === p.id) {
+                            <!-- Miniatura (con la casilla al pasar el cursor o si hay marcados) + insignia de estado -->
+                            <span class="relative flex size-[38px] items-center justify-center rounded-[11px] font-display text-[14px] font-semibold text-[#6b7280] transition-colors duration-[260ms]" [style.background]="j ? '#f4f4f4' : '#e6e6e6'">
+                              @if (verCheck) {
                                 <span
                                   (click)="$event.stopPropagation(); s.marcar(p.id)"
-                                  class="flex size-[15px] items-center justify-center rounded-[5px] text-white animate-[fade-in-up_.15s_ease-out]"
+                                  title="Seleccionar"
+                                  class="flex size-[18px] items-center justify-center rounded-md text-white animate-[fade-in_.15s]"
                                   [style.background]="sel ? '#303030' : '#fff'"
                                   [style.box-shadow]="'inset 0 0 0 1.5px ' + (sel ? '#303030' : '#d4d4d4')"
                                 >
-                                  @if (sel) { <tabler-icon [icon]="ic.check" [size]="11" /> }
+                                  @if (sel) { <tabler-icon [icon]="ic.check" [size]="12" /> }
                                 </span>
-                              } @else {
-                                <span class="h-7 w-[3px] rounded-full" [style.background]="EST[p.estado].dot"></span>
-                              }
-                            </span>
-                            <span
-                              class="flex size-8 items-center justify-center overflow-hidden rounded-[9px] font-display text-[13px] font-semibold"
-                              [style.background]="mini.url ? '#f1f1f1' : '#fafafa'"
-                              [style.color]="'#9ca3af'"
-                              [style.box-shadow]="'inset 0 0 0 1px ' + (mini.url ? '#eeeeee' : '#d4d4d4')"
-                            >
-                              @if (mini.url) {
-                                <span class="block size-full bg-cover bg-center" [style.background-image]="'url(' + mini.url + ')'"></span>
+                              } @else if (mini.url) {
+                                <span class="block size-full rounded-[11px] bg-cover bg-center" [style.background-image]="'url(' + mini.url + ')'"></span>
                               } @else {
                                 <span>{{ mini.letra }}</span>
                               }
-                            </span>
-                            <span class="flex min-w-0 flex-col gap-0.5">
-                              <span class="flex min-w-0 items-center gap-[5px]">
-                                <span class="truncate text-[13.5px] text-[#111827]" [class.font-semibold]="s.abierto() === p.id" [class.font-medium]="s.abierto() !== p.id">{{ p.nombre }}</span>
-                                @if (p.destacado) { <tabler-icon [icon]="ic.estrella" [size]="11" class="shrink-0 text-[#ffb904]" /> }
+                              <span [title]="e.t" class="absolute -bottom-[3px] -right-[3px] flex size-[18px] items-center justify-center rounded-full transition-shadow duration-[260ms]" [style.background]="e.bg" [style.color]="e.fg" [style.box-shadow]="'0 0 0 2px ' + (j ? '#fff' : '#f1f1f1')">
+                                <app-ic [nombre]="e.icono" [size]="10" />
                               </span>
-                              <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ (p.sku || 'Sin SKU') + ' · ' + s.nombreCategoria(p.categoriaId) }}</span>
                             </span>
-                            <span (dblclick)="$event.stopPropagation(); s.editarCelda(p.id, 'precio')" title="Doble clic para editar el precio" class="flex flex-col items-end">
-                              @if (celda?.id === p.id && celda?.campo === 'precio') {
-                                <input appAutofoco [value]="celda!.valor" (input)="s.celda.set({ id: p.id, campo: 'precio', valor: $any($event.target).value })" (keydown)="teclaCelda($event)" (blur)="s.celda.set(null)" (click)="$event.stopPropagation()" inputmode="numeric" class="w-[84px] rounded-lg border-0 bg-[#f5f5f5] px-2 py-[5px] text-right text-[12.5px] outline-none shadow-[0_0_0_1px_#d4d4d4] animate-[fade-in-up_.15s_ease-out]" />
-                              } @else {
-                                <span class="-mx-[5px] -my-0.5 cursor-text whitespace-nowrap rounded-md px-[5px] py-0.5 text-[12.5px] font-medium tabular-nums text-[#303030] transition-[background-color,box-shadow] hover:bg-[#f5f5f5] hover:shadow-[inset_0_0_0_1px_#d4d4d4]">{{ cop(p.precio) }}</span>
-                              }
-                              @if (p.precioComparacion && p.precioComparacion > p.precio) {
-                                <span class="text-[10.5px] tabular-nums text-[#9ca3af] line-through">{{ cop(p.precioComparacion) }}</span>
-                              }
+                            <!-- Centro: nombre (★), SKU · categoría y la etiqueta de estado -->
+                            <span class="flex min-w-0 flex-col gap-[5px]">
+                              <span class="flex min-w-0 items-center gap-1.5">
+                                <span class="min-w-0 truncate text-[13px] leading-[18px] text-[#111827]" [style.font-weight]="abierta ? 600 : 500">{{ p.nombre }}</span>
+                                @if (p.destacado) { <tabler-icon [icon]="ic.estrella" [size]="11" class="shrink-0 text-[#ffb904]" title="Destacado" /> }
+                              </span>
+                              <span class="-mt-[3px] flex min-w-0 items-center gap-2 overflow-hidden text-xs leading-4 text-[#6b7280]">
+                                <span class="shrink-0 whitespace-nowrap font-mono text-[11px]">{{ p.sku || 'Sin SKU' }}</span>
+                                <span class="inline-flex min-w-0 items-center gap-1 whitespace-nowrap"><app-ic nombre="folder" [size]="12" class="shrink-0 text-[#9ca3af]" /><span class="truncate">{{ s.nombreCategoria(p.categoriaId) }}</span></span>
+                              </span>
+                              <span class="flex min-w-0 flex-wrap items-center gap-1">
+                                <span class="inline-flex h-5 shrink-0 items-center gap-[5px] whitespace-nowrap rounded-md px-[7px] text-[11px] font-medium" [style.background]="e.bg" [style.color]="e.fg"><app-ic [nombre]="e.icono" [size]="11" />{{ e.t }}</span>
+                              </span>
                             </span>
-                            <span (dblclick)="$event.stopPropagation(); s.editarCelda(p.id, 'stock')" title="Doble clic para corregir el stock" class="flex w-16 flex-col items-end gap-[5px]">
-                              @if (celda?.id === p.id && celda?.campo === 'stock') {
-                                <input appAutofoco [value]="celda!.valor" (input)="s.celda.set({ id: p.id, campo: 'stock', valor: $any($event.target).value })" (keydown)="teclaCelda($event)" (blur)="s.celda.set(null)" (click)="$event.stopPropagation()" inputmode="numeric" class="w-16 rounded-lg border-0 bg-[#f5f5f5] px-2 py-[5px] text-right text-[12.5px] outline-none shadow-[0_0_0_1px_#d4d4d4]" />
-                              } @else {
-                                <span class="-mx-[5px] -my-0.5 cursor-text whitespace-nowrap rounded-md px-[5px] py-0.5 text-[11.5px] font-semibold tabular-nums transition-[background-color,box-shadow] hover:bg-[#f5f5f5] hover:shadow-[inset_0_0_0_1px_#d4d4d4]" [style.color]="ok ? '#111827' : '#d82c0d'">{{ num(st.disp) }}</span>
-                                <span class="relative block h-1 w-16 overflow-hidden rounded-full transition-colors duration-[260ms]" [style.background]="j ? '#efefef' : '#e2e2e2'">
-                                  <span class="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[600ms]" [style.width]="barra.w" [style.background]="barra.c"></span>
-                                </span>
-                              }
+                            <!-- Derecha: precio (doble clic edita) y medidor + disponible (doble clic corrige) -->
+                            <span class="flex flex-col items-end gap-1.5 pt-px">
+                              <span (dblclick)="$event.stopPropagation(); s.editarCelda(p.id, 'precio')" title="Doble clic para editar el precio" class="flex items-baseline gap-[5px]">
+                                @if (p.precioComparacion && p.precioComparacion > p.precio) {
+                                  <span class="text-[10.5px] tabular-nums text-[#9ca3af] line-through">{{ cop(p.precioComparacion) }}</span>
+                                }
+                                @if (celda?.id === p.id && celda?.campo === 'precio') {
+                                  <input appAutofoco [value]="celda!.valor" (input)="s.celda.set({ id: p.id, campo: 'precio', valor: $any($event.target).value })" (keydown)="teclaCelda($event)" (blur)="s.celda.set(null)" (click)="$event.stopPropagation()" inputmode="numeric" class="w-[84px] rounded-lg border-0 bg-[#f5f5f5] px-2 py-[3px] text-right text-[12.5px] outline-none shadow-[0_0_0_1px_#d4d4d4] animate-[fade-in-up_.15s_ease-out]" />
+                                } @else {
+                                  <span class="-mx-[5px] -my-0.5 cursor-text whitespace-nowrap rounded-md px-[5px] py-0.5 text-[13px] font-semibold tabular-nums text-[#111827] transition-[background-color,box-shadow] hover:bg-[#f5f5f5] hover:shadow-[inset_0_0_0_1px_#d4d4d4]">{{ cop(p.precio) }}</span>
+                                }
+                              </span>
+                              <span (dblclick)="$event.stopPropagation(); s.editarCelda(p.id, 'stock')" [title]="(s.estadoStock(p.id) === 'ok' ? 'Con stock' : 'Bajo el mínimo') + ' · doble clic para corregir'" class="flex items-center gap-[7px]">
+                                @if (celda?.id === p.id && celda?.campo === 'stock') {
+                                  <input appAutofoco [value]="celda!.valor" (input)="s.celda.set({ id: p.id, campo: 'stock', valor: $any($event.target).value })" (keydown)="teclaCelda($event)" (blur)="s.celda.set(null)" (click)="$event.stopPropagation()" inputmode="numeric" class="w-16 rounded-lg border-0 bg-[#f5f5f5] px-2 py-[3px] text-right text-xs outline-none shadow-[0_0_0_1px_#d4d4d4]" />
+                                } @else {
+                                  <span class="relative block h-1 w-10 overflow-hidden rounded-full transition-colors duration-[260ms]" [style.background]="j ? '#efefef' : '#e2e2e2'">
+                                    <span class="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[600ms]" [style.width]="barra.w" [style.background]="barra.c"></span>
+                                  </span>
+                                  <span class="-mx-[5px] -my-0.5 cursor-text whitespace-nowrap rounded-md px-[5px] py-0.5 text-[11.5px] font-semibold tabular-nums transition-[background-color,box-shadow] hover:bg-[#f5f5f5] hover:shadow-[inset_0_0_0_1px_#d4d4d4]" [style.color]="ok ? '#111827' : '#d82c0d'">{{ num(st.disp) }} u.</span>
+                                }
+                              </span>
                             </span>
                           </div>
                           @if (j) {
@@ -478,11 +487,12 @@
             </div>
           }
         </div>
+        </div>
       </section>
     }
 
     @if (verFicha()) {
-      <app-producto-ficha />
+      <app-producto-ficha [bajar]="bajar()" />
     }
   </div>
 </div>

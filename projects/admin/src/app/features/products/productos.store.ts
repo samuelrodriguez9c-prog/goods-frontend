@@ -247,7 +247,8 @@ export class ProductosStore {
         if (q && !(p.nombre.toLowerCase().includes(q) || (p.sku ?? '').toLowerCase().includes(q))) return false;
         if (cats.length && !cats.some((c) => (c === 0 ? p.categoriaId == null : p.categoriaId === c || this.categoria(p.categoriaId)?.categoriaPadreId === c))) return false;
         if (ests.length && !ests.includes(p.estado)) return false;
-        if (fa.some(([k, xs]) => !xs.includes(String(p.atributos?.[k] ?? '')))) return false;
+        // Una lista de varias opciones guarda un arreglo: basta con que tenga alguna de las elegidas.
+        if (fa.some(([k, xs]) => !valoresAtributo(p.atributos?.[k]).some((v) => xs.includes(v)))) return false;
         if (p.precio < min || (max < PMAX && p.precio > max)) return false;
         if (m === 'activos' && p.estado !== 'activo') return false;
         if (m === 'bajo' && this.estadoStock(p.id) !== 'bajo') return false;
@@ -727,4 +728,9 @@ export class ProductosStore {
     this.destello.set(new Set(ids));
     setTimeout(() => this.destello.set(new Set()), 1800);
   }
+}
+
+/** Lo guardado en un campo propio como textos (`['Negro', 'Azul']`, `['true']`), para filtrar. */
+function valoresAtributo(v: unknown): string[] {
+  return Array.isArray(v) ? v.map(String) : [String(v ?? '')];
 }

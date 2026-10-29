@@ -127,10 +127,9 @@ export class AltasPendientesPageComponent {
   protected readonly segundos = signal(0);
   protected readonly guionHecho = signal<ReadonlySet<number>>(new Set());
   protected readonly extras = signal<ReadonlySet<number>>(new Set());
-  /** Días de prueba acordados en la llamada. `null` = los del plan. */
+  /** Días de prueba que eligió staff en la llamada. `null` = no eligió (sin prueba). */
   protected readonly diasPrueba = signal<number | null>(null);
   protected readonly diasPruebaMax = DIAS_PRUEBA_MAX;
-  protected readonly opcionesPrueba = [0, 7, 15, 30];
   protected readonly rechazoAbierto = signal(false);
   protected readonly motivoRechazo = signal('');
   private crono?: ReturnType<typeof setInterval>;
@@ -522,8 +521,13 @@ export class AltasPendientesPageComponent {
     return hecho.length ? hecho : [`Datos de ${x?.nombre ?? ''} corroborados`];
   });
 
-  /** Días de prueba con los que arranca: los elegidos o los del plan. */
-  protected readonly diasPruebaEfectivos = computed(() => this.diasPrueba() ?? this.plan()?.diasPrueba ?? 7);
+  /** Días de prueba con los que arranca: solo los que eligió staff. La
+   *  prueba nunca se da sola; los días del plan son una sugerencia. */
+  protected readonly diasPruebaEfectivos = computed(() => this.diasPrueba() ?? 0);
+  /** Días que sugiere el plan elegido (0 = no sugiere). */
+  protected readonly diasSugeridos = computed(() => this.plan()?.diasPrueba ?? 0);
+  /** Atajos de días, con los que sugiere el plan aunque no sean de los fijos. */
+  protected readonly opcionesPrueba = computed(() => [...new Set([0, 7, 15, 30, this.diasSugeridos()])].sort((a, b) => a - b));
   protected elegirDiasPrueba(valor: number | string): void {
     const n = Math.round(Number(String(valor).replace(/\D/g, '')));
     this.diasPrueba.set(Number.isFinite(n) ? Math.max(0, Math.min(DIAS_PRUEBA_MAX, n)) : 0);

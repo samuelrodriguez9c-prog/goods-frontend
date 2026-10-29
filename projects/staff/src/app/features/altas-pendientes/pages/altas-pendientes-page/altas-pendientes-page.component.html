@@ -287,10 +287,12 @@
                     <span class="pt-[3px] text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400">Prueba gratis</span>
                     <div class="flex flex-col gap-2">
                       <p class="text-xs text-gray-500">
-                        El plan {{ plan()?.nombre ?? '' }} trae {{ plan()?.diasPrueba ?? 7 }} días. Puedes darle más (hasta {{ diasPruebaMax }}) o ninguno. Una sola prueba por negocio.
+                        Solo si se la quieres dar: sin elegir, arranca sin prueba.
+                        @if (diasSugeridos() > 0) { El plan {{ plan()?.nombre ?? '' }} sugiere {{ diasSugeridos() }} días. }
+                        Hasta {{ diasPruebaMax }} días; una sola prueba por negocio.
                       </p>
                       <div class="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Días de prueba">
-                        @for (d of opcionesPrueba; track d) {
+                        @for (d of opcionesPrueba(); track d) {
                           <button
                             type="button"
                             role="radio"
@@ -299,7 +301,7 @@
                             class="rounded-full px-[11px] py-[5px] text-xs font-medium transition-colors"
                             [class]="diasPruebaEfectivos() === d ? 'bg-[#303030] text-white' : 'bg-[#f1f1f1] text-[#303030] hover:bg-[#e6e6e6]'"
                           >
-                            {{ d === 0 ? 'Sin prueba' : d + ' días' }}
+                            {{ d === 0 ? 'Sin prueba' : d + ' días' }}@if (d > 0 && d === diasSugeridos()) {<span class="ml-1 opacity-60">· sugerido</span>}
                           </button>
                         }
                         <label class="flex items-center gap-1.5 rounded-full bg-[#f1f1f1] py-[3px] pl-[11px] pr-[5px] text-xs text-gray-600">

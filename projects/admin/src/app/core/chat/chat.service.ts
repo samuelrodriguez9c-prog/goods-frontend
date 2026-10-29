@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { RespuestaPaginada } from '../usuarios/models/usuario.model';
-import { Conversacion, Mensaje } from './models/conversacion.model';
+import { Conversacion, EstadoSoporte, Mensaje } from './models/conversacion.model';
 
 /**
  * Chat de la Empresa con soporte de Goods: crear la propia conversación,
@@ -43,5 +43,40 @@ export class ChatService {
   /** @param respondeAId - Mensaje que se cita al responder (opcional). */
   enviarMensaje(id: number, cuerpo: string, respondeAId?: number): Observable<Mensaje> {
     return this.http.post<Mensaje>(`${this.base}/${id}/mensajes`, { cuerpo, respondeAId });
+  }
+
+  /**
+   * Mensaje con imágenes (hasta 4, PNG/JPG/WebP/GIF de 5 MB). El texto
+   * puede ir vacío si va al menos una.
+   */
+  enviarConImagenes(
+    id: number,
+    cuerpo: string,
+    archivos: File[],
+    respondeAId?: number,
+  ): Observable<Mensaje> {
+    const fd = new FormData();
+    archivos.forEach((a) => fd.append('archivos', a, a.name));
+    if (cuerpo) fd.append('cuerpo', cuerpo);
+    if (respondeAId) fd.append('respondeAId', String(respondeAId));
+    return this.http.post<Mensaje>(`${this.base}/${id}/mensajes/adjuntos`, fd);
+  }
+
+  /** Marca leídos los mensajes de soporte al abrir el hilo (las ✓✓ del otro lado). */
+  marcarLeida(id: number): Observable<{ marcados: number; leidoEn: string | null }> {
+    return this.http.post<{ marcados: number; leidoEn: string | null }>(
+      `${this.base}/${id}/leida`,
+      {},
+    );
+  }
+
+  /** Una imagen del chat como blob: es privada y el `<img>` no puede pedirla con la sesión. */
+  imagen(id: number, adjuntoId: number): Observable<Blob> {
+    return this.http.get(`${this.base}/${id}/adjuntos/${adjuntoId}`, { responseType: 'blob' });
+  }
+
+  /** Si hay alguien de soporte conectado, el horario, el tiempo de respuesta y hasta 3 caras del equipo. */
+  estadoSoporte(): Observable<EstadoSoporte> {
+    return this.http.get<EstadoSoporte>(`${environment.apiUrl}/chat/soporte/estado`);
   }
 }

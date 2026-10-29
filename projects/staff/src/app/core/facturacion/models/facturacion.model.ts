@@ -2,7 +2,8 @@
  * Espejo de las respuestas de `/facturacion`. Las fechas llegan como ISO string.
  */
 
-export type MetodoPago = 'transferencia' | 'deposito' | 'efectivo' | 'paypal' | 'otro';
+/** `wompi`: pago en línea que registra solo el backend; nunca se elige a mano. */
+export type MetodoPago = 'transferencia' | 'deposito' | 'efectivo' | 'paypal' | 'wompi' | 'otro';
 export type MonedaPago = 'COP' | 'USD';
 export type EstadoPago = 'valido' | 'anulado';
 export type TotalesPorMoneda = Record<MonedaPago, number>;
@@ -12,6 +13,7 @@ export const METODOS_PAGO: { valor: MetodoPago; texto: string }[] = [
   { valor: 'deposito', texto: 'Depósito' },
   { valor: 'efectivo', texto: 'Efectivo' },
   { valor: 'paypal', texto: 'PayPal' },
+  { valor: 'wompi', texto: 'Wompi (en línea)' },
   { valor: 'otro', texto: 'Otro' },
 ];
 
@@ -201,4 +203,57 @@ export interface RegistrarPagoPayload {
 export interface PagoRegistrado extends PagoDetalle {
   /** Aviso (no bloquea): el monto no coincide con el precio del plan. */
   diferenciaConPlan: { precioPlan: number; diferencia: number } | null;
+}
+
+// Pago en línea (Wompi)
+
+export type EstadoTransaccionWompi = 'PENDING' | 'APPROVED' | 'DECLINED' | 'VOIDED' | 'ERROR';
+
+/**
+ * Qué hizo Goods con una transacción aprobada: `registrado` (pago cargado y
+ * plan renovado), `cobro_ya_pagado` (ver si se reembolsa), `sin_cobro` (el
+ * link no es de ningún cobro) o `error` (se reintenta; se puede verificar).
+ */
+export type ResultadoIntento = 'registrado' | 'cobro_ya_pagado' | 'sin_cobro' | 'error';
+
+/** Una fila de la bitácora: un link creado o una transacción de Wompi. */
+export interface IntentoPagoEnLinea {
+  id: number;
+  tipo: 'link' | 'transaccion';
+  creadoEn: string;
+  actualizadoEn: string;
+  cobroId: number | null;
+  linkId: string | null;
+  linkUrl: string | null;
+  /** Link: cuándo lo reemplazó otro «Pagar». */
+  reemplazadoEn: string | null;
+  /** Link: quién tocó «Pagar». */
+  creadoPor: PersonaRef | null;
+  transaccionId: string | null;
+  estado: EstadoTransaccionWompi | null;
+  monto: number | null;
+  /** Ya en texto: «Tarjeta», «Nequi», «PSE»… */
+  medio: string | null;
+  /** Motivo de Wompi o del banco (sobre todo en un rechazo). */
+  mensaje: string | null;
+  correoPagador: string | null;
+  /** Se pagó con un link que otro «Pagar» ya había reemplazado. */
+  linkReemplazado: boolean;
+  resultado: ResultadoIntento | null;
+  pagoId: number | null;
+  historial: { estado: EstadoTransaccionWompi; en: string; origen: 'aviso' | 'consulta' | 'staff' }[];
+}
+
+export interface PagoEnLineaEmpresa {
+  /** Las llaves de Wompi están configuradas en el backend. */
+  habilitado: boolean;
+  cobroPendiente: {
+    id: number;
+    monto: number;
+    fechaLimite: string;
+    linkUrl: string | null;
+    transaccionEnCurso: string | null;
+  } | null;
+  /** Lo más nuevo primero (hasta 60). */
+  intentos: IntentoPagoEnLinea[];
 }

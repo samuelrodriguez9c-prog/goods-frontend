@@ -1,10 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { TablerIconComponent } from '@tabler/icons-angular';
 import { CatalogoStore } from '../../../../shared/catalogo.store';
-import { codigoCompra, cop } from '../../../../shared/formato';
+import { cop } from '../../../../shared/formato';
 import { icono } from '../../../../shared/ui/iconos';
 import { PlanReponer, miniaturaDe } from '../../inventario.modelo';
 import { MiniaturaProductoComponent } from '../miniatura-producto/miniatura-producto.component';
+
+const URGENCIA = {
+  agotado: { texto: 'Agotado', tinta: '#b42318' },
+  urgente: { texto: 'Se acaba antes', tinta: '#d82c0d' },
+  pronto: { texto: 'Pronto', tinta: '#8a5a00' },
+} as const;
 
 /** Modal "Reponer stock": muestra el plan (una compra pendiente por proveedor) antes de crearlo. */
 @Component({
@@ -22,7 +28,12 @@ import { MiniaturaProductoComponent } from '../miniatura-producto/miniatura-prod
       <div class="flex items-start gap-2.5 pt-4 pr-3.5 pb-2.5 pl-4.5">
         <span class="flex min-w-0 flex-1 flex-col gap-[3px]">
           <span class="font-[Archivo] text-[16px] font-semibold">Reponer stock</span>
-          <span class="text-[12.5px] leading-[1.45] text-[#6b7280]">Armamos una compra pendiente por proveedor con lo que está bajo el mínimo. Cantidad sugerida: hasta el doble del mínimo.</span>
+          <span class="text-[12.5px] leading-[1.45] text-[#6b7280]">{{ explicacion() }}</span>
+          @if (plan().tendencia; as t) {
+            <span class="mt-1 flex items-center gap-1.5 text-[12px] font-medium" [style.color]="t.sube ? '#087b5d' : '#8a5a00'">
+              <tabler-icon [icon]="icono(t.sube ? 'trending-up' : 'trending-down')" [size]="14" [stroke]="2" />{{ t.texto }}
+            </span>
+          }
         </span>
         <button type="button" (click)="cerrar.emit()" class="flex cursor-pointer rounded-[7px] p-[5px] text-[#6b7280] hover:bg-[#f1f1f1]!">
           <tabler-icon [icon]="icono('x')" [size]="16" [stroke]="2" />
@@ -40,11 +51,19 @@ import { MiniaturaProductoComponent } from '../miniatura-producto/miniatura-prod
                 }
                 <span class="font-semibold tabular-nums">{{ g.total }}</span>
               </div>
+              @if (g.entrega) {
+                <div class="border-b border-b-[#f5f5f5] px-3 py-1.5 text-[11.5px] text-[#6b7280]">{{ g.entrega }}</div>
+              }
               @for (l of g.lineas; track l.id) {
                 <div class="grid grid-cols-[28px_minmax(0,1fr)_84px_52px_90px] items-center gap-2.5 border-b border-b-[#f5f5f5] px-3 py-[7px]">
                   <app-miniatura-producto [miniatura]="l.miniatura" tamano="modal" />
-                  <span class="truncate">{{ l.nombre }}</span>
-                  <span class="text-right text-[12px] text-[#d82c0d]">{{ l.stock }}</span>
+                  <span class="flex min-w-0 flex-col">
+                    <span class="truncate">{{ l.nombre }}</span>
+                    @if (l.motivo) {
+                      <span class="truncate text-[11.5px] text-[#6b7280]" [title]="l.motivo">{{ l.motivo }}</span>
+                    }
+                  </span>
+                  <span class="text-right text-[12px]" [style.color]="l.tinta">{{ l.etiqueta }}</span>
                   <span class="text-right font-semibold text-[#087b5d]">+{{ l.cantidad }}</span>
                   <span class="text-right tabular-nums">{{ l.subtotal }}</span>
                 </div>
@@ -91,17 +110,26 @@ export class ModalReponerComponent {
       proveedor: g.proveedor?.nombre ?? '—',
       inactivo: !!g.proveedor && !g.proveedor.activo,
       total: cop(g.lineas.reduce((a, l) => a + l.cantidad * l.precio, 0)),
+      entrega: this.plan().entregas?.[g.proveedorId] ?? null,
       lineas: g.lineas.map((l) => ({
         id: l.producto.id,
         nombre: l.producto.nombre,
         miniatura: miniaturaDe(l.producto, this.catalogo),
-        stock: l.stock.disponible + ' / mín ' + l.stock.minimo,
+        motivo: l.motivo ?? null,
+        // Con el plan del backend, la urgencia; si no, el stock frente al mínimo.
+        etiqueta: l.urgencia ? URGENCIA[l.urgencia].texto : l.stock.disponible + ' / mín ' + l.stock.minimo,
+        tinta: l.urgencia ? URGENCIA[l.urgencia].tinta : '#d82c0d',
         cantidad: l.cantidad,
         subtotal: cop(l.cantidad * l.precio),
       })),
     })),
   );
-  protected readonly enCamino = computed(() => this.plan().enCamino.map((x) => x.producto.nombre + ' · ' + codigoCompra(x.compra.id)).join(', '));
+  protected readonly enCamino = computed(() => this.plan().enCamino.map((x) => x.producto.nombre + ' · ' + x.compras.join(', ')).join(', '));
+  protected readonly explicacion = computed(() =>
+    this.plan().entregas
+      ? 'Una compra pendiente por proveedor. Cantidad sugerida: lo que se vende mientras llega el pedido y una semana más, sumando el mínimo y restando lo que ya viene en camino.'
+      : 'Armamos una compra pendiente por proveedor con lo que está bajo el mínimo. Cantidad sugerida: hasta el doble del mínimo.',
+  );
   protected readonly sinProveedor = computed(() => this.plan().sinProveedor.map((p) => p.nombre).join(', '));
   protected readonly textoConfirmar = computed(() => {
     const n = this.plan().grupos.length;

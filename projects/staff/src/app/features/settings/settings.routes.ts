@@ -11,6 +11,6 @@ export const SETTINGS_ROUTES: Routes = [
     path: '',
     component: SettingsPageComponent,
     // Lo lee el rastro de navegación del topbar (`NavigationTrailService`).
-    data: { breadcrumb: 'Settings', icon: 'settings-2' },
+    data: { breadcrumb: 'Configuración', icon: 'settings-2' },
   },
 ];

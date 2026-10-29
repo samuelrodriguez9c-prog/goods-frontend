@@ -76,6 +76,11 @@ export class ProductoService {
     return this.propia(this.http.post<ProductoImagen>(`${this.base}/${id}/imagenes`, { url, orden }));
   }
 
+  /** Orden de la galería: todos los ids en el orden nuevo (el primero es la portada). */
+  ordenarImagenes(id: number, ids: number[]): Observable<ProductoImagen[]> {
+    return this.propia(this.http.patch<ProductoImagen[]>(`${this.base}/${id}/imagenes/orden`, { ids }));
+  }
+
   eliminarImagen(id: number, imagenId: number): Observable<void> {
     return this.propia(this.http.delete<void>(`${this.base}/${id}/imagenes/${imagenId}`));
   }
