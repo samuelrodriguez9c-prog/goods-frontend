@@ -27,6 +27,30 @@ export interface Conversacion {
   cerradaEn: string | null;
   creadoEn: string;
   actualizadoEn: string;
+  /** Solo en la bandeja: mensajes del cliente sin leer. */
+  noLeidos?: number;
+  /** Solo en la bandeja: el primer mensaje del cliente. */
+  tema?: string | null;
+  /** Solo en la bandeja: lo último que se dijo, sin los avisos del sistema. */
+  ultimoMensaje?: UltimoMensaje | null;
+}
+
+export interface UltimoMensaje {
+  id: number;
+  cuerpo: string;
+  autorId: number | null;
+  creadoEn: string;
+  leidoEn: string | null;
+  /** Cuántas imágenes trae («📷 Foto» cuando no hay texto). */
+  adjuntos: number;
+}
+
+/** Imagen del chat. Es privada: se descarga con la sesión (`ChatService.imagen`). */
+export interface Adjunto {
+  id: number;
+  nombre: string;
+  tipo: string;
+  tamano: number;
 }
 
 /** Mensaje citado por un "responder a". El backend resuelve un solo nivel:
@@ -54,17 +78,28 @@ export interface Mensaje {
    * pinta centrado en gris, sin burbuja ni opción de responder. */
   esSistema: boolean;
   creadoEn: string;
+  /** Puede faltar en mensajes viejos o de sistema. */
+  adjuntos?: Adjunto[];
 }
 
 /** Payload del evento de socket `mensaje:nuevo`: más angosto que `Mensaje`
  * porque el backend no emite la entidad completa. */
 export interface EventoMensajeNuevo {
+  id: number;
   conversacionId: number;
   autorId: number | null;
   cuerpo: string;
   creadoEn: string;
   respondeAId: number | null;
   esSistema: boolean;
+  adjuntos?: Adjunto[];
+}
+
+/** Payload de `mensajes:leidos`: `lado` es quien leyó. */
+export interface EventoMensajesLeidos {
+  conversacionId: number;
+  lado: 'cliente' | 'soporte';
+  leidoEn: string;
 }
 
 /** Payload del evento de socket `conversacion:asignada`. */

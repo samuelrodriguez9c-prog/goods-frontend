@@ -3,8 +3,9 @@ import { TablerIconComponent, type TablerIcon } from '@tabler/icons-angular';
 
 /**
  * Cabecera de los módulos lista + hoja (Categorías, Inventario, Proveedores,
- * Compras, Pedidos, Clientes): ícono + título + cuenta en gris + pastilla «Al día»,
- * la lectura debajo y las acciones a la derecha (contenido proyectado).
+ * Compras, Pedidos, Clientes, Settings): ícono + título + cuenta en gris +
+ * pastilla «Al día» (o una propia en `[pastilla]`), la lectura debajo y las
+ * acciones a la derecha (contenido proyectado).
  *
  *   <app-modulo-cabecera [icono]="i.packages" titulo="Inventario" [cuenta]="32" [lectura]="lectura()">
  *     <button ...>Exportar</button>
@@ -32,6 +33,7 @@ import { TablerIconComponent, type TablerIcon } from '@tabler/icons-angular';
             Al día
           </span>
         }
+        <ng-content select="[pastilla]" />
       </div>
       <p class="mt-2 max-w-160 text-[13px] leading-[20px] text-pretty text-[#6b7280]">{{ lectura() }}</p>
     </div>

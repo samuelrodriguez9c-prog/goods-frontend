@@ -32,6 +32,15 @@ export class RealtimeService {
    * listener se registra al suscribirse y se saca al desuscribirse; el
    * socket queda abierto para el resto de la app.
    */
+  /**
+   * Cierra el socket y lo olvida: el próximo `escuchar()` abre uno nuevo con
+   * el token de ese momento. Se usa cuando el backend corta la sesión.
+   */
+  reiniciar(): void {
+    this.socket?.disconnect();
+    this.socket = null;
+  }
+
   escuchar<T>(evento: string): Observable<T> {
     const socket = this.conectar();
     return new Observable<T>((subscriber) => {

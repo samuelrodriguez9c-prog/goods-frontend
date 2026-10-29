@@ -1,0 +1,595 @@
+@if (abierto()) {
+  @let p = panel();
+  <div
+    role="dialog"
+    aria-label="Soporte de Goods"
+    class="fixed z-[80] flex animate-[sp-mini-in_360ms_cubic-bezier(.2,.9,.25,1.1)] flex-col overflow-hidden rounded-[20px] bg-white font-sans shadow-[0_0_0_1px_rgba(0,0,0,.06),0_32px_70px_-24px_rgba(0,0,0,.55)]"
+    [style.left.px]="p.left"
+    [style.top.px]="p.top"
+    [style.width.px]="p.w"
+    [style.height.px]="p.h"
+    [style.transform-origin]="p.origen"
+    [style.transition]="p.transicion"
+    [style.opacity]="p.op"
+    [style.transform]="p.escala"
+  >
+    <!-- Cabecera -->
+    <div class="flex h-[60px] shrink-0 items-center gap-2.5 border-b border-[#f2f2f2] pr-2.5 pl-3">
+      @if (vista() !== 'lista') {
+        @let c = cab();
+        @if (convs().length) {
+          <button
+            type="button"
+            (click)="verLista()"
+            title="Todas las conversaciones"
+            class="flex rounded-full p-1.5 text-[#6b7280] hover:bg-[#f4f4f4] hover:text-[#111827]"
+          >
+            <app-ic nombre="chevron-left" [size]="18" />
+          </button>
+        }
+        <span
+          class="relative flex size-[34px] shrink-0 items-center justify-center rounded-full font-display text-xs font-semibold"
+          [style.background]="c.tono[0]"
+          [style.color]="c.tono[1]"
+        >
+          @if (c.foto) {
+            <img [src]="c.foto" alt="" class="size-full rounded-full object-cover" />
+          } @else if (c.ini) {
+            {{ c.ini }}
+          } @else {
+            <app-ic nombre="headset" [size]="17" />
+          }
+          @if (c.enLinea) {
+            <span
+              class="absolute right-0 bottom-0 size-[9px] rounded-full bg-[#29845a] shadow-[0_0_0_2px_#fff]"
+            ></span>
+          }
+        </span>
+        <span class="flex min-w-0 flex-1 flex-col gap-px">
+          <span class="truncate text-sm font-semibold text-[#111827]">{{ c.titulo }}</span>
+          <span
+            class="flex items-center gap-1.5 overflow-hidden text-[11.5px] whitespace-nowrap text-[#6b7280]"
+          >
+            @if (c.ping) {
+              <span class="relative flex size-1.5 shrink-0">
+                <span
+                  class="absolute inset-0 animate-[sp-ping_1.8s_cubic-bezier(0,0,.2,1)_infinite] rounded-full bg-[#29845a]"
+                ></span>
+                <span class="relative size-1.5 rounded-full bg-[#29845a]"></span>
+              </span>
+            }
+            <span class="truncate">{{ c.sub }}</span>
+          </span>
+        </span>
+      } @else {
+        <span
+          class="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-[#303030] text-white"
+          ><app-ic nombre="headset" [size]="17"
+        /></span>
+        <span class="flex min-w-0 flex-1 flex-col gap-px">
+          <span class="text-sm font-semibold text-[#111827]">Soporte de Goods</span>
+          <span class="truncate text-[11.5px] text-[#6b7280]">{{ subLista() }}</span>
+        </span>
+      }
+      <div class="flex items-center gap-0.5">
+        <button
+          type="button"
+          (click)="nueva()"
+          title="Nueva conversación"
+          class="flex rounded-full p-[7px] text-[#6b7280] hover:bg-[#f4f4f4] hover:text-[#111827]"
+        >
+          <app-ic nombre="edit" [size]="18" />
+        </button>
+        <button
+          type="button"
+          (click)="cerrar()"
+          title="Cerrar · Esc"
+          class="flex rounded-full p-[7px] text-[#6b7280] hover:bg-[#f4f4f4] hover:text-[#111827]"
+        >
+          <app-ic nombre="x" [size]="18" />
+        </button>
+      </div>
+    </div>
+
+    @if (vista() === 'lista') {
+      <!-- Lista de conversaciones -->
+      <div class="sin-barra min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-3">
+        @for (it of lista(); track it.c.id) {
+          <button
+            type="button"
+            (click)="verHilo(it.c.id)"
+            class="grid w-full animate-[sp-msg-in_.28s_cubic-bezier(.2,.8,.2,1)_both] grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-xl p-2.5 text-left transition-colors duration-150 hover:!bg-[#f7f7f7]"
+            [style.background]="it.noLeidos ? '#f4fbfa' : 'transparent'"
+          >
+            <span
+              class="relative flex size-9 items-center justify-center rounded-full font-display text-xs font-semibold"
+              [style.background]="it.tono[0]"
+              [style.color]="it.tono[1]"
+            >
+              @if (it.foto) {
+                <img [src]="it.foto" alt="" class="size-full rounded-full object-cover" />
+              } @else {
+                {{ it.ini }}
+              }
+              @if (it.c.estado === 'abierta') {
+                <span
+                  class="absolute right-0 bottom-0 size-[9px] rounded-full bg-[#29845a] shadow-[0_0_0_2px_#fff]"
+                ></span>
+              }
+            </span>
+            <span class="flex min-w-0 flex-col gap-0.5">
+              <span class="truncate text-[13px] font-semibold text-[#111827]">{{ it.tema }}</span>
+              <span class="truncate text-xs text-[#6b7280]">{{ it.ultimo }}</span>
+            </span>
+            <span class="flex flex-col items-end gap-[5px]">
+              <span class="text-[11px] whitespace-nowrap text-[#9ca3af]">{{ it.cuando }}</span>
+              @if (it.noLeidos) {
+                <span
+                  class="flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#2be0d5] px-[5px] text-[10.5px] font-bold text-[#003331]"
+                  >{{ it.noLeidos }}</span
+                >
+              }
+              @if (it.c.estado === 'cerrada') {
+                <span class="text-[10.5px] font-medium text-[#9ca3af]">Cerrada</span>
+              }
+            </span>
+          </button>
+        }
+      </div>
+      <div class="shrink-0 px-3 pt-2.5 pb-3">
+        <button
+          type="button"
+          (click)="nueva()"
+          class="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-[#303030] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] hover:bg-[#1a1a1a]"
+        >
+          <app-ic nombre="message-plus" />Escribir a soporte
+        </button>
+      </div>
+    } @else {
+      <div #hilo class="sin-barra min-h-0 flex-1 overflow-y-auto">
+        @if (vista() === 'nueva') {
+          <!-- Conversación nueva: saludo y temas rápidos -->
+          <div class="flex min-h-full flex-col justify-end gap-3.5 px-4 pt-6 pb-2">
+            <div
+              class="flex animate-[sp-msg-in_.32s_cubic-bezier(.2,.8,.2,1)_both] flex-col gap-1.5"
+            >
+              @let b = bienvenida();
+              <div class="mb-1.5 flex">
+                @for (e of b.equipo; track e.id) {
+                  <span
+                    class="relative -mr-2 flex size-[30px] items-center justify-center rounded-full font-display text-[11px] font-semibold shadow-[0_0_0_2px_#fff]"
+                    [style.background]="tonoCara(e)[0]"
+                    [style.color]="tonoCara(e)[1]"
+                    [title]="e.nombres"
+                  >
+                    @if (e.imagenPerfil) {
+                      <img
+                        [src]="e.imagenPerfil"
+                        alt=""
+                        class="size-full rounded-full object-cover"
+                      />
+                    } @else {
+                      {{ iniCara(e) }}
+                    }
+                  </span>
+                } @empty {
+                  <span
+                    class="flex size-[30px] items-center justify-center rounded-full bg-[#303030] text-white shadow-[0_0_0_2px_#fff]"
+                    ><app-ic nombre="headset" [size]="15"
+                  /></span>
+                }
+              </div>
+              <p
+                class="m-0 font-display text-xl leading-[25px] font-semibold tracking-[-0.01em] text-[#111827]"
+              >
+                ¿En qué te ayudamos?
+              </p>
+              <p class="m-0 text-[13px] leading-[19px] text-[#6b7280]">
+                {{ b.texto }}
+              </p>
+            </div>
+            <div class="flex flex-col">
+              @for (t of temas; track t.t; let k = $index) {
+                <button
+                  type="button"
+                  (click)="elegirTema(t.t)"
+                  class="flex w-full animate-[sp-msg-in_.3s_cubic-bezier(.2,.8,.2,1)_both] items-center gap-3 rounded-[11px] px-2.5 py-2 text-left text-[13.5px] text-[#4b5563] transition-colors duration-150 hover:bg-[#f5f5f5] hover:text-[#111827]"
+                  [style.animation-delay.ms]="120 + k * 55"
+                >
+                  <app-ic [nombre]="t.icono" [size]="17" class="text-[#6b7280]" /><span
+                    class="min-w-0 flex-1"
+                    >{{ t.t }}</span
+                  >
+                </button>
+              }
+            </div>
+          </div>
+        } @else {
+          <!-- Hilo -->
+          <div class="flex flex-col gap-0.5 px-3.5 pt-3.5 pb-2.5">
+            @for (it of items(); track $index) {
+              @switch (it.k) {
+                @case ('dia') {
+                  <div class="flex justify-center pt-2.5 pb-1.5">
+                    <span
+                      class="text-[11px] font-semibold tracking-[.04em] text-[#9ca3af] uppercase"
+                      >{{ it.t }}</span
+                    >
+                  </div>
+                }
+                @case ('sis') {
+                  <div
+                    class="flex animate-[sp-msg-in_.28s_cubic-bezier(.2,.8,.2,1)_both] justify-center py-1.5"
+                  >
+                    <span
+                      class="flex max-w-[88%] items-center gap-1.5 rounded-full bg-[#f4f4f4] px-[11px] py-1 text-center text-[11.5px] text-[#6b7280]"
+                    >
+                      <app-ic [nombre]="it.icono" [size]="13" class="shrink-0" />{{ it.m.cuerpo }}
+                    </span>
+                  </div>
+                }
+                @case ('msg') {
+                  @let m = it.m;
+                  <div
+                    (mouseenter)="hoverMsg.set(m.id)"
+                    (mouseleave)="hoverMsg.set(null)"
+                    class="flex animate-[sp-msg-in_.28s_cubic-bezier(.2,.8,.2,1)_both] items-end gap-2"
+                    [class.flex-row-reverse]="it.mio"
+                    [style.margin-top.px]="it.primero ? 10 : 0"
+                  >
+                    <span
+                      class="flex size-[26px] shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+                      [style.background]="tonoDe(m.autor)[0]"
+                      [style.color]="tonoDe(m.autor)[1]"
+                      [style.opacity]="it.ultimo && !it.mio ? 1 : 0"
+                    >
+                      @if (m.autor?.imagenPerfil) {
+                        <img
+                          [src]="m.autor?.imagenPerfil"
+                          alt=""
+                          class="size-full rounded-full object-cover"
+                        />
+                      } @else {
+                        {{ iniDe(m.autor) }}
+                      }
+                    </span>
+                    <div
+                      class="flex max-w-[78%] min-w-0 flex-col"
+                      [style.align-items]="it.mio ? 'flex-end' : 'flex-start'"
+                    >
+                      @if (m.adjuntos?.length) {
+                        <div class="mb-1 grid gap-1" [class.grid-cols-2]="m.adjuntos!.length > 1">
+                          @for (a of m.adjuntos; track a.id) {
+                            @if (imgs()[a.id]; as url) {
+                              <a
+                                [href]="url"
+                                target="_blank"
+                                rel="noopener"
+                                [title]="a.nombre"
+                                class="block overflow-hidden rounded-[14px] bg-[#f4f4f4] shadow-[0_0_0_1px_rgba(0,0,0,.06)]"
+                              >
+                                <img
+                                  [src]="url"
+                                  [alt]="a.nombre"
+                                  class="block object-cover"
+                                  [class]="
+                                    m.adjuntos!.length > 1
+                                      ? 'size-[104px]'
+                                      : 'max-h-60 max-w-[220px]'
+                                  "
+                                />
+                              </a>
+                            } @else {
+                              <span
+                                class="flex items-center justify-center rounded-[14px] bg-[#f4f4f4] text-[#b5b5b5]"
+                                [class]="
+                                  m.adjuntos!.length > 1 ? 'size-[104px]' : 'h-[120px] w-[180px]'
+                                "
+                                [title]="a.nombre"
+                              >
+                                <app-ic nombre="photo" [size]="20" />
+                              </span>
+                            }
+                          }
+                        </div>
+                      }
+                      <div
+                        class="px-[13px] py-2 text-[13.5px] leading-[19px] text-pretty"
+                        [class.hidden]="!m.cuerpo && !m.respondeA"
+                        [style.border-radius]="it.radio"
+                        [style.background]="it.mio ? '#303030' : '#f4f4f4'"
+                        [style.color]="it.mio ? '#fff' : '#111827'"
+                      >
+                        @if (m.respondeA; as c) {
+                          <div
+                            class="-mx-[5px] -mt-px mb-1.5 rounded-[10px] px-2 py-[5px] text-xs leading-4"
+                            [style.background]="it.mio ? 'rgba(255,255,255,.12)' : '#fff'"
+                            [style.color]="it.mio ? 'rgba(255,255,255,.8)' : '#6b7280'"
+                          >
+                            <span class="block font-semibold">{{
+                              c.autorId === yoId() ? 'Tú' : nombre(c.autor)
+                            }}</span>
+                            <span class="block truncate">{{ textoDe(c) }}</span>
+                          </div>
+                        }
+                        <span class="whitespace-pre-wrap">{{ m.cuerpo }}</span>
+                      </div>
+                      @if (it.ultimo) {
+                        <span
+                          class="flex items-center gap-1 px-1 pt-[3px] text-[10.5px] text-[#9ca3af]"
+                          >{{ hora(m.creadoEn) }}
+                          @if (it.mio) {
+                            <app-ic
+                              [nombre]="m.leidoEn ? 'checks' : 'check'"
+                              [size]="13"
+                              [style.color]="m.leidoEn ? '#00a39b' : '#b5b5b5'"
+                              [title]="m.leidoEn ? 'Leído' : 'Enviado'"
+                            />
+                          }
+                        </span>
+                      }
+                    </div>
+                    <button
+                      type="button"
+                      (click)="responder(m)"
+                      title="Responder"
+                      class="mb-1 flex shrink-0 rounded-full p-[5px] text-[#9ca3af] transition-opacity duration-150 hover:bg-[#f4f4f4] hover:text-[#111827]"
+                      [style.opacity]="hoverMsg() === m.id && !cerrada() ? 1 : 0"
+                    >
+                      <app-ic nombre="arrow-back-up" [size]="14" />
+                    </button>
+                  </div>
+                }
+              }
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Pie: conversación cerrada o campo para escribir -->
+      <div class="flex shrink-0 flex-col gap-1.5 px-3 pt-2 pb-2.5">
+        @if (cerrada()) {
+          <div class="flex flex-col items-center gap-2 rounded-2xl bg-[#f7f7f7] p-3">
+            <span class="text-center text-[12.5px] text-[#6b7280]"
+              >{{ conv()?.agenteAsignado?.nombres ?? 'Soporte' }} cerró esta conversación. Si
+              necesitas algo más, escríbenos de nuevo.</span
+            >
+            <button
+              type="button"
+              (click)="nueva()"
+              class="flex items-center gap-1.5 rounded-full bg-[#303030] px-[13px] py-1.5 text-[12.5px] font-medium text-white hover:bg-[#1a1a1a]"
+            >
+              <app-ic nombre="message-plus" [size]="14" />Escribir de nuevo
+            </button>
+          </div>
+        } @else {
+          @if (respondiendo(); as r) {
+            <div
+              class="flex animate-[sp-msg-in_.2s_ease-out] items-center gap-2 rounded-xl bg-[#f7f7f7] py-[7px] pr-2 pl-3"
+            >
+              <app-ic nombre="arrow-back-up" [size]="14" class="text-[#9ca3af]" />
+              <span class="flex min-w-0 flex-1 flex-col">
+                <span class="text-[11.5px] font-semibold text-[#4b5563]"
+                  >Respondiendo a {{ r.autorId === yoId() ? 'ti' : nombre(r.autor) }}</span
+                >
+                <span class="truncate text-xs text-[#8a8a8a]">{{ textoDe(r) }}</span>
+              </span>
+              <button
+                type="button"
+                (click)="respondiendo.set(null)"
+                title="Cancelar"
+                class="flex rounded-full p-1 text-[#9ca3af] hover:bg-[#ebebeb] hover:text-[#111827]"
+              >
+                <app-ic nombre="x" [size]="13" />
+              </button>
+            </div>
+          }
+          <div
+            class="rounded-3xl border bg-white p-1 transition-[border-color,box-shadow] duration-200"
+            [style.border-color]="foco() ? '#cfcfcf' : '#e5e5e5'"
+            [style.box-shadow]="
+              foco()
+                ? '0 0 0 4px rgba(10,10,10,.04),0 10px 26px -18px rgba(0,0,0,.35)'
+                : '0 6px 22px -20px rgba(0,0,0,.3)'
+            "
+          >
+            @if (archivos().length) {
+              <div class="flex gap-1.5 px-1.5 pt-1.5 pb-1">
+                @for (a of archivos(); track a.url; let i = $index) {
+                  <span
+                    class="relative size-14 shrink-0 animate-[sp-msg-in_.2s_ease-out] overflow-hidden rounded-xl bg-[#f4f4f4] shadow-[0_0_0_1px_rgba(0,0,0,.06)]"
+                  >
+                    <img [src]="a.url" [alt]="a.f.name" class="size-full object-cover" />
+                    <button
+                      type="button"
+                      (click)="quitarArchivo(i)"
+                      title="Quitar"
+                      class="absolute top-1 right-1 flex rounded-full bg-[rgba(10,10,10,.65)] p-0.5 text-white hover:bg-[#0a0a0a]"
+                    >
+                      <app-ic nombre="x" [size]="11" />
+                    </button>
+                  </span>
+                }
+              </div>
+            }
+            <div class="flex items-end gap-1">
+              <input
+                #archivo
+                type="file"
+                multiple
+                [accept]="tiposImagen"
+                class="hidden"
+                (change)="alElegir($event)"
+              />
+              <button
+                type="button"
+                (click)="elegirArchivos()"
+                title="Adjuntar captura"
+                [disabled]="archivos().length >= 4"
+                class="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#f4f4f4] text-[#4b5563] hover:bg-[#ebebeb] hover:text-[#111827] disabled:opacity-50"
+              >
+                <app-ic nombre="paperclip" [size]="17" />
+              </button>
+              <textarea
+                #composer
+                rows="1"
+                [value]="texto()"
+                (input)="texto.set($any($event.target).value)"
+                (keydown)="tecla($event)"
+                (paste)="alPegar($event)"
+                (focus)="foco.set(true)"
+                (blur)="foco.set(false)"
+                [placeholder]="vista() === 'nueva' ? 'Cuéntanos qué pasó…' : 'Escribe un mensaje…'"
+                class="sin-barra box-border block max-h-[120px] min-h-9 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-1 py-[7px] text-sm leading-[22px] text-[#111827] outline-none [field-sizing:content]"
+              ></textarea>
+              <button
+                type="button"
+                (click)="enviar()"
+                title="Enviar · Enter"
+                [disabled]="!puedeEnviar()"
+                class="flex size-9 shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform] duration-200 active:scale-[.88]"
+                [style.background]="puedeEnviar() ? '#0a0a0a' : '#ececec'"
+                [style.color]="puedeEnviar() ? '#fff' : '#a3a3a3'"
+              >
+                <app-ic
+                  [nombre]="enviando() ? 'loader' : 'arrow-up'"
+                  [size]="17"
+                  [class.animate-spin]="enviando()"
+                />
+              </button>
+            </div>
+          </div>
+          <p class="m-0 text-center text-[11px] text-[#9ca3af]">
+            @if (vista() === 'nueva' && archivos().length && !texto().trim()) {
+              Cuéntanos qué pasó para enviar las imágenes
+            } @else {
+              Enter para enviar · Shift + Enter para salto de línea
+            }
+          </p>
+        }
+      </div>
+    }
+  </div>
+}
+
+<!-- Lanzador pegado al borde derecho -->
+@let l = lanz();
+<div
+  (mouseenter)="entrar()"
+  (mouseleave)="salir()"
+  class="pointer-events-none fixed right-0 z-[81] h-11 w-[360px]"
+  [style.top.px]="y()"
+  [style.transition]="l.transicion"
+>
+  <button
+    type="button"
+    (pointerdown)="bajar($event)"
+    (keydown)="teclaBoton($event)"
+    [attr.aria-expanded]="abierto()"
+    [attr.aria-label]="etiquetaTitulo()"
+    [title]="etiquetaTitulo()"
+    class="pointer-events-auto absolute top-0 h-11 touch-none overflow-hidden rounded-[22px] border-0 bg-[#0a0a0a] text-white select-none [transition:width_480ms_cubic-bezier(.3,1.35,.5,1),right_460ms_cubic-bezier(.3,1.35,.5,1),box-shadow_.3s]"
+    [style.right.px]="l.right"
+    [style.width.px]="l.w"
+    [style.box-shadow]="l.sombra"
+    [style.cursor]="l.cursor"
+    [style.animation]="l.anim"
+  >
+    <!-- Etiqueta del hover -->
+    <span
+      #etiqueta
+      class="absolute top-[5px] right-[66px] flex items-center gap-[9px] whitespace-nowrap [transition:opacity_.25s,transform_.45s_cubic-bezier(.3,1.4,.5,1)]"
+      [style.opacity]="l.exp ? 1 : 0"
+      [style.transform]="l.labT"
+    >
+      @if (l.agente; as ag) {
+        <span
+          class="flex size-[22px] shrink-0 items-center justify-center rounded-full text-[10.5px] font-bold shadow-[0_0_0_2px_#0a0a0a,0_0_0_3.5px_#2be0d5]"
+          [style.background]="tonoDe(ag)[0]"
+          [style.color]="tonoDe(ag)[1]"
+        >
+          @if (ag.imagenPerfil) {
+            <img [src]="ag.imagenPerfil" alt="" class="size-full rounded-full object-cover" />
+          } @else {
+            {{ iniDe(ag) }}
+          }
+        </span>
+      }
+      <span class="flex flex-col items-end gap-px leading-[1.15]">
+        <span class="flex items-center gap-1.5 text-[12.5px] font-semibold tracking-[.01em]">
+          Soporte
+          <span class="relative flex size-1.5">
+            <span
+              class="absolute inset-0 animate-[sp-ping_1.8s_cubic-bezier(0,0,.2,1)_infinite] rounded-full bg-[#2be0d5]"
+            ></span>
+            <span class="relative size-1.5 rounded-full bg-[#2be0d5]"></span>
+          </span>
+        </span>
+        <span class="text-[11px]" [style.color]="l.subColor">{{ l.sub }}</span>
+      </span>
+    </span>
+
+    <!-- Cara: ojos (miran al mouse; sonríen en el hover) que se vuelven X al abrir -->
+    <span
+      class="absolute top-[11px] flex h-[22px] w-7 items-center justify-center [transition:right_460ms_cubic-bezier(.3,1.35,.5,1)]"
+      [style.right.px]="l.faceR"
+    >
+      <span
+        class="absolute flex items-center gap-1 [transition:transform_.4s_cubic-bezier(.3,1.5,.5,1),opacity_.25s]"
+        [style.opacity]="l.ojosOp"
+        [style.transform]="l.ojosT"
+      >
+        @if (l.exp) {
+          <span
+            class="mt-[5px] size-[9px] rotate-[-45deg] animate-[sp-pop_.3s_cubic-bezier(.3,1.6,.5,1)_both] rounded-full border-[2.5px] border-[#2be0d5] border-b-transparent border-l-transparent"
+          ></span>
+          <span
+            class="mt-[5px] size-[9px] rotate-[-45deg] animate-[sp-pop_.3s_cubic-bezier(.3,1.6,.5,1)_both] rounded-full border-[2.5px] border-[#2be0d5] border-b-transparent border-l-transparent"
+          ></span>
+        } @else {
+          <span
+            class="h-[9px] w-[5px] animate-[sp-parpadeo_4.2s_infinite] rounded-full bg-white"
+          ></span>
+          <span
+            class="h-[9px] w-[5px] animate-[sp-parpadeo_4.2s_infinite] rounded-full bg-white"
+          ></span>
+        }
+      </span>
+      <app-ic
+        nombre="x"
+        [size]="18"
+        class="absolute [transition:opacity_.25s,transform_.4s_cubic-bezier(.3,1.5,.5,1)]"
+        [style.opacity]="abierto() ? 1 : 0"
+        [style.transform]="abierto() ? 'none' : 'rotate(-90deg) scale(.4)'"
+      />
+    </span>
+  </button>
+
+  <!-- Diadema de soporte: arco, auriculares y micrófono turquesa sobre la cara -->
+  <span
+    class="pointer-events-none absolute -top-1.5 size-14 [transition:right_460ms_cubic-bezier(.3,1.35,.5,1),opacity_.3s,transform_.45s_cubic-bezier(.3,1.5,.5,1)]"
+    [style.right.px]="l.hsRight"
+    [style.opacity]="l.hsOp"
+    [style.transform]="l.diademaT"
+    [style.animation]="l.anim"
+  >
+    <span
+      class="absolute inset-0 rounded-full border-[3px] border-[#2be0d5] border-x-transparent border-b-transparent"
+    ></span>
+    <span
+      class="absolute inset-0 rounded-full border-[3px] border-[#2be0d5] border-y-transparent [clip-path:inset(0_0_50%_0)]"
+    ></span>
+    <span
+      class="absolute top-[19px] -left-[3px] h-[15px] w-[9px] rounded-[5px] bg-[#2be0d5] shadow-[0_4px_10px_-4px_rgba(0,0,0,.4)]"
+    ></span>
+    <span
+      class="absolute top-[19px] -right-[3px] h-[15px] w-[9px] rounded-[5px] bg-[#2be0d5] shadow-[0_4px_10px_-4px_rgba(0,0,0,.4)]"
+    ></span>
+    <span
+      class="absolute top-[31px] left-[3px] h-2 w-[13px] rounded-bl-[7px] border-b-[2.5px] border-l-[2.5px] border-[#2be0d5]"
+    ></span>
+    <span
+      class="absolute top-[35px] left-3.5 size-[5px] rounded-full bg-white shadow-[0_0_0_1.5px_#0a0a0a]"
+    ></span>
+  </span>
+</div>

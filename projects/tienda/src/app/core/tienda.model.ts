@@ -2,6 +2,8 @@ export type Moneda = 'COP' | 'USD';
 
 export interface ProductoPublico {
   id: number;
+  /** Para el enlace directo `/<tienda>/p/<slug>` (con el id si no tiene). */
+  slug: string | null;
   nombre: string;
   descripcion: string | null;
   precio: number;

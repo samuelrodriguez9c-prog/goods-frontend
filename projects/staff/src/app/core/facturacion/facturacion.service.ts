@@ -6,9 +6,11 @@ import {
   CrearDescuentoPayload,
   EstadoCuenta,
   FiltroPagos,
+  IntentoPagoEnLinea,
   ListadoPagos,
   MonedaPago,
   PagoDetalle,
+  PagoEnLineaEmpresa,
   PagoRegistrado,
   RegistrarPagoPayload,
   ResumenFacturacion,
@@ -44,6 +46,16 @@ export class FacturacionService {
 
   estadoCuenta(empresaId: number): Observable<EstadoCuenta> {
     return this.http.get<EstadoCuenta>(`${this.base}/empresas/${empresaId}/estado-cuenta`);
+  }
+
+  /** Links y transacciones de Wompi de la Empresa (aprobadas, pendientes y rechazadas). */
+  pagosEnLinea(empresaId: number): Observable<PagoEnLineaEmpresa> {
+    return this.http.get<PagoEnLineaEmpresa>(`${this.base}/pagos-en-linea/empresas/${empresaId}`);
+  }
+
+  /** Pregunta a Wompi por una transacción; si se aprobó y no estaba, la registra. */
+  verificarPagoEnLinea(transaccionId: string): Observable<IntentoPagoEnLinea & { registrado: boolean }> {
+    return this.http.post<IntentoPagoEnLinea & { registrado: boolean }>(`${this.base}/pagos-en-linea/verificar`, { transaccionId });
   }
 
   /**

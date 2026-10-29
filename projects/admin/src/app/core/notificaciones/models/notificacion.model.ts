@@ -4,6 +4,7 @@ export type TipoNotificacion =
   | 'pedido_estado'
   | 'pago_estado'
   | 'stock_bajo'
+  | 'reposicion_sugerida'
   // Entró un pedido de la tienda en línea.
   | 'pedido_nuevo'
   | 'mensaje_chat'

@@ -6,6 +6,15 @@
     <h1 class="text-3xl font-bold text-gray-900">Iniciar sesión</h1>
     <p class="mb-6 text-sm text-gray-600">Continuar a Goods</p>
 
+    @if (aviso) {
+      <p
+        class="mb-4 flex animate-[fade-in-up_0.2s_ease-out] items-start gap-1.5 rounded-lg bg-field-error-bg px-3 py-2.5 text-sm text-badge-error-solid"
+      >
+        <tabler-icon [icon]="iconError" [size]="16" svgClass="mt-0.5 shrink-0" />
+        {{ aviso }}
+      </p>
+    }
+
     @if (paso() === 'correo') {
       <form
         class="animate-[fade-in-up_0.25s_ease-out] space-y-4"

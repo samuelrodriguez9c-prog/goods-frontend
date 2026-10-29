@@ -60,7 +60,7 @@ export interface FiltroClientes {
 export interface GuardarClientePayload {
   nombre: string;
   /** Campos propios; `null` quita el valor. */
-  atributos?: Record<string, string | number | boolean | null>;
+  atributos?: Record<string, string | number | boolean | string[] | null>;
   telefono?: string | null;
   correo?: string | null;
   documento?: string | null;

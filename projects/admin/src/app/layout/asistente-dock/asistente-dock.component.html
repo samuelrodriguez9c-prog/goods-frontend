@@ -89,6 +89,14 @@
                       }
                     </div>
                     @if (m.id !== store.escribiendoId()) {
+                      @for (a of m.acciones ?? []; track a.id) {
+                        <app-ia-accion [accion]="a" [mensajeId]="m.id" [compacto]="true" />
+                      }
+                      @for (r of m.recuerdos ?? []; track r.id) {
+                        <app-ia-recuerdo [recuerdo]="r" [mensajeId]="m.id" [compacto]="true" />
+                      }
+                    }
+                    @if (m.id !== store.escribiendoId()) {
                       <div class="ia-msg-in flex flex-wrap items-center gap-1">
                         @if (store.herramientasTexto(m); as f) {
                           <span class="mr-1 flex items-center gap-[5px] rounded-full bg-[#f4f4f4] px-[9px] py-[3px] text-[11px] text-[#6b7280]">

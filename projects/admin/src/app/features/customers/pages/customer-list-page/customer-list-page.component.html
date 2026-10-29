@@ -1,7 +1,7 @@
 @if (!(completa() && abierta())) {
   <!-- Cabecera del módulo: título + cuenta + «Al día», lectura y franja de métricas. -->
   <div>
-    <app-modulo-cabecera [icono]="icono('user')" titulo="Clientes" [cuenta]="activos().length" [cuentaTitulo]="pl(activos().length, 'cliente', 'clientes')" [lectura]="lectura">
+    <app-modulo-cabecera [icono]="icono('user')" titulo="Clientes" [cuenta]="activos().length" [cuentaTitulo]="pl(activos().length, 'cliente', 'clientes')">
       <button type="button" (click)="exportar()" class="cursor-pointer rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-[background] duration-200 ease-[ease] hover:bg-[#d4d4d4]!">Exportar</button>
       @if (puedeEditar()) {
         <button type="button" (click)="nuevo()" title="Nuevo cliente (N)" class="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[opacity] duration-200 ease-[ease] hover:opacity-90!">
@@ -9,7 +9,6 @@
         </button>
       }
     </app-modulo-cabecera>
-    <app-franja-metricas [periodos]="periodos" [periodo]="periodo()" [metricas]="metricas()" (cambiarPeriodo)="periodo.set($any($event))" (metrica)="elegirMetrica($event)" />
   </div>
 }
 
@@ -26,23 +25,24 @@
     }
   </app-estado-pagina>
 } @else {
-  <div class="grid min-h-0 flex-1 pb-4 transition-[grid-template-columns] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-columns]="cols()">
+  <div class="-mt-1.5 grid min-h-0 flex-1 transition-[grid-template-columns] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-columns]="cols()"
+    (appAncho)="anchoGrid.set($event)">
     @if (!(completa() && abierta())) {
       <app-lista-modulo
         [grupos]="grupos()" [seleccionadaId]="sel()?.id ?? null" [colapsados]="colapsados()" [buscar]="q()" [cargando]="v.cargando()"
         placeholder="Nombre, celular, correo o documento" [resultados]="f.pl(filtrados().length, 'cliente', 'clientes')" [chips]="chips()"
         [sinCoincidencias]="!grupos().length" [conLimpiar]="!!v.clientes().length" [vacioTexto]="v.clientes().length ? 'Ningún cliente coincide.' : 'Todavía no tienes clientes.'"
-        (seleccionar)="abrir($event)" (buscarChange)="q.set($event)" (alternarGrupo)="alternarGrupo($event)" (limpiar)="limpiar()">
+        (seleccionar)="abrir($event)" (buscarChange)="q.set($event)" (alternarGrupo)="alternarGrupo($event)" (limpiar)="limpiar()" (accion)="accionFila($event.id)">
+        <div arriba>
+          <p class="mb-3.5 max-w-[668px] pr-7 text-[13px] leading-5 text-pretty text-[#6b7280]">{{ lectura }}</p>
+          <app-franja-metricas [periodos]="periodos" [periodo]="periodo()" [metricas]="metricas()" (cambiarPeriodo)="periodo.set($any($event))" (metrica)="elegirMetrica($event)"
+            [anchoExpandido]="anchoGrid()" [permitirDesplegar]="abierta()" (fondo)="bajar.set($event)" />
+        </div>
         <app-filtros-clientes herramientas [(archivados)]="archivados" [(orden)]="orden" />
-        <ng-template #derecha let-fila>
-          @let c = $any(fila).dato;
-          <span class="text-[12.5px] font-semibold whitespace-nowrap tabular-nums" [style.color]="fila.valorColor">{{ fila.valor }}</span>
-          <span class="text-[11px] whitespace-nowrap text-[#8a8a8a]">{{ c.ultimoPedidoEn ? 'último ' + f.rel(c.ultimoPedidoEn) : 'sin pedidos' }}</span>
-        </ng-template>
       </app-lista-modulo>
     }
 
-    <app-hoja [vacio]="!abierta()" vacioIcono="user" vacioTitulo="Elige un cliente" vacioTexto="Abre un cliente para ver sus pedidos y sus notas.">
+    <app-hoja [bajar]="bajar()" [vacio]="!abierta()" vacioIcono="user" vacioTitulo="Elige un cliente" vacioTexto="Abre un cliente para ver sus pedidos y sus notas.">
       @if (abierta()) {
         <div cabecera>
           @let c = cab();

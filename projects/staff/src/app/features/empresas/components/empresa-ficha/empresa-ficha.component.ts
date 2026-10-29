@@ -45,8 +45,9 @@ import { PestanaHoja } from '../../../../shared/ui/lista-hoja/lista-hoja.model';
 import { MES_LARGO, dias, fmt, fmtY, hace, plata, pl } from '../../../../shared/ui/lista-hoja/formato';
 import { EN_ALTA, ESTADO_EMPRESA, FilaEmpresa } from '../../pages/empresas-page/empresas-page.component';
 import { Router } from '@angular/router';
+import { PagosEnLineaComponent } from '../../../facturacion/components/pagos-en-linea/pagos-en-linea.component';
 
-type Pestana = 'resumen' | 'modulos' | 'actividad';
+type Pestana = 'resumen' | 'modulos' | 'pagos' | 'actividad';
 type AccionCuenta = 'suspender' | 'baja' | 'reactivar';
 type TipoActividad = ActividadEmpresa['tipo'];
 
@@ -69,7 +70,7 @@ const MOTIVOS_MODULO = { conceder: ['Lo pidió en la llamada', 'Prueba por 30 d�
 @Component({
   selector: 'app-empresa-ficha',
   standalone: true,
-  imports: [TablerIconComponent, HojaPestanasComponent, AjustesModuloComponent],
+  imports: [TablerIconComponent, HojaPestanasComponent, AjustesModuloComponent, PagosEnLineaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './empresa-ficha.component.html',
   host: { class: 'flex min-h-0 flex-1 flex-col' },
@@ -299,8 +300,14 @@ export class EmpresaFichaComponent {
   protected readonly pestanas = computed<PestanaHoja[]>(() => [
     { clave: 'resumen', texto: 'Resumen' },
     { clave: 'modulos', texto: 'Módulos', cuenta: this.modulos().length ? `${this.conAcceso()}/${this.modulos().length}` : null },
+    // Pago en línea (Wompi): lo que el asesor necesita cuando el cliente pregunta por su pago.
+    { clave: 'pagos', texto: 'Pago en línea' },
     { clave: 'actividad', texto: 'Actividad', cuenta: this.actividad().length || null },
   ]);
+
+  protected verPago(id: number): void {
+    void this.router.navigate(['/facturacion'], { queryParams: { pago: id } });
+  }
 
   protected elegirPestana(c: string): void {
     this.pestana.set(c as Pestana);

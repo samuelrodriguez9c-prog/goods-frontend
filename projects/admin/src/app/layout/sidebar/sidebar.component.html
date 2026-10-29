@@ -18,11 +18,11 @@
   @for (b of bloques(); track b.clave) {
     @if (b.titulo) {
       <!-- Título de sección (estructura de Shopify: "Sales channels", "Apps"):
-           pliega o despliega la sección. -->
+           pliega o despliega la sección. Pasar el mouse por encima no mueve
+           la píldora: se queda en el último ítem, sin ir y volver. -->
       <button
         type="button"
         (click)="toggleSeccion(b.clave!)"
-        (mouseenter)="soltarHover()"
         [attr.aria-expanded]="seccionAbierta(b.clave)"
         class="mt-3.5 flex w-fit items-center gap-1 rounded-md px-2.5 py-1 text-left text-[12px] font-medium text-gray-500 transition-colors duration-200 ease-out hover:text-gray-800"
       >
@@ -146,7 +146,6 @@
     @if (conAsistente() && conversaciones().length) {
       <a
         routerLink="/asistente"
-        (mouseenter)="soltarHover()"
         class="flex w-fit items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium text-gray-500 transition-colors duration-200 ease-out hover:text-gray-800"
       >
         Conversaciones con IA

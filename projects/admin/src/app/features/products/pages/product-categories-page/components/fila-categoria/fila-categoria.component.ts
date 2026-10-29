@@ -11,6 +11,10 @@ export interface FilaCategoria {
   detalle: string;
   miniatura: Miniatura;
   activa: boolean;
+  /** «/c/panes» (va como etiqueta mono). */
+  slug: string;
+  /** Es la abierta en la hoja (sigue blanca aunque se despegue). */
+  seleccionada: boolean;
   /** Subcategoría dentro de su principal (árbol): más sangría y más chica. */
   subnivel: boolean;
   negrita: boolean;
@@ -20,7 +24,7 @@ export interface FilaCategoria {
   /** Seleccionada o con el mouse encima: se pega a la hoja. */
   resaltada: boolean;
   arrastrable: boolean;
-  /** Qué va en la primera columna. */
+  /** Qué va en la primera columna (`barra` = nada: la fila nueva no lleva el tick de color). */
   marca: 'plegar' | 'asa' | 'flecha' | 'barra';
   /** Nodo desplegado (para la flecha de plegar). */
   abierta: boolean;
@@ -45,12 +49,13 @@ const OPACIDAD = { arrastrada: 'opacity-40', invalida: 'opacity-45', contexto: '
   host: {
     class: 'relative block transition-[margin] duration-260 ease-[cubic-bezier(.2,.8,.2,1)]',
     '[class.mr-7]': '!fila().resaltada',
+    '[attr.data-sel]': "fila().seleccionada ? '1' : null",
   },
   template: `
     @let f = fila();
     <div
       [attr.draggable]="f.arrastrable ? 'true' : 'false'"
-      class="relative grid cursor-pointer grid-cols-[16px_32px_minmax(0,1fr)_84px] items-center gap-2.5 py-2 outline-offset-[-2px] select-none [transition:background-color_260ms_cubic-bezier(.2,.8,.2,1),_border-radius_260ms_cubic-bezier(.2,.8,.2,1),_padding_260ms_cubic-bezier(.2,.8,.2,1),_opacity_.2s,_outline-color_.2s]"
+      class="relative grid cursor-pointer grid-cols-[16px_32px_minmax(0,1fr)_84px] items-start gap-2.5 py-2.5 outline-offset-[-2px] select-none [transition:background-color_260ms_cubic-bezier(.2,.8,.2,1),_border-radius_260ms_cubic-bezier(.2,.8,.2,1),_padding_260ms_cubic-bezier(.2,.8,.2,1),_opacity_.2s,_outline-color_.2s]"
       [class]="clases()"
     >
       <span class="flex h-7 items-center justify-center">
@@ -77,9 +82,7 @@ const OPACIDAD = { arrastrada: 'opacity-40', invalida: 'opacity-45', contexto: '
           @case ('flecha') {
             <tabler-icon [icon]="i.flecha" [size]="14" [stroke]="2" class="text-[#b5b5b5]" />
           }
-          @case ('barra') {
-            <span class="h-7 w-[3px] rounded-full" [class]="f.activa ? 'bg-[#087b5d]' : 'bg-[#9ca3af]'"></span>
-          }
+          <!-- 'barra': sin marca. El estado ya lo dicen el grupo y la etiqueta Activa / Inactiva. -->
         }
       </span>
       <span class="flex items-center justify-center">
@@ -91,13 +94,17 @@ const OPACIDAD = { arrastrada: 'opacity-40', invalida: 'opacity-45', contexto: '
             class="truncate text-[#111827]"
             [class]="(f.subnivel ? 'text-[13px] ' : 'text-[13.5px] ') + (f.negrita ? 'font-semibold' : 'font-medium')"
           >{{ f.nombre }}</span>
-          @if (!f.activa) {
-            <span class="inline-flex shrink-0 items-center gap-1 rounded-md bg-[#e3e3e3] px-1.5 text-[10.5px] leading-[17px] font-medium text-[#4b5563]">
-              <tabler-icon [icon]="i.oculta" [size]="11" [stroke]="2" />Inactiva
-            </span>
-          }
         </span>
         <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ f.detalle }}</span>
+        <!-- Etiquetas: estado (ojo / ojo tachado) y el slug en mono -->
+        <span class="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
+          <span class="inline-flex h-5 shrink-0 items-center gap-[5px] rounded-md px-[7px] text-[11px] font-medium whitespace-nowrap"
+            [class]="f.activa ? 'bg-[#dcfce7] text-[#0b5c3f]' : 'bg-[#e3e3e3] text-[#4b5563]'">
+            <tabler-icon [icon]="f.activa ? i.visible : i.oculta" [size]="11" [stroke]="2" />{{ f.activa ? 'Activa' : 'Inactiva' }}
+          </span>
+          <span class="inline-flex h-5 min-w-0 shrink items-center truncate rounded-md px-1.5 font-mono text-[10.5px] font-medium whitespace-nowrap text-[#6b7280] transition-[background-color] duration-260"
+            [class]="f.resaltada ? 'bg-[#f4f4f4]' : 'bg-[#e8e8e8]'">{{ f.slug }}</span>
+        </span>
       </span>
       <span class="flex w-21 flex-col items-end gap-[5px]">
         @if (f.destino === 'actual') {
@@ -138,6 +145,7 @@ export class FilaCategoriaComponent {
     asa: icono('grip-vertical'),
     flecha: icono('corner-down-right'),
     oculta: icono('eye-off'),
+    visible: icono('eye'),
     soltar: icono('arrow-bar-to-down'),
   };
 
@@ -148,7 +156,7 @@ export class FilaCategoriaComponent {
     return [
       f.resaltada ? 'rounded-l-xl pr-[30px]' : 'rounded-xl pr-3.5',
       f.subnivel ? 'pl-[34px]' : 'pl-2.5',
-      f.destino === 'actual' ? 'bg-[#e0f7f5]' : f.destello ? 'bg-[#e6fbf9]' : f.resaltada ? 'bg-white' : 'bg-transparent',
+      f.destino === 'actual' ? 'bg-[#e0f7f5]' : f.destello ? 'bg-[#e6fbf9]' : f.resaltada || f.seleccionada ? 'bg-white' : 'bg-transparent',
       f.destino === 'actual'
         ? 'outline-[1.5px] outline-dashed outline-[#00a39b]'
         : f.destino === 'posible'

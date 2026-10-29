@@ -15,6 +15,8 @@ const RUTAS_SIN_INTERCEPTAR = [
   '/auth/login',
   '/auth/refresh',
   '/auth/reset-password',
+  // Pública: un 401 acá es un enlace vencido, no la sesión.
+  '/auth/enlace',
   '/auth/reportar-cambio-password',
   '/empresas/registro-publico/contacto',
 ];

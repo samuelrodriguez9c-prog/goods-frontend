@@ -41,6 +41,8 @@ import { IaSaludoComponent } from '../../shared/ui/ia-saludo/ia-saludo.component
 import { MarkdownLigeroPipe } from '../../shared/ui/markdown-ligero/markdown-ligero.pipe';
 import { IaEscribiendoComponent } from '../../shared/ui/ia-escribiendo/ia-escribiendo.component';
 import { IaMenuMasComponent } from '../../shared/ui/ia-menu-mas/ia-menu-mas.component';
+import { IaRecuerdoComponent } from '../../shared/ui/ia-recuerdo/ia-recuerdo.component';
+import { IaAccionComponent } from '../../shared/ui/ia-accion/ia-accion.component';
 
 type Lado = 'right' | 'left' | 'top' | 'bottom';
 interface Dock { lado: Lado; t: number }
@@ -91,7 +93,7 @@ const SUGERENCIAS = [
 @Component({
   selector: 'app-asistente-dock',
   standalone: true,
-  imports: [FormsModule, TablerIconComponent, IaMarcaComponent, IaSaludoComponent, MarkdownLigeroPipe, IaEscribiendoComponent, IaMenuMasComponent],
+  imports: [FormsModule, TablerIconComponent, IaMarcaComponent, IaSaludoComponent, MarkdownLigeroPipe, IaEscribiendoComponent, IaMenuMasComponent, IaRecuerdoComponent, IaAccionComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './asistente-dock.component.html',
 })

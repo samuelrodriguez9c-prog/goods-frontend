@@ -32,6 +32,8 @@ export interface CurrentUser {
   accesoEmpresa: AccesoEmpresa | null;
   /** Nombre, logo (el de su tienda) y plan vigente, para el topbar. `null` sin Empresa. */
   empresa?: EmpresaResumen | null;
+  /** Atajos de teclado que la persona cambió (ver `AtajosService`). */
+  atajos?: Record<string, string>;
 }
 
 export interface EmpresaResumen {
@@ -39,6 +41,8 @@ export interface EmpresaResumen {
   nombre: string;
   logoUrl: string | null;
   plan: { nombre: string; precioMensual: number | null } | null;
+  /** Dirección pública de su tienda; `null` si nunca la configuró. */
+  tienda?: { slug: string; url: string; activa: boolean } | null;
 }
 
 export type MotivoBloqueo =
@@ -68,6 +72,9 @@ export interface AccesoEmpresa {
   /** Solo en prueba: hasta cuándo es gratis (sin pago, ese día se corta). */
   pruebaHasta?: string | null;
   diasGracia: number;
-  /** Cobro pendiente más próximo (se genera 7 días antes de renovar). */
-  proximoCobro: { monto: number; moneda: string; fechaLimite: string } | null;
+  /**
+   * Cobro pendiente más próximo (se genera 7 días antes de renovar).
+   * `pagoEnLinea`: se puede pagar con Wompi desde el panel.
+   */
+  proximoCobro: { monto: number; moneda: string; fechaLimite: string; pagoEnLinea?: boolean } | null;
 }

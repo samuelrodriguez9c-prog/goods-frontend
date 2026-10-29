@@ -11,7 +11,7 @@ export const PRODUCTS_ROUTES: Routes = [
     path: '',
     component: ProductListPageComponent,
     canDeactivate: [sinCambiosPendientes],
-    data: { breadcrumb: 'Products', icon: 'tag' },
+    data: { breadcrumb: 'Productos', icon: 'tag' },
   },
   {
     path: 'categorias',

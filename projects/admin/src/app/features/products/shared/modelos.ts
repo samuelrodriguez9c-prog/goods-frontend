@@ -1,3 +1,4 @@
+import type { FilaExtra } from './filas';
 // Modelos del módulo Productos (Productos · Categorías · Inventario · Proveedores · Compras).
 // Extienden los espejos mínimos de core/*/models con los campos que usan las pantallas.
 // Nombres = entidades del backend (producto, categoria, inventario, proveedor, compra).
@@ -106,20 +107,22 @@ export interface CompraV5 {
 // Lista + hoja (compartido por los 5 módulos)
 
 export interface Miniatura {
-  fondo: string;
-  tinta: string;
+  /** Sin fondo: el gris de la fila (#e6e6e6, #f4f4f4 resaltada). */
+  fondo?: string;
+  tinta?: string;
   /** Nombre del ícono Tabler (sin prefijo), si no hay imagen ni iniciales. */
   icono?: string;
   iniciales?: string;
   url?: string | null;
 }
 
-export interface FilaModulo<T = unknown> {
+/** Con los campos de `FilaExtra` (filas.ts): insignia, segmentos, etiquetas, medidor, acción. */
+export interface FilaModulo<T = unknown> extends FilaExtra {
   id: number;
   nombre: string;
   sub: string;
-  /** Tick vertical de 3×28 px a la izquierda. */
-  barra: string;
+  /** Tick vertical de 3×28 px (diseño anterior; la fila nueva no lo muestra). */
+  barra?: string;
   mini: Miniatura;
   /** Pastilla gris junto al nombre ("Inactiva", "Destacado"...). */
   etiqueta?: string | null;
@@ -129,10 +132,10 @@ export interface FilaModulo<T = unknown> {
   codigo?: string | null;
   /** Columna derecha (84 px): texto + barra de 64×4. */
   valor: string;
-  valorColor: string;
-  /** 0–1. `null` = sin barra. */
-  gauge: number | null;
-  gaugeColor: string;
+  valorColor?: string;
+  /** 0–1. `null` = sin barra (diseño anterior: la fila nueva usa `medidor`). */
+  gauge?: number | null;
+  gaugeColor?: string;
   /** Marca del mínimo en la barra (Inventario), 0–1. */
   marca?: number | null;
   /** Nivel de sangría (Categorías: subcategoría = 1). */

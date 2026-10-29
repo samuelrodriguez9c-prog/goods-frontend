@@ -141,7 +141,17 @@ export const TIPOS: Record<TipoNotificacion, DefTipo> = {
   // Categoría cliente: /notificaciones/staff no debería devolver nunca
   // estos tipos — se tipan igual para no romper si el backend cambia.
   pedido_estado: { cat: 'otras', etiqueta: 'Pedido', icono: IconMessage, accion: 'Ver', ruta: () => ({ url: '/notificaciones', destino: 'Notificaciones' }) },
-  pago_estado: { cat: 'otras', etiqueta: 'Pago', icono: IconCreditCardOff, accion: 'Ver', ruta: () => ({ url: '/notificaciones', destino: 'Notificaciones' }) },
+  // Pago en línea (Wompi): recibido, rechazado o con algo que revisar. Abre la ficha de la Empresa.
+  pago_estado: {
+    cat: 'suscripciones',
+    etiqueta: 'Pago en línea',
+    icono: IconCreditCardOff,
+    accion: 'Ver la Empresa',
+    ruta: (d) =>
+      d['empresaId']
+        ? { url: '/empresas', query: { empresa: d['empresaId'] }, destino: 'Empresas' + (d['empresaNombre'] ? ' · ' + d['empresaNombre'] : '') }
+        : { url: '/facturacion', destino: 'Facturación' },
+  },
   stock_bajo: { cat: 'otras', etiqueta: 'Stock bajo', icono: IconMessage, accion: 'Ver', ruta: () => ({ url: '/notificaciones', destino: 'Notificaciones' }) },
   mensaje_chat: { cat: 'otras', etiqueta: 'Mensaje de chat', icono: IconMessage, accion: 'Ver', ruta: () => ({ url: '/notificaciones', destino: 'Notificaciones' }) },
 };

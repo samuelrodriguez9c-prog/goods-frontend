@@ -1,8 +1,8 @@
 @if (!(completa() && abierta())) {
-  <!-- Cabecera del módulo: título + cuenta + «Al día», lectura y franja de métricas. -->
+  <!-- Cabecera del módulo: título + cuenta + «Al día». La lectura y la franja van arriba de la lista. -->
   <div>
     <app-modulo-cabecera [icono]="icono('inbox')" titulo="Pedidos" [cuenta]="cuenta()" [cuentaTitulo]="pl(cuenta(), 'pedido', 'pedidos')"
-      [lectura]="lectura" [alDia]="!nuevosTienda().length">
+      [alDia]="!nuevosTienda().length">
       <button type="button" (click)="exportar()" class="cursor-pointer rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] transition-[background] duration-200 ease-[ease] hover:bg-[#d4d4d4]!">Exportar</button>
       @if (cat.puede('pedidos.editar')) {
         <button type="button" (click)="nuevo()" title="Nuevo pedido (N)" class="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium text-white shadow-[inset_0_-1px_0_#000] transition-[opacity] duration-200 ease-[ease] hover:opacity-90!">
@@ -10,8 +10,6 @@
         </button>
       }
     </app-modulo-cabecera>
-    <app-franja-metricas [periodos]="periodos" [periodo]="periodo()" [metricas]="metricas()" (cambiarPeriodo)="periodo.set($any($event))"
-      (metrica)="elegirMetrica($event)" (ticket)="abrirTiquete($any($event))" />
   </div>
 }
 
@@ -29,33 +27,26 @@
     </div>
   </app-estado-pagina>
 } @else {
-  <div class="grid min-h-0 flex-1 pb-4 transition-[grid-template-columns] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-columns]="cols()">
+  <div class="-mt-1.5 grid min-h-0 flex-1 transition-[grid-template-columns] duration-[350ms] ease-[cubic-bezier(.2,.8,.2,1)]" [style.grid-template-columns]="cols()"
+    (appAncho)="anchoGrid.set($event)">
     @if (!(completa() && abierta())) {
       <app-lista-modulo
         [grupos]="grupos()" [seleccionadaId]="sel()?.id ?? null" [colapsados]="colapsados()" [buscar]="q()" [cargando]="v.cargando()"
         placeholder="Número, cliente o celular" [resultados]="resultados()" [chips]="chips()" [sinCoincidencias]="!grupos().length" [conLimpiar]="!!v.pedidos().length"
-        [vacioTexto]="v.pedidos().length ? 'Ningún pedido coincide con estos filtros.' : 'Todavía no hay pedidos.'" [tieneAccion]="tieneAccion"
-        (seleccionar)="abrir($event)" (buscarChange)="q.set($event)" (alternarGrupo)="alternarGrupo($event)" (limpiar)="limpiar()">
+        [vacioTexto]="v.pedidos().length ? 'Ningún pedido coincide con estos filtros.' : 'Todavía no hay pedidos.'"
+        (seleccionar)="abrir($event)" (buscarChange)="q.set($event)" (alternarGrupo)="alternarGrupo($event)" (limpiar)="limpiar()" (accion)="accionFila($event.id)">
+        <div arriba>
+          <p class="mb-3.5 max-w-[668px] pr-7 text-[13px] leading-5 text-pretty text-[#6b7280]">{{ lectura }}</p>
+          <app-franja-metricas [periodos]="periodos" [periodo]="periodo()" [metricas]="metricas()" (cambiarPeriodo)="periodo.set($any($event))"
+            (metrica)="elegirMetrica($event)" (ticket)="abrirTiquete($any($event))"
+            [anchoExpandido]="anchoGrid()" [permitirDesplegar]="abierta()" (fondo)="bajar.set($event)" />
+        </div>
         <app-filtros-pedidos herramientas [(canal)]="fCanal" [(pago)]="fPago" [(rango)]="fRango" [(orden)]="orden"
           [agrupar]="agrupar()" (agruparChange)="elegirAgrupar($event)" (plegar)="plegarTodos($event)" />
-        <!-- Derecha: total + pago -->
-        <ng-template #derecha let-fila>
-          @let p = $any(fila).dato;
-          <span class="text-[12.5px] font-semibold whitespace-nowrap tabular-nums" [style.color]="fila.valorColor" [class.line-through]="p.estado === 'cancelado'">{{ fila.valor }}</span>
-          <app-insignia-pago class="text-[11px]" [estado]="p.estadoPago" />
-        </ng-template>
-        <!-- Con el cursor: avanzar al siguiente estado -->
-        <ng-template #acciones let-fila>
-          @let p = $any(fila).dato;
-          <button type="button" (click)="avanzar(p)" [disabled]="v.ocupado(p.id)"
-            class="flex h-7 cursor-pointer items-center gap-1.5 rounded-full bg-[#303030] px-2.5 text-[12px] font-medium whitespace-nowrap text-white hover:bg-[#1a1a1a] disabled:opacity-60">
-            <app-ic [nombre]="p.estado === 'pendiente' ? 'check' : p.estado === 'confirmado' ? 'truck-delivery' : 'package'" [size]="13" />{{ p.estado === 'pendiente' ? 'Confirmar' : p.estado === 'confirmado' ? 'Enviado' : 'Entregado' }}
-          </button>
-        </ng-template>
       </app-lista-modulo>
     }
 
-    <app-hoja [vacio]="!abierta()" [vacioIcono]="buscandoPedido() ? 'clock' : 'cart'" [vacioTitulo]="buscandoPedido() ? 'Abriendo el pedido…' : 'Elige un pedido'"
+    <app-hoja [bajar]="bajar()" [vacio]="!abierta()" [vacioIcono]="buscandoPedido() ? 'clock' : 'cart'" [vacioTitulo]="buscandoPedido() ? 'Abriendo el pedido…' : 'Elige un pedido'"
       [vacioTexto]="buscandoPedido() ? '' : 'Pasa el cursor por un pedido para avanzarlo, o ábrelo para ver el detalle.'">
       @if (abierta()) {
         <div cabecera>

@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import {
   IconAlertCircle,
   IconBan,
   IconBrandPaypal,
+  IconCreditCard,
   IconBuildingBank,
   IconCalendar,
   IconCalendarEvent,
@@ -50,6 +51,7 @@ import { CabeceraModuloComponent, MetricaCabecera, serieConteo } from '../../../
 import { PantallaEstadoComponent } from '../../../../shared/ui/pantalla-estado/pantalla-estado.component';
 import { ListaHojaComponent } from '../../../../shared/ui/lista-hoja/lista-hoja.component';
 import { HojaPestanasComponent } from '../../../../shared/ui/lista-hoja/hoja-pestanas.component';
+import { PagosEnLineaComponent } from '../../components/pagos-en-linea/pagos-en-linea.component';
 import { FilaLista, GrupoLista, PestanaHoja } from '../../../../shared/ui/lista-hoja/lista-hoja.model';
 import { MES_LARGO, corto, dias, fmt, fmtY, pl, plata } from '../../../../shared/ui/lista-hoja/formato';
 import { filasCambiadas } from '../../../../shared/ui/filas-cambiadas';
@@ -57,10 +59,14 @@ import { TAMANO_PAGINA, traerTodo } from '../../../../shared/ui/lista-hoja/traer
 
 type Grupo = 'actual' | 'anterior' | 'antes' | 'anulados';
 type Filtro = 'cob' | 'deuda' | 'parc' | 'anul';
-type Pestana = 'cuenta' | 'pagos' | 'comp';
+/** Quién cargó el pago: un pago en línea lo registra Goods solo, sin nadie de staff. */
+export const quien = (p: { registradoPor: { nombre: string } | null; metodo: MetodoPago }) =>
+  p.registradoPor?.nombre ?? (p.metodo === 'wompi' ? 'El cliente, en línea' : '—');
+
+type Pestana = 'cuenta' | 'pagos' | 'linea' | 'comp';
 
 export const ICONO_METODO: Record<MetodoPago, typeof IconCash> = {
-  transferencia: IconBuildingBank, deposito: IconBuildingBank, efectivo: IconCash, paypal: IconBrandPaypal, otro: IconDots,
+  transferencia: IconBuildingBank, deposito: IconBuildingBank, efectivo: IconCash, paypal: IconBrandPaypal, wompi: IconCreditCard, otro: IconDots,
 };
 const TEXTO_METODO = Object.fromEntries(METODOS_PAGO.map((m) => [m.valor, m.texto])) as Record<MetodoPago, string>;
 
@@ -100,7 +106,7 @@ const mesesTxt = (m: number | null) => (m === null ? '—' : m >= 0.95 ? `${pl(M
 @Component({
   selector: 'app-facturacion-page',
   standalone: true,
-  imports: [DatePipe, TablerIconComponent, CabeceraModuloComponent, PantallaEstadoComponent, ListaHojaComponent, HojaPestanasComponent],
+  imports: [DatePipe, TablerIconComponent, CabeceraModuloComponent, PantallaEstadoComponent, ListaHojaComponent, HojaPestanasComponent, PagosEnLineaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './facturacion-page.component.html',
   host: { class: 'flex h-full flex-col overflow-hidden px-6 pt-6' },
@@ -117,9 +123,11 @@ export class FacturacionPageComponent {
   protected readonly lista = viewChild(ListaHojaComponent);
   protected readonly hoy = new Date();
   protected readonly plata = plata;
-  protected readonly metodos = METODOS_PAGO;
+  // Wompi lo registra solo el aviso de la pasarela: no se ofrece a mano.
+  protected readonly metodos = METODOS_PAGO.filter((m) => m.valor !== 'wompi');
   protected readonly iconoMetodo = ICONO_METODO;
   protected readonly textoMetodo = TEXTO_METODO;
+  protected readonly quien = quien;
   protected readonly i = {
     modulo: IconReceipt2, arriba: IconChevronUp, abajo: IconChevronDown, mas: IconPlus, hash: IconHash, check: IconCheck, usuario: IconUser,
     alerta: IconAlertCircle, ok: IconCircleCheck, ban: IconBan, x: IconX, externo: IconExternalLink,
@@ -286,6 +294,15 @@ export class FacturacionPageComponent {
       .huboCambio(['facturacion', 'suscripcion'])
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.cambiosEnVivo.update((n) => n + 1));
+    // `?pago=<id>`: lo abre la ficha de la Empresa («Pago #N» en su pago en línea).
+    inject(ActivatedRoute)
+      .queryParamMap.pipe(takeUntilDestroyed())
+      .subscribe((q) => {
+        const id = Number(q.get('pago'));
+        if (!id) return;
+        this.seleccionar(id);
+        void this.router.navigate([], { queryParams: { pago: null }, queryParamsHandling: 'merge', replaceUrl: true });
+      });
     effect(() => {
       const p = this.sel();
       untracked(() => this.cargarHoja(p));
@@ -471,6 +488,8 @@ export class FacturacionPageComponent {
   protected readonly pestanas = computed<PestanaHoja[]>(() => [
     { clave: 'cuenta', texto: 'Cuenta', cuenta: this.cuenta()?.saldoPendiente ? '!' : null, alerta: true },
     { clave: 'pagos', texto: 'Pagos', cuenta: this.cuenta()?.pagos.length ?? null },
+    // Links y transacciones de Wompi (también las rechazadas), para atender al cliente.
+    { clave: 'linea', texto: 'En línea' },
     { clave: 'comp', texto: 'Comprobante' },
   ]);
   protected elegirPestana(c: string): void {
@@ -658,7 +677,7 @@ export class FacturacionPageComponent {
       return {
         id: x.id, dia: new Date(x.fechaPago).getDate(), mes: fmt(x.fechaPago).split(' ')[1],
         titulo: an ? 'Anulado' : m !== null ? mesesTxt(m) + (m < 0.95 ? ' de la cuota' : '') : cuota ? mesesTxt(x.monto / cuota) : plata(x.monto),
-        detalle: `${TEXTO_METODO[x.metodo]} · ${x.referencia ?? 'sin ref.'} · ${x.registradoPor?.nombre ?? '—'}${an && x.motivoAnulacion ? ' · ' + x.motivoAnulacion : ''}`,
+        detalle: `${TEXTO_METODO[x.metodo]} · ${x.referencia ?? 'sin ref.'} · ${quien(x)}${an && x.motivoAnulacion ? ' · ' + x.motivoAnulacion : ''}`,
         monto: plata(x.monto), anulado: an, actual: x.id === this.seleccionadaId(),
       };
     });
@@ -668,7 +687,7 @@ export class FacturacionPageComponent {
     const p = this.detalle();
     if (!p) return [];
     return [
-      { k: 'Registrado por', v: p.registradoPor?.nombre ?? '—' },
+      { k: 'Registrado por', v: quien(p) },
       { k: 'Fecha', v: fmtY(p.fechaPago) },
       { k: 'Método', v: `${TEXTO_METODO[p.metodo]}${p.referencia ? ' · ' + p.referencia : ''}${p.entidadBancaria ? ' · ' + p.entidadBancaria : ''}` },
       { k: 'Aplicado a', v: p.estado === 'anulado' ? '—' : p.periodoDesde && p.periodoHasta ? `${fmt(p.periodoDesde)} → ${fmt(p.periodoHasta)}` : '—' },

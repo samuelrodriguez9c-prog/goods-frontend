@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, e
 import { ActivatedRoute, Router } from '@angular/router';
 import { TablerIconComponent } from '@tabler/icons-angular';
 import { AlertaService } from '../../../../core/ui/alerta.service';
+import { InventarioService, PlanReposicionApi } from '../../../../core/inventario/inventario.service';
 import { CatalogoStore } from '../../shared/catalogo.store';
 import { cop, hace, num, pl } from '../../shared/formato';
 import { Movimiento, ProductoV5 } from '../../shared/modelos';
@@ -14,13 +15,14 @@ import { PopoverDirective } from '../../../../shared/ui/popover.directive';
 import { FilaInventario, FilaInventarioComponent } from './components/fila-inventario/fila-inventario.component';
 import { GrupoInventario, GrupoInventarioComponent } from './components/grupo-inventario/grupo-inventario.component';
 import { MiniaturaProductoComponent } from './components/miniatura-producto/miniatura-producto.component';
+import { AnchoDirective, DespegueDirective } from '../../../../shared/ui/despegue/despegue.directive';
 import { ModalReponerComponent } from './components/modal-reponer/modal-reponer.component';
 import { PestanaComprasComponent } from './components/pestana-compras/pestana-compras.component';
 import { PestanaMovimientosComponent } from './components/pestana-movimientos/pestana-movimientos.component';
 import { PestanaResumenComponent } from './components/pestana-resumen/pestana-resumen.component';
 import {
   Agrupacion, Ajuste, FiltroMovimientos, Metrica, NIVELES, Nivel, PestanaInventario, RangoMovimientos,
-  TIPOS_MOVIMIENTO, ajusteVacio, categoriaRaiz, deltaAjuste, escalaStock, miniaturaDe, motivoDe, nivelDe, planReponer, soloDigitos, tipoDe,
+  TIPOS_MOVIMIENTO, ajusteVacio, categoriaRaiz, deltaAjuste, escalaStock, miniaturaDe, motivoDe, nivelDe, planDesdeApi, planReponer, soloDigitos, tipoDe,
   ultimaCompra,
 } from './inventario.modelo';
 
@@ -47,13 +49,17 @@ const NOTA_MEDIDOR_NIVEL: Record<Nivel, string> = { sin: 'text-[#b42318]', bajo:
  * ajuste rápido ±1 y la hoja del producto (Resumen · Movimientos · Compras).
  * Los ajustes y el mínimo quedan como borrador hasta guardar ("Cambios sin guardar").
  */
+import { CargarMasComponent, PaginaPorGrupo } from '../../../../shared/ui/cargar-mas/cargar-mas.component';
+import { migaDeHoja } from '../../../../core/navigation/navigation-trail.service';
+
 @Component({
   selector: 'app-product-inventory-page',
   standalone: true,
   imports: [
     TablerIconComponent, ModuloCabeceraComponent, FranjaMetricasComponent, EstadoPaginaComponent, PestanasHojaComponent, PopoverDirective,
     GrupoInventarioComponent, FilaInventarioComponent, MiniaturaProductoComponent, PestanaResumenComponent, PestanaMovimientosComponent,
-    PestanaComprasComponent, ModalReponerComponent,
+    PestanaComprasComponent, ModalReponerComponent, DespegueDirective, AnchoDirective,
+    CargarMasComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './product-inventory-page.component.html',
@@ -67,6 +73,7 @@ export class ProductInventoryPageComponent {
   protected readonly catalogo = inject(CatalogoStore);
   private readonly router = inject(Router);
   private readonly alertas = inject(AlertaService);
+  private readonly inventarioApi = inject(InventarioService);
 
   protected readonly icono = icono;
   protected readonly num = num;
@@ -119,7 +126,14 @@ export class ProductInventoryPageComponent {
   protected readonly editable = computed(() => this.catalogo.puede('inventario.editar'));
   protected readonly puedeComprar = computed(() => this.catalogo.puede('compras.crear'));
   protected readonly productos = computed(() => this.catalogo.productos().filter((p) => p.estado !== 'descontinuado'));
-  protected readonly plan = computed(() => planReponer(this.catalogo));
+  /** Plan de reposición del backend (ritmo de venta y entrega por proveedor); `null` mientras llega o si falla. */
+  private readonly planApi = signal<PlanReposicionApi | null>(null);
+  private tPlan: ReturnType<typeof setTimeout> | undefined;
+  /** El del backend; si no llega, el cálculo local de antes (bajo el mínimo, hasta el doble). */
+  protected readonly plan = computed(() => {
+    const api = this.planApi();
+    return api ? planDesdeApi(api, this.catalogo) : planReponer(this.catalogo);
+  });
 
   protected readonly carga = computed<'cargando' | 'error' | 'vacio' | 'lista'>(() => {
     const c = this.catalogo;
@@ -171,6 +185,12 @@ export class ProductInventoryPageComponent {
     return true;
   }
 
+  /** 15 filas por grupo y «Cargar 15 más · quedan N» (como Productos); la abierta siempre se ve. */
+  protected readonly pagina = new PaginaPorGrupo();
+  /** Ancho de la grilla lista + hoja: hasta ahí crece la franja al desplegarse. */
+  protected readonly anchoGrid = signal(0);
+  /** Cuánto baja la hoja cuando la franja se despliega encima. */
+  protected readonly bajar = signal(0);
   protected readonly grupos = computed<GrupoInventario[]>(() => {
     const por = this.agrupacion(), plegados = this.plegados();
     const lista = this.productos().filter((p) => this.coincide(p)).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
@@ -178,9 +198,8 @@ export class ProductInventoryPageComponent {
     const fila = (p: ProductoV5): FilaInventario => {
       const s = this.stock(p.id);
       const ultima = por === 'categoria' ? ultimaCompra(this.catalogo, p.id) : null;
-      const donde = por === 'categoria' ? (ultima ? this.nombreProveedor(ultima.proveedorId) : 'Sin proveedor') : this.nombreCategoria(p.categoriaId);
-      const detalle = (p.sku || 'Sin SKU') + ' · ' + donde + (s.reservado ? ' · ' + s.reservado + ' reservadas' : '');
-      return { id: p.id, nombre: p.nombre, detalle, miniatura: miniaturaDe(p, this.catalogo), stock: s, nivel: nivelDe(s) };
+      const gris = por === 'categoria' ? (ultima ? 'De ' + this.nombreProveedor(ultima.proveedorId) : 'Sin proveedor') : 'En ' + this.nombreCategoria(p.categoriaId);
+      return { id: p.id, nombre: p.nombre, sku: p.sku ?? '', gris, miniatura: miniaturaDe(p, this.catalogo), stock: s, nivel: nivelDe(s) };
     };
     const grupo = (clave: string, titulo: string, icono: string, [fondo, tinta]: string[], ps: ProductoV5[], detalle?: string | null): GrupoInventario => ({
       clave, titulo, icono, fondo, tinta, detalle: detalle || unidades(ps), filas: ps.map(fila), abierto: !plegados[clave],
@@ -279,9 +298,34 @@ export class ProductInventoryPageComponent {
   });
 
   constructor() {
+    // Miga del producto abierto: «Productos › Inventario › Audífonos JBL…».
+    migaDeHoja(() => {
+      const id = this.seleccionado();
+      return id != null ? this.catalogo.producto(id)?.nombre ?? null : null;
+    }, () => this.cerrar());
     this.catalogo.asegurar();
-    const id = Number(inject(ActivatedRoute).snapshot.queryParamMap.get('producto'));
+    const query = inject(ActivatedRoute).snapshot.queryParamMap;
+    const id = Number(query.get('producto'));
     if (id) this.seleccionado.set(id);
+    // Desde el aviso diario de reposición: abre «Reponer stock» con el catálogo
+    // cargado. Sin pasar por `abrirReponer`: ver el plan no pide compras.crear
+    // (crear las compras sí, y lo revisa `crearCompra`), y al recargar la
+    // página los permisos pueden no haber llegado todavía.
+    if (query.get('reponer')) this.catalogo.alListo(() => this.modalReponer.set(true));
+    // El plan de reposición se vuelve a pedir cuando cambian el stock, las
+    // compras o los productos (también por cambios en vivo de otra persona),
+    // agrupando ráfagas de cambios en una sola petición.
+    effect(() => {
+      this.catalogo.stock();
+      this.catalogo.compras();
+      this.catalogo.productos();
+      if (!this.catalogo.cargado()) return;
+      untracked(() => {
+        clearTimeout(this.tPlan);
+        this.tPlan = setTimeout(() => this.cargarPlan(), 400);
+      });
+    });
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.tPlan));
     // Los movimientos se piden al abrir cada producto.
     effect(() => {
       const id = this.seleccionado();
@@ -461,6 +505,14 @@ export class ProductInventoryPageComponent {
     a.click();
     this.alertas.mostrar({ estado: 'success', titulo: filas.length + ' productos exportados a CSV' });
   }
+  private cargarPlan(): void {
+    this.inventarioApi.reposicion().subscribe({
+      next: (p) => this.planApi.set(p),
+      // Sin permiso o sin red: queda el cálculo local.
+      error: () => this.planApi.set(null),
+    });
+  }
+
   protected abrirReponer(): void {
     if (this.catalogo.niega('compras.crear')) return;
     this.modalReponer.set(true);

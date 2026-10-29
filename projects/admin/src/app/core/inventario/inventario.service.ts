@@ -28,6 +28,43 @@ export interface MovimientoInventario {
   creadoEn: string;
 }
 
+/** Línea del plan de reposición (`GET /inventario/reposicion`). */
+export interface LineaReposicionApi {
+  productoId: number;
+  nombre: string;
+  /** Disponible menos lo reservado por pedidos. */
+  libre: number;
+  minimo: number;
+  enCamino: number;
+  ventaDiaria: number;
+  diasCobertura: number | null;
+  tiempoEntregaDias: number;
+  sugerido: number;
+  urgencia: 'agotado' | 'urgente' | 'pronto';
+  /** Por qué, en una frase. */
+  motivo: string;
+  /** Solo con permiso de costos. */
+  costoUnitario?: number | null;
+}
+
+/**
+ * Qué pedir, cuánto y a quién, según el ritmo de venta y lo que tarda cada
+ * proveedor. Lo calcula el backend (`ReposicionService`), el mismo plan que
+ * lee el asistente.
+ */
+export interface PlanReposicionApi {
+  grupos: {
+    proveedor: { id: number; nombre: string; activo: boolean } | null;
+    tiempoEntregaDias: number;
+    tiempoEntregaFuente: string;
+    lineas: LineaReposicionApi[];
+  }[];
+  cubiertosPorCompras: { productoId: number; nombre: string; enCamino: number; compras: string[] }[];
+  resumen: { productos: number; agotados: number; urgentes: number };
+  /** Si las ventas vienen subiendo o bajando y las cantidades ya lo tienen en cuenta. */
+  tendencia: { cambioMensual: number; texto: string } | null;
+}
+
 /** `InventarioController` — todo con permiso `inventario.ver` / `inventario.editar`. */
 @Injectable({ providedIn: 'root' })
 export class InventarioService {
@@ -66,6 +103,10 @@ export class InventarioService {
   /** `cantidad` es un delta (puede ser negativa). */
   ajustar(productoId: number, cantidad: number, motivo: string): Observable<Inventario> {
     return this.propia(this.http.patch<Inventario>(`${this.base}/${productoId}/ajuste`, { cantidad, motivo }));
+  }
+
+  reposicion(): Observable<PlanReposicionApi> {
+    return this.http.get<PlanReposicionApi>(`${this.base}/reposicion`);
   }
 
   stockMinimo(productoId: number, stockMinimo: number): Observable<Inventario> {

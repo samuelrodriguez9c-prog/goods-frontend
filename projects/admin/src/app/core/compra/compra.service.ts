@@ -5,6 +5,18 @@ import { environment } from '../../../environments/environment';
 import { RespuestaPaginada } from '../usuarios/models/usuario.model';
 import { ActualizarCompraPayload, Compra, CrearCompraPayload } from './models/compra.model';
 
+/** Borrador del pedido para el proveedor (`GET /compras/:id/mensaje-proveedor`). */
+export interface MensajeProveedor {
+  compraId: number;
+  codigo: string;
+  proveedor: string;
+  texto: string;
+  telefono: string | null;
+  /** `https://wa.me/…?text=…`, o null sin un celular usable. */
+  enlace: string | null;
+  nota: string | null;
+}
+
 /** Cliente de `CompraController` (permisos `compras.*`). */
 @Injectable({ providedIn: 'root' })
 export class CompraService {
@@ -32,6 +44,10 @@ export class CompraService {
   /** El stock de cada línea entra al inventario. */
   recibir(id: number): Observable<Compra> {
     return this.http.patch<Compra>(`${this.base}/${id}/recibir`, {});
+  }
+
+  mensajeProveedor(id: number): Observable<MensajeProveedor> {
+    return this.http.get<MensajeProveedor>(`${this.base}/${id}/mensaje-proveedor`);
   }
 
   /** `motivo` queda en las notas. */

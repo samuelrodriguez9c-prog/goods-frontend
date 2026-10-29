@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { TablerIconComponent } from '@tabler/icons-angular';
 import { CatalogoStore } from '../../../../shared/catalogo.store';
 import { cop, num, pl } from '../../../../shared/formato';
-import { EST, EstadoProducto, ProductoV5 } from '../../../../shared/modelos';
+import { EstadoProducto, ProductoV5 } from '../../../../shared/modelos';
 import { icono } from '../../../../shared/ui/iconos';
 import { PopoverDirective } from '../../../../../../shared/ui/popover.directive';
+import { CargarMasComponent, PaginaPorGrupo } from '../../../../../../shared/ui/cargar-mas/cargar-mas.component';
 import { miniaturaProducto, nombreCategoria } from '../../categorias.util';
 import { MenuActivo } from '../../menu-activo';
 import { OrdenProductos, ProductosCategoria } from '../../productos-categoria';
@@ -16,7 +17,12 @@ const ORDENES: { k: OrdenProductos; label: string; detalle: string }[] = [
   { k: 'precio', label: 'Precio', detalle: 'Mayor primero' },
   { k: 'stock', label: 'Stock', detalle: 'Menos unidades primero' },
 ];
-const PUNTO_PRODUCTO: Record<EstadoProducto, string> = { activo: 'bg-[#087b5d]', agotado: 'bg-[#d82c0d]', descontinuado: 'bg-[#9ca3af]' };
+/** Insignia y etiqueta de cada estado en la fila (igual que en la lista de Productos). */
+const ESTF: Record<EstadoProducto, { t: string; bg: string; fg: string; icono: string }> = {
+  activo: { t: 'Activo', bg: '#dcfce7', fg: '#0b5c3f', icono: 'check' },
+  agotado: { t: 'Agotado', bg: '#ffe6e5', fg: '#b42318', icono: 'x' },
+  descontinuado: { t: 'Descontinuado', bg: '#e3e3e3', fg: '#4b5563', icono: 'archive' },
+};
 /** Cuántos candidatos muestra "Agregar productos". */
 const MAX_CANDIDATOS = 8;
 
@@ -28,7 +34,7 @@ const MAX_CANDIDATOS = 8;
 @Component({
   selector: 'app-pestana-productos',
   standalone: true,
-  imports: [TablerIconComponent, PopoverDirective, DesplegableComponent, MiniaturaComponent],
+  imports: [TablerIconComponent, PopoverDirective, DesplegableComponent, MiniaturaComponent, CargarMasComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-3 pt-4' },
   templateUrl: './pestana-productos.component.html',
@@ -50,12 +56,24 @@ export class PestanaProductosComponent {
   protected readonly icono = icono;
   protected readonly f = { cop, num, pl };
   protected readonly ordenes = ORDENES;
-  protected readonly punto = PUNTO_PRODUCTO;
-  protected readonly estadoTexto = (p: ProductoV5) => EST[p.estado].t;
+  protected readonly ESTF = ESTF;
+  /** «Cargar 15 más · quedan N» por grupo (subcategoría). */
+  protected readonly pagina = new PaginaPorGrupo();
+  protected readonly inicial = (p: ProductoV5) => (p.nombre.trim()[0] || '?').toUpperCase();
   protected readonly miniatura = (p: ProductoV5) => miniaturaProducto(this.s, p);
   protected readonly nombreCategoria = (id: number | null) => nombreCategoria(this.s, id);
   protected readonly stock = (p: ProductoV5) => this.s.stockDe(p.id);
   protected readonly puedeEditar = computed(() => this.s.puede('productos.editar'));
+
+  constructor() {
+    // Otra categoría o búsqueda/orden distintos: vuelve a los primeros 15.
+    effect(() => {
+      this.categoriaId();
+      this.estado.busqueda();
+      this.estado.orden();
+      this.pagina.reiniciar();
+    });
+  }
 
   private nivelStock(id: number): 'ok' | 'bajo' | 'sin' {
     const i = this.s.stockDe(id);

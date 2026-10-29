@@ -14,6 +14,8 @@ import { icono } from '../../../products/shared/ui/iconos';
 import { ListaModuloComponent } from '../../../products/shared/ui/lista-modulo/lista-modulo.component';
 import { PestanaHojaV5, PestanasHojaComponent } from '../../../products/shared/ui/pestanas-hoja/pestanas-hoja.component';
 import { iniCliente, relativo, tel } from '../../../orders/shared/ventas.formato';
+import { extraCliente } from '../../../products/shared/filas';
+import { AnchoDirective } from '../../../../shared/ui/despegue/despegue.directive';
 import { BorradorCliente, Cliente, Pedido, tonoCliente } from '../../../orders/shared/ventas.modelos';
 import { VentasStore } from '../../../orders/shared/ventas.store';
 import { FiltrosClientesComponent, OrdenClientes } from './components/filtros-clientes/filtros-clientes.component';
@@ -22,6 +24,7 @@ import { FormularioClienteComponent } from './components/formulario-cliente/form
 import { PestanaDatosComponent } from './components/pestana-datos/pestana-datos.component';
 import { PestanaNotasComponent } from './components/pestana-notas/pestana-notas.component';
 import { PestanaPedidosComponent } from './components/pestana-pedidos/pestana-pedidos.component';
+import { migaDeHoja } from '../../../../core/navigation/navigation-trail.service';
 
 type Metrica = 'nuevos' | 'activos' | 'promo';
 type Pestana = 'resumen' | 'pedidos' | 'notas';
@@ -42,6 +45,7 @@ type Periodo = 'hoy' | '7d' | '30d';
   imports: [
     ModuloCabeceraComponent, FranjaMetricasComponent, ListaModuloComponent, HojaComponent, PestanasHojaComponent, EstadoPaginaComponent, IcComponent,
     FiltrosClientesComponent, FormularioClienteComponent, PieFormularioComponent, PestanaDatosComponent, PestanaPedidosComponent, PestanaNotasComponent,
+    AnchoDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './customer-list-page.component.html',
@@ -102,21 +106,34 @@ export class CustomerListPageComponent {
   });
 
   private fila(c: Cliente): FilaModulo<Cliente> {
-    const t = tonoCliente(c.id), arch = !!c.archivadoEn;
+    const x = extraCliente(c, this.nuevoC(c));
+    const archivado = !!c.archivadoEn;
     return {
+      ...x,
+      // Archivar y desarchivar piden `clientes.editar`; vender, no estar bloqueado.
+      accion: archivado ? (this.puedeEditar() ? x.accion : null) : this.bloqueado() ? null : x.accion,
       id: c.id,
       nombre: c.nombre,
-      sub: `${tel(c.telefono) || 'Sin celular'} · ${pl(c.cantidadPedidos, 'pedido', 'pedidos')}`,
-      barra: 'transparent',
-      mini: { fondo: arch ? '#f1f1f1' : t[0], tinta: arch ? '#9ca3af' : t[1], iniciales: iniCliente(c.nombre) },
-      etiqueta: c.whatsappContactoId ? 'WhatsApp' : null,
+      sub: '',
+      mini: { iniciales: iniCliente(c.nombre) },
       valor: cop(c.totalGastado),
-      valorColor: c.totalGastado ? '#111827' : '#9ca3af',
-      gauge: null,
-      gaugeColor: '',
+      valorColor: archivado || !c.totalGastado ? '#9ca3af' : '#111827',
+      valorSub: c.ultimoPedidoEn ? 'último ' + relativo(c.ultimoPedidoEn, this.v.hoy()) : 'sin pedidos',
       dato: c,
     };
   }
+
+  /** El círculo de la fila: venderle (nuevo pedido) o desarchivarlo. */
+  protected accionFila(id: number): void {
+    const c = this.v.cliente(id);
+    if (!c) return;
+    if (c.archivadoEn) {
+      this.v.archivar(c.id);
+      return;
+    }
+    if (!this.bloqueado()) void this.router.navigate(['/orders'], { queryParams: { nuevo: 1, cliente: c.id } });
+  }
+
   protected readonly grupos = computed<GrupoModulo<Cliente>[]>(() => {
     const xs = this.filtrados();
     const armar = (clave: string, titulo: string, icono: string, fondo: string, color: string, cs: Cliente[], sub: string): GrupoModulo<Cliente> =>
@@ -181,6 +198,10 @@ export class CustomerListPageComponent {
   protected readonly sel = computed(() => { const id = this.selId(); return typeof id === 'number' ? this.v.cliente(id) ?? null : null; });
   protected readonly abierta = computed(() => this.esNuevo() || !!this.sel());
   protected readonly sucio = computed(() => { const b = this.borrador(); return !!b && JSON.stringify(b) !== this.guardado(); });
+  /** Ancho de la grilla lista + hoja: hasta ahí crece la franja al desplegarse. */
+  protected readonly anchoGrid = signal(0);
+  /** Cuánto baja la hoja cuando la franja se despliega encima. */
+  protected readonly bajar = signal(0);
   protected readonly cols = computed(() =>
     this.completa() && this.abierta() ? 'minmax(0,1fr)' : this.abierta() ? 'minmax(300px,.86fr) minmax(0,1.34fr)' : 'minmax(320px,1.3fr) minmax(240px,.7fr)',
   );
@@ -208,6 +229,8 @@ export class CustomerListPageComponent {
   });
 
   constructor() {
+    // Miga del cliente abierto: «Clientes › Ana Gómez».
+    migaDeHoja(() => (this.selId() === 'nuevo' ? 'Nuevo cliente' : this.sel()?.nombre ?? null), () => this.cerrar());
     this.cat.asegurar();
     this.v.asegurar();
     const qp = this.ruta.snapshot.queryParamMap;

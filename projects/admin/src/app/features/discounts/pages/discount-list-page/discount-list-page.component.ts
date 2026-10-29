@@ -8,7 +8,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="p-8">
-      <h1 class="text-lg font-semibold text-gray-900">Discounts</h1>
+      <h1 class="text-lg font-semibold text-gray-900">Descuentos</h1>
       <p class="mt-2 text-sm text-gray-500">
         TODO: listado real de códigos de descuento (ver ADMIN_DISENO.md &gt; "Sidebar").
       </p>

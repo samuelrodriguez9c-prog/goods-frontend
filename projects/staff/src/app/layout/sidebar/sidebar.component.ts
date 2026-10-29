@@ -73,7 +73,7 @@ export class SidebarComponent {
    *  perfil de la propia cuenta, que cualquier rol de staff puede editar
    *  (el backend permite `GET/PATCH /usuarios/:id` sobre el propio id). */
   protected readonly settingsItem: NavItem = {
-    label: 'Settings',
+    label: 'Configuración',
     path: '/settings',
     icon: 'settings-2',
     exact: true,

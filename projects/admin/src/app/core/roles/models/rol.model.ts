@@ -23,6 +23,11 @@ export interface Rol {
   empresaId: number | null;
   activo: boolean;
   permisos: Permiso[];
+  /** Nombre corto de Tabler (`'headset'`); sin él se usa el ícono por defecto. */
+  icono?: string | null;
+  /** Para «Creado por X · hace N días». `creadoPor` es `null` en las plantillas y en los roles de antes. */
+  creadoEn?: string;
+  creadoPor?: { id: number; nombre: string } | null;
 }
 
 /**
@@ -35,4 +40,7 @@ export interface RolAsignable {
   nombre: string;
   descripcion: string | null;
   permisos: Permiso[];
+  /** `null` en las plantillas de Goods; el id de la Empresa en sus roles propios. */
+  empresaId?: number | null;
+  icono?: string | null;
 }

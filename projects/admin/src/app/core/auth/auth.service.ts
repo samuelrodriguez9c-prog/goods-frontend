@@ -8,6 +8,17 @@ import { CurrentUser } from './models/current-user.model';
 const CLAVE_ACCESS_TOKEN = 'goods.accessToken';
 const CLAVE_REFRESH_TOKEN = 'goods.refreshToken';
 
+/** `GET /auth/enlace`: para armar `/reset-password` antes de enviar. */
+export interface InfoEnlace {
+  correo: string;
+  nombres: string;
+  apellidos: string;
+  /** Sin contraseña todavía: invitación o activación («Crea tu contraseña»). */
+  primeraVez: boolean;
+  /** Invitación hecha solo con el correo: hay que pedir nombre y apellido. */
+  necesitaNombre: boolean;
+}
+
 interface RespuestaTokens {
   accessToken: string;
   refreshToken: string;
@@ -83,17 +94,28 @@ export class AuthService {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reportar-cambio-password`, { token });
   }
 
+  /** Datos del enlace del correo (público: el token es la credencial). 401 si venció o ya se usó. */
+  infoEnlace(token: string): Observable<InfoEnlace> {
+    return this.http.get<InfoEnlace>(`${environment.apiUrl}/auth/enlace`, { params: { token } });
+  }
+
   /**
-   * Define la contraseña con el token del enlace del correo.
+   * Define la contraseña con el token del enlace del correo. Al aceptar una
+   * invitación sin nombre, `nombre` es obligatorio (si no, 400).
    *
    * @remarks
    * No guarda tokens: el backend cierra todas las sesiones al cambiar la
    * contraseña, así que después hay que entrar por `/login`.
    */
-  resetPassword(token: string, password: string): Observable<{ message: string }> {
+  resetPassword(
+    token: string,
+    password: string,
+    nombre?: { nombres: string; apellidos: string },
+  ): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/reset-password`, {
       token,
       password,
+      ...nombre,
     });
   }
 

@@ -1,0 +1,70 @@
+@let a = accion();
+<div class="ia-msg-in overflow-hidden rounded-[14px] border border-[#e8e8e8] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_14px_34px_-24px_rgba(0,0,0,0.25)]"
+  [style.font-size.px]="compacto() ? 12.5 : 13">
+  <div class="flex items-start gap-2.5 border-b border-[#f0f0f0] bg-[#fafafa] px-3.5 py-2.5">
+    <span class="mt-px flex size-7 shrink-0 items-center justify-center rounded-lg bg-white text-[#303030] shadow-[0_0_0_1px_#ececec]"><tabler-icon [icon]="i.compra" [size]="15" /></span>
+    <div class="min-w-0 flex-1">
+      <p class="m-0 truncate font-semibold text-[#111827]">Compra a {{ a.resumen.proveedor.nombre }}</p>
+      <p class="m-0 text-[12px] text-[#6b7280]">
+        {{ a.resumen.lineas.length }} {{ a.resumen.lineas.length === 1 ? 'producto' : 'productos' }} · {{ unidades() }} unidades ·
+        queda pendiente: el stock entra cuando la recibas en Compras.
+      </p>
+    </div>
+    <span class="shrink-0 font-semibold tabular-nums text-[#111827]">{{ cop(a.resumen.total) }}</span>
+  </div>
+
+  <div class="flex flex-col px-3.5 py-1.5">
+    @for (l of a.resumen.lineas; track l.productoId) {
+      <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-[#f5f5f5] py-[6px] last:border-b-0">
+        <span class="truncate text-[#1f2937]">{{ l.producto }}</span>
+        <span class="text-right tabular-nums text-[#6b7280]">{{ l.cantidad }} × {{ cop(l.costoUnitario) }}</span>
+        <span class="min-w-[84px] text-right font-medium tabular-nums text-[#111827]">{{ cop(l.subtotal) }}</span>
+      </div>
+    }
+  </div>
+
+  @if (a.resumen.aviso && abierta()) {
+    <div class="mx-3.5 mb-2 flex gap-2 rounded-[10px] bg-[#fff6d1] px-2.5 py-2 text-[12px] text-[#8a5a00]">
+      <tabler-icon [icon]="i.aviso" [size]="14" class="mt-px shrink-0" />{{ a.resumen.aviso }}
+    </div>
+  }
+
+  <div class="flex flex-wrap items-center gap-2 border-t border-[#f0f0f0] px-3.5 py-2.5">
+    @switch (a.estado) {
+      @case ('confirmada') {
+        <span class="flex items-center gap-1.5 text-[12.5px] font-medium text-[#087b5d]"><tabler-icon [icon]="i.ok" [size]="15" />Compra {{ a.resultado?.codigo }} creada, pendiente de recibir</span>
+        @if (a.resultado; as r) {
+          <span class="ml-auto flex items-center gap-3">
+            <button type="button" (click)="pedirWhatsapp()" class="flex items-center gap-1 text-[12.5px] font-medium text-[#087b5d] hover:underline">
+              <tabler-icon [icon]="i.whatsapp" [size]="14" />Pedir por WhatsApp
+            </button>
+            <a routerLink="/products/compras" [queryParams]="{ compra: r.compraId }" class="text-[12.5px] font-medium text-[#00807a] hover:underline">Ver compra</a>
+          </span>
+        }
+      }
+      @case ('descartada') {
+        <span class="text-[12.5px] text-[#6b7280]">Descartaste esta propuesta: no se creó nada.</span>
+      }
+      @case ('vencida') {
+        <span class="text-[12.5px] text-[#6b7280]">Venció sin confirmar (duran 24 horas). Pídele al asistente que la arme de nuevo.</span>
+      }
+      @case ('ejecutando') {
+        <span class="text-[12.5px] text-[#6b7280]">Creando la compra…</span>
+      }
+      @default {
+        <span class="mr-auto text-[11.5px] text-[#9ca3af]">{{ a.estado === 'fallida' ? 'No se pudo crear.' : vence() }}</span>
+        <button type="button" (click)="descartar()" [disabled]="!!ocupado()"
+          class="rounded-full px-3 py-1.5 text-[12.5px] font-medium text-[#6b7280] transition-colors duration-150 hover:bg-[#f1f1f1] hover:text-[#111827] disabled:opacity-50">
+          {{ ocupado() === 'descartar' ? 'Descartando…' : 'Descartar' }}
+        </button>
+        <button type="button" (click)="confirmar()" [disabled]="!!ocupado()"
+          class="rounded-full bg-[#0a0a0a] px-3.5 py-1.5 text-[12.5px] font-medium text-white transition-[translate,opacity] duration-150 hover:-translate-y-px disabled:opacity-50">
+          {{ ocupado() === 'confirmar' ? 'Creando…' : a.estado === 'fallida' ? 'Reintentar' : 'Confirmar compra' }}
+        </button>
+      }
+    }
+  </div>
+  @if (error() ?? (a.estado === 'fallida' ? a.error : null); as e) {
+    <p class="m-0 border-t border-[#fde2e2] bg-[#fef2f2] px-3.5 py-2 text-[12px] text-[#b91c1c]">{{ e }}</p>
+  }
+</div>

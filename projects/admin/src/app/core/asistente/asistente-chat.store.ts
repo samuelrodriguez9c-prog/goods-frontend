@@ -3,7 +3,7 @@ import { AsistenteDocumento } from './models/asistente.model';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Subscription, of, switchMap } from 'rxjs';
 import { AsistenteService } from './asistente.service';
-import { AsistenteConversacion, AsistenteMensaje } from './models/asistente.model';
+import { AsistenteAccion, AsistenteConversacion, AsistenteMensaje, AsistenteRecuerdo, HerramientaUsada } from './models/asistente.model';
 
 /** Nombre de tool → etiqueta para "Consulté …". */
 export const ETIQUETAS_HERRAMIENTA: Record<string, string> = {
@@ -11,6 +11,7 @@ export const ETIQUETAS_HERRAMIENTA: Record<string, string> = {
   resumenVentas: 'tus ventas',
   buscarProducto: 'tu catálogo de productos',
   consultaLibre: 'tus datos',
+  consultar: 'tus datos',
   buscarEnNotas: 'tus notas',
   buscarEnPoliticas: 'tus documentos',
   clientesTop: 'tus clientes',
@@ -18,7 +19,30 @@ export const ETIQUETAS_HERRAMIENTA: Record<string, string> = {
   pedidosPorEstado: 'tus pedidos',
   productosMasVendidos: 'lo más vendido',
   recomendarProducto: 'tu catálogo de productos',
+  sugerirReposicion: 'tu inventario y tus ventas',
 };
+
+/**
+ * `buscar` y `ficha` sirven para cualquier entidad: la etiqueta sale de cuál
+ * consultó (`argumentos.entidad`), así la fuente sigue siendo concreta.
+ */
+const ETIQUETAS_ENTIDAD: Record<string, string> = {
+  producto: 'tu catálogo de productos',
+  cliente: 'tus clientes',
+  pedido: 'tus pedidos',
+  proveedor: 'tus proveedores',
+  compra: 'tus compras',
+  categoria: 'tus categorías',
+  descuento: 'tus descuentos',
+};
+
+/** Las de la memoria y las acciones no son una fuente: tienen su propia tarjeta en el chat. */
+const HERRAMIENTAS_MEMORIA = new Set(['guardarRecuerdo', 'proponerRecuerdo', 'olvidarRecuerdo', 'armarCompra']);
+
+function etiquetaHerramienta(h: HerramientaUsada): string {
+  if (h.nombre === 'buscar' || h.nombre === 'ficha') return ETIQUETAS_ENTIDAD[String(h.argumentos?.['entidad'])] ?? 'tus datos';
+  return ETIQUETAS_HERRAMIENTA[h.nombre] ?? h.nombre;
+}
 
 const KEY_FIJADAS = 'goods-admin-ia-fijadas';
 const VELOCIDAD_MS = 34;
@@ -169,9 +193,31 @@ export class AsistenteChatStore {
   }
 
   herramientasTexto(m: AsistenteMensaje): string | null {
-    if (!m.herramientasUsadas?.length) return null;
-    const etq = [...new Set(m.herramientasUsadas.map((h) => ETIQUETAS_HERRAMIENTA[h.nombre] ?? h.nombre))];
+    const fuentes = (m.herramientasUsadas ?? []).filter((h) => !HERRAMIENTAS_MEMORIA.has(h.nombre));
+    if (!fuentes.length) return null;
+    const etq = [...new Set(fuentes.map(etiquetaHerramienta))];
     return `Consulté ${etq.join(' y ')}`;
+  }
+
+  /** Refleja en el hilo lo que pasó con una propuesta (confirmada, descartada, fallida…). */
+  actualizarAccion(mensajeId: number, accion: AsistenteAccion): void {
+    this.mensajes.update((lista) =>
+      lista.map((m) => (m.id !== mensajeId ? m : { ...m, acciones: (m.acciones ?? []).map((a) => (a.id === accion.id ? accion : a)) })),
+    );
+  }
+
+  /** Refleja en el hilo lo que pasó con un recuerdo de la tarjeta (guardado, descartado o borrado). */
+  actualizarRecuerdo(mensajeId: number, recuerdoId: number, nuevo: AsistenteRecuerdo | null): void {
+    this.mensajes.update((lista) =>
+      lista.map((m) =>
+        m.id !== mensajeId
+          ? m
+          : {
+              ...m,
+              recuerdos: (m.recuerdos ?? []).flatMap((r) => (r.id !== recuerdoId ? [r] : nuevo ? [nuevo] : [])),
+            },
+      ),
+    );
   }
 
 

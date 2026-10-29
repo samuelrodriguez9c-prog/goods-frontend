@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, signal, untracked } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { EstadoAlerta } from '../../shared/ui/estado-icono/estado-icono.component';
@@ -198,7 +199,9 @@ export class AlertaService {
     return origen.pipe(
       tap({
         next: () => this.resolver(id, { estado: 'success', ...cfg.exito }),
-        error: () => this.resolver(id, { estado: 'error', ...cfg.error }),
+        // Sin texto propio, el del backend («Ya tienes un rol llamado…»): explica mejor que «No se pudo».
+        error: (e: unknown) =>
+          this.resolver(id, { estado: 'error', ...cfg.error, texto: cfg.error.texto ?? mensajeBackend(e) }),
       }),
     );
   }
@@ -286,4 +289,11 @@ export class AlertaService {
     clearTimeout(this.timer);
     this.timer = setTimeout(() => this.cerrar(id), ms);
   }
+}
+
+/** El `message` de un 4xx del backend (ya en español); nada si no hay. */
+function mensajeBackend(e: unknown): string | undefined {
+  if (!(e instanceof HttpErrorResponse) || e.status < 400 || e.status >= 500) return undefined;
+  const m = (e.error as { message?: string | string[] } | null)?.message;
+  return Array.isArray(m) ? m.join(' ') : m || undefined;
 }

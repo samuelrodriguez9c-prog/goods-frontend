@@ -1,183 +1,240 @@
-<div class="p-8">
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-lg font-semibold text-gray-900">Usuarios</h1>
-      <p class="mt-2 text-sm text-gray-500">Tu equipo dentro de esta Empresa.</p>
-    </div>
+@if (!completa() || !u()) {
+  <app-modulo-cabecera
+    [icono]="icono('users')"
+    titulo="Usuarios"
+    [cuenta]="usuarios().length"
+    [alDia]="false"
+  >
+    @if (pendientes()) {
+      <app-pastilla-cabecera pastilla bg="#fff1d6" fg="#8a5a00" punto="#e2a400" latido>{{
+        pendientes() === 1 ? '1 invitación pendiente' : pendientes() + ' invitaciones pendientes'
+      }}</app-pastilla-cabecera>
+    }
     <button
       type="button"
-      (click)="abrirCrear()"
-      class="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-700"
+      (click)="invitar.set(true)"
+      title="Invitar personas (N)"
+      class="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#303030] px-3 py-[7px] text-[13px] font-medium whitespace-nowrap text-white shadow-[inset_0_-1px_0_#000] hover:opacity-90"
     >
-      <tabler-icon [icon]="iconPlus" [size]="16" [stroke]="2" />
-      Invitar a alguien
+      <app-ic nombre="user-plus" [size]="14" />Invitar personas<kbd
+        class="ml-0.5 rounded bg-white/[.14] px-[5px] font-sans text-[11px] leading-4 text-[#d4d4d4]"
+        >N</kbd
+      >
     </button>
-  </div>
-
-  @if (cargando()) {
-    <p class="mt-6 text-sm text-gray-400">Cargando…</p>
-  } @else if (error()) {
-    <p class="mt-6 text-sm text-red-600">{{ error() }}</p>
-  } @else {
-    <div class="mt-6 overflow-hidden rounded-2xl bg-card-bg shadow-sm">
-      <table class="w-full text-left text-sm">
-        <thead>
-          <tr class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
-            <th class="px-6 py-3 font-medium">Nombre</th>
-            <th class="px-6 py-3 font-medium">Correo</th>
-            <th class="px-6 py-3 font-medium">Rol</th>
-            <th class="px-6 py-3 font-medium"></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (usuario of usuarios(); track usuario.id) {
-            <tr class="border-b border-gray-50 last:border-0">
-              <td class="px-6 py-3 text-gray-900">
-                {{ usuario.nombres }} {{ usuario.apellidos }}
-                @if (usuario.invitacion; as inv) {
-                  <span
-                    class="ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-[11px] font-medium"
-                    [class]="inv.vencida ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'"
-                    [title]="inv.venceEn ? 'El enlace vence el ' + (inv.venceEn | date: 'd MMM, HH:mm') : ''"
-                  >
-                    {{ inv.vencida ? 'Invitación vencida' : 'Invitación pendiente' }}
-                  </span>
-                }
-              </td>
-              <td class="px-6 py-3 text-gray-500">{{ usuario.correo }}</td>
-              <td class="px-6 py-3">
-                <select
-                  class="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 disabled:opacity-50"
-                  [disabled]="cambiandoRolDe() === usuario.id"
-                  (change)="cambiarRol(usuario, $any($event.target).value)"
-                >
-                  @for (rol of rolesAsignables(); track rol.id) {
-                    <option [value]="rol.id" [selected]="rol.id === usuario.rolId">
-                      {{ rol.nombre }}
-                    </option>
-                  }
-                </select>
-              </td>
-              <td class="whitespace-nowrap px-6 py-3 text-right">
-                @if (usuario.invitacion) {
-                  @if (reenviadoA() === usuario.id) {
-                    <span class="mr-2 text-xs text-emerald-700">Invitación reenviada</span>
-                  } @else {
-                    <button
-                      type="button"
-                      (click)="reenviar(usuario)"
-                      [disabled]="reenviandoA() === usuario.id"
-                      class="mr-1 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors duration-200 hover:bg-canvas-bg disabled:opacity-50"
-                    >
-                      <tabler-icon [icon]="iconReenviar" [size]="15" [stroke]="1.75" />
-                      {{ reenviandoA() === usuario.id ? 'Reenviando…' : 'Reenviar invitación' }}
-                    </button>
-                  }
-                }
-                <button
-                  type="button"
-                  (click)="abrirEliminar(usuario)"
-                  class="rounded-lg p-1.5 text-gray-400 transition-colors duration-200 hover:bg-canvas-bg hover:text-red-600"
-                  aria-label="Eliminar"
-                >
-                  <tabler-icon [icon]="iconDelete" [size]="16" [stroke]="1.75" />
-                </button>
-              </td>
-            </tr>
-          } @empty {
-            <tr>
-              <td colspan="4" class="px-6 py-8 text-center text-sm text-gray-400">
-                Todavía no diste de alta a nadie de tu equipo.
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  }
-</div>
-
-@if (modalAbierto()) {
-  <app-modal titulo="Invitar a alguien de tu equipo" (cerrar)="cerrarModal()">
-    <form class="flex flex-col gap-4" (submit)="$event.preventDefault(); guardar()">
-      <label class="flex flex-col gap-1 text-sm">
-        <span class="font-medium text-gray-700">Nombres</span>
-        <input
-          type="text"
-          class="rounded-lg border border-gray-200 px-3 py-2 text-sm"
-          [value]="formulario().nombres"
-          (input)="actualizarCampo('nombres', $any($event.target).value)"
-        />
-      </label>
-      <label class="flex flex-col gap-1 text-sm">
-        <span class="font-medium text-gray-700">Apellidos</span>
-        <input
-          type="text"
-          class="rounded-lg border border-gray-200 px-3 py-2 text-sm"
-          [value]="formulario().apellidos"
-          (input)="actualizarCampo('apellidos', $any($event.target).value)"
-        />
-      </label>
-      <label class="flex flex-col gap-1 text-sm">
-        <span class="font-medium text-gray-700">Correo</span>
-        <input
-          type="email"
-          class="rounded-lg border border-gray-200 px-3 py-2 text-sm"
-          [value]="formulario().correo"
-          (input)="actualizarCampo('correo', $any($event.target).value)"
-        />
-      </label>
-      <!-- Invitación: la contraseña la crea la persona invitada desde el correo; quien invita nunca la conoce. -->
-      <p class="rounded-lg bg-canvas-bg px-3 py-2.5 text-xs leading-5 text-gray-600">
-        Le enviamos un correo para que cree su contraseña. El enlace vale 48 horas y se usa una sola vez.
-      </p>
-
-      @if (errorGuardar()) {
-        <p class="text-sm text-red-600">{{ errorGuardar() }}</p>
-      }
-
-      <div class="mt-2 flex justify-end gap-2">
-        <button
-          type="button"
-          (click)="cerrarModal()"
-          class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-canvas-bg"
-        >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          [disabled]="guardando()"
-          class="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
-        >
-          {{ guardando() ? 'Enviando…' : 'Enviar invitación' }}
-        </button>
-      </div>
-    </form>
-  </app-modal>
+  </app-modulo-cabecera>
 }
 
-@if (usuarioEliminando(); as usuario) {
-  <app-modal titulo="Eliminar usuario" (cerrar)="cerrarEliminar()">
-    <p class="text-sm text-gray-600">
-      ¿Seguro que quieres eliminar a <strong>{{ usuario.nombres }} {{ usuario.apellidos }}</strong>?
-      Esta acción no se puede deshacer.
+@if (cargando()) {
+  <div class="flex flex-1 items-center justify-center text-[13px] text-[#6b7280]">
+    Cargando tu equipo…
+  </div>
+} @else if (error()) {
+  <app-estado-pagina
+    class="mb-4 flex-1"
+    tono="error"
+    [icono]="icono('cloud-off')"
+    titulo="No pudimos cargar tu equipo"
+    [texto]="error()!"
+    accion="Reintentar"
+    (accionar)="cargar()"
+  />
+} @else {
+  <app-lista-ficha
+    #lf="listaFicha"
+    [haySeleccion]="!!u()"
+    [seleccionId]="sel()"
+    [completa]="completa() && !!u()"
+    pie="Cada persona entra con su propia cuenta · el rol define lo que puede hacer"
+  >
+    <p arriba class="mb-3.5 max-w-[668px] pr-7 text-[13px] leading-5 text-pretty text-[#6b7280]">
+      {{ lectura }}
     </p>
-    <div class="mt-4 flex justify-end gap-2">
-      <button
-        type="button"
-        (click)="cerrarEliminar()"
-        class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-canvas-bg"
+    <ng-container buscador>
+      <app-buscador-lista class="flex-1" [(valor)]="busqueda" placeholder="Nombre o correo" />
+      <app-filtro-estado
+        [valor]="filtro()"
+        [opciones]="opcionesEstado()"
+        [abierto]="filtros()"
+        (alternar)="filtros.update((f) => !f); menu.set(false)"
+        (elegir)="elegirFiltro($event)"
+      />
+    </ng-container>
+
+    <ng-container lista>
+      @if (chips().length) {
+        <app-chips-filtro [chips]="chips()" />
+      }
+      @for (g of grupos(); track g.id) {
+        <app-grupo-lista
+          [titulo]="g.t"
+          [contador]="g.items.length"
+          [propio]="g.propio"
+          [abierto]="g.abierto"
+          (alternar)="alternarGrupo(g.id)"
+        >
+          <app-ic icono [nombre]="g.icono" [size]="15" class="text-[#4b5563]" />
+          @let pg = pagina.ver('' + g.id, g.items, sel());
+          @for (x of pg.filas; track x.id; let k = $index) {
+            <app-fila-lista
+              #fila
+              [seleccionada]="sel() === x.id"
+              [despegada]="lf.despegada()"
+              [indice]="k"
+              columnas="38px minmax(0,1fr) auto"
+              arriba
+              [alto]="10"
+              (abrir)="abrir(x.id)"
+            >
+              <app-fila-usuario
+                [usuario]="x"
+                [yo]="x.id === yoId()"
+                [enLinea]="conectado(x)"
+                [resaltada]="fila.resaltada()"
+                [abierta]="sel() === x.id"
+              />
+            </app-fila-lista>
+          }
+          <app-cargar-mas [quedan]="pg.quedan" (cargar)="pagina.mas('' + g.id)" />
+        </app-grupo-lista>
+      }
+      @if (!visibles().length) {
+        <div class="mr-7 flex flex-col items-center gap-1.5 px-4 py-10 text-center">
+          <app-ic nombre="user-search" [size]="22" class="text-[#9ca3af]" />
+          <span class="text-[13px] font-semibold text-[#111827]">Nadie coincide</span>
+          <span class="text-xs text-[#6b7280]">Prueba con otro nombre o quita el filtro.</span>
+        </div>
+      }
+    </ng-container>
+
+    <app-ficha-vacia
+      vacio
+      icono="user"
+      titulo="Elige a alguien de tu equipo"
+      texto="Verás su rol y lo que puede hacer."
+      [resumen]="resumenEquipo()"
+      accion="Invitar personas"
+      accionIcono="user-plus"
+      atajos="↑ ↓ para moverte · N para invitar · Esc para cerrar"
+      (accionar)="invitar.set(true)"
+    />
+
+    @if (u(); as x) {
+      <div
+        ficha
+        class="box-border flex animate-[st-ficha_.3s_cubic-bezier(.2,.8,.2,1)_both] flex-wrap content-start items-start gap-7 px-7 pt-4 pb-8"
       >
-        Cancelar
-      </button>
-      <button
-        type="button"
-        [disabled]="eliminando()"
-        (click)="confirmarEliminar()"
-        class="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-      >
-        {{ eliminando() ? 'Eliminando…' : 'Eliminar' }}
-      </button>
-    </div>
-  </app-modal>
+        @let yo = x.id === yoId();
+        <app-ficha-barra
+          [kicker]="'Usuario · ' + (rolActual()?.nombre ?? '')"
+          [pos]="pos()"
+          [total]="orden().length"
+          [enCompleta]="completa()"
+          (anterior)="ir(-1)"
+          (siguiente)="ir(1)"
+          (completa)="completa.update((c) => !c); menu.set(false)"
+          (cerrar)="cerrarFicha()"
+        >
+          <app-menu-ficha [abierto]="menu()" (alternar)="alternarMenu()">
+            @if (x.invitacion) {
+              <app-item-menu icono="mail-forward" (elegir)="reenviar()"
+                >Reenviar invitación</app-item-menu
+              >
+            }
+            <app-item-menu icono="copy" (elegir)="copiarCorreo()">Copiar correo</app-item-menu>
+            <app-item-menu icono="history" (elegir)="verActividad()"
+              >Ver toda su actividad</app-item-menu
+            >
+            @if (!yo) {
+              <app-item-menu icono="user-minus" peligro (elegir)="pedirQuitar()"
+                >Quitar del equipo</app-item-menu
+              >
+            }
+          </app-menu-ficha>
+        </app-ficha-barra>
+
+        <div class="flex min-w-0 flex-[1_1_360px] flex-col gap-[26px]">
+          <app-identidad-usuario
+            [usuario]="x"
+            [yo]="yo"
+            [enLinea]="conectado(x)"
+            [roles]="roles()"
+            [totalModulos]="modulos().length"
+            [actual]="rolActual()"
+            [propuesto]="rolPropuesto()"
+            [menuAbierto]="rolMenu()"
+            (alternarMenu)="alternarRolMenu()"
+            (proponer)="proponer($event)"
+            (gestionarRoles)="gestionarRoles()"
+          />
+          @if (aviso(); as iv) {
+            <app-aviso-invitacion [aviso]="iv" (reenviar)="reenviar()" />
+          }
+          <app-permisos-usuario
+            [modulos]="modulos()"
+            [actual]="rolActual()"
+            [propuesto]="rolPropuesto()"
+            [duenoYo]="duenoYo()"
+            (cancelar)="propuesta.set(null)"
+            (aplicar)="aplicarRol()"
+          />
+          <app-actividad-usuario
+            [items]="act()"
+            [invitada]="!!x.invitacion"
+            (verTodo)="verActividad()"
+          />
+        </div>
+
+        <aside
+          class="sticky top-4 flex max-w-[300px] min-w-0 flex-[1_1_240px] flex-col gap-4 self-start"
+        >
+          <div class="flex items-start gap-3">
+            <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span class="text-[13px] font-semibold text-[#111827]">Acceso a Goods</span>
+              <span class="text-xs leading-[17px] text-pretty text-[#6b7280]">{{
+                acceso().texto
+              }}</span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              [attr.aria-checked]="acceso().on"
+              aria-label="Acceso a Goods"
+              [disabled]="acceso().bloqueado"
+              (click)="alternarAcceso()"
+              class="relative h-[22px] w-[38px] shrink-0 cursor-pointer rounded-full transition-colors duration-[250ms] disabled:cursor-not-allowed disabled:opacity-50"
+              [style.background]="acceso().on ? '#303030' : '#d4d4d4'"
+            >
+              <span
+                class="absolute top-[3px] left-[3px] size-4 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.25)] transition-transform duration-300 ease-[cubic-bezier(.3,1.4,.5,1)]"
+                [style.transform]="acceso().on ? 'translateX(16px)' : 'none'"
+              ></span>
+            </button>
+          </div>
+          @for (g of lateral(); track g.t) {
+            <app-lista-datos [titulo]="g.t" [datos]="g.datos" />
+          }
+          <app-sesiones-abiertas
+            [sesiones]="filasSesion()"
+            [vacio]="sesiones() === null ? 'Cargando…' : sinSesiones()"
+            (cerrar)="cerrarSesion($event)"
+            (cerrarTodas)="pedirCerrarSesiones()"
+          />
+        </aside>
+      </div>
+    }
+  </app-lista-ficha>
+}
+
+@if (invitar()) {
+  <app-modal-invitar
+    [roles]="roles()"
+    [existentes]="existentes()"
+    [rolInicial]="rolInicial()"
+    [empresa]="empresa()"
+    [quienInvita]="yoNombre()"
+    [resumenEquipo]="resumenEquipo()"
+    [enviando]="enviando()"
+    (enviar)="enviarInvitaciones($event)"
+    (cerrar)="invitar.set(false)"
+  />
 }

@@ -90,10 +90,10 @@ export class SidebarComponent {
   protected readonly atajos = inject(AtajosService);
 
   private readonly principal: NavItem[] = [
-    { label: 'Dashboard', path: '/', icon: 'home-2', exact: true, codigo: 'dashboard' },
-    { label: 'Orders', path: '/orders', icon: 'inbox', exact: false, codigo: 'orders' },
+    { label: 'Inicio', path: '/', icon: 'home-2', exact: true, codigo: 'dashboard' },
+    { label: 'Pedidos', path: '/orders', icon: 'inbox', exact: false, codigo: 'orders' },
     {
-      label: 'Products',
+      label: 'Productos',
       path: '/products',
       icon: 'tag',
       exact: false,
@@ -105,9 +105,9 @@ export class SidebarComponent {
         { label: 'Compras', path: '/products/compras', icon: 'shopping-cart' },
       ],
     },
-    { label: 'Customers', path: '/customers', icon: 'user', exact: false, codigo: 'customers' },
-    { label: 'Discounts', path: '/discounts', icon: 'discount-2', exact: false, codigo: 'discounts' },
-    { label: 'Messages', path: '/messages', icon: 'message-circle-2', exact: false, codigo: 'messages' },
+    { label: 'Clientes', path: '/customers', icon: 'user', exact: false, codigo: 'customers' },
+    { label: 'Descuentos', path: '/discounts', icon: 'discount-2', exact: false, codigo: 'discounts' },
+    { label: 'Mensajes', path: '/messages', icon: 'message-circle-2', exact: false, codigo: 'messages' },
   ];
 
   private readonly secciones: Seccion[] = [
@@ -228,7 +228,7 @@ export class SidebarComponent {
   }
 
   /** Settings: link simple al fondo, fuera de la píldora. */
-  protected readonly settingsItem = { label: 'Settings', path: '/settings', icon: 'settings-2' };
+  protected readonly settingsItem = { label: 'Configuración', path: '/settings', icon: 'settings-2' };
 
   protected readonly url = toSignal(
     this.router.events.pipe(

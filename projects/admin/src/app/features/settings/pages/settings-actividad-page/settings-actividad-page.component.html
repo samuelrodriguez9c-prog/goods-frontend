@@ -1,129 +1,273 @@
-<div class="p-8">
-  <div class="max-w-[640px]">
-    <h1 class="text-lg font-semibold text-gray-900">Actividad del equipo</h1>
-    <p class="mt-2 text-sm text-gray-500">
-      Qué hizo cada persona de tu equipo: pedidos que confirmó, productos que editó, stock que ajustó y más. Toca una acción para
-      ver lo que se cambió.
-    </p>
+@if (!completa() || !a()) {
+  <div>
+    <app-modulo-cabecera
+      [icono]="icono('history')"
+      titulo="Actividad del equipo"
+      [cuenta]="resp()?.total ?? null"
+      cuentaTitulo="Acciones en el período"
+      [alDia]="false"
+    >
+      <app-pastilla-cabecera pastilla bg="#e0f7f5" fg="#00605b" icono="sparkles"
+        >Plan Plus</app-pastilla-cabecera
+      >
+      <app-atajos-teclado
+        [atajos]="atajos"
+        [abierto]="abierto() === 'atajos'"
+        (alternar)="alternar('atajos')"
+      />
+      <button
+        type="button"
+        (click)="exportar()"
+        [disabled]="!items().length"
+        class="cursor-pointer rounded-lg bg-[#e3e3e3] px-3 py-[7px] text-[13px] font-medium text-[#303030] hover:bg-[#d9d9d9] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Exportar
+      </button>
+    </app-modulo-cabecera>
   </div>
+}
 
-  <div class="mt-6 flex max-w-[860px] flex-col gap-3">
-    <!-- Período -->
-    <div class="flex flex-wrap items-center gap-3">
-      <div class="inline-grid grid-cols-4 rounded-[11px] bg-[#ebebeb] p-[3px]" role="radiogroup" aria-label="Período">
-        @for (p of periodos; track p.k) {
-          @let on = periodo() === p.k;
-          <button
-            type="button"
-            role="radio"
-            [attr.aria-checked]="on"
-            (click)="periodo.set(p.k)"
-            class="h-8 whitespace-nowrap rounded-lg px-3.5 text-[13px] transition-[background-color,color,box-shadow] duration-200"
-            [class]="on ? 'bg-white font-semibold text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,.08)]' : 'font-medium text-gray-500 hover:text-gray-900'"
-          >{{ p.t }}</button>
-        }
-      </div>
-      @if (datos(); as d) {
-        <span class="text-xs tabular-nums text-gray-500">{{ totalPeriodo() }} {{ totalPeriodo() === 1 ? 'acción' : 'acciones' }} en el período</span>
-      }
+@switch (estado()) {
+  @case ('cargando') {
+    <div class="flex flex-1 items-center justify-center text-[13px] text-[#6b7280]">
+      Cargando actividad…
     </div>
+  }
+  @case ('error') {
+    <app-estado-pagina
+      class="mb-4 flex-1"
+      tono="error"
+      [icono]="icono('wifi-off')"
+      titulo="No pudimos cargar la actividad"
+      texto="Revisa tu conexión e intenta de nuevo."
+      accion="Reintentar"
+      (accionar)="cargar()"
+    />
+  }
+  @case ('sinPlan') {
+    <app-estado-pagina
+      class="mb-4 flex-1"
+      [ancho]="420"
+      [icono]="icono('sparkles')"
+      titulo="Actividad del equipo está en el Plan Plus"
+      texto="Mira qué hizo cada persona: pedidos confirmados, productos editados, stock ajustado. Se guarda 90 días."
+      accion="Ver planes"
+      (accionar)="verPlanes()"
+    />
+  }
+  @default {
+    <app-lista-ficha
+      #lf="listaFicha"
+      [haySeleccion]="!!a()"
+      [seleccionId]="sel()"
+      [bajar]="bajar()"
+      [cabeceraGrupo]="48"
+      [completa]="completa() && !!a()"
+      pie="Solo aparece lo que salió bien · se guarda 90 días"
+    >
+      <p arriba class="mb-3.5 max-w-[668px] pr-7 text-[13px] leading-5 text-pretty text-[#6b7280]">
+        {{ lectura }}
+      </p>
+      <app-metricas-actividad arriba [(periodo)]="periodo" [comparacion]="comparacion()" />
+      <app-tarjetas-plegables
+        arriba
+        [items]="metricas()"
+        [min]="132"
+        [anchoExpandido]="lf.ancho()"
+        [permitirDesplegar]="!!a()"
+        (fondo)="bajar.set($event)"
+      >
+        <ng-template #tarjeta let-m>
+          <app-tarjeta-actividad [metrica]="m" (elegir)="elegirMetrica($event)" />
+        </ng-template>
+      </app-tarjetas-plegables>
+      <span buscador class="relative flex min-w-0 flex-1 items-center gap-1.5">
+        <app-buscador-lista
+          class="flex-1"
+          [(valor)]="busqueda"
+          placeholder="Persona, acción o registro"
+          atajo
+        />
+        <button
+          type="button"
+          (click)="$event.stopPropagation(); alternar('filtros')"
+          title="Filtrar"
+          class="relative flex size-[34px] shrink-0 items-center justify-center rounded-full text-[#4b5563] hover:bg-[#e6e6e6]"
+          [style.background]="abierto() === 'filtros' || hayFiltros() ? '#e6e6e6' : null"
+        >
+          <app-ic nombre="filter" />
+          @if (hayFiltros()) {
+            <span
+              class="absolute right-1 top-1 size-[7px] rounded-full bg-[#2be0d5] shadow-[0_0_0_2px_#f1f1f1]"
+            ></span>
+          }
+        </button>
+        <app-agrupar-actividad
+          [valor]="agrupar()"
+          [abierto]="abierto() === 'agrupar'"
+          (alternar)="alternar('agrupar')"
+          (elegir)="elegirAgrupar($event)"
+          (abrirTodos)="plegados.set([])"
+          (plegarTodos)="plegados.set(grupoClaves())"
+        />
+        <button
+          type="button"
+          (click)="alternarTodos()"
+          [title]="todosPlegados() ? 'Abrir todos' : 'Plegar todos'"
+          class="flex size-[34px] shrink-0 items-center justify-center rounded-full text-[#4b5563] hover:bg-[#e6e6e6]"
+        >
+          <app-ic [nombre]="todosPlegados() ? 'chevrons-down' : 'chevrons-up'" />
+        </button>
+        <app-filtros-paneles
+          [abierto]="abierto() === 'filtros'"
+          [secciones]="secciones()"
+          [seccion]="seccionF()"
+          [opciones]="opciones()"
+          [resumen]="visibles().length + (visibles().length === 1 ? ' acción' : ' acciones')"
+          (click)="$event.stopPropagation()"
+          (seccionChange)="seccionF.set($any($event))"
+          (elegir)="elegirFiltro($event)"
+          (limpiar)="limpiarFiltros()"
+          (listo)="cerrarMenus()"
+        />
+      </span>
 
-    <!-- Personas -->
-    @if (datos()?.porPersona?.length) {
-      <div class="flex flex-wrap gap-1.5">
-        <button type="button" (click)="elegirPersona(null)" class="h-8 rounded-full px-3 text-[12.5px] font-medium transition-colors" [class]="persona() === null ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] shadow-[inset_0_0_0_1px_#e3e3e3] hover:bg-[#f7f7f7]'">Todo el equipo</button>
-        @for (p of datos()!.porPersona; track p.usuarioId) {
-          @let on = persona() === p.usuarioId;
-          @let t = tono(p.usuarioId);
-          <button
-            type="button"
-            (click)="elegirPersona(p.usuarioId)"
-            [attr.aria-pressed]="on"
-            class="flex h-8 items-center gap-2 rounded-full py-0 pl-1 pr-3 text-[12.5px] font-medium transition-colors"
-            [class]="on ? 'bg-[#303030] text-white' : 'bg-white text-[#303030] shadow-[inset_0_0_0_1px_#e3e3e3] hover:bg-[#f7f7f7]'"
+      <ng-container lista>
+        <div class="flex min-h-[26px] flex-wrap items-center gap-2 pr-7 pb-2 pl-1">
+          <span class="text-xs tabular-nums text-[#6b7280]"
+            >{{ visibles().length }} {{ visibles().length === 1 ? 'acción' : 'acciones' }}</span
           >
-            <span class="flex size-6 items-center justify-center rounded-full text-[10.5px] font-semibold" [style.background]="t[0]" [style.color]="t[1]">{{ iniciales(p.nombre) }}</span>
-            {{ p.nombre }}
-            <span class="tabular-nums" [class]="on ? 'text-white/60' : 'text-gray-400'">{{ p.acciones }}</span>
-          </button>
+          @for (c of chips(); track c.t) {
+            <span
+              class="inline-flex animate-[st-fade-in-up_.2s_ease-out] items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pr-1 pl-2.5 text-[11.5px] font-medium text-[#374151]"
+              >{{ c.t
+              }}<button
+                type="button"
+                (click)="c.quitar()"
+                class="flex size-4 items-center justify-center rounded-full text-[#6b7280] hover:bg-[#d1d5db] hover:text-[#111827]"
+              >
+                <app-ic nombre="x" [size]="11" /></button
+            ></span>
+          }
+          @if (busqueda()) {
+            <span
+              class="inline-flex items-center gap-1.5 rounded-full bg-[#e3e3e3] py-0.5 pr-1 pl-2.5 text-[11.5px] font-medium text-[#374151]"
+              >«{{ busqueda() }}»<button
+                type="button"
+                (click)="busqueda.set('')"
+                class="flex size-4 items-center justify-center rounded-full text-[#6b7280] hover:bg-[#d1d5db] hover:text-[#111827]"
+              >
+                <app-ic nombre="x" [size]="11" /></button
+            ></span>
+          }
+        </div>
+        @if (recargando()) {
+          <div class="flex flex-col gap-2 pt-3 pr-7">
+            @for (k of [1, 2, 3, 4, 5, 6]; track k) {
+              <span
+                class="block h-12 animate-[gp-brillo_1.4s_linear_infinite] rounded-xl bg-[linear-gradient(90deg,#e6e6e6_0,#ededed_80px,#e6e6e6_160px)] bg-[length:320px_100%]"
+              ></span>
+            }
+          </div>
+        } @else if (!visibles().length) {
+          <div class="animate-[st-fade-in-up_.2s_ease-out] py-10 pr-11 pl-4 text-center">
+            <p class="m-0 text-[13px] text-[#6b7280]">{{ vacioLista().t }}</p>
+            @if (vacioLista().accion) {
+              <button
+                type="button"
+                (click)="accionVacio()"
+                class="mt-3 rounded-full bg-[#e3e3e3] px-3 py-1.5 text-[13px] font-medium text-[#374151] hover:bg-[#d4d4d4]"
+              >
+                {{ vacioLista().accion }}
+              </button>
+            }
+          </div>
         }
-      </div>
-    }
+        @for (g of recargando() ? [] : grupos(); track g.k) {
+          <app-grupo-actividad [grupo]="g" [abierto]="g.abierto" (alternar)="alternarGrupo(g.k)">
+            @for (x of g.filas; track x.id; let k = $index) {
+              <app-fila-lista
+                #fila
+                [seleccionada]="sel() === x.id"
+                [despegada]="lf.despegada()"
+                [indice]="k"
+                columnas="38px minmax(0,1fr) auto"
+                arriba
+                [alto]="10"
+                (abrir)="abrir(x.id)"
+              >
+                <app-fila-actividad
+                  [item]="x"
+                  [agrupar]="agrupar()"
+                  [seleccionada]="sel() === x.id"
+                  [resaltada]="fila.resaltada()"
+                />
+              </app-fila-lista>
+            }
+          </app-grupo-actividad>
+        }
+        @if (restantes() && !recargando()) {
+          <!-- Las acciones llegan del servidor de a 50: el mismo «Cargar más» de las demás listas. -->
+          @if (cargandoMas()) {
+            <span class="mr-7 mt-1 px-3 py-2 text-[12.5px] font-medium text-[#9ca3af]"
+              >Cargando…</span
+            >
+          } @else {
+            <app-cargar-mas [quedan]="restantes()" [pagina]="50" (cargar)="cargar(true)" />
+          }
+        }
+      </ng-container>
 
-    <!-- Áreas -->
-    @if (areasConDatos().length > 1 || area()) {
-      <div class="flex flex-wrap gap-1.5">
-        @for (a of areasConDatos(); track a[0]) {
-          @let on = area() === a[0];
-          <button
-            type="button"
-            (click)="elegirArea(a[0])"
-            [attr.aria-pressed]="on"
-            class="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors"
-            [class]="on ? 'bg-[#303030] text-white' : 'bg-[#f1f1f1] text-[#4b5563] hover:bg-[#e8e8e8]'"
-          >
-            <tabler-icon [icon]="areas[a[0]].ic" [size]="13" />{{ areas[a[0]].t }}<span class="tabular-nums" [class]="on ? 'text-white/60' : 'text-gray-400'">{{ a[1] }}</span>
-          </button>
-        }
-        @if (area() && !areasConDatos().length) {
-          <button type="button" (click)="area.set(null)" class="h-7 rounded-full bg-[#303030] px-2.5 text-xs font-medium text-white">{{ areas[area()!].t }} ✕</button>
-        }
-      </div>
-    }
+      <app-ficha-vacia
+        vacio
+        icono="pointer"
+        titulo="Elige una acción"
+        texto="Elige una acción de la lista para comparar cómo estaba y cómo quedó."
+        atajos="↑ ↓ para moverte · / para buscar"
+      />
 
-    <!-- Línea de tiempo -->
-    @if (cargando()) {
-      <div class="mt-2 flex flex-col gap-2">
-        @for (x of [1, 2, 3, 4]; track x) {
-          <span class="h-14 animate-pulse rounded-xl bg-[#f1f1f1]"></span>
-        }
-      </div>
-    } @else if (error()) {
-      <div class="mt-2 flex flex-col items-start gap-2 rounded-2xl bg-[#fef3f2] px-4 py-3.5">
-        <p class="m-0 text-[13px] text-[#b42318]">{{ error() }}</p>
-        <button type="button" (click)="reintentar()" class="rounded-full bg-white px-3 py-1 text-[12.5px] font-medium text-gray-900 shadow-[inset_0_0_0_1px_#e3e3e3]">Reintentar</button>
-      </div>
-    } @else if (!items().length) {
-      <div class="mt-2 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[#e3e3e3] px-6 py-10 text-center">
-        <span class="flex size-10 items-center justify-center rounded-xl bg-[#f4f4f4] text-gray-500"><tabler-icon [icon]="i.historial" [size]="20" /></span>
-        <p class="m-0 text-sm font-medium text-gray-900">Sin actividad en este período</p>
-        <p class="m-0 max-w-[420px] text-xs leading-[18px] text-gray-500">Prueba con un período más largo o quita los filtros.</p>
-      </div>
-    } @else {
-      <div class="mt-1 flex flex-col gap-5">
-        @for (d of dias(); track d.k) {
-          <section class="flex flex-col">
-            <h2 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">{{ d.t }}</h2>
-            <div class="overflow-hidden rounded-2xl border border-[#ebebeb] bg-white shadow-[0_1px_2px_rgba(0,0,0,.03)]">
-              @for (it of d.items; track it.id) {
-                @let t = tono(it.usuario?.id);
-                <button
-                  type="button"
-                  (click)="abrir(it)"
-                  [disabled]="!it.enlace"
-                  class="group flex w-full items-start gap-3 border-b border-[#f2f2f2] px-4 py-3 text-left last:border-b-0 enabled:hover:bg-[#fafafa] disabled:cursor-default"
+      @if (a(); as x) {
+        <div
+          ficha
+          class="flex min-h-full animate-[st-ficha_.3s_cubic-bezier(.2,.8,.2,1)_both] flex-col"
+        >
+          @let au = areaUi(x);
+          <div class="mx-auto w-full max-w-[860px] shrink-0 px-6 pt-4">
+            <app-ficha-barra
+              class="!mb-0"
+              [kicker]="kicker()"
+              [pos]="pos()"
+              [total]="plano().length"
+              [enCompleta]="completa()"
+              (anterior)="ir(-1)"
+              (siguiente)="ir(1)"
+              (completa)="completa.update((c) => !c)"
+              (cerrar)="sel.set(null)"
+            >
+              <app-menu-ficha [abierto]="abierto() === 'menu'" (alternar)="alternar('menu')">
+                <app-item-menu icono="link" (elegir)="copiarEnlace()">Copiar enlace</app-item-menu>
+                @if (x.usuario) {
+                  <app-item-menu icono="user" (elegir)="soloPersona()"
+                    >Solo de {{ corto(x.usuario.nombre) }}</app-item-menu
+                  >
+                }
+                <app-item-menu [icono]="au.icono" (elegir)="soloArea()"
+                  >Solo de {{ au.t.toLowerCase() }}</app-item-menu
                 >
-                  <span class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold" [style.background]="t[0]" [style.color]="t[1]">{{ iniciales(it.usuario?.nombre ?? '') }}</span>
-                  <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span class="text-[13.5px] leading-5 text-gray-900"><span class="font-semibold">{{ it.usuario?.nombre ?? 'Alguien del equipo' }}</span> · {{ it.texto }}</span>
-                    <span class="flex items-center gap-1.5 text-xs text-gray-500">
-                      <tabler-icon [icon]="areas[it.area].ic" [size]="12" />{{ areas[it.area].t }} · {{ hora(it.fecha) }}
-                      @if (it.enlace) {
-                        <span class="text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">· Ver</span>
-                      }
-                    </span>
-                  </span>
-                </button>
-              }
-            </div>
-          </section>
-        }
-        @if (hayMas()) {
-          <button type="button" (click)="verMas()" [disabled]="cargandoMas()" class="self-center rounded-full bg-white px-4 py-1.5 text-[13px] font-medium text-gray-900 shadow-[inset_0_0_0_1px_#e3e3e3] hover:bg-[#f7f7f7] disabled:opacity-50">
-            {{ cargandoMas() ? 'Cargando…' : 'Ver más' }}
-          </button>
-        }
-      </div>
-    }
-  </div>
-</div>
+              </app-menu-ficha>
+            </app-ficha-barra>
+          </div>
+          <app-ficha-actividad
+            [item]="x"
+            [delRegistro]="delRegistro()"
+            [persona]="resumenPersona()"
+            [periodo]="periodoEn()"
+            (abrirRegistro)="abrirRegistro()"
+            (elegir)="sel.set($event)"
+            (soloPersona)="soloPersona()"
+          />
+        </div>
+      }
+    </app-lista-ficha>
+  }
+}

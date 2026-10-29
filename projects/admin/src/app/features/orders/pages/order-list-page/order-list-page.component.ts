@@ -14,6 +14,8 @@ import { HojaComponent } from '../../../products/shared/ui/hoja/hoja.component';
 import { IcComponent } from '../../../products/shared/ui/ic/ic.component';
 import { icono } from '../../../products/shared/ui/iconos';
 import { ListaModuloComponent } from '../../../products/shared/ui/lista-modulo/lista-modulo.component';
+import { T, extraPedido } from '../../../products/shared/filas';
+import { AnchoDirective } from '../../../../shared/ui/despegue/despegue.directive';
 import { PestanaHojaV5, PestanasHojaComponent } from '../../../products/shared/ui/pestanas-hoja/pestanas-hoja.component';
 import { PieFormularioComponent } from '../../../products/shared/ui/pie-formulario/pie-formulario.component';
 import { FormularioPedidoComponent } from '../../components/formulario-pedido/formulario-pedido.component';
@@ -29,6 +31,7 @@ import { PestanaActividadComponent } from './components/pestana-actividad/pestan
 import { PestanaClienteEntregaComponent } from './components/pestana-cliente-entrega/pestana-cliente-entrega.component';
 import { PestanaProductosComponent } from './components/pestana-productos/pestana-productos.component';
 import { ProgresoPedidoComponent } from './components/progreso-pedido/progreso-pedido.component';
+import { migaDeHoja } from '../../../../core/navigation/navigation-trail.service';
 
 type Metrica = 'pendiente' | 'confirmado' | 'enviado' | 'vendido';
 type Pestana = 'productos' | 'cliente' | 'actividad';
@@ -62,6 +65,7 @@ interface AjustesPedidos {
     ModuloCabeceraComponent, FranjaMetricasComponent, ListaModuloComponent, HojaComponent, PestanasHojaComponent, EstadoPaginaComponent, IcComponent,
     FiltrosPedidosComponent, ProgresoPedidoComponent, AccionesPedidoComponent, PestanaProductosComponent, PestanaClienteEntregaComponent,
     PestanaActividadComponent, FormularioPedidoComponent, PieFormularioComponent, ComprobantePedidoComponent, IconoCanalComponent, InsigniaPagoComponent,
+    AnchoDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './order-list-page.component.html',
@@ -124,19 +128,22 @@ export class OrderListPageComponent {
   });
 
   private fila(p: Pedido): FilaModulo<Pedido> {
-    const C = CANAL[p.canal], qty = p.items.reduce((a, it) => a + it.cantidad, 0), dead = muerto(p);
+    const dead = muerto(p);
+    const x = extraPedido(p);
     return {
+      ...x,
       id: p.id,
       nombre: p.cliente.nombre,
-      codigo: pnum(p.numero),
-      sub: `${this.rel(p.creadoEn)} · ${pl(qty, 'producto', 'productos')}`,
-      barra: EST[p.estado].bar,
-      mini: { fondo: dead ? '#f1f1f1' : C.bg, tinta: dead ? '#9ca3af' : C.fg, icono: C.ic },
-      pastilla: nuevoDeTienda(p) ? { texto: 'Nuevo', tip: 'Llegó por la tienda · sin confirmar' } : null,
+      sub: '',
+      mini: { iniciales: iniCliente(p.cliente.nombre) },
+      // «Nuevo» de la tienda: todavía no aparta stock.
+      etiquetas: nuevoDeTienda(p)
+        ? [...(x.etiquetas ?? []), { texto: 'Nuevo', icono: 'building-store', tono: T.turquesa }]
+        : x.etiquetas,
+      accion: this.bloqueado() || this.v.ocupado(p.id) ? null : x.accion,
       valor: cop(p.total),
       valorColor: dead ? '#9ca3af' : '#111827',
-      gauge: null,
-      gaugeColor: '',
+      valorSub: this.rel(p.creadoEn),
       dato: p,
     };
   }
@@ -163,11 +170,12 @@ export class OrderListPageComponent {
     } else {
       const pend = xs.filter((p) => p.estado === 'pendiente'), nT = pend.filter(nuevoDeTienda).length;
       gs = [
-        armar('e-pend', 'Por confirmar', 'clock', '#fff6d1', '#8a5a00', pend, nT ? `${pl(nT, 'llegó', 'llegaron')} por la tienda · aún sin apartar stock` : 'Confirmar descuenta el stock'),
-        armar('e-conf', 'Por enviar', 'package', '#e0f7f5', '#00605b', xs.filter((p) => p.estado === 'confirmado')),
-        armar('e-env', 'En camino', 'truck-delivery', '#e0f2fe', '#0369a1', xs.filter((p) => p.estado === 'enviado')),
-        armar('e-ent', 'Entregados', 'circle-check', '#e6f6ec', '#087b5d', xs.filter((p) => p.estado === 'entregado')),
-        armar('e-cerr', 'Cancelados y devueltos', 'circle-x', '#f1f1f1', '#6b7280', xs.filter(muerto), 'No suman a lo vendido'),
+        // Con los colores de `EST`, como el prototipo.
+        armar('e-pend', 'Por confirmar', 'clock', EST.pendiente.bg, EST.pendiente.fg, pend, nT ? `${pl(nT, 'llegó', 'llegaron')} por la tienda · aún sin apartar stock` : 'Confirmar descuenta el stock'),
+        armar('e-conf', 'Confirmados', 'check', EST.confirmado.bg, EST.confirmado.fg, xs.filter((p) => p.estado === 'confirmado')),
+        armar('e-env', 'En camino', 'truck-delivery', EST.enviado.bg, EST.enviado.fg, xs.filter((p) => p.estado === 'enviado')),
+        armar('e-ent', 'Entregados', 'package', EST.entregado.bg, EST.entregado.fg, xs.filter((p) => p.estado === 'entregado')),
+        armar('e-cerr', 'Cancelados y devueltos', 'circle-x', EST.cancelado.bg, EST.cancelado.fg, xs.filter(muerto), 'No suman a lo vendido'),
       ];
     }
     return gs.filter((x) => x.filas.length);
@@ -253,11 +261,19 @@ export class OrderListPageComponent {
   protected readonly abierta = computed(() => this.esNuevo() || !!this.sel());
   protected readonly enForm = computed(() => !!this.borrador());
   protected readonly sucio = computed(() => { const b = this.borrador(); return !!b && JSON.stringify(b) !== this.guardado(); });
+  /** Ancho de la grilla lista + hoja: hasta ahí crece la franja al desplegarse. */
+  protected readonly anchoGrid = signal(0);
+  /** Cuánto baja la hoja cuando la franja se despliega encima. */
+  protected readonly bajar = signal(0);
   protected readonly cols = computed(() =>
     this.completa() && this.abierta() ? 'minmax(0,1fr)' : this.abierta() ? 'minmax(300px,.86fr) minmax(0,1.34fr)' : 'minmax(320px,1.3fr) minmax(240px,.7fr)',
   );
   protected readonly posicion = computed(() => ({ i: this.visibles().indexOf(this.sel()?.id ?? -1), n: this.visibles().length }));
-  protected readonly tieneAccion = (f: FilaModulo<unknown>) => !!SIGUIENTE[(f.dato as Pedido).estado];
+  /** El círculo de la fila: avanzar el pedido al siguiente paso. */
+  protected accionFila(id: number): void {
+    const p = this.v.pedido(id);
+    if (p) this.avanzar(p);
+  }
 
   protected readonly cab = computed(() => {
     const p = this.sel(), d = this.borrador();
@@ -290,6 +306,8 @@ export class OrderListPageComponent {
   });
 
   constructor() {
+    // Miga del pedido abierto: «Pedidos › #123».
+    migaDeHoja(() => (this.selId() === 'nuevo' ? 'Nuevo pedido' : this.sel() ? `#${this.sel()!.numero}` : null), () => this.cerrar());
     this.cat.asegurar();
     this.v.asegurar();
     this.ajustes.de<AjustesPedidos>('orders').pipe(takeUntilDestroyed()).subscribe((a) => this.aplicarAjustes(a));

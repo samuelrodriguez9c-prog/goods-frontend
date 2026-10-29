@@ -171,7 +171,7 @@
               </button>
             }
             <span class="flex h-[30px] items-center gap-[7px] rounded-full bg-[#f4f4f4] px-[11px] text-[13px] font-medium text-gray-900">
-              <tabler-icon [icon]="i.usuario" [size]="14" [stroke]="1.75" class="text-gray-500" />{{ p.registradoPor?.nombre ?? '—' }}
+              <tabler-icon [icon]="i.usuario" [size]="14" [stroke]="1.75" class="text-gray-500" />{{ quien(p) }}
             </span>
           </div>
 
@@ -361,6 +361,10 @@
                       </button>
                     }
                   </div>
+                }
+
+                @case ('linea') {
+                  <app-pagos-en-linea [empresaId]="p.empresaId" (verPago)="seleccionar($event)" />
                 }
 
                 @case ('comp') {

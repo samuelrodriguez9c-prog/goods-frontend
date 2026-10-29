@@ -9,7 +9,8 @@ import { AlertaService } from '../../../../core/ui/alerta.service';
 import { UploadService } from '../../../../core/upload/upload.service';
 import { CatalogoStore } from '../../shared/catalogo.store';
 import { esGuardar, vigilarCambios } from '../../shared/cambios-sin-guardar';
-import { num, pl } from '../../shared/formato';
+import { AnchoDirective, DespegueDirective } from '../../../../shared/ui/despegue/despegue.directive';
+import { num, pl, slug } from '../../shared/formato';
 import { Categoria, ProductoV5 } from '../../shared/modelos';
 import { EstadoPaginaComponent } from '../../shared/ui/estado-pagina/estado-pagina.component';
 import { FranjaMetricasComponent, MetricaFranja } from '../../../../shared/ui/franja-metricas/franja-metricas.component';
@@ -40,6 +41,7 @@ import { PestanaProductosComponent } from './components/pestana-productos/pestan
 import { PestanaTiendaComponent } from './components/pestana-tienda/pestana-tienda.component';
 import { MenuActivo } from './menu-activo';
 import { ProductosCategoria } from './productos-categoria';
+import { migaDeHoja } from '../../../../core/navigation/navigation-trail.service';
 
 type Pestana = 'general' | 'imagen' | 'productos' | 'tienda';
 type Metrica = 'activas' | 'sub' | 'inactivas' | 'vacias';
@@ -105,6 +107,8 @@ interface Nodo {
   standalone: true,
   imports: [
     NgTemplateOutlet,
+    DespegueDirective,
+    AnchoDirective,
     TablerIconComponent,
     PopoverDirective,
     ModuloCabeceraComponent,
@@ -175,6 +179,13 @@ export class ProductCategoriesPageComponent {
   /** `creadoEn` de cada categoría (el store no lo guarda): solo para las sparklines. */
   private readonly creadas = signal<Map<number, number>>(new Map());
   private readonly general = viewChild(PestanaGeneralComponent);
+  private readonly despegue = viewChild(DespegueDirective);
+  /** La abierta pasó bajo la cabecera del grupo o salió por abajo: se suelta de la hoja. */
+  private readonly despegada = computed(() => this.despegue()?.despegada() ?? false);
+  /** Ancho de la grilla lista + hoja: hasta ahí crece la franja al desplegarse. */
+  protected readonly anchoGrid = signal(0);
+  /** Cuánto baja la hoja cuando la franja se despliega encima. */
+  protected readonly bajar = signal(0);
 
   // permisos
   protected readonly puedeEditar = computed(() => this.s.puede('categorias.editar'));
@@ -266,11 +277,13 @@ export class ProductCategoriesPageComponent {
       detalle,
       miniatura: miniaturaCategoria(this.s, c),
       activa: c.activo,
+      slug: '/c/' + (slug(c.nombre) || 'categoria'),
+      seleccionada: sel === c.id,
       subnivel,
       negrita: sel === c.id || (!subnivel && arbol),
       productos: n,
       barra: Math.max(n ? 4 : 0, (n / this.maxProductos()) * 100),
-      resaltada: sel === c.id || encima === c.id,
+      resaltada: (sel === c.id && !this.despegada()) || encima === c.id,
       arrastrable,
       marca: nodo?.todas.length ? 'plegar' : asa ? 'asa' : subnivel ? 'flecha' : 'barra',
       abierta: !!nodo?.abierto,
@@ -440,6 +453,11 @@ export class ProductCategoriesPageComponent {
   protected readonly seleccionados = computed(() => (this.hoja() && this.pestana() === 'productos' ? this.productos.seleccion().size : 0));
 
   constructor() {
+    // Miga de la categoría abierta: «Productos › Categorías › Audio».
+    migaDeHoja(() => {
+      const id = this.seleccionada();
+      return id === 'nueva' ? 'Nueva categoría' : id != null ? this.s.categoria(id)?.nombre ?? null : null;
+    }, () => this.cerrar());
     this.s.asegurar();
     vigilarCambios({
       borrador: this.borrador,

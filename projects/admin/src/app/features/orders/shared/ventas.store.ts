@@ -17,7 +17,7 @@ import {
   BorradorCliente, BorradorPedido, Cliente, EST, EstadoPedido, EventoPedido, PUEDE, PagoPedido, Pedido, StatsCliente,
 } from './ventas.modelos';
 
-/** El listado trae los últimos 100 (el máximo del backend); el resto se abre por `?pedido=ID`. */
+/** Los pedidos: los últimos 100 (el máximo del backend); el resto se abre por `?pedido=ID`. Los clientes vienen todos. */
 const POR_PAGINA = 100;
 /** Un `datos:cambio` que llega dentro de esta ventana es eco de una escritura propia. */
 const ECO_PROPIO_MS = 2500;
@@ -116,8 +116,9 @@ export class VentasStore {
     }
     forkJoin({
       pedidos: this.pedidosApi.listar({ pageSize: POR_PAGINA }),
-      activos: this.clientesApi.listar({ pageSize: POR_PAGINA, orden: 'recientes' }),
-      archivados: this.clientesApi.listar({ pageSize: POR_PAGINA, archivados: true }),
+      // Todos (no solo la primera página): la lista y su contador salen de aquí.
+      activos: this.clientesApi.todos({ orden: 'recientes' }),
+      archivados: this.clientesApi.todos({ archivados: true }),
       resumen: this.pedidosApi.resumen(),
     })
       .pipe(finalize(() => (this.cargaEnCurso = false)))
@@ -129,7 +130,7 @@ export class VentasStore {
           const nuevos = r.pedidos.data.map((p) => aPedido(p, antes.get(p.id)));
           const ids = new Set(nuevos.map((p) => p.id));
           this.pedidos.set([...nuevos, ...this.pedidos().filter((p) => !ids.has(p.id))]);
-          const clientes = [...r.activos.data, ...r.archivados.data].map(aCliente), cids = new Set(clientes.map((c) => c.id));
+          const clientes = [...r.activos, ...r.archivados].map(aCliente), cids = new Set(clientes.map((c) => c.id));
           this.clientes.set([...clientes, ...this.clientes().filter((c) => !cids.has(c.id))]);
           this.resumen.set(r.resumen);
           this.porCliente.set({});

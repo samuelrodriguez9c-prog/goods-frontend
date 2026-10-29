@@ -8,7 +8,7 @@ import { SettingsRolesPageComponent } from './pages/settings-roles-page/settings
 import { SettingsUsersPageComponent } from './pages/settings-users-page/settings-users-page.component';
 
 export const SETTINGS_ROUTES: Routes = [
-  { path: '', component: SettingsPageComponent, data: { breadcrumb: 'Settings', icon: 'settings-2' } },
+  { path: '', component: SettingsPageComponent, data: { breadcrumb: 'Configuración', icon: 'settings-2' } },
   // `users` y `roles` son módulos del plan (ver `moduloGuard`).
   { path: 'usuarios', component: SettingsUsersPageComponent, canActivate: [moduloGuard('users')], data: { breadcrumb: 'Usuarios', icon: 'users' } },
   { path: 'roles', component: SettingsRolesPageComponent, canActivate: [moduloGuard('roles')], data: { breadcrumb: 'Roles y permisos', icon: 'shield-lock' } },

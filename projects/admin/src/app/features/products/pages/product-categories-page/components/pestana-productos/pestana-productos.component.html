@@ -191,66 +191,117 @@
               </button>
             }
             <app-desplegable [abierto]="g.abierto">
-              <div class="flex flex-col rounded-xl p-1 shadow-[0_0_0_1px_#ececec]">
-                @for (x of g.productos; track x.id) {
+              @let pg = pagina.ver('' + g.id, g.productos);
+              <div class="flex flex-col gap-0.5">
+                @for (x of pg.filas; track x.id) {
                   @let marcado = estado.seleccion().has(x.id);
                   @let encima = encimaDe() === x.id;
+                  @let j = encima || marcado;
+                  @let e = ESTF[x.estado];
+                  @let mini = miniatura(x);
+                  @let ok = stockAlDia(x);
                   <div
                     (mouseenter)="encimaDe.set(x.id)"
                     (mouseleave)="salir(x.id)"
                     (click)="verProducto.emit(x.id)"
-                    class="grid cursor-pointer grid-cols-[16px_30px_minmax(0,1fr)_auto_64px_24px] items-center gap-2.5 rounded-[9px] px-1.5 py-[7px] transition-[background-color] duration-150 ease-[ease] hover:bg-[#f7f7f7]!"
-                    [class]="marcado ? 'bg-[#f4f4f4]' : 'bg-transparent'"
+                    class="relative grid cursor-pointer grid-cols-[38px_minmax(0,1fr)_auto] items-start gap-3 rounded-xl py-2.5 pr-3 pl-2.5 select-none transition-[background-color] duration-[260ms] ease-[cubic-bezier(.2,.8,.2,1)]"
+                    [style.background]="marcado ? '#f1f1f1' : encima ? '#f7f7f7' : 'transparent'"
                   >
-                    <span class="flex h-6.5 items-center justify-center">
+                    <!-- Miniatura (con la casilla al pasar el cursor o si hay marcados) + insignia de estado -->
+                    <span
+                      class="relative flex size-[38px] items-center justify-center rounded-[11px] font-[Archivo] text-[14px] font-semibold text-[#6b7280] transition-colors duration-[260ms]"
+                      [style.background]="j ? '#ebebeb' : '#f1f1f1'"
+                    >
                       @if (haySeleccion() || encima) {
                         <span
                           (click)="$event.stopPropagation(); estado.alternarSeleccion(x.id)"
-                          class="flex size-[15px] animate-[fade-in-up_.15s_ease-out] items-center justify-center rounded-[5px] text-white"
-                          [class]="marcado ? 'bg-[#303030] shadow-[inset_0_0_0_1.5px_#303030]' : 'bg-white shadow-[inset_0_0_0_1.5px_#c4c4c4]'"
+                          title="Seleccionar"
+                          class="flex size-[18px] animate-[fade-in_.15s] items-center justify-center rounded-md text-white"
+                          [style.background]="marcado ? '#303030' : '#fff'"
+                          [style.box-shadow]="'inset 0 0 0 1.5px ' + (marcado ? '#303030' : '#d4d4d4')"
                         >
                           @if (marcado) {
-                            <tabler-icon [icon]="icono('check')" [size]="11" [stroke]="2" />
+                            <tabler-icon [icon]="icono('check')" [size]="12" [stroke]="2" />
                           }
                         </span>
+                      } @else if (mini.tipo === 'imagen') {
+                        <span class="block size-full rounded-[11px] bg-cover bg-center" [style.background-image]="'url(' + mini.url + ')'"></span>
                       } @else {
-                        <span class="h-6.5 w-[3px] rounded-full" [class]="punto[x.estado]"></span>
+                        <span>{{ inicial(x) }}</span>
                       }
-                    </span>
-                    <span class="flex">
-                      <app-miniatura [miniatura]="miniatura(x)" [tamanoIcono]="15" class="size-7.5 rounded-lg" />
-                    </span>
-                    <span class="flex min-w-0 flex-col gap-[1px]">
-                      <span class="truncate text-[13px] font-medium text-[#111827]">{{ x.nombre }}</span>
-                      <span class="truncate text-[11.5px] text-[#8a8a8a]">{{ x.sku || 'Sin SKU' }} · {{ estadoTexto(x) }}</span>
-                    </span>
-                    <span class="text-[12.5px] font-medium whitespace-nowrap text-[#303030] tabular-nums">{{ f.cop(x.precio) }}</span>
-                    <span class="flex flex-col items-end gap-[5px]">
-                      <span class="text-[11.5px] font-semibold tabular-nums" [class]="stockAlDia(x) ? 'text-[#303030]' : 'text-[#b42318]'">
-                        {{ f.num(stock(x).disponible) }}
+                      <span
+                        [title]="e.t"
+                        class="absolute -right-[3px] -bottom-[3px] flex size-[18px] items-center justify-center rounded-full"
+                        [style.background]="e.bg"
+                        [style.color]="e.fg"
+                        [style.box-shadow]="'0 0 0 2px #fff'"
+                      >
+                        <tabler-icon [icon]="icono(e.icono)" [size]="10" [stroke]="2.2" />
                       </span>
-                      <span class="relative block h-1 w-16 overflow-hidden rounded-full bg-[#efefef]">
+                    </span>
+                    <!-- Centro: nombre (★), SKU · categoría y la etiqueta de estado -->
+                    <span class="flex min-w-0 flex-col gap-[5px]">
+                      <span class="flex min-w-0 items-center gap-1.5">
+                        <span class="min-w-0 truncate text-[13px] leading-[18px] font-medium text-[#111827]">{{ x.nombre }}</span>
+                        @if (x.destacado) {
+                          <tabler-icon [icon]="icono('star-filled')" [size]="11" class="shrink-0 text-[#ffb904]" title="Destacado" />
+                        }
+                      </span>
+                      <span class="-mt-[3px] flex min-w-0 items-center gap-2 overflow-hidden text-xs leading-4 text-[#6b7280]">
+                        <span class="shrink-0 font-mono text-[11px] whitespace-nowrap">{{ x.sku || 'Sin SKU' }}</span>
+                        <span class="inline-flex min-w-0 items-center gap-1 whitespace-nowrap">
+                          <tabler-icon [icon]="icono('folder')" [size]="12" [stroke]="2" class="shrink-0 text-[#9ca3af]" />
+                          <span class="truncate">{{ nombreCategoria(x.categoriaId) }}</span>
+                        </span>
+                      </span>
+                      <span class="flex min-w-0 flex-wrap items-center gap-1">
                         <span
-                          class="absolute top-0 bottom-0 left-0 rounded-full transition-[width] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]"
-                          [class]="stockAlDia(x) ? 'bg-[#303030]' : 'bg-[#d82c0d]'"
-                          [style.width.%]="barraStock(x)"
-                        ></span>
+                          class="inline-flex h-5 shrink-0 items-center gap-[5px] rounded-md px-[7px] text-[11px] font-medium whitespace-nowrap"
+                          [style.background]="e.bg"
+                          [style.color]="e.fg"
+                        >
+                          <tabler-icon [icon]="icono(e.icono)" [size]="11" [stroke]="2" />{{ e.t }}
+                        </span>
                       </span>
                     </span>
-                    <span class="flex justify-center">
-                      @if (encima && puedeEditar() && !haySeleccion()) {
-                        <button
-                          type="button"
-                          (click)="$event.stopPropagation(); quitar(x)"
-                          title="Quitar de la categoría"
-                          class="flex size-6 animate-[fade-in_.15s] cursor-pointer items-center justify-center rounded-full text-[#8a8a8a] hover:bg-[#fff1f0]! hover:text-[#b42318]!"
-                        >
-                          <tabler-icon [icon]="icono('folder-minus')" [size]="14" [stroke]="2" />
-                        </button>
+                    <!-- Derecha: precio y medidor + disponible; al pasar el cursor, Quitar -->
+                    <span class="flex items-start gap-1.5">
+                      <span class="flex flex-col items-end gap-1.5 pt-px">
+                        <span class="flex items-baseline gap-[5px]">
+                          @if (x.precioComparacion && x.precioComparacion > x.precio) {
+                            <span class="text-[10.5px] text-[#9ca3af] tabular-nums line-through">{{ f.cop(x.precioComparacion) }}</span>
+                          }
+                          <span class="text-[13px] font-semibold whitespace-nowrap text-[#111827] tabular-nums">{{ f.cop(x.precio) }}</span>
+                        </span>
+                        <span [title]="ok ? 'Con stock' : 'Bajo el mínimo'" class="flex items-center gap-[7px]">
+                          <span class="relative block h-1 w-10 overflow-hidden rounded-full" [style.background]="j ? '#e2e2e2' : '#efefef'">
+                            <span
+                              class="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[600ms]"
+                              [style.width.%]="barraStock(x)"
+                              [style.background]="ok ? '#303030' : '#d82c0d'"
+                            ></span>
+                          </span>
+                          <span class="text-[11.5px] font-semibold whitespace-nowrap tabular-nums" [style.color]="ok ? '#111827' : '#d82c0d'">{{ f.num(stock(x).disponible) }} u.</span>
+                        </span>
+                      </span>
+                      @if (puedeEditar() && !haySeleccion()) {
+                        <span class="flex w-6 justify-center">
+                          @if (encima) {
+                            <button
+                              type="button"
+                              (click)="$event.stopPropagation(); quitar(x)"
+                              title="Quitar de la categoría"
+                              class="flex size-6 animate-[fade-in_.15s] cursor-pointer items-center justify-center rounded-full text-[#8a8a8a] hover:bg-[#fff1f0]! hover:text-[#b42318]!"
+                            >
+                              <tabler-icon [icon]="icono('folder-minus')" [size]="14" [stroke]="2" />
+                            </button>
+                          }
+                        </span>
                       }
                     </span>
                   </div>
                 }
+                <app-cargar-mas [quedan]="pg.quedan" (cargar)="pagina.mas('' + g.id)" />
               </div>
             </app-desplegable>
           </div>

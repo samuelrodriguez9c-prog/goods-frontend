@@ -93,6 +93,21 @@ export class AsistenteService {
    * No se fija `Content-Type`: `HttpClient` arma el boundary del `FormData`;
    * fijarlo a mano rompe el parseo en el backend.
    */
+  /**
+   * «Mejorar con IA» de la ficha de producto: redacta la descripción con lo
+   * que hay escrito (nombre, marca, categoría, campos propios y la
+   * descripción actual, que se pule sin perder sus datos). No guarda nada.
+   */
+  mejorarDescripcion(datos: {
+    nombre: string;
+    marca?: string;
+    categoria?: string;
+    descripcion?: string;
+    caracteristicas?: Record<string, string>;
+  }): Observable<{ texto: string }> {
+    return this.http.post<{ texto: string }>(`${this.base}/productos/descripcion`, datos);
+  }
+
   extraerFacturaProveedor(archivo: File): Observable<FacturaProveedorExtraida> {
     const formData = new FormData();
     formData.append('file', archivo);
